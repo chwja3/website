@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyond Us Check</title>
+  <meta name="theme-color" content="#6d4aff" />
+  <style>
+    :root {
+      --bg: #f6f4ff;
+      --card: #ffffff;
+      --text: #1f1b2d;
+      --sub: #6b6480;
+      --primary: #6d4aff;
+      --primary-soft: #efeaff;
+      --line: #e7e1f5;
+      --success: #16a34a;
+      --danger: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f7f5ff 0%, #f2efff 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    .top-card {
+      background: linear-gradient(135deg, #6d4aff 0%, #8b6cff 100%);
+      color: white;
+      border-radius: 24px;
+      padding: 24px 20px;
+      box-shadow: 0 14px 30px rgba(109, 74, 255, 0.22);
+      margin-bottom: 16px;
+    }
+
+    .eyebrow {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+
+    .title {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .desc {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      opacity: 0.95;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(28, 20, 66, 0.06);
+      padding: 18px 16px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .card-sub {
+      margin: 0 0 14px;
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+
+    .week-badge {
+      display: inline-block;
+      margin-bottom: 10px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+      margin-bottom: 16px;
+    }
+
+    .check-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: #faf9ff;
+      border: 1px solid #eee9fb;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .check-item input {
+      margin-top: 3px;
+      transform: scale(1.2);
+      accent-color: var(--primary);
+    }
+
+    .check-item label {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #f3f1fb;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      min-height: 20px;
+    }
+
+    .status.success { color: var(--success); }
+    .status.error { color: var(--danger); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(28, 20, 66, 0.06);
+      padding: 18px 16px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--sub);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .count-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .count-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: #faf9ff;
+      border: 1px solid #eee9fb;
+    }
+
+    .count-item-name {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .count-item-count {
+      min-width: 42px;
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: white;
+      border: 1px solid var(--line);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .footer-note {
+      color: var(--sub);
+      font-size: 12px;
+      text-align: center;
+      margin-top: 18px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="top-card">
+      <div class="eyebrow">2026 청년부 수련회 준비</div>
+      <h1 class="title">Beyond Us</h1>
+      <p class="desc">빛으로 살기 위해, 구별됨의 걸음을 함께 이어갑시다.</p>
+    </section>
+
+    <section class="card">
+      <div class="week-badge" id="weekTitle">불러오는 중...</div>
+      <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
+      <p class="card-sub">오늘 실천한 항목이 있다면 체크 후 제출해주세요.</p>
+
+      <form id="checkForm">
+        <div class="check-list" id="checkList"></div>
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="refreshBtn">현황 보기</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">오늘 체크하기</button>
+        </div>
+        <div id="statusMessage" class="status"></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">이번 주 공동체 목표</h2>
+      <p class="card-sub">
+        <span id="goalText">0</span> / <span id="goalCount">100</span>회 달성
+      </p>
+
+      <div style="width:100%; height:14px; background:#ece8f8; border-radius:999px; overflow:hidden;">
+        <div id="progressBar" style="width:0%; height:100%; background:#6d4aff; border-radius:999px;"></div>
+      </div>
+
+      <p class="card-sub" style="margin-top:10px;">
+        현재 진행률 <strong id="progressPercent">0%</strong>
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="stat-card">
+        <div class="stat-label">누적 실천 수</div>
+        <div class="stat-value" id="totalCount">-</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">누적 제출 수</div>
+        <div class="stat-value" id="submissionCount">-</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">이번 주 실천 현황</h2>
+      <p class="card-sub">공동체 안에 쌓여가는 실천의 흐름을 확인해보세요.</p>
+      <div class="count-list" id="countList"></div>
+    </section>
+
+    <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"</p>
+  </div>
+
+  <script>
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbwE1WmjS02tZh-jUJOqGEOBobAG73RGpQhxkM9vbgk4xBrq5C-UB8r6vx9lVftaZLAobQ/exec';
+
+    const weekTitleEl = document.getElementById('weekTitle');
+    const checkListEl = document.getElementById('checkList');
+    const countListEl = document.getElementById('countList');
+    const totalCountEl = document.getElementById('totalCount');
+    const submissionCountEl = document.getElementById('submissionCount');
+    const statusMessageEl = document.getElementById('statusMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const checkForm = document.getElementById('checkForm');
+    const GOAL_COUNT = 100;
+
+    function renderProgress(totalCount) {
+      const percent = Math.min(100, Math.round((totalCount / GOAL_COUNT) * 100));
+
+      document.getElementById('goalText').textContent = totalCount;
+      document.getElementById('goalCount').textContent = GOAL_COUNT;
+      document.getElementById('progressPercent').textContent = `${percent}%`;
+      document.getElementById('progressBar').style.width = `${percent}%`;
+    }
+
+    let currentConfig = null;
+
+    async function fetchDashboard() {
+      const res = await fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, {
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
+      return res.json();
+    }
+
+    function renderConfig(data) {
+      currentConfig = data;
+      weekTitleEl.textContent = data.weekTitle;
+
+      checkListEl.innerHTML = '';
+      data.items.forEach((item, index) => {
+        const id = `item_${index}`;
+        const div = document.createElement('div');
+        div.className = 'check-item';
+        div.innerHTML = `
+          <input type="checkbox" id="${id}" name="items" value="${item}">
+          <label for="${id}">${item}</label>
+        `;
+        checkListEl.appendChild(div);
+      });
+    }
+
+    function renderCounts(data) {
+      totalCountEl.textContent = data.totalCount;
+      submissionCountEl.textContent = data.submissionCount;
+
+      countListEl.innerHTML = '';
+      data.items.forEach((item) => {
+        const count = data.counts[item] || 0;
+        const div = document.createElement('div');
+        div.className = 'count-item';
+        div.innerHTML = `
+          <span class="count-item-name">${item}</span>
+          <span class="count-item-count">${count}</span>
+        `;
+        countListEl.appendChild(div);
+      });
+
+      renderProgress(data.totalCount);
+    }
+
+    function setStatus(message, type = '') {
+      statusMessageEl.textContent = message;
+      statusMessageEl.className = `status ${type}`.trim();
+    }
+
+    function getTodayKey() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function getLastCheckDate() {
+      return localStorage.getItem('beyondus_last_check_date');
+    }
+
+    function setLastCheckDate(dateStr) {
+      localStorage.setItem('beyondus_last_check_date', dateStr);
+    }
+
+    function hasCheckedToday() {
+      return getLastCheckDate() === getTodayKey();
+    }
+
+    function updateCheckAvailabilityUI() {
+      if (hasCheckedToday()) {
+        submitBtn.disabled = true;
+        setStatus('오늘 체크는 완료되었어요. 내일 다시 참여해주세요.', 'success');
+      } else {
+        submitBtn.disabled = false;
+      }
+    }
+
+    async function loadAll() {
+      setStatus('현황을 불러오고 있어요...');
+      const data = await fetchDashboard();
+      renderConfig(data);
+      renderCounts(data);
+      setStatus('최신 현황으로 업데이트되었어요.', 'success');
+    }
+
+    async function submitCheck(items) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'submit', items })
+      });
+      if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
+      return res.json();
+    }
+
+    checkForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const checked = [...document.querySelectorAll('input[name="items"]:checked')].map(el => el.value);
+      if (checked.length === 0) {
+        setStatus('실천한 항목을 1개 이상 선택해주세요.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      refreshBtn.disabled = true;
+      setStatus('체크를 저장하고 있어요...');
+
+      try {
+        await submitCheck(checked);
+        setLastCheckDate(getTodayKey());
+        document.querySelectorAll('input[name="items"]:checked').forEach(el => el.checked = false);
+        const data = await fetchDashboard();
+        renderConfig(data);
+        renderCounts(data);
+        updateCheckAvailabilityUI();
+        setStatus('오늘의 실천이 저장되었어요.', 'success');
+      } catch (err) {
+        setStatus(err.message || '오류가 발생했습니다.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        refreshBtn.disabled = false;
+        updateCheckAvailabilityUI();
+      }
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.disabled = true;
+      submitBtn.disabled = true;
+
+      try {
+        await loadAll();
+        updateCheckAvailabilityUI();
+      } catch (err) {
+        setStatus(err.message || '현황을 새로 불러오는 중 문제가 발생했어요.', 'error');
+      } finally {
+        refreshBtn.disabled = false;
+        if (!hasCheckedToday()) {
+          submitBtn.disabled = false;
+        }
+      }
+    });
+
+    loadAll()
+      .then(() => {
+        updateCheckAvailabilityUI();
+      })
+      .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
+  </script>
+</body>
+</html>
