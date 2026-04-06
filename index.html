@@ -4,21 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Beyond Us Check</title>
-  <meta name="theme-color" content="#1a2057" />
+  <meta name="theme-color" content="#6d4aff" />
   <style>
     :root {
-      --bg: #1a2057;
-      --bg2: #141843;
-      --card: rgba(255,255,255,0.07);
-      --card-border: rgba(245,240,232,0.15);
-      --text: #f5f0e8;
-      --sub: rgba(245,240,232,0.6);
-      --primary: #a0b4ff;
-      --primary-soft: rgba(160,180,255,0.15);
-      --ivory: #f5f0e8;
-      --line: rgba(245,240,232,0.12);
-      --success: #6ee7b7;
-      --danger: #fca5a5;
+      --bg: #f6f4ff;
+      --card: #ffffff;
+      --text: #1f1b2d;
+      --sub: #6b6480;
+      --primary: #6d4aff;
+      --primary-soft: #efeaff;
+      --line: #e7e1f5;
+      --success: #16a34a;
+      --danger: #dc2626;
     }
 
     * { box-sizing: border-box; }
@@ -26,99 +23,58 @@
     body {
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
-      background: linear-gradient(160deg, #1a2057 0%, #141843 60%, #0f1230 100%);
-      min-height: 100vh;
+      background: linear-gradient(180deg, #f7f5ff 0%, #f2efff 100%);
       color: var(--text);
     }
 
-    /* 배경 양 장식 */
-    .bg-sheep {
-      position: fixed;
-      pointer-events: none;
-      opacity: 0.06;
-      z-index: 0;
-    }
-    .bg-sheep.s1 { top: 5%; right: -20px; width: 180px; transform: scaleX(-1); }
-    .bg-sheep.s2 { bottom: 12%; left: -30px; width: 220px; }
-    .bg-sheep.s3 { top: 42%; right: 10px; width: 100px; opacity: 0.04; }
-
     .wrap {
-      position: relative;
-      z-index: 1;
       max-width: 520px;
       margin: 0 auto;
-      padding: 20px 16px 48px;
+      padding: 20px 16px 40px;
     }
 
-    /* 상단 헤더 카드 */
     .top-card {
-      background: linear-gradient(135deg, #2a3580 0%, #1e2a6e 100%);
-      border: 1px solid rgba(160,180,255,0.25);
-      border-radius: 28px;
-      padding: 28px 22px 24px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+      background: linear-gradient(135deg, #6d4aff 0%, #8b6cff 100%);
+      color: white;
+      border-radius: 24px;
+      padding: 24px 20px;
+      box-shadow: 0 14px 30px rgba(109, 74, 255, 0.22);
       margin-bottom: 16px;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .top-card::after {
-      content: '';
-      position: absolute;
-      top: -30px; right: -30px;
-      width: 140px; height: 140px;
-      background: radial-gradient(circle, rgba(160,180,255,0.15) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    /* 헤더 양 일러스트 */
-    .hero-sheep {
-      position: absolute;
-      right: 16px;
-      bottom: 0;
-      width: 100px;
     }
 
     .eyebrow {
       font-size: 13px;
-      color: var(--primary);
-      font-weight: 700;
-      letter-spacing: 0.04em;
+      opacity: 0.9;
       margin-bottom: 8px;
     }
 
     .title {
       margin: 0 0 8px;
-      font-size: 30px;
-      font-weight: 900;
-      color: var(--ivory);
+      font-size: 28px;
+      font-weight: 800;
       line-height: 1.2;
     }
 
     .desc {
       margin: 0;
       font-size: 14px;
-      line-height: 1.6;
-      color: var(--sub);
-      max-width: 260px;
+      line-height: 1.5;
+      opacity: 0.95;
     }
 
-    /* 카드 */
     .card {
       background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 22px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-      padding: 20px 18px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(28, 20, 66, 0.06);
+      padding: 18px 16px;
       margin-bottom: 14px;
-      backdrop-filter: blur(8px);
     }
 
     .card-title {
-      margin: 0 0 6px;
-      font-size: 17px;
+      margin: 0 0 8px;
+      font-size: 18px;
       font-weight: 800;
-      color: var(--ivory);
     }
 
     .card-sub {
@@ -130,14 +86,13 @@
 
     .week-badge {
       display: inline-block;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       background: var(--primary-soft);
       color: var(--primary);
       font-size: 13px;
       font-weight: 700;
-      padding: 7px 14px;
+      padding: 8px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(160,180,255,0.25);
     }
 
     .check-list {
@@ -152,16 +107,10 @@
       display: flex;
       gap: 12px;
       align-items: flex-start;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
+      background: #faf9ff;
+      border: 1px solid #eee9fb;
       border-radius: 16px;
       padding: 14px;
-      transition: background 0.15s;
-    }
-
-    .check-item:has(input:checked) {
-      background: rgba(160,180,255,0.12);
-      border-color: rgba(160,180,255,0.3);
     }
 
     .check-item input {
@@ -176,7 +125,6 @@
       font-weight: 600;
       line-height: 1.4;
       cursor: pointer;
-      color: var(--ivory);
     }
 
     .actions {
@@ -193,24 +141,21 @@
       font-weight: 700;
       cursor: pointer;
       flex: 1;
-      transition: opacity 0.15s, transform 0.1s;
     }
 
-    .btn:active { transform: scale(0.97); }
-
     .btn-primary {
-      background: linear-gradient(135deg, #a0b4ff 0%, #7b9aff 100%);
-      color: #1a2057;
+      background: var(--primary);
+      color: white;
     }
 
     .btn-secondary {
-      background: rgba(255,255,255,0.08);
-      color: var(--ivory);
-      border: 1px solid var(--card-border);
+      background: #f3f1fb;
+      color: var(--text);
+      border: 1px solid var(--line);
     }
 
     .btn:disabled {
-      opacity: 0.45;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
@@ -224,23 +169,6 @@
     .status.success { color: var(--success); }
     .status.error { color: var(--danger); }
 
-    /* 진행 바 */
-    .progress-track {
-      width: 100%;
-      height: 12px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #a0b4ff, #c4d0ff);
-      border-radius: 999px;
-      transition: width 0.6s ease;
-    }
-
-    /* 통계 그리드 */
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -250,32 +178,24 @@
 
     .stat-card {
       background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 22px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-      padding: 20px 18px;
-      backdrop-filter: blur(8px);
-    }
-
-    .stat-sheep {
-      width: 36px;
-      margin-bottom: 8px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 8px 20px rgba(28, 20, 66, 0.06);
+      padding: 18px 16px;
     }
 
     .stat-label {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--sub);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
     .stat-value {
-      font-size: 30px;
-      font-weight: 900;
+      font-size: 28px;
+      font-weight: 800;
       line-height: 1;
-      color: var(--ivory);
     }
 
-    /* 실천 현황 목록 */
     .count-list {
       display: flex;
       flex-direction: column;
@@ -288,155 +208,49 @@
       align-items: center;
       gap: 12px;
       padding: 12px 14px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #faf9ff;
+      border: 1px solid #eee9fb;
     }
 
     .count-item-name {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
-      color: var(--ivory);
       line-height: 1.4;
     }
 
     .count-item-count {
       min-width: 42px;
-      height: 28px;
+      height: 30px;
       padding: 0 10px;
       border-radius: 999px;
-      background: var(--primary-soft);
-      border: 1px solid rgba(160,180,255,0.3);
+      background: white;
+      border: 1px solid var(--line);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-size: 13px;
       font-weight: 700;
       color: var(--primary);
-      flex-shrink: 0;
     }
 
     .footer-note {
       color: var(--sub);
       font-size: 12px;
       text-align: center;
-      margin-top: 20px;
-      line-height: 1.6;
-    }
-
-    /* 작은 양 구분선 */
-    .sheep-divider {
-      text-align: center;
-      margin: 4px 0 14px;
-      font-size: 20px;
-      opacity: 0.5;
+      margin-top: 18px;
+      line-height: 1.5;
     }
   </style>
 </head>
 <body>
-
-  <!-- 배경 양 장식 -->
-  <svg class="bg-sheep s1" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="80" rx="65" ry="50" fill="#f5f0e8"/>
-    <ellipse cx="75" cy="55" rx="22" ry="20" fill="#f5f0e8"/>
-    <ellipse cx="60" cy="45" rx="18" ry="16" fill="#f5f0e8"/>
-    <ellipse cx="95" cy="45" rx="18" ry="16" fill="#f5f0e8"/>
-    <ellipse cx="115" cy="50" rx="20" ry="18" fill="#f5f0e8"/>
-    <ellipse cx="130" cy="60" rx="22" ry="20" fill="#f5f0e8"/>
-    <ellipse cx="120" cy="78" rx="22" ry="20" fill="#f5f0e8"/>
-    <ellipse cx="80" cy="40" rx="14" ry="18" fill="#e8e0d0"/>
-    <ellipse cx="80" cy="40" rx="9" ry="12" fill="#f5f0e8"/>
-    <circle cx="75" cy="36" r="3" fill="#1a2057"/>
-    <circle cx="86" cy="36" r="3" fill="#1a2057"/>
-    <path d="M77 42 Q80 45 84 42" stroke="#1a2057" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-    <rect x="72" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="88" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="108" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="124" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-  </svg>
-
-  <svg class="bg-sheep s2" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="80" rx="65" ry="50" fill="#f5f0e8"/>
-    <ellipse cx="75" cy="55" rx="22" ry="20" fill="#f5f0e8"/>
-    <ellipse cx="60" cy="45" rx="18" ry="16" fill="#f5f0e8"/>
-    <ellipse cx="95" cy="45" rx="18" ry="16" fill="#f5f0e8"/>
-    <ellipse cx="115" cy="50" rx="20" ry="18" fill="#f5f0e8"/>
-    <ellipse cx="130" cy="60" rx="22" ry="20" fill="#f5f0e8"/>
-    <ellipse cx="120" cy="78" rx="22" ry="20" fill="#f5f0e8"/>
-    <ellipse cx="80" cy="40" rx="14" ry="18" fill="#e8e0d0"/>
-    <ellipse cx="80" cy="40" rx="9" ry="12" fill="#f5f0e8"/>
-    <circle cx="75" cy="36" r="3" fill="#1a2057"/>
-    <circle cx="86" cy="36" r="3" fill="#1a2057"/>
-    <path d="M77 42 Q80 45 84 42" stroke="#1a2057" stroke-width="1.5" stroke-linecap="round" fill="none"/>
-    <rect x="72" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="88" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="108" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="124" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-  </svg>
-
-  <svg class="bg-sheep s3" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="80" rx="65" ry="50" fill="#f5f0e8"/>
-    <ellipse cx="80" cy="40" rx="14" ry="18" fill="#e8e0d0"/>
-    <ellipse cx="80" cy="40" rx="9" ry="12" fill="#f5f0e8"/>
-    <rect x="72" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="88" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="108" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-    <rect x="124" y="128" width="10" height="28" rx="5" fill="#e8e0d0"/>
-  </svg>
-
   <div class="wrap">
-
-    <!-- 상단 헤더 -->
     <section class="top-card">
-      <!-- 헤더 양 -->
-      <svg class="hero-sheep" viewBox="0 0 120 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- 몸통 -->
-        <ellipse cx="60" cy="78" rx="42" ry="34" fill="#f5f0e8"/>
-        <!-- 털 뭉치들 -->
-        <ellipse cx="38" cy="60" rx="16" ry="14" fill="#f5f0e8"/>
-        <ellipse cx="25" cy="52" rx="13" ry="12" fill="#f5f0e8"/>
-        <ellipse cx="52" cy="50" rx="14" ry="13" fill="#f5f0e8"/>
-        <ellipse cx="68" cy="48" rx="15" ry="13" fill="#f5f0e8"/>
-        <ellipse cx="83" cy="55" rx="16" ry="14" fill="#f5f0e8"/>
-        <ellipse cx="90" cy="68" rx="15" ry="13" fill="#f5f0e8"/>
-        <ellipse cx="85" cy="82" rx="14" ry="12" fill="#f5f0e8"/>
-        <ellipse cx="35" cy="85" rx="14" ry="12" fill="#f5f0e8"/>
-        <!-- 머리 -->
-        <ellipse cx="42" cy="42" rx="12" ry="15" fill="#ede5d5"/>
-        <ellipse cx="42" cy="42" rx="9" ry="12" fill="#f5f0e8"/>
-        <!-- 귀 -->
-        <ellipse cx="31" cy="36" rx="5" ry="8" fill="#ede5d5" transform="rotate(-20 31 36)"/>
-        <ellipse cx="31" cy="36" rx="3" ry="5" fill="#f0c4c4" transform="rotate(-20 31 36)"/>
-        <ellipse cx="53" cy="34" rx="5" ry="8" fill="#ede5d5" transform="rotate(15 53 34)"/>
-        <ellipse cx="53" cy="34" rx="3" ry="5" fill="#f0c4c4" transform="rotate(15 53 34)"/>
-        <!-- 눈 -->
-        <ellipse cx="38" cy="40" rx="2.5" ry="3" fill="#2a1f3d"/>
-        <ellipse cx="47" cy="40" rx="2.5" ry="3" fill="#2a1f3d"/>
-        <circle cx="37" cy="39" r="1" fill="white"/>
-        <circle cx="46" cy="39" r="1" fill="white"/>
-        <!-- 코/입 -->
-        <ellipse cx="42" cy="47" rx="3" ry="2" fill="#e8b4b8"/>
-        <path d="M39 50 Q42 53 46 50" stroke="#c48080" stroke-width="1.2" stroke-linecap="round" fill="none"/>
-        <!-- 다리 -->
-        <rect x="35" y="110" width="9" height="18" rx="4.5" fill="#ede5d5"/>
-        <rect x="48" y="112" width="9" height="16" rx="4.5" fill="#ede5d5"/>
-        <rect x="64" y="112" width="9" height="16" rx="4.5" fill="#ede5d5"/>
-        <rect x="77" y="110" width="9" height="18" rx="4.5" fill="#ede5d5"/>
-        <!-- 발굽 -->
-        <rect x="35" y="124" width="9" height="6" rx="3" fill="#b0a090"/>
-        <rect x="48" y="124" width="9" height="6" rx="3" fill="#b0a090"/>
-        <rect x="64" y="124" width="9" height="6" rx="3" fill="#b0a090"/>
-        <rect x="77" y="124" width="9" height="6" rx="3" fill="#b0a090"/>
-        <!-- 꼬리 -->
-        <ellipse cx="100" cy="75" rx="8" ry="9" fill="#f5f0e8"/>
-      </svg>
-
-      <div class="eyebrow">🐑 2026 청년부 수련회 준비</div>
+      <div class="eyebrow">2026 청년부 수련회 준비</div>
       <h1 class="title">Beyond Us</h1>
       <p class="desc">빛으로 살기 위해, 구별됨의 걸음을 함께 이어갑시다.</p>
     </section>
 
-    <!-- 체크 카드 -->
     <section class="card">
       <div class="week-badge" id="weekTitle">불러오는 중...</div>
       <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
@@ -452,70 +266,39 @@
       </form>
     </section>
 
-    <!-- 목표 진행 카드 -->
     <section class="card">
       <h2 class="card-title">이번 주 공동체 목표</h2>
       <p class="card-sub">
         <span id="goalText">0</span> / <span id="goalCount">100</span>회 달성
       </p>
 
-      <div class="progress-track">
-        <div class="progress-fill" id="progressBar" style="width:0%"></div>
+      <div style="width:100%; height:14px; background:#ece8f8; border-radius:999px; overflow:hidden;">
+        <div id="progressBar" style="width:0%; height:100%; background:#6d4aff; border-radius:999px;"></div>
       </div>
 
       <p class="card-sub" style="margin-top:10px;">
-        현재 진행률 <strong style="color:var(--primary)" id="progressPercent">0%</strong>
+        현재 진행률 <strong id="progressPercent">0%</strong>
       </p>
     </section>
 
-    <!-- 통계 -->
     <section class="grid">
       <div class="stat-card">
-        <svg class="stat-sheep" viewBox="0 0 60 50" fill="none">
-          <ellipse cx="30" cy="28" rx="18" ry="13" fill="#f5f0e8"/>
-          <ellipse cx="20" cy="20" rx="7" ry="6" fill="#f5f0e8"/>
-          <ellipse cx="30" cy="17" rx="7" ry="6" fill="#f5f0e8"/>
-          <ellipse cx="40" cy="20" rx="7" ry="6" fill="#f5f0e8"/>
-          <ellipse cx="20" cy="16" rx="5" ry="7" fill="#ede5d5"/>
-          <ellipse cx="20" cy="16" rx="3.5" ry="5" fill="#f5f0e8"/>
-          <circle cx="18" cy="14" r="1.2" fill="#2a1f3d"/>
-          <circle cx="23" cy="14" r="1.2" fill="#2a1f3d"/>
-          <rect x="18" y="40" width="4" height="8" rx="2" fill="#ede5d5"/>
-          <rect x="25" y="41" width="4" height="7" rx="2" fill="#ede5d5"/>
-          <rect x="34" y="41" width="4" height="7" rx="2" fill="#ede5d5"/>
-          <rect x="41" y="40" width="4" height="8" rx="2" fill="#ede5d5"/>
-        </svg>
         <div class="stat-label">누적 실천 수</div>
         <div class="stat-value" id="totalCount">-</div>
       </div>
       <div class="stat-card">
-        <svg class="stat-sheep" viewBox="0 0 60 50" fill="none">
-          <ellipse cx="30" cy="28" rx="18" ry="13" fill="#f5f0e8"/>
-          <ellipse cx="20" cy="20" rx="7" ry="6" fill="#f5f0e8"/>
-          <ellipse cx="30" cy="17" rx="7" ry="6" fill="#f5f0e8"/>
-          <ellipse cx="40" cy="20" rx="7" ry="6" fill="#f5f0e8"/>
-          <ellipse cx="40" cy="16" rx="5" ry="7" fill="#ede5d5"/>
-          <ellipse cx="40" cy="16" rx="3.5" ry="5" fill="#f5f0e8"/>
-          <circle cx="38" cy="14" r="1.2" fill="#2a1f3d"/>
-          <circle cx="43" cy="14" r="1.2" fill="#2a1f3d"/>
-          <rect x="18" y="40" width="4" height="8" rx="2" fill="#ede5d5"/>
-          <rect x="25" y="41" width="4" height="7" rx="2" fill="#ede5d5"/>
-          <rect x="34" y="41" width="4" height="7" rx="2" fill="#ede5d5"/>
-          <rect x="41" y="40" width="4" height="8" rx="2" fill="#ede5d5"/>
-        </svg>
         <div class="stat-label">누적 제출 수</div>
         <div class="stat-value" id="submissionCount">-</div>
       </div>
     </section>
 
-    <!-- 실천 현황 -->
     <section class="card">
       <h2 class="card-title">이번 주 실천 현황</h2>
       <p class="card-sub">공동체 안에 쌓여가는 실천의 흐름을 확인해보세요.</p>
       <div class="count-list" id="countList"></div>
     </section>
 
-    <p class="footer-note">🐑 "너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요" 🐑</p>
+    <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"</p>
   </div>
 
   <script>
@@ -534,6 +317,7 @@
 
     function renderProgress(totalCount) {
       const percent = Math.min(100, Math.round((totalCount / GOAL_COUNT) * 100));
+
       document.getElementById('goalText').textContent = totalCount;
       document.getElementById('goalCount').textContent = GOAL_COUNT;
       document.getElementById('progressPercent').textContent = `${percent}%`;
@@ -543,7 +327,9 @@
     let currentConfig = null;
 
     async function fetchDashboard() {
-      const res = await fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
       return res.json();
     }
@@ -551,6 +337,7 @@
     function renderConfig(data) {
       currentConfig = data;
       weekTitleEl.textContent = data.weekTitle;
+
       checkListEl.innerHTML = '';
       data.items.forEach((item, index) => {
         const id = `item_${index}`;
@@ -567,6 +354,7 @@
     function renderCounts(data) {
       totalCountEl.textContent = data.totalCount;
       submissionCountEl.textContent = data.submissionCount;
+
       countListEl.innerHTML = '';
       data.items.forEach((item) => {
         const count = data.counts[item] || 0;
@@ -578,6 +366,7 @@
         `;
         countListEl.appendChild(div);
       });
+
       renderProgress(data.totalCount);
     }
 
@@ -635,14 +424,17 @@
 
     checkForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+
       const checked = [...document.querySelectorAll('input[name="items"]:checked')].map(el => el.value);
       if (checked.length === 0) {
         setStatus('실천한 항목을 1개 이상 선택해주세요.', 'error');
         return;
       }
+
       submitBtn.disabled = true;
       refreshBtn.disabled = true;
       setStatus('체크를 저장하고 있어요...');
+
       try {
         await submitCheck(checked);
         setLastCheckDate(getTodayKey());
@@ -664,6 +456,7 @@
     refreshBtn.addEventListener('click', async () => {
       refreshBtn.disabled = true;
       submitBtn.disabled = true;
+
       try {
         await loadAll();
         updateCheckAvailabilityUI();
@@ -671,12 +464,16 @@
         setStatus(err.message || '현황을 새로 불러오는 중 문제가 발생했어요.', 'error');
       } finally {
         refreshBtn.disabled = false;
-        if (!hasCheckedToday()) submitBtn.disabled = false;
+        if (!hasCheckedToday()) {
+          submitBtn.disabled = false;
+        }
       }
     });
 
     loadAll()
-      .then(() => { updateCheckAvailabilityUI(); })
+      .then(() => {
+        updateCheckAvailabilityUI();
+      })
       .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
   </script>
 </body>
