@@ -993,13 +993,18 @@
       const spinner   = document.getElementById('ptrSpinner');
       const ptrText   = document.getElementById('ptrText');
       const THRESHOLD = 80;
-      let startY = 0, pulling = false, triggered = false;
+      let startY = 0, pulling = false, isRefreshing = false;
+
+      function resetIndicator() {
+        indicator.classList.remove('visible', 'loading');
+        spinner.textContent = '↓';
+        ptrText.textContent = '당겨서 새로고침';
+      }
 
       document.addEventListener('touchstart', e => {
-        if (window.scrollY === 0) {
+        if (window.scrollY < 5 && !isRefreshing) {
           startY = e.touches[0].clientY;
           pulling = true;
-          triggered = false;
         }
       }, { passive: true });
 
@@ -1008,13 +1013,8 @@
         const dist = e.touches[0].clientY - startY;
         if (dist > 10) {
           indicator.classList.add('visible');
-          if (dist >= THRESHOLD && !triggered) {
-            spinner.textContent = '↻';
-            ptrText.textContent = '놓으면 새로고침';
-          } else if (dist < THRESHOLD) {
-            spinner.textContent = '↓';
-            ptrText.textContent = '당겨서 새로고침';
-          }
+          spinner.textContent = dist >= THRESHOLD ? '↻' : '↓';
+          ptrText.textContent  = dist >= THRESHOLD ? '놓으면 새로고침' : '당겨서 새로고침';
         }
       }, { passive: true });
 
@@ -1022,19 +1022,20 @@
         if (!pulling) return;
         pulling = false;
         const dist = e.changedTouches[0].clientY - startY;
-        if (dist >= THRESHOLD && !triggered) {
-          triggered = true;
+
+        if (dist >= THRESHOLD && !isRefreshing) {
+          isRefreshing = true;
           indicator.classList.add('loading');
           spinner.textContent = '↻';
           ptrText.textContent = '새로고침 중...';
           try {
             await Promise.all([loadAll(), loadUserStatus()]);
             updateCheckUI();
-          } catch(e) {}
+          } catch(err) {}
+          isRefreshing = false;
         }
-        indicator.classList.remove('visible', 'loading');
-        spinner.textContent = '↓';
-        ptrText.textContent = '당겨서 새로고침';
+
+        resetIndicator();
       }, { passive: true });
     })();
 
