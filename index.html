@@ -35,77 +35,38 @@
     .wrap {
       max-width: 520px;
       margin: 0 auto;
-      padding: 20px 16px 48px;
+      padding: 20px 16px 56px;
     }
 
-    /* 양 이미지 */
-    .sheep-wrap {
-      text-align: center;
-      padding: 12px 0 8px;
-    }
+    /* ── 양 이미지 ── */
+    .sheep-wrap { text-align: center; padding: 12px 0 8px; }
+    .sheep-wrap img { width: 160px; max-width: 50%; height: auto; display: block; margin: 0 auto; }
 
-    .sheep-wrap img {
-      width: 160px;
-      max-width: 50%;
-      height: auto;
-      display: block;
-      margin: 0 auto;
-    }
-
-    /* 상단 카드 */
+    /* ── 상단 카드 ── */
     .top-card {
       background: linear-gradient(135deg, #2c2417 0%, #4a3a28 100%);
       color: #faf6ef;
       border-radius: 24px;
       padding: 24px 20px;
-      box-shadow: 0 14px 30px rgba(44, 36, 23, 0.22);
+      box-shadow: 0 14px 30px rgba(44,36,23,0.22);
       margin-bottom: 16px;
     }
+    .eyebrow { font-size: 13px; opacity: .85; margin-bottom: 8px; letter-spacing: .02em; }
+    .title { font-size: 28px; font-weight: 800; line-height: 1.2; margin-bottom: 8px; }
+    .desc { font-size: 14px; line-height: 1.6; opacity: .9; }
 
-    .eyebrow {
-      font-size: 13px;
-      opacity: 0.85;
-      margin-bottom: 8px;
-      letter-spacing: 0.02em;
-    }
-
-    .title {
-      font-size: 28px;
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 8px;
-    }
-
-    .desc {
-      font-size: 14px;
-      line-height: 1.6;
-      opacity: 0.9;
-    }
-
-    /* 일반 카드 */
+    /* ── 일반 카드 ── */
     .card {
       background: var(--card);
       border: 1px solid var(--line);
       border-radius: 20px;
-      box-shadow: 0 4px 16px rgba(44, 36, 23, 0.07);
+      box-shadow: 0 4px 16px rgba(44,36,23,0.07);
       padding: 20px 16px;
       margin-bottom: 14px;
     }
+    .card-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+    .card-sub { font-size: 13px; color: var(--sub); line-height: 1.6; margin-bottom: 14px; }
 
-    .card-title {
-      font-size: 17px;
-      font-weight: 800;
-      margin-bottom: 6px;
-    }
-
-    .card-sub {
-      font-size: 13px;
-      color: var(--sub);
-      line-height: 1.6;
-      margin-bottom: 14px;
-    }
-
-    /* 주차 뱃지 */
     .week-badge {
       display: inline-block;
       margin-bottom: 12px;
@@ -118,200 +79,304 @@
       border: 1px solid var(--line);
     }
 
-    /* 체크 리스트 */
-    .check-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 4px;
-      margin-bottom: 16px;
-    }
-
+    /* ── 체크 리스트 ── */
+    .check-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; margin-bottom: 16px; }
     .check-item {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      background: #f5efe4;
-      border: 1px solid #e4ddd0;
-      border-radius: 14px;
-      padding: 14px 14px;
-      cursor: pointer;
-      transition: background 0.15s;
+      display: flex; gap: 12px; align-items: flex-start;
+      background: #f5efe4; border: 1px solid #e4ddd0;
+      border-radius: 14px; padding: 14px; cursor: pointer;
     }
+    .check-item input[type="checkbox"] { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--primary); cursor: pointer; }
+    .check-item label { flex: 1; font-size: 15px; font-weight: 600; line-height: 1.5; cursor: pointer; min-width: 0; }
 
-    .check-item:active {
-      background: #ede5d6;
-    }
-
-    .check-item input[type="checkbox"] {
-      flex-shrink: 0;
-      width: 20px;
-      height: 20px;
-      margin-top: 1px;
-      accent-color: var(--primary);
-      cursor: pointer;
-    }
-
-    .check-item label {
-      flex: 1;
-      font-size: 15px;
-      font-weight: 600;
-      line-height: 1.5;
-      cursor: pointer;
-      min-width: 0;
-    }
-
-    /* 버튼 영역 */
-    .actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 4px;
-    }
-
+    /* ── 버튼 ── */
+    .actions { display: flex; gap: 10px; margin-top: 4px; }
     .btn {
-      border: 0;
-      border-radius: 14px;
-      padding: 0 16px;
-      height: 50px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      flex: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.15s;
-      -webkit-appearance: none;
+      border: 0; border-radius: 14px; padding: 0 16px; height: 50px;
+      font-size: 15px; font-weight: 700; cursor: pointer; flex: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: opacity .15s; -webkit-appearance: none; appearance: none;
     }
+    .btn:active { opacity: .75; }
+    .btn-primary { background: var(--primary); color: #faf6ef; }
+    .btn-secondary { background: var(--primary-soft); color: var(--text); border: 1px solid var(--line); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
 
-    .btn:active { opacity: 0.75; }
-
-    .btn-primary {
-      background: var(--primary);
-      color: #faf6ef;
-    }
-
-    .btn-secondary {
-      background: var(--primary-soft);
-      color: var(--text);
-      border: 1px solid var(--line);
-    }
-
-    .btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    /* 상태 메시지 */
-    .status {
-      margin-top: 12px;
-      font-size: 14px;
-      font-weight: 600;
-      min-height: 22px;
-      line-height: 1.5;
-    }
-
+    .status { margin-top: 12px; font-size: 14px; font-weight: 600; min-height: 22px; line-height: 1.5; }
     .status.success { color: var(--success); }
     .status.error   { color: var(--danger); }
 
-    /* 통계 그리드 */
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
+    /* ── 진행바 ── */
+    .progress-track { width: 100%; height: 12px; background: #e4ddd0; border-radius: 999px; overflow: hidden; }
+    .progress-fill  { height: 100%; background: var(--primary); border-radius: 999px; transition: width .4s ease; }
 
-    .stat-card {
+    /* ── 통계 그리드 ── */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 4px 16px rgba(44,36,23,0.07); padding: 18px 16px; }
+    .stat-label { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .stat-value { font-size: 30px; font-weight: 800; line-height: 1; }
+
+    /* ── 실천 현황 ── */
+    .count-list { display: flex; flex-direction: column; gap: 10px; }
+    .count-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 14px; background: #f5efe4; border: 1px solid #e4ddd0; }
+    .count-item-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.4; }
+    .count-item-count { flex-shrink: 0; min-width: 40px; height: 30px; padding: 0 10px; border-radius: 999px; background: white; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--primary); }
+
+    /* ── 푸터 ── */
+    .footer-note { color: var(--sub); font-size: 12px; text-align: center; margin-top: 20px; line-height: 1.7; padding: 0 8px; }
+
+    /* ════════════════════════════
+       닉네임 모달
+    ════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(44,36,23,0.55);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
       background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      box-shadow: 0 4px 16px rgba(44, 36, 23, 0.07);
-      padding: 18px 16px;
+      border-radius: 24px;
+      padding: 32px 24px 28px;
+      width: 100%; max-width: 340px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(44,36,23,0.25);
     }
-
-    .stat-label {
-      font-size: 12px;
-      color: var(--sub);
-      margin-bottom: 8px;
-      letter-spacing: 0.01em;
+    .modal-sheep { font-size: 48px; margin-bottom: 12px; }
+    .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+    .modal-desc { font-size: 13px; color: var(--sub); line-height: 1.6; margin-bottom: 20px; }
+    .modal-input {
+      width: 100%; padding: 14px 16px; font-size: 16px; font-weight: 600;
+      border: 1.5px solid var(--line); border-radius: 14px;
+      background: var(--primary-soft); color: var(--text);
+      outline: none; margin-bottom: 12px; text-align: center;
     }
+    .modal-input:focus { border-color: var(--primary); }
+    .modal-btn { width: 100%; flex: none; }
 
-    .stat-value {
-      font-size: 30px;
-      font-weight: 800;
-      line-height: 1;
+    /* ════════════════════════════
+       카드 뽑기 섹션
+    ════════════════════════════ */
+    .draw-notice {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-radius: 14px;
+      background: #f5efe4; border: 1px solid #e4ddd0;
     }
+    .draw-notice-icon { font-size: 24px; flex-shrink: 0; }
+    .draw-notice-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+    .draw-notice-sub { font-size: 12px; color: var(--sub); }
 
-    /* 실천 현황 리스트 */
-    .count-list {
-      display: flex;
+    /* ════════════════════════════
+       뽑기 오버레이
+    ════════════════════════════ */
+    .draw-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(20,14,6,0.88);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
       flex-direction: column;
-      gap: 10px;
+    }
+    .draw-overlay.hidden { display: none; }
+
+    .draw-close-btn {
+      position: absolute; top: 20px; right: 20px;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 0; background: rgba(255,246,239,0.15);
+      color: rgba(255,246,239,0.8); font-size: 16px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
 
-    .count-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      padding: 13px 14px;
-      border-radius: 14px;
-      background: #f5efe4;
-      border: 1px solid #e4ddd0;
+    .draw-stage { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
+    .draw-hint { color: rgba(255,246,239,0.85); font-size: 14px; font-weight: 600; text-align: center; }
+
+    /* 팩 */
+    .pack {
+      width: 150px; height: 220px;
+      border-radius: 16px;
+      background: linear-gradient(160deg, #3a2c1a 0%, #5a4228 40%, #2c2010 100%);
+      border: 1.5px solid rgba(255,220,150,0.25);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,150,0.15);
+      position: relative; overflow: hidden;
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center;
+      transition: transform .2s;
+    }
+    .pack:hover { transform: translateY(-6px) rotate(1deg); }
+    .pack.opening { animation: packBurst .65s cubic-bezier(.36,.07,.19,.97) forwards; pointer-events: none; }
+
+    @keyframes packBurst {
+      0%   { transform: scale(1) rotate(0deg); opacity: 1; }
+      20%  { transform: scale(1.06) rotate(-3deg); opacity: 1; }
+      40%  { transform: scale(1.1) rotate(4deg); opacity: 1; }
+      100% { transform: scale(0.05) rotate(-20deg); opacity: 0; }
     }
 
-    .count-item-name {
-      flex: 1;
-      min-width: 0;
-      font-size: 14px;
-      font-weight: 600;
-      line-height: 1.4;
+    .pack-shine {
+      position: absolute; inset: 0;
+      background: linear-gradient(120deg, transparent 30%, rgba(255,220,150,0.12) 50%, transparent 70%);
+      animation: packShineAnim 2.5s infinite;
+      pointer-events: none;
+    }
+    @keyframes packShineAnim {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
     }
 
-    .count-item-count {
-      flex-shrink: 0;
-      min-width: 40px;
-      height: 30px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: white;
-      border: 1px solid var(--line);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--primary);
+    .pack-top-area {
+      width: 100%; padding: 10px 10px 6px;
+      text-align: center;
+      font-size: 10px; font-weight: 700;
+      color: rgba(255,220,150,0.7);
+      letter-spacing: .08em;
+    }
+    .pack-tear {
+      width: 90%; height: 1px;
+      background: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(255,220,150,0.35) 4px, rgba(255,220,150,0.35) 8px);
+      margin-bottom: 6px;
+    }
+    .pack-center { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 52px; }
+    .pack-bottom-area {
+      width: 100%; padding: 6px 10px 12px;
+      text-align: center;
+      font-size: 11px; font-weight: 800;
+      color: rgba(255,220,150,0.8);
+      letter-spacing: .06em;
     }
 
-    /* 진행바 */
-    .progress-track {
-      width: 100%;
-      height: 12px;
-      background: #e4ddd0;
-      border-radius: 999px;
+    /* 카드 플립 */
+    .card-flip {
+      width: 170px; height: 238px;
+      perspective: 900px;
+      cursor: pointer;
+    }
+    .card-flip-inner {
+      width: 100%; height: 100%;
+      transform-style: preserve-3d;
+      transition: transform .75s cubic-bezier(.4,0,.2,1);
+    }
+    .card-flip.flipped .card-flip-inner { transform: rotateY(180deg); }
+
+    .card-back-face, .card-front-face {
+      position: absolute; inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 16px;
       overflow: hidden;
     }
 
-    .progress-fill {
-      height: 100%;
-      background: var(--primary);
-      border-radius: 999px;
-      transition: width 0.4s ease;
+    /* 카드 뒷면 (양 무늬) */
+    .card-back-face {
+      background: linear-gradient(135deg, #2c2417, #4a3a28);
+      border: 2px solid rgba(255,220,150,0.2);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+    }
+    .card-back-face .back-emoji { font-size: 52px; }
+    .card-back-face .back-label { font-size: 11px; font-weight: 800; color: rgba(255,220,150,0.6); letter-spacing: .1em; }
+
+    /* 카드 앞면 (성령의 열매) */
+    .card-front-face { transform: rotateY(180deg); }
+
+    /* ── 성령의 열매 카드 ── */
+    .spirit-card {
+      width: 100%; height: 100%;
+      border-radius: 16px;
+      border: 2.5px solid rgba(255,255,255,0.35);
+      display: flex; flex-direction: column;
+      position: relative; overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      color: white;
+    }
+    .spirit-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.35) 100%);
+      pointer-events: none;
+    }
+    .spirit-card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 12px 6px; font-size: 10px; font-weight: 700;
+      color: rgba(255,255,255,0.85); letter-spacing: .06em;
+      position: relative; z-index: 1;
+    }
+    .spirit-card-img {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 56px;
+      position: relative; z-index: 1;
+    }
+    .spirit-card-footer {
+      padding: 8px 12px 12px;
+      position: relative; z-index: 1;
+    }
+    .spirit-card-name { font-size: 20px; font-weight: 900; line-height: 1.1; }
+    .spirit-card-en   { font-size: 11px; font-weight: 700; opacity: .8; margin-bottom: 6px; }
+    .spirit-card-desc {
+      font-size: 10px; line-height: 1.5; opacity: .85;
+      background: rgba(0,0,0,0.2); border-radius: 8px;
+      padding: 6px 8px; margin-top: 4px;
     }
 
-    /* 하단 성경 구절 */
-    .footer-note {
-      color: var(--sub);
-      font-size: 12px;
-      text-align: center;
-      margin-top: 20px;
-      line-height: 1.7;
-      padding: 0 8px;
+    /* 공개 후 메시지 */
+    .reveal-msg {
+      color: rgba(255,246,239,0.9); font-size: 16px; font-weight: 700;
+      text-align: center; margin-top: 8px;
+    }
+    .reveal-card-wrap { width: 170px; height: 238px; }
+
+    /* 컨페티 */
+    .confetti-piece {
+      position: fixed; width: 8px; height: 12px; border-radius: 2px;
+      top: 40%; pointer-events: none; z-index: 400;
+      animation: confettiFall linear forwards;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
     }
 
-    /* 모바일 소형 화면 */
+    /* ════════════════════════════
+       컬렉션 그리드
+    ════════════════════════════ */
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .mini-card-wrap { position: relative; }
+    .mini-card {
+      border-radius: 12px;
+      aspect-ratio: 3 / 4;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      border: 2px solid rgba(255,255,255,0.3);
+      overflow: hidden; position: relative;
+      color: white; padding: 6px 4px;
+    }
+    .mini-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.3) 100%);
+    }
+    .mini-card-locked {
+      background: #e8e0d4 !important;
+      border-color: #d6cfc6;
+      color: #b0a090;
+    }
+    .mini-card-label { font-size: 8px; font-weight: 700; opacity: .8; letter-spacing: .04em; position: relative; z-index: 1; }
+    .mini-card-emoji { font-size: 28px; position: relative; z-index: 1; }
+    .mini-card-name  { font-size: 11px; font-weight: 800; position: relative; z-index: 1; }
+    .mini-card-badge {
+      position: absolute; top: -4px; right: -4px;
+      background: #ff758c; color: white;
+      font-size: 10px; font-weight: 800;
+      width: 22px; height: 22px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid white; z-index: 2;
+    }
+
+    /* ── 소형 화면 ── */
     @media (max-width: 360px) {
       .title { font-size: 24px; }
       .stat-value { font-size: 24px; }
@@ -320,6 +385,57 @@
   </style>
 </head>
 <body>
+
+  <!-- ▣ 닉네임 모달 -->
+  <div id="nicknameModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-sheep">🐑</div>
+      <h2 class="modal-title">반갑습니다!</h2>
+      <p class="modal-desc">닉네임을 설정하면 카드 컬렉션을 저장할 수 있어요.</p>
+      <input type="text" id="nicknameInput" class="modal-input" placeholder="닉네임 입력 (최대 10자)" maxlength="10" />
+      <button class="btn btn-primary modal-btn" id="nicknameSubmitBtn">시작하기</button>
+    </div>
+  </div>
+
+  <!-- ▣ 카드 뽑기 오버레이 -->
+  <div id="drawOverlay" class="draw-overlay hidden">
+    <button class="draw-close-btn" id="drawCloseBtn">✕</button>
+
+    <!-- 1단계: 팩 -->
+    <div id="packStage" class="draw-stage">
+      <p class="draw-hint">팩을 눌러서 열어보세요 ✨</p>
+      <div class="pack" id="drawPack">
+        <div class="pack-shine"></div>
+        <div class="pack-top-area">2026 · BEYOND US</div>
+        <div class="pack-tear"></div>
+        <div class="pack-center">🐑</div>
+        <div class="pack-bottom-area">성령의 열매</div>
+      </div>
+    </div>
+
+    <!-- 2단계: 카드 (뒤집기 전) -->
+    <div id="cardFlipStage" class="draw-stage hidden">
+      <p class="draw-hint">카드를 눌러서 확인하세요 👆</p>
+      <div class="card-flip" id="cardFlip">
+        <div class="card-flip-inner" id="cardFlipInner">
+          <div class="card-back-face">
+            <span class="back-emoji">🐑</span>
+            <span class="back-label">BEYOND US</span>
+          </div>
+          <div class="card-front-face" id="cardFrontFace"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3단계: 공개 완료 -->
+    <div id="revealStage" class="draw-stage hidden">
+      <p class="draw-hint" id="revealMsg">새 카드를 얻었어요! 🎉</p>
+      <div class="reveal-card-wrap" id="revealCardWrap"></div>
+      <button class="btn btn-primary" id="revealDoneBtn" style="width:200px; flex:none;">컬렉션 확인하기</button>
+    </div>
+  </div>
+
+  <!-- ▣ 본문 -->
   <div class="wrap">
     <div class="sheep-wrap">
       <img src="sheep.png" alt="양 일러스트" />
@@ -335,7 +451,6 @@
       <div class="week-badge" id="weekTitle">불러오는 중...</div>
       <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
       <p class="card-sub">오늘 실천한 항목이 있다면 체크 후 제출해주세요.</p>
-
       <form id="checkForm">
         <div class="check-list" id="checkList"></div>
         <div class="actions">
@@ -346,14 +461,21 @@
       </form>
     </section>
 
+    <!-- 카드 뽑기 섹션 -->
+    <section class="card">
+      <h2 class="card-title">🎴 이번 주 카드 뽑기</h2>
+      <p class="card-sub">이번 주 체크를 제출한 분께 카드 뽑기 기회가 주어져요.</p>
+      <div id="drawSectionBody">
+        <p class="card-sub" style="margin:0;">로딩 중...</p>
+      </div>
+    </section>
+
     <section class="card">
       <h2 class="card-title">이번 주 공동체 목표</h2>
       <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성</p>
-
       <div class="progress-track">
         <div class="progress-fill" id="progressBar" style="width:0%;"></div>
       </div>
-
       <p class="card-sub" style="margin-top:10px; margin-bottom:0;">
         현재 진행률 <strong id="progressPercent">0%</strong>
       </p>
@@ -376,32 +498,295 @@
       <div class="count-list" id="countList"></div>
     </section>
 
+    <!-- 컬렉션 -->
+    <section class="card">
+      <h2 class="card-title">내 컬렉션</h2>
+      <p class="card-sub" id="collectionSub">닉네임을 설정하면 컬렉션을 확인할 수 있어요.</p>
+      <div class="collection-grid" id="collectionGrid"></div>
+    </section>
+
     <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"</p>
   </div>
 
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbwE1WmjS02tZh-jUJOqGEOBobAG73RGpQhxkM9vbgk4xBrq5C-UB8r6vx9lVftaZLAobQ/exec';
 
-    const weekTitleEl      = document.getElementById('weekTitle');
-    const checkListEl      = document.getElementById('checkList');
-    const countListEl      = document.getElementById('countList');
-    const totalCountEl     = document.getElementById('totalCount');
-    const submissionCountEl= document.getElementById('submissionCount');
-    const statusMessageEl  = document.getElementById('statusMessage');
-    const submitBtn        = document.getElementById('submitBtn');
-    const refreshBtn       = document.getElementById('refreshBtn');
-    const checkForm        = document.getElementById('checkForm');
-    const GOAL_COUNT = 100;
+    /* ── 성령의 열매 카드 데이터 ── */
+    const SPIRIT_CARDS = [
+      { id:1, name:'사랑',    en:'Love',         desc:'모든 것을 참으며 모든 것을 믿으며 모든 것을 바라며', emoji:'❤️',  g1:'#ff758c', g2:'#c0392b' },
+      { id:2, name:'희락',    en:'Joy',          desc:'주 안에서 항상 기뻐하라 내가 다시 말하노니 기뻐하라', emoji:'☀️',  g1:'#f7971e', g2:'#c0850a' },
+      { id:3, name:'화평',    en:'Peace',        desc:'하나님의 평강이 모든 지각에 뛰어나 너희 마음을 지키시리라', emoji:'🕊️', g1:'#185a9d', g2:'#43cea2' },
+      { id:4, name:'오래참음', en:'Patience',     desc:'끝까지 견디는 자는 구원을 얻으리라',               emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e' },
+      { id:5, name:'자비',    en:'Kindness',     desc:'서로 친절하게 하며 불쌍히 여기며 서로 용서하기를',   emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788' },
+      { id:6, name:'양선',    en:'Goodness',     desc:'선을 행하되 낙심하지 말지니 때가 이르매 거두리로다', emoji:'🌿',  g1:'#11998e', g2:'#38ef7d' },
+      { id:7, name:'충성',    en:'Faithfulness', desc:'네가 작은 일에 충성하였으매 내가 많은 것을 맡기리니', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c' },
+      { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc' },
+      { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1' },
+    ];
 
-    function renderProgress(totalCount) {
-      const percent = Math.min(100, Math.round((totalCount / GOAL_COUNT) * 100));
-      document.getElementById('goalText').textContent = totalCount;
-      document.getElementById('goalCount').textContent = GOAL_COUNT;
-      document.getElementById('progressPercent').textContent = `${percent}%`;
-      document.getElementById('progressBar').style.width = `${percent}%`;
+    /* ── 주차 키 (ISO week) ── */
+    function getWeekKey() {
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const day = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const wk = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`;
     }
 
-    let currentConfig = null;
+    /* ── 상태 ── */
+    let currentNickname = localStorage.getItem('beyondus_nickname') || null;
+    let userStatus = null;
+    let pendingCard = null;   // API에서 받아온 카드 데이터
+
+    /* ── DOM ── */
+    const weekTitleEl       = document.getElementById('weekTitle');
+    const checkListEl       = document.getElementById('checkList');
+    const countListEl       = document.getElementById('countList');
+    const totalCountEl      = document.getElementById('totalCount');
+    const submissionCountEl = document.getElementById('submissionCount');
+    const statusMessageEl   = document.getElementById('statusMessage');
+    const submitBtn         = document.getElementById('submitBtn');
+    const refreshBtn        = document.getElementById('refreshBtn');
+    const checkForm         = document.getElementById('checkForm');
+    const GOAL_COUNT = 100;
+
+    /* ════ 닉네임 모달 ════ */
+    function showNicknameModal() {
+      document.getElementById('nicknameModal').classList.remove('hidden');
+      document.getElementById('nicknameInput').focus();
+    }
+    function hideNicknameModal() {
+      document.getElementById('nicknameModal').classList.add('hidden');
+    }
+
+    document.getElementById('nicknameSubmitBtn').addEventListener('click', () => {
+      const val = document.getElementById('nicknameInput').value.trim();
+      if (!val) return;
+      currentNickname = val;
+      localStorage.setItem('beyondus_nickname', val);
+      hideNicknameModal();
+      loadUserStatus();
+    });
+    document.getElementById('nicknameInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('nicknameSubmitBtn').click();
+    });
+
+    /* ════ 카드 HTML 생성 ════ */
+    function makeCardHTML(card) {
+      return `
+        <div class="spirit-card" style="background:linear-gradient(135deg,${card.g1},${card.g2});">
+          <div class="spirit-card-header">
+            <span>성령의 열매</span>
+            <span>${String(card.id).padStart(2,'0')}/09</span>
+          </div>
+          <div class="spirit-card-img">${card.emoji}</div>
+          <div class="spirit-card-footer">
+            <div class="spirit-card-name">${card.name}</div>
+            <div class="spirit-card-en">${card.en}</div>
+            <div class="spirit-card-desc">${card.desc}</div>
+          </div>
+        </div>`;
+    }
+
+    /* ════ 뽑기 섹션 렌더 ════ */
+    function renderDrawSection() {
+      const el = document.getElementById('drawSectionBody');
+
+      if (!currentNickname) {
+        el.innerHTML = `<button class="btn btn-secondary" style="width:100%;" id="setNicknameBtn">닉네임 설정하고 참여하기</button>`;
+        document.getElementById('setNicknameBtn').onclick = showNicknameModal;
+        return;
+      }
+      if (!userStatus) {
+        el.innerHTML = `<p class="card-sub" style="margin:0;">불러오는 중...</p>`;
+        return;
+      }
+      if (userStatus.error) {
+        el.innerHTML = `<p class="card-sub" style="margin:0;">서버 업데이트 후 이용 가능합니다.</p>`;
+        return;
+      }
+      if (!userStatus.submittedThisWeek) {
+        el.innerHTML = `
+          <div class="draw-notice">
+            <div class="draw-notice-icon">🔒</div>
+            <div>
+              <div class="draw-notice-title">이번 주 체크를 먼저 해주세요</div>
+              <div class="draw-notice-sub">체크를 한 번 이상 제출하면 카드를 뽑을 수 있어요</div>
+            </div>
+          </div>`;
+        return;
+      }
+      if (userStatus.drawnThisWeek) {
+        const c = userStatus.weekCard;
+        el.innerHTML = `
+          <div class="draw-notice">
+            <div class="draw-notice-icon">✅</div>
+            <div>
+              <div class="draw-notice-title">이번 주 카드를 뽑았어요!</div>
+              <div class="draw-notice-sub">${c ? `${c.emoji} ${c.name} 카드를 획득했어요` : '카드를 획득했어요'}</div>
+            </div>
+          </div>`;
+        return;
+      }
+      el.innerHTML = `
+        <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">이번 주 카드 뽑기 기회가 생겼어요 ✨</p>
+        <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">🎴 카드 뽑기</button>`;
+      document.getElementById('openDrawBtn').onclick = openDrawOverlay;
+    }
+
+    /* ════ 컬렉션 렌더 ════ */
+    function renderCollection() {
+      const grid = document.getElementById('collectionGrid');
+      const sub  = document.getElementById('collectionSub');
+      if (!currentNickname || !userStatus || userStatus.error) return;
+
+      const counts = {};
+      (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
+      const unique = Object.keys(counts).length;
+
+      sub.textContent = `${currentNickname}님의 컬렉션 · ${unique}/9종 보유`;
+      grid.innerHTML = SPIRIT_CARDS.map(card => {
+        const cnt = counts[card.id] || 0;
+        const locked = cnt === 0;
+        return `
+          <div class="mini-card-wrap">
+            <div class="mini-card ${locked ? 'mini-card-locked' : ''}"
+                 style="${locked ? '' : `background:linear-gradient(135deg,${card.g1},${card.g2})`}">
+              <div class="mini-card-label">${locked ? '' : '성령의 열매'}</div>
+              <div class="mini-card-emoji">${locked ? '?' : card.emoji}</div>
+              <div class="mini-card-name">${locked ? '???' : card.name}</div>
+            </div>
+            ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    /* ════ userStatus API ════ */
+    async function loadUserStatus() {
+      if (!currentNickname) { renderDrawSection(); return; }
+      renderDrawSection(); // 로딩 상태
+      try {
+        const res = await fetch(
+          `${API_BASE}?action=userStatus&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}&t=${Date.now()}`,
+          { cache: 'no-store' }
+        );
+        if (!res.ok) throw new Error();
+        userStatus = await res.json();
+      } catch(e) {
+        userStatus = { error: true };
+      }
+      renderDrawSection();
+      renderCollection();
+    }
+
+    /* ════ 뽑기 오버레이 ════ */
+    function openDrawOverlay() {
+      pendingCard = null;
+      document.getElementById('packStage').classList.remove('hidden');
+      document.getElementById('cardFlipStage').classList.add('hidden');
+      document.getElementById('revealStage').classList.add('hidden');
+      document.getElementById('drawPack').classList.remove('opening');
+      document.getElementById('cardFlip').classList.remove('flipped');
+      document.getElementById('drawOverlay').classList.remove('hidden');
+    }
+
+    document.getElementById('drawCloseBtn').onclick = closeDrawOverlay;
+    document.getElementById('revealDoneBtn').onclick = closeDrawOverlay;
+
+    function closeDrawOverlay() {
+      document.getElementById('drawOverlay').classList.add('hidden');
+      if (pendingCard) {
+        // 서버에서 받은 카드가 있으면 상태 반영
+        if (userStatus) {
+          userStatus.drawnThisWeek = true;
+          userStatus.weekCard = pendingCard;
+          if (!userStatus.collection) userStatus.collection = [];
+          userStatus.collection.push(pendingCard);
+        }
+        renderDrawSection();
+        renderCollection();
+        pendingCard = null;
+        // 컬렉션 섹션으로 스크롤
+        document.querySelector('.collection-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    /* 팩 클릭 */
+    document.getElementById('drawPack').addEventListener('click', async () => {
+      const pack = document.getElementById('drawPack');
+      if (pack.classList.contains('opening')) return;
+      pack.classList.add('opening');
+
+      // 동시에 API 호출
+      const drawPromise = fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey() })
+      }).then(r => r.json()).catch(() => null);
+
+      // 팩 애니메이션 끝나면 카드 단계로
+      setTimeout(async () => {
+        document.getElementById('packStage').classList.add('hidden');
+        document.getElementById('cardFlipStage').classList.remove('hidden');
+
+        // API 결과 대기
+        const result = await drawPromise;
+        if (result && !result.error && result.card) {
+          const card = SPIRIT_CARDS.find(c => c.id === result.card.id) || result.card;
+          pendingCard = card;
+          document.getElementById('cardFrontFace').innerHTML = makeCardHTML(card);
+        } else {
+          // 폴백: 로컬 랜덤 (서버 미연동 시)
+          const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+          pendingCard = card;
+          document.getElementById('cardFrontFace').innerHTML = makeCardHTML(card);
+        }
+      }, 700);
+    });
+
+    /* 카드 클릭 (뒤집기) */
+    document.getElementById('cardFlip').addEventListener('click', () => {
+      if (!pendingCard) return;
+      const flip = document.getElementById('cardFlip');
+      if (flip.classList.contains('flipped')) return;
+      flip.classList.add('flipped');
+      spawnConfetti();
+      setTimeout(() => {
+        document.getElementById('cardFlipStage').classList.add('hidden');
+        document.getElementById('revealCardWrap').innerHTML = makeCardHTML(pendingCard);
+        document.getElementById('revealMsg').textContent = `✨ ${pendingCard.name} 카드를 얻었어요!`;
+        document.getElementById('revealStage').classList.remove('hidden');
+      }, 800);
+    });
+
+    /* 컨페티 */
+    function spawnConfetti() {
+      const colors = ['#ff758c','#ffd200','#43cea2','#a18cd1','#f7971e','#38ef7d','#c084fc'];
+      for (let i = 0; i < 24; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti-piece';
+        el.style.left = `${10 + Math.random() * 80}%`;
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.animationDelay = `${Math.random() * 0.4}s`;
+        el.style.animationDuration = `${0.7 + Math.random() * 0.6}s`;
+        el.style.transform = `rotate(${Math.random() * 360}deg)`;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1500);
+      }
+    }
+
+    /* ════════════════════════════
+       기존 체크 로직
+    ════════════════════════════ */
+    function renderProgress(total) {
+      const pct = Math.min(100, Math.round((total / GOAL_COUNT) * 100));
+      document.getElementById('goalText').textContent = total;
+      document.getElementById('goalCount').textContent = GOAL_COUNT;
+      document.getElementById('progressPercent').textContent = `${pct}%`;
+      document.getElementById('progressBar').style.width = `${pct}%`;
+    }
 
     async function fetchDashboard() {
       const res = await fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' });
@@ -410,17 +795,13 @@
     }
 
     function renderConfig(data) {
-      currentConfig = data;
       weekTitleEl.textContent = data.weekTitle;
       checkListEl.innerHTML = '';
-      data.items.forEach((item, index) => {
-        const id = `item_${index}`;
+      data.items.forEach((item, i) => {
+        const id = `item_${i}`;
         const div = document.createElement('div');
         div.className = 'check-item';
-        div.innerHTML = `
-          <input type="checkbox" id="${id}" name="items" value="${item}">
-          <label for="${id}">${item}</label>
-        `;
+        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"><label for="${id}">${item}</label>`;
         checkListEl.appendChild(div);
       });
     }
@@ -429,34 +810,29 @@
       totalCountEl.textContent = data.totalCount;
       submissionCountEl.textContent = data.submissionCount;
       countListEl.innerHTML = '';
-      data.items.forEach((item) => {
-        const count = data.counts[item] || 0;
+      data.items.forEach(item => {
+        const cnt = data.counts[item] || 0;
         const div = document.createElement('div');
         div.className = 'count-item';
-        div.innerHTML = `
-          <span class="count-item-name">${item}</span>
-          <span class="count-item-count">${count}</span>
-        `;
+        div.innerHTML = `<span class="count-item-name">${item}</span><span class="count-item-count">${cnt}</span>`;
         countListEl.appendChild(div);
       });
       renderProgress(data.totalCount);
     }
 
-    function setStatus(message, type = '') {
-      statusMessageEl.textContent = message;
+    function setStatus(msg, type = '') {
+      statusMessageEl.textContent = msg;
       statusMessageEl.className = `status ${type}`.trim();
     }
 
     function getTodayKey() {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      const n = new Date();
+      return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
     }
-
     function hasCheckedToday() {
       return localStorage.getItem('beyondus_last_check_date') === getTodayKey();
     }
-
-    function updateCheckAvailabilityUI() {
+    function updateCheckUI() {
       if (hasCheckedToday()) {
         submitBtn.disabled = true;
         setStatus('오늘 체크는 완료되었어요. 내일 다시 참여해주세요.', 'success');
@@ -473,41 +849,40 @@
       setStatus('최신 현황으로 업데이트되었어요.', 'success');
     }
 
-    async function submitCheck(items) {
-      const res = await fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'submit', items })
-      });
-      if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
-      return res.json();
-    }
-
-    checkForm.addEventListener('submit', async (e) => {
+    checkForm.addEventListener('submit', async e => {
       e.preventDefault();
       const checked = [...document.querySelectorAll('input[name="items"]:checked')].map(el => el.value);
-      if (checked.length === 0) {
-        setStatus('실천한 항목을 1개 이상 선택해주세요.', 'error');
-        return;
-      }
+      if (!checked.length) { setStatus('실천한 항목을 1개 이상 선택해주세요.', 'error'); return; }
+
       submitBtn.disabled = true;
       refreshBtn.disabled = true;
       setStatus('체크를 저장하고 있어요...');
+
       try {
-        await submitCheck(checked);
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey() })
+        });
+        if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
+        await res.json();
+
         localStorage.setItem('beyondus_last_check_date', getTodayKey());
         document.querySelectorAll('input[name="items"]:checked').forEach(el => el.checked = false);
         const data = await fetchDashboard();
         renderConfig(data);
         renderCounts(data);
-        updateCheckAvailabilityUI();
+        updateCheckUI();
         setStatus('오늘의 실천이 저장되었어요.', 'success');
-      } catch (err) {
+
+        // 체크 제출 후 userStatus 재로드 (뽑기 자격 갱신)
+        await loadUserStatus();
+      } catch(err) {
         setStatus(err.message || '오류가 발생했습니다.', 'error');
         submitBtn.disabled = false;
       } finally {
         refreshBtn.disabled = false;
-        updateCheckAvailabilityUI();
+        updateCheckUI();
       }
     });
 
@@ -516,8 +891,8 @@
       submitBtn.disabled = true;
       try {
         await loadAll();
-        updateCheckAvailabilityUI();
-      } catch (err) {
+        updateCheckUI();
+      } catch(err) {
         setStatus(err.message || '현황을 새로 불러오는 중 문제가 발생했어요.', 'error');
       } finally {
         refreshBtn.disabled = false;
@@ -525,9 +900,17 @@
       }
     });
 
+    /* ════ 초기화 ════ */
     loadAll()
-      .then(() => updateCheckAvailabilityUI())
+      .then(() => updateCheckUI())
       .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
+
+    if (!currentNickname) {
+      showNicknameModal();
+      renderDrawSection();
+    } else {
+      loadUserStatus();
+    }
   </script>
 </body>
 </html>
