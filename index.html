@@ -192,17 +192,27 @@
     .draw-stage { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
     .draw-hint { color: rgba(255,246,239,0.85); font-size: 14px; font-weight: 600; text-align: center; }
 
-    /* 팩 */
+    /* 팩 — 황금 앰버 미스터리 */
     .pack {
       width: 150px; height: 220px;
-      border-radius: 16px;
-      background: linear-gradient(160deg, #3a2c1a 0%, #5a4228 40%, #2c2010 100%);
-      border: 1.5px solid rgba(255,220,150,0.25);
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,220,150,0.15);
+      border-radius: 14px;
+      background: linear-gradient(170deg, #7a4f00 0%, #c48000 30%, #8b5c00 55%, #4a2e00 100%);
+      border: 2px solid rgba(255,215,0,0.5);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.6),
+                  inset 0 1px 0 rgba(255,235,100,0.3),
+                  inset 0 -1px 0 rgba(0,0,0,0.4),
+                  0 0 20px rgba(196,128,0,0.25);
       position: relative; overflow: hidden;
       cursor: pointer;
       display: flex; flex-direction: column; align-items: center;
       transition: transform .2s;
+    }
+    .pack::before {
+      content: '';
+      position: absolute; inset: 4px;
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 10px;
+      pointer-events: none;
     }
     .pack:hover { transform: translateY(-6px) rotate(1deg); }
     .pack.opening { animation: packBurst .65s cubic-bezier(.36,.07,.19,.97) forwards; pointer-events: none; }
@@ -216,8 +226,8 @@
 
     .pack-shine {
       position: absolute; inset: 0;
-      background: linear-gradient(120deg, transparent 30%, rgba(255,220,150,0.12) 50%, transparent 70%);
-      animation: packShineAnim 2.5s infinite;
+      background: linear-gradient(120deg, transparent 25%, rgba(255,240,120,0.2) 50%, transparent 75%);
+      animation: packShineAnim 2s infinite;
       pointer-events: none;
     }
     @keyframes packShineAnim {
@@ -228,22 +238,24 @@
     .pack-top-area {
       width: 100%; padding: 10px 10px 6px;
       text-align: center;
-      font-size: 10px; font-weight: 700;
-      color: rgba(255,220,150,0.7);
-      letter-spacing: .08em;
+      font-size: 10px; font-weight: 800;
+      color: rgba(255,235,100,0.9);
+      letter-spacing: .1em;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
     .pack-tear {
-      width: 90%; height: 1px;
-      background: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(255,220,150,0.35) 4px, rgba(255,220,150,0.35) 8px);
-      margin-bottom: 6px;
+      width: 88%; height: 1px;
+      background: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(255,215,0,0.5) 3px, rgba(255,215,0,0.5) 7px);
+      margin-bottom: 4px;
     }
-    .pack-center { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 52px; }
+    .pack-center { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 52px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
     .pack-bottom-area {
-      width: 100%; padding: 6px 10px 12px;
+      width: 100%; padding: 6px 10px 14px;
       text-align: center;
       font-size: 11px; font-weight: 800;
-      color: rgba(255,220,150,0.8);
-      letter-spacing: .06em;
+      color: rgba(255,235,100,0.9);
+      letter-spacing: .08em;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
     }
 
     /* 카드 플립 */
@@ -270,16 +282,35 @@
       to   { transform: rotateY(0deg);   opacity: 1; }
     }
 
-    /* 카드 뒷면 (기본 상태) */
+    /* 카드 뒷면 — 딥 퍼플 프리미엄 */
     .card-face-back {
-      background: linear-gradient(135deg, #2c2417, #4a3a28);
-      border: 2px solid rgba(255,220,150,0.2);
+      background: linear-gradient(145deg, #0f0a2a 0%, #1e1050 45%, #150d40 100%);
+      background-image:
+        linear-gradient(145deg, #0f0a2a 0%, #1e1050 45%, #150d40 100%),
+        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(150,100,255,0.04) 10px, rgba(150,100,255,0.04) 12px),
+        repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(150,100,255,0.04) 10px, rgba(150,100,255,0.04) 12px);
+      border: 2px solid rgba(140,100,255,0.4);
+      box-shadow: inset 0 0 40px rgba(80,40,180,0.3),
+                  0 0 16px rgba(100,60,220,0.2);
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 8px;
+      align-items: center; justify-content: center; gap: 10px;
       width: 100%; height: 100%; border-radius: 16px;
+      position: relative;
     }
-    .card-face-back .back-emoji { font-size: 52px; }
-    .card-face-back .back-label { font-size: 11px; font-weight: 800; color: rgba(255,220,150,0.6); letter-spacing: .1em; }
+    .card-face-back::before {
+      content: '';
+      position: absolute; inset: 8px;
+      border: 1px solid rgba(140,100,255,0.25);
+      border-radius: 10px;
+    }
+    .card-face-back::after {
+      content: '';
+      position: absolute; inset: 12px;
+      border: 1px solid rgba(140,100,255,0.12);
+      border-radius: 8px;
+    }
+    .card-face-back .back-emoji { font-size: 52px; filter: drop-shadow(0 0 12px rgba(180,120,255,0.6)); position: relative; z-index: 1; }
+    .card-face-back .back-label { font-size: 10px; font-weight: 800; color: rgba(180,140,255,0.7); letter-spacing: .15em; position: relative; z-index: 1; }
 
     /* ── 성령의 열매 카드 ── */
     .spirit-card {
