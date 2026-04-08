@@ -248,36 +248,37 @@
     /* 카드 플립 */
     .card-flip {
       width: 170px; height: 238px;
-      perspective: 900px;
       cursor: pointer;
     }
-    .card-flip-inner {
+    .card-flip-face {
       width: 100%; height: 100%;
-      transform-style: preserve-3d;
-      transition: transform .75s cubic-bezier(.4,0,.2,1);
+      border-radius: 16px; overflow: hidden;
     }
-    .card-flip.flipped .card-flip-inner { transform: rotateY(180deg); }
-
-    .card-back-face, .card-front-face {
-      position: absolute; inset: 0;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      border-radius: 16px;
-      overflow: hidden;
+    .card-flip-face.flip-out {
+      animation: flipOut .28s ease-in forwards;
+    }
+    .card-flip-face.flip-in {
+      animation: flipIn .28s ease-out forwards;
+    }
+    @keyframes flipOut {
+      from { transform: rotateY(0deg);  opacity: 1; }
+      to   { transform: rotateY(90deg); opacity: 0; }
+    }
+    @keyframes flipIn {
+      from { transform: rotateY(-90deg); opacity: 0; }
+      to   { transform: rotateY(0deg);   opacity: 1; }
     }
 
-    /* 카드 뒷면 (양 무늬) */
-    .card-back-face {
+    /* 카드 뒷면 (기본 상태) */
+    .card-face-back {
       background: linear-gradient(135deg, #2c2417, #4a3a28);
       border: 2px solid rgba(255,220,150,0.2);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 8px;
+      width: 100%; height: 100%; border-radius: 16px;
     }
-    .card-back-face .back-emoji { font-size: 52px; }
-    .card-back-face .back-label { font-size: 11px; font-weight: 800; color: rgba(255,220,150,0.6); letter-spacing: .1em; }
-
-    /* 카드 앞면 (성령의 열매) */
-    .card-front-face { transform: rotateY(180deg); }
+    .card-face-back .back-emoji { font-size: 52px; }
+    .card-face-back .back-label { font-size: 11px; font-weight: 800; color: rgba(255,220,150,0.6); letter-spacing: .1em; }
 
     /* ── 성령의 열매 카드 ── */
     .spirit-card {
@@ -417,12 +418,11 @@
     <div id="cardFlipStage" class="draw-stage hidden">
       <p class="draw-hint">카드를 눌러서 확인하세요 👆</p>
       <div class="card-flip" id="cardFlip">
-        <div class="card-flip-inner" id="cardFlipInner">
-          <div class="card-back-face">
+        <div class="card-flip-face" id="cardFace">
+          <div class="card-face-back">
             <span class="back-emoji">🃏</span>
             <span class="back-label">BEYOND US</span>
           </div>
-          <div class="card-front-face" id="cardFrontFace"></div>
         </div>
       </div>
     </div>
@@ -734,31 +734,46 @@
         // API 결과 대기
         const result = await drawPromise;
         if (result && !result.error && result.card) {
-          const card = SPIRIT_CARDS.find(c => c.id === result.card.id) || result.card;
-          pendingCard = card;
-          document.getElementById('cardFrontFace').innerHTML = makeCardHTML(card);
+          pendingCard = SPIRIT_CARDS.find(c => c.id === result.card.id) || result.card;
         } else {
           // 폴백: 로컬 랜덤 (서버 미연동 시)
-          const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
-          pendingCard = card;
-          document.getElementById('cardFrontFace').innerHTML = makeCardHTML(card);
+          pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
         }
       }, 700);
     });
 
-    /* 카드 클릭 (뒤집기) */
+    /* 카드 클릭 (뒤집기) — 두 단계 회전으로 backface 버그 방지 */
+    let isFlipping = false;
     document.getElementById('cardFlip').addEventListener('click', () => {
-      if (!pendingCard) return;
-      const flip = document.getElementById('cardFlip');
-      if (flip.classList.contains('flipped')) return;
-      flip.classList.add('flipped');
-      spawnConfetti();
+      if (!pendingCard || isFlipping) return;
+      isFlipping = true;
+
+      const face = document.getElementById('cardFace');
+
+      // 1단계: 90도로 접기 (사라짐)
+      face.classList.add('flip-out');
+
       setTimeout(() => {
-        document.getElementById('cardFlipStage').classList.add('hidden');
-        document.getElementById('revealCardWrap').innerHTML = makeCardHTML(pendingCard);
-        document.getElementById('revealMsg').textContent = `✨ ${pendingCard.name} 카드를 얻었어요!`;
-        document.getElementById('revealStage').classList.remove('hidden');
-      }, 800);
+        // 내용 교체
+        face.innerHTML = makeCardHTML(pendingCard);
+        face.classList.remove('flip-out');
+
+        // 2단계: -90도에서 펼치기 (나타남)
+        face.classList.add('flip-in');
+        spawnConfetti();
+
+        setTimeout(() => {
+          face.classList.remove('flip-in');
+
+          // 공개 스테이지로 전환
+          setTimeout(() => {
+            document.getElementById('cardFlipStage').classList.add('hidden');
+            document.getElementById('revealCardWrap').innerHTML = makeCardHTML(pendingCard);
+            document.getElementById('revealMsg').textContent = `✨ ${pendingCard.name} 카드를 얻었어요!`;
+            document.getElementById('revealStage').classList.remove('hidden');
+          }, 200);
+        }, 280);
+      }, 280);
     });
 
     /* 컨페티 */
