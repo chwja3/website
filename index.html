@@ -710,9 +710,11 @@
         <li class="drawer-item" data-section="prayer">손기도</li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
       </ul>
+      <!-- 로그아웃 버튼 (임시 비활성화)
       <div class="drawer-logout">
         <button class="drawer-logout-btn" id="logoutBtn">로그아웃</button>
       </div>
+      -->
       <div class="drawer-user" id="drawerUser"></div>
     </nav>
 
@@ -1524,6 +1526,7 @@
     if (drawerToggleEl) drawerToggleEl.addEventListener('click', openDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 
+    /* 로그아웃 버튼 (임시 비활성화)
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem('beyondus_nickname');
       localStorage.removeItem('beyondus_password');
@@ -1533,6 +1536,7 @@
       closeDrawer();
       showAuth('login');
     });
+    */
 
     /* ════ 섹션 전환 ════ */
     const SECTION_IDS = {
