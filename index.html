@@ -163,19 +163,6 @@
     /* ── 푸터 ── */
     .footer-note { color: var(--sub); font-size: 12px; text-align: center; margin-top: 20px; line-height: 1.7; padding: 0 8px; }
 
-    /* ── Pull to refresh ── */
-    .ptr-indicator {
-      position: fixed; top: 0; left: 0; right: 0;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      height: 0; overflow: hidden;
-      background: var(--primary-soft);
-      border-bottom: 1px solid var(--line);
-      font-size: 13px; font-weight: 600; color: var(--sub);
-      transition: height .2s ease;
-      z-index: 100;
-    }
-    .ptr-indicator.visible { height: 52px; }
-    .ptr-indicator.loading .ptr-spinner { animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes splashDot {
       0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
@@ -574,12 +561,6 @@
   </style>
 </head>
 <body>
-
-  <!-- ▣ Pull to refresh 인디케이터 -->
-  <div class="ptr-indicator" id="ptrIndicator">
-    <span class="ptr-spinner" id="ptrSpinner">↓</span>
-    <span id="ptrText">당겨서 새로고침</span>
-  </div>
 
   <!-- ▣ 스플래시 화면 -->
   <div id="splashScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;">
@@ -1551,60 +1532,6 @@
     document.querySelectorAll('.drawer-item').forEach(el => {
       el.addEventListener('click', () => switchSection(el.dataset.section));
     });
-
-    /* ════ Pull to refresh ════ */
-    (function() {
-      const indicator = document.getElementById('ptrIndicator');
-      const spinner   = document.getElementById('ptrSpinner');
-      const ptrText   = document.getElementById('ptrText');
-      const THRESHOLD = 80;
-      let startY = 0, pulling = false, isRefreshing = false;
-
-      function resetIndicator() {
-        indicator.classList.remove('visible', 'loading');
-        spinner.textContent = '↓';
-        ptrText.textContent = '당겨서 새로고침';
-      }
-
-      document.addEventListener('touchstart', e => {
-        const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
-        if (scrollTop < 5 && !isRefreshing) {
-          startY = e.touches[0].clientY;
-          pulling = true;
-        }
-      }, { passive: true });
-
-      document.addEventListener('touchmove', e => {
-        if (!pulling) return;
-        const dist = e.touches[0].clientY - startY;
-        if (dist > 0) e.preventDefault();
-        if (dist > 10) {
-          indicator.classList.add('visible');
-          spinner.textContent = dist >= THRESHOLD ? '↻' : '↓';
-          ptrText.textContent  = dist >= THRESHOLD ? '놓으면 새로고침' : '당겨서 새로고침';
-        }
-      }, { passive: false });
-
-      document.addEventListener('touchend', async e => {
-        if (!pulling) return;
-        pulling = false;
-        const dist = e.changedTouches[0].clientY - startY;
-
-        if (dist >= THRESHOLD && !isRefreshing) {
-          isRefreshing = true;
-          indicator.classList.add('loading');
-          spinner.textContent = '↻';
-          ptrText.textContent = '새로고침 중...';
-          try {
-            await Promise.all([loadAll(), loadUserStatus()]);
-            updateCheckUI();
-          } catch(err) {}
-          isRefreshing = false;
-        }
-
-        resetIndicator();
-      }, { passive: true });
-    })();
 
     /* ════ 초기화 ════ */
     renderWeekCal();
