@@ -922,7 +922,7 @@
       currentParish   = parish;
     }
 
-    /* 자동 로그인 — 페이지 로드 시 호출 */
+    /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
     async function autoLogin() {
       const savedNickname = localStorage.getItem('beyondus_nickname');
       const savedPassword = localStorage.getItem('beyondus_password');
@@ -934,38 +934,31 @@
         return;
       }
 
+      // 캐시 신뢰 → 즉시 앱 진입 + 스플래시 해제
+      currentNickname = savedNickname;
+      currentParish   = savedParish || '';
+      updateUserBadge();
+      showApp();
+      try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
+      hideSplash();
+
+      // 백그라운드에서 서버 검증 (비번이 바뀐 경우만 로그아웃)
       try {
-        const res = await fetch(API_BASE, {
+        const res  = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'login', nickname: savedNickname, password: savedPassword })
         });
         const data = await res.json();
-        if (data.ok) {
-          currentNickname = savedNickname;
-          currentParish   = data.parish || savedParish || '';
-          updateUserBadge();
-          showApp();
-          try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e2) {}
-          hideSplash();
-        } else {
+        if (!data.ok) {
           localStorage.removeItem('beyondus_nickname');
           localStorage.removeItem('beyondus_password');
           localStorage.removeItem('beyondus_parish');
           currentNickname = null;
           currentParish   = null;
           showAuth('login');
-          renderDrawSection();
         }
-      } catch(e) {
-        // 네트워크 오류 → 캐시 신뢰 (오프라인에서도 동작)
-        currentNickname = savedNickname;
-        currentParish   = savedParish || '';
-        updateUserBadge();
-        showApp();
-        try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e2) {}
-        hideSplash();
-      }
+      } catch(e) {}
     }
 
     /* 회원가입 */
