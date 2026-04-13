@@ -514,7 +514,7 @@
       z-index: 200;
     }
     .nav-drawer {
-      position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
+      position: fixed; top: 0; left: 0; bottom: 0; width: 270px;
       background: var(--card); z-index: 201;
       display: flex; flex-direction: column;
       transform: translateX(-100%);
@@ -523,7 +523,7 @@
     }
     .nav-drawer.open { transform: translateX(0); }
     .drawer-header {
-      padding: 52px 20px 18px;
+      padding: 52px 24px 18px;
       border-bottom: 1px solid var(--line);
       display: flex; align-items: center; gap: 12px;
     }
@@ -532,15 +532,25 @@
     .drawer-nav { flex: 1; padding: 8px 0; list-style: none; overflow-y: auto; }
     .drawer-item {
       display: flex; align-items: center; gap: 10px;
-      padding: 13px 20px; font-size: 15px; font-weight: 700;
+      padding: 13px 24px; font-size: 15px; font-weight: 700;
       cursor: pointer; color: var(--sub);
       border-radius: 12px; margin: 2px 8px;
       transition: background .15s;
     }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
+    .drawer-logout {
+      padding: 4px 16px 12px;
+    }
+    .drawer-logout-btn {
+      width: 100%; padding: 11px; border-radius: 12px;
+      border: 1.5px solid var(--line); background: none;
+      font-size: 14px; font-weight: 700; color: var(--sub);
+      cursor: pointer; text-align: center;
+    }
+    .drawer-logout-btn:active { background: var(--primary-soft); }
     .drawer-user {
-      padding: 16px 20px;
+      padding: 12px 24px;
       border-top: 1px solid var(--line);
       font-size: 13px; font-weight: 700; color: var(--sub);
     }
@@ -700,6 +710,9 @@
         <li class="drawer-item" data-section="prayer">손기도</li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
       </ul>
+      <div class="drawer-logout">
+        <button class="drawer-logout-btn" id="logoutBtn">로그아웃</button>
+      </div>
       <div class="drawer-user" id="drawerUser"></div>
     </nav>
 
@@ -1510,6 +1523,16 @@
     const drawerToggleEl = document.getElementById('drawerToggle');
     if (drawerToggleEl) drawerToggleEl.addEventListener('click', openDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('beyondus_nickname');
+      localStorage.removeItem('beyondus_password');
+      localStorage.removeItem('beyondus_parish');
+      currentNickname = null;
+      currentParish   = null;
+      closeDrawer();
+      showAuth('login');
+    });
 
     /* ════ 섹션 전환 ════ */
     const SECTION_IDS = {
