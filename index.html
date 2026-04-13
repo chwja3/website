@@ -448,8 +448,6 @@
     }
     #authScreen.hidden { display: none; }
     .auth-page-header { text-align: center; margin-bottom: 24px; }
-    .auth-page-header img { width: 88px; height: auto; display: block; margin: 0 auto 10px; }
-    .auth-page-header h1 { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
     .auth-page-header p  { font-size: 13px; color: var(--sub); }
     .auth-page-box {
       background: var(--card); border: 1px solid var(--line);
@@ -543,17 +541,17 @@
 
   <!-- ▣ Auth 화면 -->
   <div id="authScreen">
-    <div class="auth-page-header">
-      <img src="hc_logo_png2.png" alt="Beyond Us 로고" />
-      <h1>Beyond Us</h1>
-      <p>2026 청년교구 수련회</p>
-    </div>
     <div class="auth-page-box">
+
+      <!-- 공통 로고 -->
+      <div style="text-align:center; margin-bottom:20px;">
+        <img src="hc_logo_png2.png" alt="Beyond Us 로고" style="width:160px; max-width:55vw; height:auto;" />
+      </div>
 
       <!-- 회원가입 -->
       <div id="registerPane">
-        <h2 class="modal-title">처음 오셨군요!</h2>
-        <p class="modal-desc">가입하면 어떤 기기에서든 내 카드를 이어볼 수 있어요.</p>
+        <h2 class="modal-title">2026 수련회에 오신 걸 환영해요!</h2>
+        <p class="modal-desc">가입하고 수련회를 함께 기록해요.</p>
         <input type="text" id="regName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
         <select id="regParish" class="modal-input">
           <option value="">소속 선택</option>
