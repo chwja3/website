@@ -946,7 +946,7 @@
           currentParish   = data.parish || savedParish || '';
           updateUserBadge();
           showApp();
-          await Promise.all([loadAll(), loadUserStatus()]);
+          try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e2) {}
           hideSplash();
         } else {
           localStorage.removeItem('beyondus_nickname');
@@ -963,7 +963,7 @@
         currentParish   = savedParish || '';
         updateUserBadge();
         showApp();
-        await Promise.all([loadAll(), loadUserStatus()]);
+        try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e2) {}
         hideSplash();
       }
     }
@@ -997,6 +997,7 @@
           saveAuth(nickname, password, parish);
           updateUserBadge();
           showApp();
+          loadAll();
           loadUserStatus();
         } else if (data.error === 'duplicate') {
           statusEl.textContent = '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.';
@@ -1033,6 +1034,7 @@
           saveAuth(nickname, password, data.parish || '');
           updateUserBadge();
           showApp();
+          loadAll();
           loadUserStatus();
         } else if (data.error === 'not_found') {
           statusEl.textContent = '닉네임을 찾을 수 없어요.';
