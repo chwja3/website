@@ -1577,11 +1577,12 @@
         if (!pulling) return;
         const dist = e.touches[0].clientY - startY;
         if (dist > 10) {
+          e.preventDefault();
           indicator.classList.add('visible');
           spinner.textContent = dist >= THRESHOLD ? '↻' : '↓';
           ptrText.textContent  = dist >= THRESHOLD ? '놓으면 새로고침' : '당겨서 새로고침';
         }
-      }, { passive: true });
+      }, { passive: false });
 
       document.addEventListener('touchend', async e => {
         if (!pulling) return;
