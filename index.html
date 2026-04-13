@@ -39,8 +39,8 @@
     }
 
     /* ── 미션 히어로 ── */
-    .mission-hero { text-align: center; padding: 12px 0 32px; }
-    .hero-illust { width: 200px; max-width: 60%; height: auto; display: block; margin: 0 auto 20px; filter: drop-shadow(0 10px 24px rgba(44,36,23,0.16)); }
+    .mission-hero { text-align: center; padding: 16px 0 32px; }
+    .hero-illust { width: 260px; max-width: 75%; height: auto; display: block; margin: 0 auto 24px; filter: drop-shadow(0 10px 24px rgba(44,36,23,0.16)); }
     .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--sub); text-transform: uppercase; margin-bottom: 6px; }
     .hero-title { font-size: 34px; font-weight: 900; line-height: 1.1; color: var(--text); margin-bottom: 10px; }
     .hero-desc { font-size: 14px; line-height: 1.7; color: var(--sub); }
@@ -533,34 +533,7 @@
     ════════════════════════════ */
     #appScreen { min-height: 100vh; }
     #appScreen.hidden { display: none; }
-    .app-content { padding-top: 56px; padding-bottom: 80px; }
-
-    /* ════════════════════════════
-       하단 탭바
-    ════════════════════════════ */
-    .bottom-tab-bar {
-      position: fixed; bottom: 0; left: 0; right: 0;
-      height: 62px;
-      background: var(--card);
-      border-top: 1px solid var(--line);
-      display: flex;
-      z-index: 150;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      box-shadow: 0 -2px 12px rgba(44,36,23,0.07);
-    }
-    .tab-item {
-      flex: 1; border: 0; background: none;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 3px; cursor: pointer;
-      color: var(--sub);
-      transition: color .15s;
-      padding: 8px 0 4px;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .tab-item .tab-icon { font-size: 22px; line-height: 1; }
-    .tab-item .tab-label { font-size: 10px; font-weight: 700; }
-    .tab-item.active { color: var(--primary); }
+    .app-content { padding-top: 56px; }
 
     /* ── 소형 화면 ── */
     @media (max-width: 360px) {
@@ -686,8 +659,9 @@
 
     <!-- 상단 바 -->
     <div class="top-bar">
-      <img src="hc_logo_png1.png" alt="" style="height:28px; width:auto;" />
-      <span class="top-bar-title">Beyond Us</span>
+      <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
+      <img src="hc_logo_png1.png" alt="" style="height:38px; width:auto;" />
+      <span style="flex:1;"></span>
       <span id="topBarUser" class="top-bar-user"></span>
     </div>
 
@@ -805,26 +779,6 @@
       </div>
 
     </div>
-
-    <!-- 하단 탭바 -->
-    <nav class="bottom-tab-bar" id="bottomTabBar">
-      <button class="tab-item active" data-section="mission">
-        <span class="tab-icon">⚡</span>
-        <span class="tab-label">미션</span>
-      </button>
-      <button class="tab-item" data-section="collection">
-        <span class="tab-icon">🃏</span>
-        <span class="tab-label">컬렉션</span>
-      </button>
-      <button class="tab-item" data-section="prayer">
-        <span class="tab-icon">🙏</span>
-        <span class="tab-label">손기도</span>
-      </button>
-      <button class="tab-item" data-section="secret">
-        <span class="tab-icon">💌</span>
-        <span class="tab-label">비밀친구</span>
-      </button>
-    </nav>
 
   </div>
 
@@ -1477,16 +1431,13 @@
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(SECTION_IDS[name]).classList.remove('hidden');
-      document.querySelectorAll('.drawer-item, .tab-item').forEach(el => {
+      document.querySelectorAll('.drawer-item').forEach(el => {
         el.classList.toggle('active', el.dataset.section === name);
       });
       window.scrollTo(0, 0);
       closeDrawer();
     }
     document.querySelectorAll('.drawer-item').forEach(el => {
-      el.addEventListener('click', () => switchSection(el.dataset.section));
-    });
-    document.querySelectorAll('.tab-item').forEach(el => {
       el.addEventListener('click', () => switchSection(el.dataset.section));
     });
 
