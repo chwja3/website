@@ -95,6 +95,14 @@
       border-left-color: var(--primary);
       background: var(--primary-soft);
     }
+    .check-item.submitted {
+      border-left-color: var(--success);
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+      opacity: 0.72;
+    }
+    .check-item.submitted label { color: var(--sub); text-decoration: line-through; }
+    .check-item.submitted input { accent-color: var(--success); }
     .check-item input[type="checkbox"] { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--primary); cursor: pointer; }
     .check-item label { flex: 1; font-size: 15px; font-weight: 600; line-height: 1.5; cursor: pointer; min-width: 0; }
 
@@ -141,12 +149,12 @@
     .week-cal-dot {
       width: 36px; height: 36px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 15px; font-weight: 700;
+      font-size: 13px; font-weight: 700;
       border: 2px solid var(--line);
       background: var(--primary-soft);
-      color: transparent;
+      color: var(--sub);
     }
-    .week-cal-dot.today { border-color: var(--primary); }
+    .week-cal-dot.today { border-color: var(--primary); color: var(--primary); }
     .week-cal-dot.checked { background: var(--primary); border-color: var(--primary); color: white; }
 
     /* ── 푸터 ── */
@@ -717,7 +725,7 @@
               <div class="check-list" id="checkList"></div>
               <div class="actions">
                 <button type="button" class="btn btn-secondary" id="refreshBtn">현황 새로고침</button>
-                <button type="submit" class="btn btn-primary" id="submitBtn">오늘 체크하기</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">미션 제출하기</button>
               </div>
               <div id="statusMessage" class="status"></div>
             </form>
@@ -725,15 +733,14 @@
 
           <!-- 이번 주 체크 달력 -->
           <section class="card">
-            <h2 class="card-title">이번 주 나의 체크</h2>
-            <p class="card-sub">체크한 날은 동그라미로 표시돼요.</p>
+            <h2 class="card-title" id="weekCalTitle"></h2>
             <div class="week-cal" id="weekCal"></div>
+            <p class="card-sub" style="margin-top:16px; margin-bottom:0;">이번 주 미션을 제출한 분께 앤카드 뽑기 기회가 주어져요.<br>귀여운 9장의 앤카드를 모아보세요 :)</p>
           </section>
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card">
-            <h2 class="card-title">🃏 이번 주 카드 뽑기</h2>
-            <p class="card-sub">이번 주 체크를 제출한 분께 카드 뽑기 기회가 주어져요.</p>
+            <h2 class="card-title">이번 주 카드 뽑기</h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -1105,7 +1112,7 @@
         el.innerHTML = `
           ${testBadge}
           <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">횟수 제한 없이 뽑을 수 있어요 ✨</p>
-          <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">🃏 카드 뽑기</button>`;
+          <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
         document.getElementById('openDrawBtn').onclick = openDrawOverlay;
         return;
       }
@@ -1135,8 +1142,7 @@
         return;
       }
       el.innerHTML = `
-        <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">이번 주 카드 뽑기 기회가 생겼어요 ✨</p>
-        <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">🃏 카드 뽑기</button>`;
+        <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
       document.getElementById('openDrawBtn').onclick = openDrawOverlay;
     }
 
@@ -1316,16 +1322,21 @@
     function renderConfig(data) {
       weekTitleEl.textContent = data.weekTitle;
       checkListEl.innerHTML = '';
+      const submittedToday = getSubmittedToday();
       data.items.forEach((item, i) => {
         const id = `item_${i}`;
+        const done = submittedToday.includes(item);
         const div = document.createElement('div');
-        div.className = 'check-item';
-        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"><label for="${id}">${item}</label>`;
-        div.querySelector('input').addEventListener('change', e => {
-          div.classList.toggle('checked', e.target.checked);
-        });
+        div.className = 'check-item' + (done ? ' submitted' : '');
+        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${item}</label>`;
+        if (!done) {
+          div.querySelector('input').addEventListener('change', e => {
+            div.classList.toggle('checked', e.target.checked);
+          });
+        }
         checkListEl.appendChild(div);
       });
+      updateCheckUI(data.items);
     }
 
     function renderCounts(data) {
@@ -1368,6 +1379,7 @@
 
     function renderWeekCal() {
       const calEl = document.getElementById('weekCal');
+      const titleEl = document.getElementById('weekCalTitle');
       if (!calEl) return;
       const checkDates = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
       const todayStr = getTodayKey();
@@ -1375,6 +1387,11 @@
       const dayOfWeek = today.getDay() || 7;
       const monday = new Date(today);
       monday.setDate(today.getDate() - (dayOfWeek - 1));
+
+      // "4월 2째주" 형식 타이틀
+      const weekNum = Math.ceil(monday.getDate() / 7);
+      if (titleEl) titleEl.textContent = `${monday.getMonth() + 1}월 ${weekNum}째주`;
+
       const labels = ['월','화','수','목','금','토','일'];
       calEl.innerHTML = labels.map((label, i) => {
         const d = new Date(monday);
@@ -1384,14 +1401,25 @@
         const isToday = dateStr === todayStr;
         return `<div class="week-cal-day">
           <span class="week-cal-label">${label}</span>
-          <div class="week-cal-dot${isChecked ? ' checked' : ''}${isToday && !isChecked ? ' today' : ''}">✓</div>
+          <div class="week-cal-dot${isChecked ? ' checked' : ''}${isToday && !isChecked ? ' today' : ''}">${d.getDate()}</div>
         </div>`;
       }).join('');
     }
-    function updateCheckUI() {
-      if (hasCheckedToday()) {
+    function getSubmittedToday() {
+      return JSON.parse(localStorage.getItem('beyondus_submitted_' + getTodayKey()) || '[]');
+    }
+    function saveSubmittedItems(items) {
+      const key = 'beyondus_submitted_' + getTodayKey();
+      const merged = [...new Set([...getSubmittedToday(), ...items])];
+      localStorage.setItem(key, JSON.stringify(merged));
+    }
+    function updateCheckUI(allItems) {
+      if (!allItems || !allItems.length) { submitBtn.disabled = false; return; }
+      const submitted = getSubmittedToday();
+      const allDone = allItems.every(item => submitted.includes(item));
+      if (allDone) {
         submitBtn.disabled = true;
-        setStatus('오늘 체크는 완료되었어요. 내일 다시 참여해주세요.', 'success');
+        setStatus('오늘 모든 미션을 완료했어요! 수고했어요 :)', 'success');
       } else {
         submitBtn.disabled = false;
       }
@@ -1400,19 +1428,23 @@
     async function loadAll() {
       setStatus('현황을 불러오고 있어요...');
       const data = await fetchDashboard();
-      renderConfig(data);
+      renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
       setStatus('최신 현황으로 업데이트되었어요.', 'success');
+      return data;
     }
 
     checkForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const checked = [...document.querySelectorAll('input[name="items"]:checked')].map(el => el.value);
+      const submittedToday = getSubmittedToday();
+      const checked = [...document.querySelectorAll('input[name="items"]:checked:not(:disabled)')]
+        .map(el => el.value)
+        .filter(v => !submittedToday.includes(v));
       if (!checked.length) { setStatus('실천한 항목을 1개 이상 선택해주세요.', 'error'); return; }
 
       submitBtn.disabled = true;
       refreshBtn.disabled = true;
-      setStatus('체크를 저장하고 있어요...');
+      setStatus('저장하고 있어요...');
 
       try {
         const res = await fetch(API_BASE, {
@@ -1423,24 +1455,19 @@
         if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
         await res.json();
 
-        localStorage.setItem('beyondus_last_check_date', getTodayKey());
+        saveSubmittedItems(checked);
         saveCheckDate();
         renderWeekCal();
-        document.querySelectorAll('input[name="items"]:checked').forEach(el => el.checked = false);
         const data = await fetchDashboard();
-        renderConfig(data);
+        renderConfig(data);   // 제출된 항목 비활성화 반영
         renderCounts(data);
-        updateCheckUI();
-        setStatus('오늘의 실천이 저장되었어요.', 'success');
-
-        // 체크 제출 후 userStatus 재로드 (뽑기 자격 갱신)
+        setStatus('실천이 저장되었어요!', 'success');
         await loadUserStatus();
       } catch(err) {
         setStatus(err.message || '오류가 발생했습니다.', 'error');
         submitBtn.disabled = false;
       } finally {
         refreshBtn.disabled = false;
-        updateCheckUI();
       }
     });
 
@@ -1454,7 +1481,7 @@
         setStatus(err.message || '현황을 새로 불러오는 중 문제가 발생했어요.', 'error');
       } finally {
         refreshBtn.disabled = false;
-        if (!hasCheckedToday()) submitBtn.disabled = false;
+        submitBtn.disabled = false;
       }
     });
 
@@ -1550,7 +1577,6 @@
     /* ════ 초기화 ════ */
     renderWeekCal();
     loadAll()
-      .then(() => updateCheckUI())
       .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
 
     autoLogin();
