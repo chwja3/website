@@ -35,12 +35,15 @@
     .wrap {
       max-width: 520px;
       margin: 0 auto;
-      padding: 20px 16px 56px;
+      padding: 24px 20px 32px;
     }
 
-    /* ── 양 이미지 ── */
-    .sheep-wrap { text-align: center; padding: 12px 0 8px; }
-    .sheep-wrap img { width: 160px; max-width: 50%; height: auto; display: block; margin: 0 auto; }
+    /* ── 미션 히어로 ── */
+    .mission-hero { text-align: center; padding: 16px 0 32px; }
+    .hero-illust { width: 260px; max-width: 75%; height: auto; display: block; margin: 0 auto 24px; filter: drop-shadow(0 10px 24px rgba(44,36,23,0.16)); }
+    .hero-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--sub); text-transform: uppercase; margin-bottom: 6px; }
+    .hero-title { font-size: 34px; font-weight: 900; line-height: 1.1; color: var(--text); margin-bottom: 10px; }
+    .hero-desc { font-size: 14px; line-height: 1.7; color: var(--sub); }
 
     /* ── 상단 카드 ── */
     .top-card {
@@ -61,10 +64,10 @@
       border: 1px solid var(--line);
       border-radius: 20px;
       box-shadow: 0 4px 16px rgba(44,36,23,0.07);
-      padding: 20px 16px;
-      margin-bottom: 14px;
+      padding: 22px 20px;
+      margin-bottom: 20px;
     }
-    .card-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+    .card-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
     .card-sub { font-size: 13px; color: var(--sub); line-height: 1.6; margin-bottom: 14px; }
 
     .week-badge {
@@ -82,10 +85,24 @@
     /* ── 체크 리스트 ── */
     .check-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; margin-bottom: 16px; }
     .check-item {
-      display: flex; gap: 12px; align-items: flex-start;
+      display: flex; gap: 14px; align-items: flex-start;
       background: #f5efe4; border: 1px solid #e4ddd0;
-      border-radius: 14px; padding: 14px; cursor: pointer;
+      border-left: 3px solid #e4ddd0;
+      border-radius: 14px; padding: 16px; cursor: pointer;
+      transition: border-left-color .15s, background .15s;
     }
+    .check-item.checked {
+      border-left-color: var(--primary);
+      background: var(--primary-soft);
+    }
+    .check-item.submitted {
+      border-left-color: var(--sub);
+      background: #ece5d8;
+      border-color: #d6cfc6;
+      opacity: 0.75;
+    }
+    .check-item.submitted label { color: var(--sub); text-decoration: line-through; }
+    .check-item.submitted input { accent-color: var(--primary); }
     .check-item input[type="checkbox"] { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--primary); cursor: pointer; }
     .check-item label { flex: 1; font-size: 15px; font-weight: 600; line-height: 1.5; cursor: pointer; min-width: 0; }
 
@@ -110,17 +127,35 @@
     .progress-track { width: 100%; height: 12px; background: #e4ddd0; border-radius: 999px; overflow: hidden; }
     .progress-fill  { height: 100%; background: var(--primary); border-radius: 999px; transition: width .4s ease; }
 
-    /* ── 통계 그리드 ── */
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-    .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 4px 16px rgba(44,36,23,0.07); padding: 18px 16px; }
-    .stat-label { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
-    .stat-value { font-size: 30px; font-weight: 800; line-height: 1; }
+    /* ── 통계 인라인 ── */
+    .stats-inline { display: flex; margin-top: 20px; border-top: 1px solid var(--line); padding-top: 16px; }
+    .stats-inline-block { flex: 1; text-align: center; }
+    .stats-inline-block + .stats-inline-block { border-left: 1px solid var(--line); }
+    .stats-inline-value { font-size: 32px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+    .stats-inline-label { font-size: 12px; color: var(--sub); font-weight: 600; }
 
     /* ── 실천 현황 ── */
-    .count-list { display: flex; flex-direction: column; gap: 10px; }
-    .count-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 13px 14px; border-radius: 14px; background: #f5efe4; border: 1px solid #e4ddd0; }
+    .count-list { display: flex; flex-direction: column; gap: 12px; }
+    .count-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; background: #f5efe4; border: 1px solid #e4ddd0; }
     .count-item-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.4; }
-    .count-item-count { flex-shrink: 0; min-width: 40px; height: 30px; padding: 0 10px; border-radius: 999px; background: white; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--primary); }
+    .count-item-bar-wrap { width: 72px; height: 6px; background: #e4ddd0; border-radius: 999px; overflow: hidden; flex-shrink: 0; }
+    .count-item-bar { height: 100%; background: var(--primary); border-radius: 999px; transition: width .4s ease; }
+    .count-item-count { flex-shrink: 0; min-width: 32px; font-size: 14px; font-weight: 800; color: var(--primary); text-align: right; }
+
+    /* ── 주차 달력 ── */
+    .week-cal { display: flex; justify-content: space-between; gap: 6px; padding: 4px 0; }
+    .week-cal-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .week-cal-label { font-size: 11px; font-weight: 700; color: var(--sub); }
+    .week-cal-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700;
+      border: 2px solid var(--line);
+      background: var(--primary-soft);
+      color: var(--sub);
+    }
+    .week-cal-dot.today { border-color: var(--primary); color: var(--primary); }
+    .week-cal-dot.checked { background: var(--primary); border-color: var(--primary); color: white; }
 
     /* ── 푸터 ── */
     .footer-note { color: var(--sub); font-size: 12px; text-align: center; margin-top: 20px; line-height: 1.7; padding: 0 8px; }
@@ -448,8 +483,6 @@
     }
     #authScreen.hidden { display: none; }
     .auth-page-header { text-align: center; margin-bottom: 24px; }
-    .auth-page-header img { width: 88px; height: auto; display: block; margin: 0 auto 10px; }
-    .auth-page-header h1 { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
     .auth-page-header p  { font-size: 13px; color: var(--sub); }
     .auth-page-box {
       background: var(--card); border: 1px solid var(--line);
@@ -543,17 +576,16 @@
 
   <!-- ▣ Auth 화면 -->
   <div id="authScreen">
-    <div class="auth-page-header">
-      <img src="sheep.png" alt="양 일러스트" />
-      <h1>Beyond Us</h1>
-      <p>2026 청년교구 수련회</p>
-    </div>
     <div class="auth-page-box">
+
+      <!-- 공통 로고 -->
+      <div style="text-align:center; margin-bottom:16px;">
+        <img src="hc_logo_png2.png" alt="Beyond Us 로고" style="width:160px; max-width:55vw; height:auto;" />
+        <p style="font-size:14px; font-weight:400; color:var(--sub); margin-top:10px;">청년교구 수련회에 오신 것을 환영해요</p>
+      </div>
 
       <!-- 회원가입 -->
       <div id="registerPane">
-        <h2 class="modal-title">처음 오셨군요!</h2>
-        <p class="modal-desc">가입하면 어떤 기기에서든 내 카드를 이어볼 수 있어요.</p>
         <input type="text" id="regName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
         <select id="regParish" class="modal-input">
           <option value="">소속 선택</option>
@@ -564,9 +596,9 @@
         </select>
         <input type="text" id="regNickname" class="modal-input" placeholder="닉네임 (로그인 ID, 2~10자)" maxlength="10" autocomplete="username" />
         <input type="password" id="regPassword" class="modal-input" placeholder="비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
-        <p class="auth-notice">🔒 이름은 관리자만 확인하며 앱에서는 닉네임으로만 표시돼요</p>
+        <p class="auth-notice" style="text-align:center;">페이지 내에서는 닉네임이 사용됩니다. 💬</p>
         <div class="auth-status" id="registerStatus"></div>
-        <button class="btn btn-primary modal-btn" id="registerBtn">가입하기</button>
+        <button class="btn btn-primary modal-btn" id="registerBtn">들어가기</button>
         <p class="auth-switch">이미 계정이 있어요 → <button class="auth-link" onclick="switchAuthPane('login')">로그인</button></p>
       </div>
 
@@ -650,7 +682,8 @@
     <!-- 상단 바 -->
     <div class="top-bar">
       <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
-      <span class="top-bar-title">Beyond Us</span>
+      <img src="hc_logo_png1.png" alt="" style="height:30px; width:auto; margin-left:-6px;" />
+      <span style="flex:1;"></span>
       <span id="topBarUser" class="top-bar-user"></span>
     </div>
 
@@ -660,14 +693,14 @@
     <!-- 좌측 드로어 -->
     <nav id="navDrawer" class="nav-drawer">
       <div class="drawer-header">
-        <img src="sheep.png" alt="" />
+        <img src="hc_logo_png1.png" alt="Beyond Us 로고" />
         <span class="drawer-header-title">Beyond Us</span>
       </div>
       <ul class="drawer-nav">
-        <li class="drawer-item active" data-section="mission">⚡ 미션</li>
-        <li class="drawer-item" data-section="collection">🃏 컬렉션</li>
-        <li class="drawer-item" data-section="prayer">🙏 손기도</li>
-        <li class="drawer-item" data-section="secret">💌 비밀친구</li>
+        <li class="drawer-item active" data-section="mission">미션</li>
+        <li class="drawer-item" data-section="collection">컬렉션</li>
+        <li class="drawer-item" data-section="prayer">손기도</li>
+        <li class="drawer-item" data-section="secret">비밀친구</li>
       </ul>
       <div class="drawer-user" id="drawerUser"></div>
     </nav>
@@ -678,11 +711,11 @@
       <!-- ① 미션 -->
       <div id="sectionMission" class="section">
         <div class="wrap">
-          <section class="top-card">
-            <div class="eyebrow">2026 청년교구 수련회 준비</div>
-            <h1 class="title">Beyond Us</h1>
-            <p class="desc">빛으로 살기 위해, 구별됨의 걸음을 함께 이어갑시다.</p>
-          </section>
+          <div class="mission-hero">
+            <img src="hc_illust1.png" class="hero-illust" alt="Beyond Us 일러스트" />
+            <p class="hero-eyebrow">2026 청년교구 수련회</p>
+            <h1 class="hero-title">Beyond Us</h1>
+          </div>
 
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
@@ -691,41 +724,44 @@
             <form id="checkForm">
               <div class="check-list" id="checkList"></div>
               <div class="actions">
-                <button type="button" class="btn btn-secondary" id="refreshBtn">현황 보기</button>
-                <button type="submit" class="btn btn-primary" id="submitBtn">오늘 체크하기</button>
+                <button type="button" class="btn btn-secondary" id="refreshBtn">현황 새로고침</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">미션 제출하기</button>
               </div>
               <div id="statusMessage" class="status"></div>
             </form>
           </section>
 
+          <!-- 이번 주 체크 달력 -->
+          <section class="card">
+            <h2 class="card-title" id="weekCalTitle"></h2>
+            <div class="week-cal" id="weekCal"></div>
+            <p class="card-sub" style="margin-top:16px; margin-bottom:0;">이번 주 미션을 제출한 분께 앤카드 뽑기 기회가 주어져요.<br>귀여운 9장의 앤카드를 모아보세요 :)</p>
+          </section>
+
           <!-- 카드 뽑기 섹션 -->
           <section class="card">
-            <h2 class="card-title">🃏 이번 주 카드 뽑기</h2>
-            <p class="card-sub">이번 주 체크를 제출한 분께 카드 뽑기 기회가 주어져요.</p>
+            <h2 class="card-title">이번 주 카드 뽑기</h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
           </section>
 
-          <section class="card">
-            <h2 class="card-title">이번 주 공동체 목표</h2>
-            <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성</p>
+          <section class="card" style="position:relative; overflow:hidden;">
+            <img src="hc_illust2.png" alt="" style="position:absolute; top:-8px; right:12px; height:90px; width:auto; opacity:0.85; filter:drop-shadow(0 4px 8px rgba(44,36,23,0.1));" />
+            <h2 class="card-title">이번 주 공동체 미션 현황</h2>
+            <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성 · 진행률 <strong id="progressPercent">0%</strong></p>
             <div class="progress-track">
               <div class="progress-fill" id="progressBar" style="width:0%;"></div>
             </div>
-            <p class="card-sub" style="margin-top:10px; margin-bottom:0;">
-              현재 진행률 <strong id="progressPercent">0%</strong>
-            </p>
-          </section>
-
-          <section class="grid">
-            <div class="stat-card">
-              <div class="stat-label">누적 실천 수</div>
-              <div class="stat-value" id="totalCount">-</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">누적 제출 수</div>
-              <div class="stat-value" id="submissionCount">-</div>
+            <div class="stats-inline">
+              <div class="stats-inline-block">
+                <div class="stats-inline-value" id="totalCount">-</div>
+                <div class="stats-inline-label">누적 실천 수</div>
+              </div>
+              <div class="stats-inline-block">
+                <div class="stats-inline-value" id="submissionCount">-</div>
+                <div class="stats-inline-label">누적 제출 인원</div>
+              </div>
             </div>
           </section>
 
@@ -742,10 +778,11 @@
       <!-- ② 컬렉션 -->
       <div id="sectionCollection" class="section hidden">
         <div class="wrap">
-          <section class="card" style="margin-top:16px;">
+          <section class="card" style="margin-top:20px;">
             <h2 class="card-title">내 컬렉션</h2>
             <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
             <div class="collection-grid" id="collectionGrid"></div>
+            <button class="btn btn-secondary" style="width:100%; margin-top:20px;" onclick="switchSection('mission')">← 홈으로 돌아가기</button>
           </section>
         </div>
       </div>
@@ -771,6 +808,7 @@
       </div>
 
     </div>
+
   </div>
 
   <script>
@@ -1076,7 +1114,7 @@
         el.innerHTML = `
           ${testBadge}
           <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">횟수 제한 없이 뽑을 수 있어요 ✨</p>
-          <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">🃏 카드 뽑기</button>`;
+          <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
         document.getElementById('openDrawBtn').onclick = openDrawOverlay;
         return;
       }
@@ -1085,7 +1123,6 @@
       if (!userStatus.submittedThisWeek) {
         el.innerHTML = `
           <div class="draw-notice">
-            <div class="draw-notice-icon">🔒</div>
             <div>
               <div class="draw-notice-title">이번 주 체크를 먼저 해주세요</div>
               <div class="draw-notice-sub">체크를 한 번 이상 제출하면 카드를 뽑을 수 있어요</div>
@@ -1097,17 +1134,16 @@
         const c = userStatus.weekCard;
         el.innerHTML = `
           <div class="draw-notice">
-            <div class="draw-notice-icon">✅</div>
             <div>
-              <div class="draw-notice-title">이번 주 카드를 뽑았어요!</div>
-              <div class="draw-notice-sub">${c ? `${c.emoji} ${c.name} 카드를 획득했어요` : '카드를 획득했어요'}</div>
+              <div class="draw-notice-title">이번 주 카드를 뽑았어요</div>
+              <div class="draw-notice-sub">${c ? `${c.name} 카드를 획득했어요.` : '카드를 획득했어요.'}</div>
             </div>
-          </div>`;
+          </div>
+          <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="switchSection('collection')">카드 컬렉션 보기</button>`;
         return;
       }
       el.innerHTML = `
-        <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">이번 주 카드 뽑기 기회가 생겼어요 ✨</p>
-        <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">🃏 카드 뽑기</button>`;
+        <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
       document.getElementById('openDrawBtn').onclick = openDrawOverlay;
     }
 
@@ -1287,24 +1323,34 @@
     function renderConfig(data) {
       weekTitleEl.textContent = data.weekTitle;
       checkListEl.innerHTML = '';
+      const submittedToday = getSubmittedToday();
       data.items.forEach((item, i) => {
         const id = `item_${i}`;
+        const done = submittedToday.includes(item);
         const div = document.createElement('div');
-        div.className = 'check-item';
-        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"><label for="${id}">${item}</label>`;
+        div.className = 'check-item' + (done ? ' submitted' : '');
+        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${item}</label>`;
+        if (!done) {
+          div.querySelector('input').addEventListener('change', e => {
+            div.classList.toggle('checked', e.target.checked);
+          });
+        }
         checkListEl.appendChild(div);
       });
+      updateCheckUI(data.items);
     }
 
     function renderCounts(data) {
       totalCountEl.textContent = data.totalCount;
       submissionCountEl.textContent = data.submissionCount;
       countListEl.innerHTML = '';
+      const maxCnt = Math.max(1, ...data.items.map(item => data.counts[item] || 0));
       data.items.forEach(item => {
         const cnt = data.counts[item] || 0;
+        const pct = Math.round((cnt / maxCnt) * 100);
         const div = document.createElement('div');
         div.className = 'count-item';
-        div.innerHTML = `<span class="count-item-name">${item}</span><span class="count-item-count">${cnt}</span>`;
+        div.innerHTML = `<span class="count-item-name">${item}</span><div class="count-item-bar-wrap"><div class="count-item-bar" style="width:${pct}%"></div></div><span class="count-item-count">${cnt}</span>`;
         countListEl.appendChild(div);
       });
       renderProgress(data.totalCount);
@@ -1322,10 +1368,59 @@
     function hasCheckedToday() {
       return localStorage.getItem('beyondus_last_check_date') === getTodayKey();
     }
-    function updateCheckUI() {
-      if (hasCheckedToday()) {
+
+    function saveCheckDate() {
+      const today = getTodayKey();
+      const dates = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
+      if (!dates.includes(today)) {
+        dates.push(today);
+        localStorage.setItem('beyondus_check_dates', JSON.stringify(dates));
+      }
+    }
+
+    function renderWeekCal() {
+      const calEl = document.getElementById('weekCal');
+      const titleEl = document.getElementById('weekCalTitle');
+      if (!calEl) return;
+      const checkDates = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
+      const todayStr = getTodayKey();
+      const today = new Date();
+      const dayOfWeek = today.getDay() || 7;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek - 1));
+
+      // "4월 2째주" 형식 타이틀
+      const weekNum = Math.ceil(monday.getDate() / 7);
+      if (titleEl) titleEl.textContent = `${monday.getMonth() + 1}월 ${weekNum}째주`;
+
+      const labels = ['월','화','수','목','금','토','일'];
+      calEl.innerHTML = labels.map((label, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const isChecked = checkDates.includes(dateStr);
+        const isToday = dateStr === todayStr;
+        return `<div class="week-cal-day">
+          <span class="week-cal-label">${label}</span>
+          <div class="week-cal-dot${isChecked ? ' checked' : ''}${isToday && !isChecked ? ' today' : ''}">${d.getDate()}</div>
+        </div>`;
+      }).join('');
+    }
+    function getSubmittedToday() {
+      return JSON.parse(localStorage.getItem('beyondus_submitted_' + getTodayKey()) || '[]');
+    }
+    function saveSubmittedItems(items) {
+      const key = 'beyondus_submitted_' + getTodayKey();
+      const merged = [...new Set([...getSubmittedToday(), ...items])];
+      localStorage.setItem(key, JSON.stringify(merged));
+    }
+    function updateCheckUI(allItems) {
+      if (!allItems || !allItems.length) { submitBtn.disabled = false; return; }
+      const submitted = getSubmittedToday();
+      const allDone = allItems.every(item => submitted.includes(item));
+      if (allDone) {
         submitBtn.disabled = true;
-        setStatus('오늘 체크는 완료되었어요. 내일 다시 참여해주세요.', 'success');
+        setStatus('오늘 모든 미션을 완료했어요! 수고했어요 :)', 'success');
       } else {
         submitBtn.disabled = false;
       }
@@ -1334,19 +1429,23 @@
     async function loadAll() {
       setStatus('현황을 불러오고 있어요...');
       const data = await fetchDashboard();
-      renderConfig(data);
+      renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
       setStatus('최신 현황으로 업데이트되었어요.', 'success');
+      return data;
     }
 
     checkForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const checked = [...document.querySelectorAll('input[name="items"]:checked')].map(el => el.value);
+      const submittedToday = getSubmittedToday();
+      const checked = [...document.querySelectorAll('input[name="items"]:checked:not(:disabled)')]
+        .map(el => el.value)
+        .filter(v => !submittedToday.includes(v));
       if (!checked.length) { setStatus('실천한 항목을 1개 이상 선택해주세요.', 'error'); return; }
 
       submitBtn.disabled = true;
       refreshBtn.disabled = true;
-      setStatus('체크를 저장하고 있어요...');
+      setStatus('저장하고 있어요...');
 
       try {
         const res = await fetch(API_BASE, {
@@ -1357,22 +1456,19 @@
         if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
         await res.json();
 
-        localStorage.setItem('beyondus_last_check_date', getTodayKey());
-        document.querySelectorAll('input[name="items"]:checked').forEach(el => el.checked = false);
+        saveSubmittedItems(checked);
+        saveCheckDate();
+        renderWeekCal();
         const data = await fetchDashboard();
-        renderConfig(data);
+        renderConfig(data);   // 제출된 항목 비활성화 반영
         renderCounts(data);
-        updateCheckUI();
-        setStatus('오늘의 실천이 저장되었어요.', 'success');
-
-        // 체크 제출 후 userStatus 재로드 (뽑기 자격 갱신)
+        setStatus('실천이 저장되었어요!', 'success');
         await loadUserStatus();
       } catch(err) {
         setStatus(err.message || '오류가 발생했습니다.', 'error');
         submitBtn.disabled = false;
       } finally {
         refreshBtn.disabled = false;
-        updateCheckUI();
       }
     });
 
@@ -1386,7 +1482,7 @@
         setStatus(err.message || '현황을 새로 불러오는 중 문제가 발생했어요.', 'error');
       } finally {
         refreshBtn.disabled = false;
-        if (!hasCheckedToday()) submitBtn.disabled = false;
+        submitBtn.disabled = false;
       }
     });
 
@@ -1401,7 +1497,8 @@
       document.getElementById('drawerOverlay').classList.add('hidden');
       document.body.style.overflow = '';
     }
-    document.getElementById('drawerToggle').addEventListener('click', openDrawer);
+    const drawerToggleEl = document.getElementById('drawerToggle');
+    if (drawerToggleEl) drawerToggleEl.addEventListener('click', openDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 
     /* ════ 섹션 전환 ════ */
@@ -1479,8 +1576,8 @@
     })();
 
     /* ════ 초기화 ════ */
+    renderWeekCal();
     loadAll()
-      .then(() => updateCheckUI())
       .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
 
     autoLogin();
