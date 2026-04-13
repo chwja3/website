@@ -559,14 +559,31 @@
        공지사항
     ════════════════════════════ */
     .notice-item {
-      padding: 16px 0; border-bottom: 1px solid var(--line);
+      background: var(--primary-soft);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
     }
-    .notice-item:last-child { border-bottom: 0; padding-bottom: 0; }
-    .notice-item:first-child { padding-top: 0; }
-    .notice-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
-    .notice-content { font-size: 14px; color: var(--text); line-height: 1.6; white-space: pre-wrap; }
-    .notice-date { font-size: 12px; color: var(--sub); margin-top: 8px; }
+    .notice-item:last-child { margin-bottom: 0; }
+    .notice-title {
+      font-size: 15px; font-weight: 800; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .notice-content { font-size: 14px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+    .notice-date { font-size: 12px; color: var(--sub); margin-top: 10px; }
     .notice-empty { font-size: 14px; color: var(--sub); text-align: center; padding: 20px 0; }
+
+    /* 햄버거 뱃지 */
+    .menu-btn-wrap { position: relative; flex-shrink: 0; }
+    .notice-dot {
+      position: absolute; top: 4px; right: 4px;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ef4444;
+      border: 1.5px solid var(--card);
+      display: none;
+    }
+    .notice-dot.visible { display: block; }
 
     /* ════════════════════════════
        앱 콘텐츠 / 섹션
@@ -702,7 +719,10 @@
 
     <!-- 상단 바 -->
     <div class="top-bar">
-      <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
+      <div class="menu-btn-wrap">
+        <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
+        <span id="noticeDot" class="notice-dot"></span>
+      </div>
       <img src="images/hc_logo_png1.png" alt="" style="height:30px; width:auto; margin-left:-6px;" />
       <span style="flex:1;"></span>
       <span id="topBarUser" class="top-bar-user"></span>
@@ -1578,6 +1598,7 @@
       document.querySelectorAll('.drawer-item').forEach(el => {
         el.classList.toggle('active', el.dataset.section === name);
       });
+      if (name === 'notice') markAllSeen();
       window.scrollTo(0, 0);
       closeDrawer();
     }
@@ -1586,20 +1607,46 @@
     });
 
     /* ════ 공지사항 ════ */
+    let cachedNotices = [];
+
+    function getSeenIds() {
+      try { return JSON.parse(localStorage.getItem('beyondus_seen_notices') || '[]'); } catch { return []; }
+    }
+    function saveSeenIds(ids) {
+      localStorage.setItem('beyondus_seen_notices', JSON.stringify(ids));
+    }
+    function updateNoticeDot() {
+      const seen = getSeenIds();
+      const hasNew = cachedNotices.some(n => !seen.includes(n.id));
+      document.getElementById('noticeDot').classList.toggle('visible', hasNew);
+    }
+    function markAllSeen() {
+      const ids = cachedNotices.map(n => n.id);
+      saveSeenIds(ids);
+      document.getElementById('noticeDot').classList.remove('visible');
+    }
+
     async function loadNotices() {
       const list = document.getElementById('noticeList');
       try {
         const res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
         if (!res.ok || !res.notices.length) {
+          cachedNotices = [];
           list.innerHTML = '<p class="notice-empty">등록된 공지사항이 없어요.</p>';
           return;
         }
-        list.innerHTML = res.notices.map(n => `
+        cachedNotices = res.notices;
+        const seen = getSeenIds();
+        list.innerHTML = res.notices.map(n => {
+          const isNew = !seen.includes(n.id);
+          return `
           <div class="notice-item">
-            <div class="notice-title">${escHtml(n.title)}</div>
+            <div class="notice-title">📢 ${escHtml(n.title)}${isNew ? ' <span style="font-size:10px;background:#ef4444;color:white;border-radius:999px;padding:1px 7px;font-weight:700;vertical-align:middle;">NEW</span>' : ''}</div>
             <div class="notice-content">${escHtml(n.content)}</div>
             <div class="notice-date">${formatNoticeDate(n.createdAt)}</div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
+        updateNoticeDot();
       } catch(e) {
         list.innerHTML = '<p class="notice-empty">불러오기 실패. 잠시 후 다시 시도해주세요.</p>';
       }
