@@ -1344,6 +1344,15 @@
       return res.json();
     }
 
+    function applyTabSettings(data) {
+      if (!data || !data.tabSettings) return;
+      const { prayer, secret } = data.tabSettings;
+      const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
+      const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
+      if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
+      if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
+    }
+
     function renderConfig(data) {
       weekTitleEl.textContent = data.weekTitle;
       checkListEl.innerHTML = '';
@@ -1455,6 +1464,7 @@
       const data = await fetchDashboard();
       renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
+      applyTabSettings(data);
       setStatus('최신 현황으로 업데이트되었어요.', 'success');
       return data;
     }
