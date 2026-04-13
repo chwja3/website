@@ -173,6 +173,17 @@
     .modal-input:focus { border-color: var(--primary); }
     .modal-btn { width: 100%; flex: none; }
 
+    /* ── Auth 모달 ── */
+    .auth-notice { font-size: 12px; color: var(--sub); text-align: left; margin: -4px 0 10px; line-height: 1.5; padding: 0 2px; }
+    .auth-status { font-size: 13px; font-weight: 600; min-height: 20px; margin: -4px 0 10px; color: var(--danger); text-align: left; }
+    .auth-status.success { color: var(--success); }
+    .auth-switch { font-size: 13px; color: var(--sub); text-align: center; margin-top: 14px; line-height: 1.8; }
+    .auth-link { background: none; border: none; color: var(--primary); font-size: 13px; font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; }
+    select.modal-input { cursor: pointer; -webkit-appearance: none; appearance: none; }
+
+    /* ── 사용자 배지 ── */
+    .user-badge { display: inline-flex; align-items: center; gap: 6px; background: var(--primary-soft); border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 12px; }
+
     /* ════════════════════════════
        카드 뽑기 섹션
     ════════════════════════════ */
@@ -425,6 +436,95 @@
       border: 2px solid white; z-index: 2;
     }
 
+    /* ════════════════════════════
+       Auth 화면 (전체 페이지)
+    ════════════════════════════ */
+    #authScreen {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 16px 60px;
+      background: linear-gradient(180deg, #faf6ef 0%, #f4ede0 100%);
+    }
+    #authScreen.hidden { display: none; }
+    .auth-page-header { text-align: center; margin-bottom: 24px; }
+    .auth-page-header img { width: 88px; height: auto; display: block; margin: 0 auto 10px; }
+    .auth-page-header h1 { font-size: 26px; font-weight: 800; margin-bottom: 4px; }
+    .auth-page-header p  { font-size: 13px; color: var(--sub); }
+    .auth-page-box {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 24px; padding: 28px 24px;
+      width: 100%; max-width: 360px;
+      box-shadow: 0 8px 30px rgba(44,36,23,0.10);
+    }
+
+    /* ════════════════════════════
+       상단 바
+    ════════════════════════════ */
+    .top-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 56px;
+      background: var(--card); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; padding: 0 16px; gap: 12px;
+      z-index: 150;
+    }
+    .top-bar-menu-btn {
+      width: 40px; height: 40px; border: 0; background: none;
+      font-size: 20px; cursor: pointer; color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; flex-shrink: 0;
+    }
+    .top-bar-menu-btn:active { background: var(--primary-soft); }
+    .top-bar-title { font-size: 17px; font-weight: 800; flex: 1; }
+    .top-bar-user  { font-size: 12px; font-weight: 700; color: var(--sub); flex-shrink: 0; }
+
+    /* ════════════════════════════
+       드로어
+    ════════════════════════════ */
+    .drawer-overlay {
+      position: fixed; inset: 0;
+      background: rgba(44,36,23,0.45);
+      backdrop-filter: blur(2px);
+      z-index: 200;
+    }
+    .nav-drawer {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 260px;
+      background: var(--card); z-index: 201;
+      display: flex; flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform .28s cubic-bezier(.4,0,.2,1);
+      box-shadow: 4px 0 20px rgba(44,36,23,0.15);
+    }
+    .nav-drawer.open { transform: translateX(0); }
+    .drawer-header {
+      padding: 52px 20px 18px;
+      border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .drawer-header img { width: 36px; height: 36px; object-fit: contain; }
+    .drawer-header-title { font-size: 17px; font-weight: 800; }
+    .drawer-nav { flex: 1; padding: 8px 0; list-style: none; overflow-y: auto; }
+    .drawer-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 20px; font-size: 15px; font-weight: 700;
+      cursor: pointer; color: var(--sub);
+      border-radius: 12px; margin: 2px 8px;
+      transition: background .15s;
+    }
+    .drawer-item:hover { background: var(--primary-soft); }
+    .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
+    .drawer-user {
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+      font-size: 13px; font-weight: 700; color: var(--sub);
+    }
+
+    /* ════════════════════════════
+       앱 콘텐츠 / 섹션
+    ════════════════════════════ */
+    #appScreen { min-height: 100vh; }
+    #appScreen.hidden { display: none; }
+    .app-content { padding-top: 56px; }
+
     /* ── 소형 화면 ── */
     @media (max-width: 360px) {
       .title { font-size: 24px; }
@@ -441,14 +541,69 @@
     <span id="ptrText">당겨서 새로고침</span>
   </div>
 
-  <!-- ▣ 닉네임 모달 -->
-  <div id="nicknameModal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <div class="modal-sheep">🐑</div>
-      <h2 class="modal-title">반갑습니다!</h2>
-      <p class="modal-desc">닉네임을 설정하면 카드 컬렉션을 저장할 수 있어요.</p>
-      <input type="text" id="nicknameInput" class="modal-input" placeholder="닉네임 입력 (최대 10자)" maxlength="10" />
-      <button class="btn btn-primary modal-btn" id="nicknameSubmitBtn">시작하기</button>
+  <!-- ▣ Auth 화면 -->
+  <div id="authScreen">
+    <div class="auth-page-header">
+      <img src="sheep.png" alt="양 일러스트" />
+      <h1>Beyond Us</h1>
+      <p>2026 청년교구 수련회</p>
+    </div>
+    <div class="auth-page-box">
+
+      <!-- 회원가입 -->
+      <div id="registerPane">
+        <h2 class="modal-title">처음 오셨군요!</h2>
+        <p class="modal-desc">가입하면 어떤 기기에서든 내 카드를 이어볼 수 있어요.</p>
+        <input type="text" id="regName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
+        <select id="regParish" class="modal-input">
+          <option value="">소속 선택</option>
+          <option value="1청">1청</option>
+          <option value="2청">2청</option>
+          <option value="3청">3청</option>
+          <option value="4청">4청</option>
+        </select>
+        <input type="text" id="regNickname" class="modal-input" placeholder="닉네임 (로그인 ID, 2~10자)" maxlength="10" autocomplete="username" />
+        <input type="password" id="regPassword" class="modal-input" placeholder="비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
+        <p class="auth-notice">🔒 이름은 관리자만 확인하며 앱에서는 닉네임으로만 표시돼요</p>
+        <div class="auth-status" id="registerStatus"></div>
+        <button class="btn btn-primary modal-btn" id="registerBtn">가입하기</button>
+        <p class="auth-switch">이미 계정이 있어요 → <button class="auth-link" onclick="switchAuthPane('login')">로그인</button></p>
+      </div>
+
+      <!-- 로그인 -->
+      <div id="loginPane" class="hidden">
+        <h2 class="modal-title">다시 만나요!</h2>
+        <p class="modal-desc">닉네임과 비밀번호를 입력해주세요.</p>
+        <input type="text" id="loginNickname" class="modal-input" placeholder="닉네임" autocomplete="username" />
+        <input type="password" id="loginPassword" class="modal-input" placeholder="비밀번호" autocomplete="current-password" />
+        <div class="auth-status" id="loginStatus"></div>
+        <button class="btn btn-primary modal-btn" id="loginBtn">로그인</button>
+        <p class="auth-switch">
+          <button class="auth-link" onclick="switchAuthPane('register')">처음이에요</button>
+          &nbsp;·&nbsp;
+          <button class="auth-link" onclick="switchAuthPane('reset')">비밀번호를 잊었어요</button>
+        </p>
+      </div>
+
+      <!-- 비밀번호 재설정 -->
+      <div id="resetPane" class="hidden">
+        <h2 class="modal-title">비밀번호 재설정</h2>
+        <p class="modal-desc">가입할 때 입력한 정보로 본인을 확인해요.</p>
+        <input type="text" id="resetNickname" class="modal-input" placeholder="닉네임" autocomplete="username" />
+        <input type="text" id="resetName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
+        <select id="resetParish" class="modal-input">
+          <option value="">소속 선택</option>
+          <option value="1청">1청</option>
+          <option value="2청">2청</option>
+          <option value="3청">3청</option>
+          <option value="4청">4청</option>
+        </select>
+        <input type="password" id="resetPassword" class="modal-input" placeholder="새 비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
+        <div class="auth-status" id="resetStatus"></div>
+        <button class="btn btn-primary modal-btn" id="resetBtn">비밀번호 변경</button>
+        <p class="auth-switch"><button class="auth-link" onclick="switchAuthPane('login')">← 로그인으로 돌아가기</button></p>
+      </div>
+
     </div>
   </div>
 
@@ -489,77 +644,133 @@
     </div>
   </div>
 
-  <!-- ▣ 본문 -->
-  <div class="wrap">
-    <div class="sheep-wrap">
-      <img src="sheep.png" alt="양 일러스트" />
+  <!-- ▣ 앱 화면 -->
+  <div id="appScreen" class="hidden">
+
+    <!-- 상단 바 -->
+    <div class="top-bar">
+      <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
+      <span class="top-bar-title">Beyond Us</span>
+      <span id="topBarUser" class="top-bar-user"></span>
     </div>
 
-    <section class="top-card">
-      <div class="eyebrow">2026 청년교구 수련회 준비</div>
-      <h1 class="title">Beyond Us</h1>
-      <p class="desc">빛으로 살기 위해, 구별됨의 걸음을 함께 이어갑시다.</p>
-    </section>
+    <!-- 드로어 오버레이 -->
+    <div id="drawerOverlay" class="drawer-overlay hidden"></div>
 
-    <section class="card">
-      <div class="week-badge" id="weekTitle">불러오는 중...</div>
-      <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
-      <p class="card-sub">오늘 실천한 항목이 있다면 체크 후 제출해주세요.</p>
-      <form id="checkForm">
-        <div class="check-list" id="checkList"></div>
-        <div class="actions">
-          <button type="button" class="btn btn-secondary" id="refreshBtn">현황 보기</button>
-          <button type="submit" class="btn btn-primary" id="submitBtn">오늘 체크하기</button>
+    <!-- 좌측 드로어 -->
+    <nav id="navDrawer" class="nav-drawer">
+      <div class="drawer-header">
+        <img src="sheep.png" alt="" />
+        <span class="drawer-header-title">Beyond Us</span>
+      </div>
+      <ul class="drawer-nav">
+        <li class="drawer-item active" data-section="mission">⚡ 미션</li>
+        <li class="drawer-item" data-section="collection">🃏 컬렉션</li>
+        <li class="drawer-item" data-section="prayer">🙏 손기도</li>
+        <li class="drawer-item" data-section="secret">💌 비밀친구</li>
+      </ul>
+      <div class="drawer-user" id="drawerUser"></div>
+    </nav>
+
+    <!-- 앱 콘텐츠 -->
+    <div class="app-content">
+
+      <!-- ① 미션 -->
+      <div id="sectionMission" class="section">
+        <div class="wrap">
+          <section class="top-card">
+            <div class="eyebrow">2026 청년교구 수련회 준비</div>
+            <h1 class="title">Beyond Us</h1>
+            <p class="desc">빛으로 살기 위해, 구별됨의 걸음을 함께 이어갑시다.</p>
+          </section>
+
+          <section class="card">
+            <div class="week-badge" id="weekTitle">불러오는 중...</div>
+            <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
+            <p class="card-sub">오늘 실천한 항목이 있다면 체크 후 제출해주세요.</p>
+            <form id="checkForm">
+              <div class="check-list" id="checkList"></div>
+              <div class="actions">
+                <button type="button" class="btn btn-secondary" id="refreshBtn">현황 보기</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">오늘 체크하기</button>
+              </div>
+              <div id="statusMessage" class="status"></div>
+            </form>
+          </section>
+
+          <!-- 카드 뽑기 섹션 -->
+          <section class="card">
+            <h2 class="card-title">🃏 이번 주 카드 뽑기</h2>
+            <p class="card-sub">이번 주 체크를 제출한 분께 카드 뽑기 기회가 주어져요.</p>
+            <div id="drawSectionBody">
+              <p class="card-sub" style="margin:0;">로딩 중...</p>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">이번 주 공동체 목표</h2>
+            <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성</p>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressBar" style="width:0%;"></div>
+            </div>
+            <p class="card-sub" style="margin-top:10px; margin-bottom:0;">
+              현재 진행률 <strong id="progressPercent">0%</strong>
+            </p>
+          </section>
+
+          <section class="grid">
+            <div class="stat-card">
+              <div class="stat-label">누적 실천 수</div>
+              <div class="stat-value" id="totalCount">-</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">누적 제출 수</div>
+              <div class="stat-value" id="submissionCount">-</div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">이번 주 실천 현황</h2>
+            <p class="card-sub">공동체 안에 쌓여가는 실천의 흐름을 확인해보세요.</p>
+            <div class="count-list" id="countList"></div>
+          </section>
+
+          <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"</p>
         </div>
-        <div id="statusMessage" class="status"></div>
-      </form>
-    </section>
-
-    <!-- 카드 뽑기 섹션 -->
-    <section class="card">
-      <h2 class="card-title">🃏 이번 주 카드 뽑기</h2>
-      <p class="card-sub">이번 주 체크를 제출한 분께 카드 뽑기 기회가 주어져요.</p>
-      <div id="drawSectionBody">
-        <p class="card-sub" style="margin:0;">로딩 중...</p>
       </div>
-    </section>
 
-    <section class="card">
-      <h2 class="card-title">이번 주 공동체 목표</h2>
-      <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성</p>
-      <div class="progress-track">
-        <div class="progress-fill" id="progressBar" style="width:0%;"></div>
+      <!-- ② 컬렉션 -->
+      <div id="sectionCollection" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">내 컬렉션</h2>
+            <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
+            <div class="collection-grid" id="collectionGrid"></div>
+          </section>
+        </div>
       </div>
-      <p class="card-sub" style="margin-top:10px; margin-bottom:0;">
-        현재 진행률 <strong id="progressPercent">0%</strong>
-      </p>
-    </section>
 
-    <section class="grid">
-      <div class="stat-card">
-        <div class="stat-label">누적 실천 수</div>
-        <div class="stat-value" id="totalCount">-</div>
+      <!-- ③ 손기도 -->
+      <div id="sectionPrayer" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">🙏 손기도</h2>
+            <p class="card-sub">곧 오픈 예정이에요.</p>
+          </section>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">누적 제출 수</div>
-        <div class="stat-value" id="submissionCount">-</div>
+
+      <!-- ④ 비밀친구 -->
+      <div id="sectionSecret" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">💌 비밀친구</h2>
+            <p class="card-sub">곧 오픈 예정이에요.</p>
+          </section>
+        </div>
       </div>
-    </section>
 
-    <section class="card">
-      <h2 class="card-title">이번 주 실천 현황</h2>
-      <p class="card-sub">공동체 안에 쌓여가는 실천의 흐름을 확인해보세요.</p>
-      <div class="count-list" id="countList"></div>
-    </section>
-
-    <!-- 컬렉션 -->
-    <section class="card">
-      <h2 class="card-title">내 컬렉션</h2>
-      <p class="card-sub" id="collectionSub">닉네임을 설정하면 컬렉션을 확인할 수 있어요.</p>
-      <div class="collection-grid" id="collectionGrid"></div>
-    </section>
-
-    <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"</p>
+    </div>
   </div>
 
   <script>
@@ -594,6 +805,7 @@
 
     /* ── 상태 ── */
     let currentNickname = localStorage.getItem('beyondus_nickname') || null;
+    let currentParish   = localStorage.getItem('beyondus_parish')   || null;
     let userStatus = null;
     let pendingCard = null;   // API에서 받아온 카드 데이터
 
@@ -609,25 +821,216 @@
     const checkForm         = document.getElementById('checkForm');
     const GOAL_COUNT = 100;
 
-    /* ════ 닉네임 모달 ════ */
-    function showNicknameModal() {
-      document.getElementById('nicknameModal').classList.remove('hidden');
-      document.getElementById('nicknameInput').focus();
-    }
-    function hideNicknameModal() {
-      document.getElementById('nicknameModal').classList.add('hidden');
+    /* ════ 사용자 표시 ════ */
+    function updateUserBadge() {
+      const text = currentNickname
+        ? `${currentNickname}${currentParish ? ' · ' + currentParish : ''}`
+        : '';
+      document.getElementById('topBarUser').textContent = text;
+      document.getElementById('drawerUser').textContent = text ? `👤 ${text}` : '';
     }
 
-    document.getElementById('nicknameSubmitBtn').addEventListener('click', () => {
-      const val = document.getElementById('nicknameInput').value.trim();
-      if (!val) return;
-      currentNickname = val;
-      localStorage.setItem('beyondus_nickname', val);
-      hideNicknameModal();
-      loadUserStatus();
+    /* ════ 화면 전환 ════ */
+    function showAuth(pane) {
+      document.getElementById('authScreen').classList.remove('hidden');
+      document.getElementById('appScreen').classList.add('hidden');
+      switchAuthPane(pane || 'register');
+    }
+    function showApp() {
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.remove('hidden');
+    }
+
+    /* ════ Auth 패인 전환 ════ */
+    function switchAuthPane(pane) {
+      ['register', 'login', 'reset'].forEach(p => {
+        document.getElementById(p + 'Pane').classList.add('hidden');
+      });
+      document.getElementById(pane + 'Pane').classList.remove('hidden');
+      ['registerStatus', 'loginStatus', 'resetStatus'].forEach(id => {
+        const el = document.getElementById(id);
+        el.textContent = '';
+        el.className = 'auth-status';
+      });
+    }
+
+    function saveAuth(nickname, password, parish) {
+      localStorage.setItem('beyondus_nickname', nickname);
+      localStorage.setItem('beyondus_password', password);
+      localStorage.setItem('beyondus_parish',   parish);
+      currentNickname = nickname;
+      currentParish   = parish;
+    }
+
+    /* 자동 로그인 — 페이지 로드 시 호출 */
+    async function autoLogin() {
+      const savedNickname = localStorage.getItem('beyondus_nickname');
+      const savedPassword = localStorage.getItem('beyondus_password');
+      const savedParish   = localStorage.getItem('beyondus_parish');
+
+      if (!savedNickname || !savedPassword) {
+        showAuth('register');
+        renderDrawSection();
+        return;
+      }
+
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'login', nickname: savedNickname, password: savedPassword })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          currentNickname = savedNickname;
+          currentParish   = data.parish || savedParish || '';
+          updateUserBadge();
+          showApp();
+          loadUserStatus();
+        } else {
+          localStorage.removeItem('beyondus_nickname');
+          localStorage.removeItem('beyondus_password');
+          localStorage.removeItem('beyondus_parish');
+          currentNickname = null;
+          currentParish   = null;
+          showAuth('login');
+          renderDrawSection();
+        }
+      } catch(e) {
+        // 네트워크 오류 → 캐시 신뢰 (오프라인에서도 동작)
+        currentNickname = savedNickname;
+        currentParish   = savedParish || '';
+        updateUserBadge();
+        showApp();
+        loadUserStatus();
+      }
+    }
+
+    /* 회원가입 */
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+      const name     = document.getElementById('regName').value.trim();
+      const parish   = document.getElementById('regParish').value;
+      const nickname = document.getElementById('regNickname').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const statusEl = document.getElementById('registerStatus');
+
+      if (!name || !parish || !nickname || !password) {
+        statusEl.textContent = '모든 항목을 입력해주세요.'; return;
+      }
+      if (nickname.length < 2) { statusEl.textContent = '닉네임은 2자 이상이어야 해요.'; return; }
+      if (password.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+
+      const btn = document.getElementById('registerBtn');
+      btn.disabled = true;
+      statusEl.textContent = '가입 중...';
+
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'register', name, parish, nickname, password })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          saveAuth(nickname, password, parish);
+          updateUserBadge();
+          showApp();
+          loadUserStatus();
+        } else if (data.error === 'duplicate') {
+          statusEl.textContent = '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.';
+        } else {
+          statusEl.textContent = '오류가 발생했어요. 다시 시도해주세요.';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결에 실패했어요. 잠시 후 다시 시도해주세요.';
+      } finally {
+        btn.disabled = false;
+      }
     });
-    document.getElementById('nicknameInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('nicknameSubmitBtn').click();
+
+    /* 로그인 */
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const nickname = document.getElementById('loginNickname').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const statusEl = document.getElementById('loginStatus');
+
+      if (!nickname || !password) { statusEl.textContent = '닉네임과 비밀번호를 입력해주세요.'; return; }
+
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      statusEl.textContent = '로그인 중...';
+
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'login', nickname, password })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          saveAuth(nickname, password, data.parish || '');
+          updateUserBadge();
+          showApp();
+          loadUserStatus();
+        } else if (data.error === 'not_found') {
+          statusEl.textContent = '닉네임을 찾을 수 없어요.';
+        } else if (data.error === 'wrong_password') {
+          statusEl.textContent = '비밀번호가 틀렸어요.';
+        } else {
+          statusEl.textContent = '오류가 발생했어요.';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결에 실패했어요. 잠시 후 다시 시도해주세요.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    /* 비밀번호 재설정 */
+    document.getElementById('resetBtn').addEventListener('click', async () => {
+      const nickname    = document.getElementById('resetNickname').value.trim();
+      const name        = document.getElementById('resetName').value.trim();
+      const parish      = document.getElementById('resetParish').value;
+      const newPassword = document.getElementById('resetPassword').value;
+      const statusEl    = document.getElementById('resetStatus');
+
+      if (!nickname || !name || !parish || !newPassword) {
+        statusEl.textContent = '모든 항목을 입력해주세요.'; return;
+      }
+      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+
+      const btn = document.getElementById('resetBtn');
+      btn.disabled = true;
+      statusEl.textContent = '확인 중...';
+
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'resetPassword', nickname, name, parish, newPassword })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          statusEl.className = 'auth-status success';
+          statusEl.textContent = '비밀번호가 변경됐어요! 로그인해주세요.';
+          setTimeout(() => switchAuthPane('login'), 1500);
+        } else if (data.error === 'not_found') {
+          statusEl.textContent = '입력한 정보와 일치하는 계정이 없어요.';
+        } else {
+          statusEl.textContent = '오류가 발생했어요.';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결에 실패했어요.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    /* Enter 키 처리 */
+    [['regPassword', 'registerBtn'], ['loginPassword', 'loginBtn'], ['resetPassword', 'resetBtn']].forEach(([inputId, btnId]) => {
+      document.getElementById(inputId).addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById(btnId).click();
+      });
     });
 
     /* ════ 카드 HTML 생성 ════ */
@@ -655,8 +1058,8 @@
         : '';
 
       if (!currentNickname) {
-        el.innerHTML = `${testBadge}<button class="btn btn-secondary" style="width:100%;" id="setNicknameBtn">닉네임 설정하고 참여하기</button>`;
-        document.getElementById('setNicknameBtn').onclick = showNicknameModal;
+        el.innerHTML = `${testBadge}<button class="btn btn-secondary" style="width:100%;" id="setNicknameBtn">로그인하고 참여하기</button>`;
+        document.getElementById('setNicknameBtn').onclick = () => showAuth('login');
         return;
       }
       if (!userStatus) {
@@ -780,8 +1183,8 @@
         renderDrawSection();
         renderCollection();
         pendingCard = null;
-        // 컬렉션 섹션으로 스크롤
-        document.querySelector('.collection-grid')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // 컬렉션 탭으로 이동
+        switchSection('collection');
       }
     }
 
@@ -987,6 +1390,42 @@
       }
     });
 
+    /* ════ 드로어 ════ */
+    function openDrawer() {
+      document.getElementById('navDrawer').classList.add('open');
+      document.getElementById('drawerOverlay').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeDrawer() {
+      document.getElementById('navDrawer').classList.remove('open');
+      document.getElementById('drawerOverlay').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+    document.getElementById('drawerToggle').addEventListener('click', openDrawer);
+    document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+
+    /* ════ 섹션 전환 ════ */
+    const SECTION_IDS = {
+      mission:    'sectionMission',
+      collection: 'sectionCollection',
+      prayer:     'sectionPrayer',
+      secret:     'sectionSecret',
+    };
+    function switchSection(name) {
+      Object.values(SECTION_IDS).forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(SECTION_IDS[name]).classList.remove('hidden');
+      document.querySelectorAll('.drawer-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.section === name);
+      });
+      window.scrollTo(0, 0);
+      closeDrawer();
+    }
+    document.querySelectorAll('.drawer-item').forEach(el => {
+      el.addEventListener('click', () => switchSection(el.dataset.section));
+    });
+
     /* ════ Pull to refresh ════ */
     (function() {
       const indicator = document.getElementById('ptrIndicator');
@@ -1044,12 +1483,7 @@
       .then(() => updateCheckUI())
       .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
 
-    if (!currentNickname) {
-      showNicknameModal();
-      renderDrawSection();
-    } else {
-      loadUserStatus();
-    }
+    autoLogin();
   </script>
 </body>
 </html>
