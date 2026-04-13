@@ -556,6 +556,19 @@
     }
 
     /* ════════════════════════════
+       공지사항
+    ════════════════════════════ */
+    .notice-item {
+      padding: 16px 0; border-bottom: 1px solid var(--line);
+    }
+    .notice-item:last-child { border-bottom: 0; padding-bottom: 0; }
+    .notice-item:first-child { padding-top: 0; }
+    .notice-title { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+    .notice-content { font-size: 14px; color: var(--text); line-height: 1.6; white-space: pre-wrap; }
+    .notice-date { font-size: 12px; color: var(--sub); margin-top: 8px; }
+    .notice-empty { font-size: 14px; color: var(--sub); text-align: center; padding: 20px 0; }
+
+    /* ════════════════════════════
        앱 콘텐츠 / 섹션
     ════════════════════════════ */
     #appScreen { min-height: 100vh; }
@@ -705,6 +718,7 @@
         <span class="drawer-header-title">Beyond Us</span>
       </div>
       <ul class="drawer-nav">
+        <li class="drawer-item" data-section="notice">공지사항</li>
         <li class="drawer-item active" data-section="mission">미션</li>
         <li class="drawer-item" data-section="collection">컬렉션</li>
         <li class="drawer-item" data-section="prayer">손기도</li>
@@ -721,7 +735,17 @@
     <!-- 앱 콘텐츠 -->
     <div class="app-content">
 
-      <!-- ① 미션 -->
+      <!-- ① 공지사항 -->
+      <div id="sectionNotice" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">공지사항</h2>
+            <div id="noticeList"><p class="notice-empty">불러오는 중...</p></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ② 미션 -->
       <div id="sectionMission" class="section">
         <div class="wrap">
           <div class="mission-hero">
@@ -1540,6 +1564,7 @@
 
     /* ════ 섹션 전환 ════ */
     const SECTION_IDS = {
+      notice:     'sectionNotice',
       mission:    'sectionMission',
       collection: 'sectionCollection',
       prayer:     'sectionPrayer',
@@ -1560,8 +1585,38 @@
       el.addEventListener('click', () => switchSection(el.dataset.section));
     });
 
+    /* ════ 공지사항 ════ */
+    async function loadNotices() {
+      const list = document.getElementById('noticeList');
+      try {
+        const res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        if (!res.ok || !res.notices.length) {
+          list.innerHTML = '<p class="notice-empty">등록된 공지사항이 없어요.</p>';
+          return;
+        }
+        list.innerHTML = res.notices.map(n => `
+          <div class="notice-item">
+            <div class="notice-title">${escHtml(n.title)}</div>
+            <div class="notice-content">${escHtml(n.content)}</div>
+            <div class="notice-date">${formatNoticeDate(n.createdAt)}</div>
+          </div>`).join('');
+      } catch(e) {
+        list.innerHTML = '<p class="notice-empty">불러오기 실패. 잠시 후 다시 시도해주세요.</p>';
+      }
+    }
+    function escHtml(s) {
+      return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+    }
+    function formatNoticeDate(v) {
+      if (!v) return '';
+      const d = new Date(v);
+      if (isNaN(d)) return String(v).slice(0, 10);
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    }
+
     /* ════ 초기화 ════ */
     renderWeekCal();
+    loadNotices();
     autoLogin();
   </script>
 </body>

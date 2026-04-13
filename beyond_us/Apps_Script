@@ -33,6 +33,7 @@ function doGet(e) {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getTabSettings());
   }
+  if (action === 'getNotices') return jsonOutput(getNotices());
 
   return jsonOutput({ ok: false, message: 'Unknown action' });
 }
@@ -69,6 +70,14 @@ function doPost(e) {
     }
     if (action === 'setTabSettings') {
       return jsonOutput(setTabSettings(body));
+    }
+    if (action === 'postNotice') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(postNotice(body));
+    }
+    if (action === 'deleteNotice') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(deleteNotice(body));
     }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
@@ -308,6 +317,45 @@ function adminResetPassword(body) {
     }
   }
   return { error: 'not_found' };
+}
+
+// ── 공지사항 ──────────────────────────────────────
+function getOrCreateNoticeSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('Notices');
+  if (!sheet) {
+    sheet = ss.insertSheet('Notices');
+    sheet.appendRow(['id','title','content','createdAt']);
+  }
+  return sheet;
+}
+
+function getNotices() {
+  const sheet = getOrCreateNoticeSheet();
+  const last = sheet.getLastRow();
+  if (last < 2) return { ok: true, notices: [] };
+  const rows = sheet.getRange(2, 1, last - 1, 4).getValues();
+  const notices = rows
+    .filter(r => r[0])
+    .map((r, i) => ({ rowIndex: i + 2, id: String(r[0]), title: r[1], content: r[2], createdAt: r[3] }))
+    .reverse();
+  return { ok: true, notices };
+}
+
+function postNotice(body) {
+  const title   = String(body.title   || '').trim();
+  const content = String(body.content || '').trim();
+  if (!title || !content) return { error: 'missing_fields' };
+  const sheet = getOrCreateNoticeSheet();
+  sheet.appendRow([new Date().getTime(), title, content, new Date().toISOString()]);
+  return { ok: true };
+}
+
+function deleteNotice(body) {
+  const rowIndex = Number(body.rowIndex);
+  if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
+  getOrCreateNoticeSheet().deleteRow(rowIndex);
+  return { ok: true };
 }
 
 // ── 공통 ─────────────────────────────────────────

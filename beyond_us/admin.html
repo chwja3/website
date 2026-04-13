@@ -146,6 +146,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="users">👥 유저 관리</button>
         <button class="tab-btn" data-tab="checkin">📊 체크인 현황</button>
+        <button class="tab-btn" data-tab="notice">📢 공지사항</button>
         <button class="tab-btn" data-tab="settings">⚙️ 탭 설정</button>
       </div>
 
@@ -206,7 +207,26 @@
         </div>
       </div>
 
-      <!-- ③ 탭 설정 -->
+      <!-- ③ 공지사항 -->
+      <div id="tab-notice" class="tab-panel">
+        <div class="card">
+          <h2 class="card-title">공지사항 작성</h2>
+          <input type="text" id="noticeTitle" class="input" placeholder="제목" />
+          <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
+          <div class="status" id="noticePostStatus"></div>
+          <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h2 class="card-title" style="margin:0;">등록된 공지사항</h2>
+            <button class="btn btn-ghost btn-sm" id="refreshNoticeBtn">새로고침</button>
+          </div>
+          <div id="noticeAdminList"><p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- ④ 탭 설정 -->
       <div id="tab-settings" class="tab-panel">
         <div class="card">
           <h2 class="card-title">메뉴 탭 활성화 설정</h2>
@@ -271,6 +291,7 @@
           loadUsers();
           loadCheckin();
           loadTabSettings();
+          loadAdminNotices();
         } else {
           statusEl.textContent = '비밀번호가 틀렸어요.';
         }
@@ -443,6 +464,69 @@
         btn.disabled = false;
       }
     });
+
+    /* ── 공지사항 ── */
+    async function loadAdminNotices() {
+      const list = document.getElementById('noticeAdminList');
+      try {
+        const res = await get({ action: 'getNotices' });
+        if (!res.ok || !res.notices.length) {
+          list.innerHTML = '<p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">등록된 공지사항이 없어요.</p>';
+          return;
+        }
+        list.innerHTML = res.notices.map(n => `
+          <div style="padding:14px 0; border-bottom:1px solid var(--line);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+              <div>
+                <div style="font-size:15px; font-weight:800; margin-bottom:4px;">${esc(n.title)}</div>
+                <div style="font-size:13px; color:var(--sub); white-space:pre-wrap;">${esc(n.content)}</div>
+                <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
+              </div>
+              <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="deleteNotice(${n.rowIndex})">삭제</button>
+            </div>
+          </div>`).join('');
+      } catch(e) {
+        list.innerHTML = '<p style="color:var(--danger); font-size:14px;">서버 연결 오류</p>';
+      }
+    }
+
+    async function deleteNotice(rowIndex) {
+      if (!confirm('이 공지사항을 삭제할까요?')) return;
+      try {
+        const res = await post({ action: 'deleteNotice', adminPw, rowIndex });
+        if (res.ok) loadAdminNotices();
+        else alert('삭제 실패: ' + (res.error || ''));
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    document.getElementById('noticePostBtn').addEventListener('click', async () => {
+      const title   = document.getElementById('noticeTitle').value.trim();
+      const content = document.getElementById('noticeContent').value.trim();
+      const statusEl = document.getElementById('noticePostStatus');
+      if (!title || !content) { statusEl.textContent = '제목과 내용을 모두 입력해주세요.'; return; }
+      const btn = document.getElementById('noticePostBtn');
+      btn.disabled = true;
+      statusEl.textContent = '등록 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'postNotice', adminPw, title, content });
+        if (res.ok) {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '등록되었어요!';
+          document.getElementById('noticeTitle').value = '';
+          document.getElementById('noticeContent').value = '';
+          loadAdminNotices();
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('refreshNoticeBtn').addEventListener('click', loadAdminNotices);
 
     /* ── 세션 복원 ── */
     const saved = sessionStorage.getItem('adminPw');
