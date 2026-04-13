@@ -539,6 +539,11 @@
     }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
+    .drawer-notice-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #ef4444; display: none; flex-shrink: 0;
+    }
+    .drawer-notice-dot.visible { display: block; }
     .drawer-logout {
       padding: 4px 16px 12px;
     }
@@ -738,7 +743,7 @@
         <span class="drawer-header-title">Beyond Us</span>
       </div>
       <ul class="drawer-nav">
-        <li class="drawer-item" data-section="notice">공지사항</li>
+        <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission">미션</li>
         <li class="drawer-item" data-section="collection">컬렉션</li>
         <li class="drawer-item" data-section="prayer">손기도</li>
@@ -1619,11 +1624,13 @@
       const seen = getSeenIds();
       const hasNew = cachedNotices.some(n => !seen.includes(n.id));
       document.getElementById('noticeDot').classList.toggle('visible', hasNew);
+      document.getElementById('drawerNoticeDot').classList.toggle('visible', hasNew);
     }
     function markAllSeen() {
       const ids = cachedNotices.map(n => n.id);
       saveSeenIds(ids);
       document.getElementById('noticeDot').classList.remove('visible');
+      document.getElementById('drawerNoticeDot').classList.remove('visible');
     }
 
     async function loadNotices() {
