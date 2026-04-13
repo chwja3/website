@@ -134,6 +134,21 @@
     .count-item-bar { height: 100%; background: var(--primary); border-radius: 999px; transition: width .4s ease; }
     .count-item-count { flex-shrink: 0; min-width: 32px; font-size: 14px; font-weight: 800; color: var(--primary); text-align: right; }
 
+    /* ── 주차 달력 ── */
+    .week-cal { display: flex; justify-content: space-between; gap: 6px; padding: 4px 0; }
+    .week-cal-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .week-cal-label { font-size: 11px; font-weight: 700; color: var(--sub); }
+    .week-cal-dot {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 700;
+      border: 2px solid var(--line);
+      background: var(--primary-soft);
+      color: transparent;
+    }
+    .week-cal-dot.today { border-color: var(--primary); }
+    .week-cal-dot.checked { background: var(--primary); border-color: var(--primary); color: white; }
+
     /* ── 푸터 ── */
     .footer-note { color: var(--sub); font-size: 12px; text-align: center; margin-top: 20px; line-height: 1.7; padding: 0 8px; }
 
@@ -556,14 +571,13 @@
     <div class="auth-page-box">
 
       <!-- 공통 로고 -->
-      <div style="text-align:center; margin-bottom:20px;">
+      <div style="text-align:center; margin-bottom:16px;">
         <img src="hc_logo_png2.png" alt="Beyond Us 로고" style="width:160px; max-width:55vw; height:auto;" />
+        <p style="font-size:14px; font-weight:400; color:var(--sub); margin-top:10px;">청년교구 수련회에 오신 것을 환영해요</p>
       </div>
 
       <!-- 회원가입 -->
       <div id="registerPane">
-        <h2 class="modal-title">2026 수련회에 오신 걸 환영해요!</h2>
-        <p class="modal-desc">가입하고 수련회를 함께 기록해요.</p>
         <input type="text" id="regName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
         <select id="regParish" class="modal-input">
           <option value="">소속 선택</option>
@@ -574,9 +588,9 @@
         </select>
         <input type="text" id="regNickname" class="modal-input" placeholder="닉네임 (로그인 ID, 2~10자)" maxlength="10" autocomplete="username" />
         <input type="password" id="regPassword" class="modal-input" placeholder="비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
-        <p class="auth-notice">🔒 이름은 관리자만 확인하며 앱에서는 닉네임으로만 표시돼요</p>
+        <p class="auth-notice" style="text-align:center;">페이지 내에서는 닉네임이 사용됩니다. 💬</p>
         <div class="auth-status" id="registerStatus"></div>
-        <button class="btn btn-primary modal-btn" id="registerBtn">가입하기</button>
+        <button class="btn btn-primary modal-btn" id="registerBtn">들어가기</button>
         <p class="auth-switch">이미 계정이 있어요 → <button class="auth-link" onclick="switchAuthPane('login')">로그인</button></p>
       </div>
 
@@ -660,7 +674,7 @@
     <!-- 상단 바 -->
     <div class="top-bar">
       <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
-      <img src="hc_logo_png1.png" alt="" style="height:38px; width:auto;" />
+      <img src="hc_logo_png1.png" alt="" style="height:30px; width:auto; margin-left:-6px;" />
       <span style="flex:1;"></span>
       <span id="topBarUser" class="top-bar-user"></span>
     </div>
@@ -693,7 +707,6 @@
             <img src="hc_illust1.png" class="hero-illust" alt="Beyond Us 일러스트" />
             <p class="hero-eyebrow">2026 청년교구 수련회</p>
             <h1 class="hero-title">Beyond Us</h1>
-            <p class="hero-desc">빛으로 살기 위해, 구별됨의 걸음을 함께 이어갑시다.</p>
           </div>
 
           <section class="card">
@@ -703,11 +716,18 @@
             <form id="checkForm">
               <div class="check-list" id="checkList"></div>
               <div class="actions">
-                <button type="button" class="btn btn-secondary" id="refreshBtn">현황 보기</button>
+                <button type="button" class="btn btn-secondary" id="refreshBtn">현황 새로고침</button>
                 <button type="submit" class="btn btn-primary" id="submitBtn">오늘 체크하기</button>
               </div>
               <div id="statusMessage" class="status"></div>
             </form>
+          </section>
+
+          <!-- 이번 주 체크 달력 -->
+          <section class="card">
+            <h2 class="card-title">이번 주 나의 체크</h2>
+            <p class="card-sub">체크한 날은 동그라미로 표시돼요.</p>
+            <div class="week-cal" id="weekCal"></div>
           </section>
 
           <!-- 카드 뽑기 섹션 -->
@@ -720,7 +740,7 @@
           </section>
 
           <section class="card">
-            <h2 class="card-title">이번 주 공동체 현황</h2>
+            <h2 class="card-title">이번 주 공동체 미션 현황</h2>
             <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성 · 진행률 <strong id="progressPercent">0%</strong></p>
             <div class="progress-track">
               <div class="progress-fill" id="progressBar" style="width:0%;"></div>
@@ -1336,6 +1356,38 @@
     function hasCheckedToday() {
       return localStorage.getItem('beyondus_last_check_date') === getTodayKey();
     }
+
+    function saveCheckDate() {
+      const today = getTodayKey();
+      const dates = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
+      if (!dates.includes(today)) {
+        dates.push(today);
+        localStorage.setItem('beyondus_check_dates', JSON.stringify(dates));
+      }
+    }
+
+    function renderWeekCal() {
+      const calEl = document.getElementById('weekCal');
+      if (!calEl) return;
+      const checkDates = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
+      const todayStr = getTodayKey();
+      const today = new Date();
+      const dayOfWeek = today.getDay() || 7;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - (dayOfWeek - 1));
+      const labels = ['월','화','수','목','금','토','일'];
+      calEl.innerHTML = labels.map((label, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const isChecked = checkDates.includes(dateStr);
+        const isToday = dateStr === todayStr;
+        return `<div class="week-cal-day">
+          <span class="week-cal-label">${label}</span>
+          <div class="week-cal-dot${isChecked ? ' checked' : ''}${isToday && !isChecked ? ' today' : ''}">✓</div>
+        </div>`;
+      }).join('');
+    }
     function updateCheckUI() {
       if (hasCheckedToday()) {
         submitBtn.disabled = true;
@@ -1372,6 +1424,8 @@
         await res.json();
 
         localStorage.setItem('beyondus_last_check_date', getTodayKey());
+        saveCheckDate();
+        renderWeekCal();
         document.querySelectorAll('input[name="items"]:checked').forEach(el => el.checked = false);
         const data = await fetchDashboard();
         renderConfig(data);
@@ -1494,6 +1548,7 @@
     })();
 
     /* ════ 초기화 ════ */
+    renderWeekCal();
     loadAll()
       .then(() => updateCheckUI())
       .catch(err => setStatus(err.message || '페이지를 불러오는 중 문제가 발생했어요.', 'error'));
