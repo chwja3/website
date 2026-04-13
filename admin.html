@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyond Us — 어드민</title>
+  <style>
+    :root {
+      --bg: #faf6ef; --card: #fffdf8; --text: #2c2417;
+      --sub: #8a7f6e; --primary: #2c2417; --primary-soft: #f0ebe0;
+      --line: #e4ddd0; --success: #16a34a; --danger: #dc2626;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      font-size: 15px; background: linear-gradient(180deg,#faf6ef 0%,#f4ede0 100%);
+      color: var(--text); min-height: 100vh;
+    }
+
+    /* ── 로그인 게이트 ── */
+    #authGate {
+      min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    .gate-box {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 24px; padding: 36px 28px;
+      width: 100%; max-width: 340px;
+      box-shadow: 0 8px 30px rgba(44,36,23,0.10); text-align: center;
+    }
+    .gate-emoji { font-size: 40px; margin-bottom: 12px; }
+    .gate-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .gate-desc  { font-size: 13px; color: var(--sub); margin-bottom: 20px; }
+
+    /* ── 어드민 패널 ── */
+    #adminPanel { display: none; }
+    .admin-header {
+      background: var(--primary); color: #faf6ef;
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .admin-header h1 { font-size: 17px; font-weight: 800; flex: 1; }
+    .admin-header-sub { font-size: 12px; opacity: .6; }
+
+    .admin-wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
+
+    /* ── 탭 ── */
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--line); }
+    .tab-btn {
+      padding: 10px 18px; font-size: 14px; font-weight: 700;
+      border: 0; background: none; color: var(--sub); cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── 카드 ── */
+    .card {
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 16px; padding: 20px; margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(44,36,23,0.06);
+    }
+    .card-title { font-size: 16px; font-weight: 800; margin-bottom: 14px; }
+
+    /* ── 통계 ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+    .stat-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
+    .stat-value { font-size: 26px; font-weight: 800; }
+
+    /* ── 테이블 ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; padding: 10px 12px; background: var(--primary-soft); font-size: 12px; font-weight: 700; color: var(--sub); }
+    td { padding: 11px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
+    tr:hover td { background: #faf6ef; }
+
+    /* ── 배지 ── */
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .badge-1청 { background: #fee2e2; color: #dc2626; }
+    .badge-2청 { background: #fef9c3; color: #854d0e; }
+    .badge-3청 { background: #dcfce7; color: #16a34a; }
+    .badge-4청 { background: #dbeafe; color: #1d4ed8; }
+
+    /* ── 공통 UI ── */
+    .btn {
+      border: 0; border-radius: 10px; padding: 9px 16px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+    }
+    .btn-primary { background: var(--primary); color: #faf6ef; width: 100%; margin-top: 4px; }
+    .btn-sm      { padding: 5px 12px; font-size: 13px; }
+    .btn-ghost   { background: var(--primary-soft); color: var(--text); border: 1px solid var(--line); }
+    .btn-danger  { background: var(--danger); color: white; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .input {
+      width: 100%; padding: 12px 14px; font-size: 15px;
+      border: 1.5px solid var(--line); border-radius: 12px;
+      background: var(--primary-soft); color: var(--text);
+      outline: none; margin-bottom: 10px;
+    }
+    .input:focus { border-color: var(--primary); }
+    .status { font-size: 13px; font-weight: 600; min-height: 18px; color: var(--danger); margin-top: 6px; }
+    .status.ok { color: var(--success); }
+    .hidden { display: none !important; }
+
+    /* ── 비밀번호 초기화 모달 ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(44,36,23,0.5); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    .modal-box {
+      background: var(--card); border-radius: 20px;
+      padding: 28px 24px; width: 100%; max-width: 320px;
+      box-shadow: 0 16px 40px rgba(44,36,23,0.2);
+    }
+    .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 6px; }
+    .modal-desc  { font-size: 13px; color: var(--sub); margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── 로그인 게이트 ── -->
+  <div id="authGate">
+    <div class="gate-box">
+      <div class="gate-emoji">🔐</div>
+      <h2 class="gate-title">어드민</h2>
+      <p class="gate-desc">Beyond Us 관리자 페이지</p>
+      <input type="password" id="adminPwInput" class="input" placeholder="비밀번호" />
+      <div class="status" id="gateStatus"></div>
+      <button class="btn btn-primary" id="gateBtn" style="margin-top:8px;">입장</button>
+    </div>
+  </div>
+
+  <!-- ── 어드민 패널 ── -->
+  <div id="adminPanel">
+    <div class="admin-header">
+      <h1>Beyond Us 어드민</h1>
+      <span class="admin-header-sub">관리자 전용</span>
+    </div>
+
+    <div class="admin-wrap">
+
+      <!-- 탭 -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="users">👥 유저 관리</button>
+        <button class="tab-btn" data-tab="checkin">📊 체크인 현황</button>
+      </div>
+
+      <!-- ① 유저 관리 -->
+      <div id="tab-users" class="tab-panel active">
+        <div class="stats-grid" id="userStats">
+          <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="statTotal">-</div></div>
+          <div class="stat-card"><div class="stat-label">1청</div><div class="stat-value" id="stat1">-</div></div>
+          <div class="stat-card"><div class="stat-label">2청</div><div class="stat-value" id="stat2">-</div></div>
+          <div class="stat-card"><div class="stat-label">3청</div><div class="stat-value" id="stat3">-</div></div>
+          <div class="stat-card"><div class="stat-label">4청</div><div class="stat-value" id="stat4">-</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h2 class="card-title" style="margin:0;">유저 목록</h2>
+            <button class="btn btn-ghost btn-sm" id="refreshUsersBtn">새로고침</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>닉네임</th>
+                  <th>이름</th>
+                  <th>소속</th>
+                  <th>가입일</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody">
+                <tr><td colspan="5" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ② 체크인 현황 -->
+      <div id="tab-checkin" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">이번 주 제출 수</div><div class="stat-value" id="ciSubmission">-</div></div>
+          <div class="stat-card"><div class="stat-label">누적 실천 수</div><div class="stat-value" id="ciTotal">-</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h2 class="card-title" style="margin:0;">항목별 현황</h2>
+            <button class="btn btn-ghost btn-sm" id="refreshCheckinBtn">새로고침</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>항목</th><th>이번 주 체크 수</th></tr></thead>
+              <tbody id="checkinTableBody">
+                <tr><td colspan="2" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── 비밀번호 초기화 모달 ── -->
+  <div class="modal-overlay hidden" id="resetModal">
+    <div class="modal-box">
+      <h3 class="modal-title">비밀번호 초기화</h3>
+      <p class="modal-desc" id="resetModalDesc"></p>
+      <input type="text" id="newPwInput" class="input" placeholder="새 비밀번호 (4자 이상)" />
+      <div class="status" id="resetModalStatus"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn btn-ghost" style="flex:1;" id="resetCancelBtn">취소</button>
+        <button class="btn btn-danger" style="flex:1;" id="resetConfirmBtn">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE  = 'https://script.google.com/macros/s/AKfycbwE1WmjS02tZh-jUJOqGEOBobAG73RGpQhxkM9vbgk4xBrq5C-UB8r6vx9lVftaZLAobQ/exec';
+    let adminPw = '';
+    let targetNickname = '';
+
+    /* ── 로그인 ── */
+    async function doAdminLogin() {
+      const pw = document.getElementById('adminPwInput').value;
+      const statusEl = document.getElementById('gateStatus');
+      const btn = document.getElementById('gateBtn');
+      if (!pw) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
+
+      btn.disabled = true;
+      statusEl.textContent = '확인 중...';
+      statusEl.className = 'status';
+
+      try {
+        const res  = await post({ action: 'adminLogin', password: pw });
+        if (res.ok) {
+          adminPw = pw;
+          sessionStorage.setItem('adminPw', pw);
+          document.getElementById('authGate').style.display  = 'none';
+          document.getElementById('adminPanel').style.display = 'block';
+          loadUsers();
+          loadCheckin();
+        } else {
+          statusEl.textContent = '비밀번호가 틀렸어요.';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('gateBtn').addEventListener('click', doAdminLogin);
+    document.getElementById('adminPwInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doAdminLogin();
+    });
+
+    /* ── 탭 전환 ── */
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    /* ── 유저 목록 ── */
+    async function loadUsers() {
+      const tbody = document.getElementById('userTableBody');
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      try {
+        const res = await get({ action: 'getUsers', adminPw });
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">오류: ' + (res.error || '') + '</td></tr>'; return; }
+
+        const users = res.users;
+        // 통계
+        document.getElementById('statTotal').textContent = users.length;
+        ['1청','2청','3청','4청'].forEach((p, i) => {
+          document.getElementById('stat' + (i+1)).textContent = users.filter(u => u.parish === p).length;
+        });
+
+        if (!users.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">가입한 유저가 없어요.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = users.map(u => `
+          <tr>
+            <td><strong>${esc(u.nickname)}</strong></td>
+            <td>${esc(u.name)}</td>
+            <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
+            <td style="color:var(--sub);font-size:13px;">${formatDate(u.createdAt)}</td>
+            <td><button class="btn btn-ghost btn-sm" onclick="openResetModal('${esc(u.nickname)}','${esc(u.name)}')">비번 초기화</button></td>
+          </tr>`).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);">서버 연결 오류</td></tr>';
+      }
+    }
+    document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
+
+    /* ── 체크인 현황 ── */
+    async function loadCheckin() {
+      try {
+        const res = await get({ action: 'dashboard', adminPw, t: Date.now() });
+        if (!res.ok) return;
+        document.getElementById('ciSubmission').textContent = res.submissionCount;
+        document.getElementById('ciTotal').textContent      = res.totalCount;
+
+        const tbody = document.getElementById('checkinTableBody');
+        tbody.innerHTML = res.items.map(item => `
+          <tr>
+            <td>${esc(item)}</td>
+            <td><strong>${res.counts[item] || 0}</strong></td>
+          </tr>`).join('');
+      } catch(e) {}
+    }
+    document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
+
+    /* ── 비밀번호 초기화 모달 ── */
+    function openResetModal(nickname, name) {
+      targetNickname = nickname;
+      document.getElementById('resetModalDesc').textContent = `${name} (${nickname}) 의 비밀번호를 초기화해요.`;
+      document.getElementById('newPwInput').value = '';
+      document.getElementById('resetModalStatus').textContent = '';
+      document.getElementById('resetModalStatus').className = 'status';
+      document.getElementById('resetModal').classList.remove('hidden');
+    }
+
+    document.getElementById('resetCancelBtn').addEventListener('click', () => {
+      document.getElementById('resetModal').classList.add('hidden');
+    });
+
+    document.getElementById('resetConfirmBtn').addEventListener('click', async () => {
+      const newPw = document.getElementById('newPwInput').value.trim();
+      const statusEl = document.getElementById('resetModalStatus');
+      if (!newPw || newPw.length < 4) { statusEl.textContent = '4자 이상 입력해주세요.'; return; }
+
+      const btn = document.getElementById('resetConfirmBtn');
+      btn.disabled = true;
+      statusEl.textContent = '처리 중...';
+
+      try {
+        const res = await post({ action: 'adminResetPassword', adminPw, nickname: targetNickname, newPassword: newPw });
+        if (res.ok) {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '초기화 완료!';
+          setTimeout(() => document.getElementById('resetModal').classList.add('hidden'), 1000);
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    /* ── API 헬퍼 ── */
+    function get(params) {
+      const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+      return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+    }
+    function post(body) {
+      return fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      }).then(r => r.json());
+    }
+    function esc(s) { return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+    function formatDate(v) {
+      if (!v) return '-';
+      const d = new Date(v);
+      if (isNaN(d)) return String(v).slice(0,10);
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    /* ── 세션 복원 ── */
+    const saved = sessionStorage.getItem('adminPw');
+    if (saved) {
+      document.getElementById('adminPwInput').value = saved;
+      doAdminLogin();
+    }
+  </script>
+</body>
+</html>
