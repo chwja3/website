@@ -1,0 +1,318 @@
+const SPREADSHEET_ID = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q';
+const ADMIN_PASSWORD = 'ansj0214';
+const RAW_SHEET_NAME = 'raw_checkins';
+const CONFIG_SHEET_NAME = 'config';
+
+const SPIRIT_CARDS = [
+  {id:1, name:'사랑',    en:'Love',         emoji:'❤️ ',  g1:'#ff758c', g2:'#c0392b'},
+  {id:2, name:'희락',    en:'Joy',          emoji:'☀️ ',  g1:'#f7971e', g2:'#c0850a'},
+  {id:3, name:'화평',    en:'Peace',        emoji:'🕊️ ', g1:'#185a9d', g2:'#43cea2'},
+  {id:4, name:'오래참음', en:'Patience',     emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e'},
+  {id:5, name:'자비',    en:'Kindness',     emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788'},
+  {id:6, name:'양선',    en:'Goodness',     emoji:'🌿',  g1:'#11998e', g2:'#38ef7d'},
+  {id:7, name:'충성',    en:'Faithfulness', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c'},
+  {id:8, name:'온유',    en:'Gentleness',   emoji:'🌸',  g1:'#7b4fa6', g2:'#c084fc'},
+  {id:9, name:'절제',    en:'Self-Control', emoji:'🛡️ ', g1:'#1a3a5c', g2:'#2e86c1'},
+];
+
+// ── GET ──────────────────────────────────────────
+function doGet(e) {
+  const action = (e && e.parameter && e.parameter.action) || 'dashboard';
+
+  if (action === 'dashboard') return jsonOutput(getDashboardData());
+  if (action === 'userStatus') {
+    const userId  = e.parameter.userId  || '';
+    const weekKey = e.parameter.weekKey || '';
+    return jsonOutput(getUserStatus(userId, weekKey));
+  }
+  if (action === 'getUsers') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(getUsers());
+  }
+  if (action === 'getTabSettings') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(getTabSettings());
+  }
+
+  return jsonOutput({ ok: false, message: 'Unknown action' });
+}
+
+// ── POST ─────────────────────────────────────────
+function doPost(e) {
+  try {
+    const body   = JSON.parse(e.postData.contents || '{}');
+    const action = body.action;
+
+    if (action === 'submit') {
+      saveCheckin(body.items || [], body.userId || '', body.weekKey || '');
+      return jsonOutput({ ok: true });
+    }
+    if (action === 'drawCard') {
+      return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false));
+    }
+    if (action === 'adminLogin') {
+      const ok = body.password === ADMIN_PASSWORD;
+      return jsonOutput(ok ? { ok: true } : { error: 'wrong_password' });
+    }
+    if (action === 'adminResetPassword') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminResetPassword(body));
+    }
+    if (action === 'register') {
+      return jsonOutput(registerUser(body));
+    }
+    if (action === 'login') {
+      return jsonOutput(loginUser(body));
+    }
+    if (action === 'resetPassword') {
+      return jsonOutput(resetPassword(body));
+    }
+    if (action === 'setTabSettings') {
+      return jsonOutput(setTabSettings(body));
+    }
+
+    return jsonOutput({ ok: false, message: 'Unknown action' });
+  } catch (err) {
+    return jsonOutput({ ok: false, message: err.message });
+  }
+}
+
+// ── 기존 함수들 ───────────────────────────────────
+function getSpreadsheet() {
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
+}
+
+function getConfig() {
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
+  const weekTitle = sheet.getRange('B1').getValue();
+  const items     = sheet.getRange('A3:A100').getValues().flat().filter(Boolean);
+  return { weekTitle, items };
+}
+
+function saveCheckin(items, userId, weekKey) {
+  const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!cleanItems.length) throw new Error('No items selected');
+
+  const ss       = getSpreadsheet();
+  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
+  const config   = getConfig();
+  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
+
+  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(cleanItems), userId, weekKey]);
+}
+
+function getDashboardData() {
+  const ss       = getSpreadsheet();
+  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
+  const config   = getConfig();
+  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다.');
+
+  const lastRow = rawSheet.getLastRow();
+  const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 3).getValues() : [];
+
+  const currentWeekRows = values.filter(row => row[1] === config.weekTitle);
+  const counts = {};
+  config.items.forEach(item => counts[item] = 0);
+
+  currentWeekRows.forEach(row => {
+    try {
+      JSON.parse(row[2] || '[]').forEach(item => {
+        if (counts[item] !== undefined) counts[item]++;
+      });
+    } catch(e) {}
+  });
+
+  return {
+    ok: true,
+    weekTitle: config.weekTitle,
+    items: config.items,
+    counts,
+    totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
+    submissionCount: currentWeekRows.length,
+    tabSettings:     getTabSettings()
+  };
+}
+
+// ── 카드 시스템 ───────────────────────────────────
+function getOrCreateDrawSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('CardDraws');
+  if (!sheet) {
+    sheet = ss.insertSheet('CardDraws');
+    sheet.appendRow(['userId','weekKey','cardId','cardName','drawnAt']);
+  }
+  return sheet;
+}
+
+function getUserStatus(userId, weekKey) {
+  const ss = getSpreadsheet();
+  let submittedThisWeek = false, drawnThisWeek = false, weekCard = null;
+  const collection = [];
+
+  // 이번 주 제출 여부 확인
+  try {
+    const raw     = ss.getSheetByName(RAW_SHEET_NAME);
+    const lastRow = raw.getLastRow();
+    if (lastRow >= 2) {
+      const rows = raw.getRange(2, 1, lastRow - 1, 5).getValues();
+      for (const row of rows) {
+        if (String(row[3]) === userId && String(row[4]) === weekKey) {
+          submittedThisWeek = true; break;
+        }
+      }
+    }
+  } catch(e) {}
+
+  // 카드 뽑기 이력
+  try {
+    const draws = getOrCreateDrawSheet();
+    const last  = draws.getLastRow();
+    if (last >= 2) {
+      const rows = draws.getRange(2, 1, last - 1, 5).getValues();
+      for (const row of rows) {
+        if (String(row[0]) !== userId) continue;
+        const card = SPIRIT_CARDS.find(c => c.id === Number(row[2]));
+        if (!card) continue;
+        collection.push({...card, drawnAt: row[4]});
+        if (String(row[1]) === weekKey) { drawnThisWeek = true; weekCard = card; }
+      }
+    }
+  } catch(e) {}
+
+  return { ok: true, submittedThisWeek, drawnThisWeek, weekCard, collection };
+}
+
+function drawCard(userId, weekKey, testMode) {
+  if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
+
+  const ss  = getSpreadsheet();
+  const raw = ss.getSheetByName(RAW_SHEET_NAME);
+  let eligible = false;
+  try {
+    const last = raw.getLastRow();
+    if (last >= 2) {
+      const rows = raw.getRange(2, 1, last - 1, 5).getValues();
+      for (const row of rows) {
+        if (String(row[3]) === userId && String(row[4]) === weekKey) { eligible = true; break; }
+      }
+    }
+  } catch(e) {}
+  if (!testMode && !eligible) return { ok: false, error: '이번 주 체크 제출이 필요합니다.' };
+
+  const draws = getOrCreateDrawSheet();
+  const card  = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+  draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
+  return { ok: true, card };
+}
+
+// ── 탭 설정 ──────────────────────────────────────
+function getTabSettings() {
+  const sheet  = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  const prayer = sheet.getRange('B2').getValue();
+  const secret = sheet.getRange('B3').getValue();
+  return {
+    ok:     true,
+    prayer: prayer === '' ? true : Boolean(prayer),
+    secret: secret === '' ? true : Boolean(secret)
+  };
+}
+
+function setTabSettings(body) {
+  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  sheet.getRange('B2').setValue(body.prayer !== false);
+  sheet.getRange('B3').setValue(body.secret !== false);
+  return { ok: true };
+}
+
+// ── 유저 인증 ─────────────────────────────────────
+function registerUser(body) {
+  const sheet    = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const nickname = String(body.nickname || '').trim();
+  const password = String(body.password || '').trim();
+  const name     = String(body.name     || '').trim();
+  const parish   = String(body.parish   || '').trim();
+
+  if (!nickname || !password || !name || !parish) return { error: 'missing_fields' };
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === nickname) return { error: 'duplicate' };
+  }
+
+  sheet.appendRow([nickname, password, name, parish, new Date()]);
+  return { ok: true };
+}
+
+function loginUser(body) {
+  const sheet    = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const nickname = String(body.nickname || '').trim();
+  const password = String(body.password || '').trim();
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === nickname) {
+      if (String(data[i][1]).trim() === password) {
+        return { ok: true, parish: data[i][3] };
+      }
+      return { error: 'wrong_password' };
+    }
+  }
+  return { error: 'not_found' };
+}
+
+function resetPassword(body) {
+  const sheet       = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const nickname    = String(body.nickname    || '').trim();
+  const name        = String(body.name        || '').trim();
+  const parish      = String(body.parish      || '').trim();
+  const newPassword = String(body.newPassword || '').trim();
+
+  if (!newPassword || newPassword.length < 4) return { error: 'invalid_password' };
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === nickname &&
+        String(data[i][2]).trim() === name &&
+        String(data[i][3]).trim() === parish) {
+      sheet.getRange(i + 1, 2).setValue(newPassword);
+      return { ok: true };
+    }
+  }
+  return { error: 'not_found' };
+}
+
+function getUsers() {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const data  = sheet.getDataRange().getValues();
+  const users = [];
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    users.push({ nickname: data[i][0], name: data[i][2], parish: data[i][3], createdAt: data[i][4] });
+  }
+  return { ok: true, users };
+}
+
+function adminResetPassword(body) {
+  const sheet       = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const nickname    = String(body.nickname    || '').trim();
+  const newPassword = String(body.newPassword || '').trim();
+  if (!nickname || !newPassword) return { error: 'missing_fields' };
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === nickname) {
+      sheet.getRange(i + 1, 2).setValue(newPassword);
+      return { ok: true };
+    }
+  }
+  return { error: 'not_found' };
+}
+
+// ── 공통 ─────────────────────────────────────────
+function jsonOutput(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
