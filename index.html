@@ -1567,7 +1567,8 @@
       }
 
       document.addEventListener('touchstart', e => {
-        if (window.scrollY < 5 && !isRefreshing) {
+        const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+        if (scrollTop < 5 && !isRefreshing) {
           startY = e.touches[0].clientY;
           pulling = true;
         }
@@ -1576,8 +1577,8 @@
       document.addEventListener('touchmove', e => {
         if (!pulling) return;
         const dist = e.touches[0].clientY - startY;
+        if (dist > 0) e.preventDefault();
         if (dist > 10) {
-          e.preventDefault();
           indicator.classList.add('visible');
           spinner.textContent = dist >= THRESHOLD ? '↻' : '↓';
           ptrText.textContent  = dist >= THRESHOLD ? '놓으면 새로고침' : '당겨서 새로고침';
