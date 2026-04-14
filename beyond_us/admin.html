@@ -144,14 +144,14 @@
 
       <!-- 탭 -->
       <div class="tabs">
-        <button class="tab-btn active" data-tab="users">👥 유저 관리</button>
-        <button class="tab-btn" data-tab="checkin">📊 체크인 현황</button>
+        <button class="tab-btn active" data-tab="checkin">📊 체크인 현황</button>
+        <button class="tab-btn" data-tab="users">👥 유저 관리</button>
         <button class="tab-btn" data-tab="notice">📢 공지사항</button>
         <button class="tab-btn" data-tab="settings">⚙️ 탭 설정</button>
       </div>
 
       <!-- ① 유저 관리 -->
-      <div id="tab-users" class="tab-panel active">
+      <div id="tab-users" class="tab-panel">
         <div class="stats-grid" id="userStats">
           <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="statTotal">-</div></div>
           <div class="stat-card"><div class="stat-label">1청</div><div class="stat-value" id="stat1">-</div></div>
@@ -185,7 +185,7 @@
       </div>
 
       <!-- ② 체크인 현황 -->
-      <div id="tab-checkin" class="tab-panel">
+      <div id="tab-checkin" class="tab-panel active">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">이번 주 제출 수</div><div class="stat-value" id="ciSubmission">-</div></div>
           <div class="stat-card"><div class="stat-label">누적 실천 수</div><div class="stat-value" id="ciTotal">-</div></div>
