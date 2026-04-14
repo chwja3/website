@@ -727,6 +727,15 @@
     </div>
   </div>
 
+  <!-- ▣ 카드 상세 오버레이 -->
+  <div id="cardDetailOverlay" class="draw-overlay hidden" onclick="closeCardDetail()">
+    <button class="draw-close-btn" onclick="closeCardDetail()">✕</button>
+    <div class="draw-stage" onclick="event.stopPropagation()">
+      <div id="cardDetailWrap" style="width:200px;"></div>
+      <p id="cardDetailCnt" style="color:rgba(255,246,239,0.7); font-size:13px; font-weight:600;"></p>
+    </div>
+  </div>
+
   <!-- ▣ 앱 화면 -->
   <div id="appScreen" class="hidden">
 
@@ -1144,6 +1153,18 @@
       });
     });
 
+    /* ════ 카드 상세 오버레이 ════ */
+    function openCardDetail(cardId, cnt) {
+      const card = SPIRIT_CARDS.find(c => c.id === cardId);
+      if (!card) return;
+      document.getElementById('cardDetailWrap').innerHTML = makeCardHTML(card);
+      document.getElementById('cardDetailCnt').textContent = cnt > 1 ? `×${cnt} 보유` : '';
+      document.getElementById('cardDetailOverlay').classList.remove('hidden');
+    }
+    function closeCardDetail() {
+      document.getElementById('cardDetailOverlay').classList.add('hidden');
+    }
+
     /* ════ 카드 HTML 생성 ════ */
     function makeCardHTML(card) {
       return `
@@ -1242,7 +1263,7 @@
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
         return `
-          <div class="mini-card-wrap">
+          <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
             ${ghosts}
             <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${gStyle}">
               <div class="mini-card-label">${locked ? '' : '성령의 열매'}</div>
