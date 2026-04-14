@@ -435,6 +435,14 @@
       margin-top: 4px;
     }
     .mini-card-wrap { position: relative; }
+    .mini-card-ghost {
+      position: absolute; inset: 0;
+      border-radius: 12px;
+      border: 2px solid rgba(255,255,255,0.25);
+      opacity: 0.65;
+    }
+    .mini-card-ghost-1 { transform: rotate(-4deg) translateY(2px); }
+    .mini-card-ghost-2 { transform: rotate(5deg) translateY(3px); }
     .mini-card {
       border-radius: 12px;
       aspect-ratio: 3 / 4;
@@ -1226,10 +1234,17 @@
       grid.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = counts[card.id] || 0;
         const locked = cnt === 0;
+        const gStyle = locked ? '' : `background:linear-gradient(135deg,${card.g1},${card.g2})`;
+        const ghosts = !locked && cnt >= 2
+          ? (cnt >= 3
+              ? `<div class="mini-card-ghost mini-card-ghost-2" style="${gStyle}"></div>
+                 <div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`
+              : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
+          : '';
         return `
           <div class="mini-card-wrap">
-            <div class="mini-card ${locked ? 'mini-card-locked' : ''}"
-                 style="${locked ? '' : `background:linear-gradient(135deg,${card.g1},${card.g2})`}">
+            ${ghosts}
+            <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${gStyle}">
               <div class="mini-card-label">${locked ? '' : '성령의 열매'}</div>
               <div class="mini-card-emoji">${locked ? '?' : card.emoji}</div>
               <div class="mini-card-name">${locked ? '???' : card.name}</div>
