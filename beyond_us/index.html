@@ -1158,35 +1158,16 @@
       const card = SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
 
-      const W = 150, H = 210;
-      const OFFSET = 52; // 카드 간 수평 간격
-      const n = Math.min(cnt, 5); // 최대 5장까지 펼침
-      const fanAngles = {
-        1: [0],
-        2: [-9, 9],
-        3: [-16, 0, 16],
-        4: [-20, -7, 7, 20],
-        5: [-22, -11, 0, 11, 22],
-      }[n];
-
-      const containerW = W + (n - 1) * OFFSET;
-      const containerH = H + 28; // 회전 overflow 여유
-
-      const cardsHTML = fanAngles.map((angle, i) => `
-        <div style="position:absolute; width:${W}px; height:${H}px;
-          left:${i * OFFSET}px; top:10px;
-          transform:rotate(${angle}deg); transform-origin:center bottom;
-          border-radius:14px; overflow:hidden;
-          box-shadow:0 6px 20px rgba(0,0,0,0.5);">
+      const cardsHTML = Array.from({ length: cnt }, () => `
+        <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
           ${makeCardHTML(card)}
         </div>`).join('');
 
       const wrap = document.getElementById('cardDetailWrap');
-      wrap.style.cssText = `position:relative; width:${containerW}px; height:${containerH}px;`;
+      wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:320px;';
       wrap.innerHTML = cardsHTML;
 
-      const label = cnt > 5 ? `${cnt}장 보유` : cnt > 1 ? `${cnt}장` : '';
-      document.getElementById('cardDetailCnt').textContent = label;
+      document.getElementById('cardDetailCnt').textContent = cnt > 1 ? `${cnt}장 보유` : '';
       document.getElementById('cardDetailOverlay').classList.remove('hidden');
     }
     function closeCardDetail() {
