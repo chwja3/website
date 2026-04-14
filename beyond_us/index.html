@@ -1481,10 +1481,10 @@
       }).join('');
     }
     function getSubmittedToday() {
-      return JSON.parse(localStorage.getItem('beyondus_submitted_' + getTodayKey()) || '[]');
+      return JSON.parse(localStorage.getItem('beyondus_submitted_' + getWeekKey()) || '[]');
     }
     function saveSubmittedItems(items) {
-      const key = 'beyondus_submitted_' + getTodayKey();
+      const key = 'beyondus_submitted_' + getWeekKey();
       const merged = [...new Set([...getSubmittedToday(), ...items])];
       localStorage.setItem(key, JSON.stringify(merged));
     }
