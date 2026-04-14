@@ -34,6 +34,10 @@ function doGet(e) {
     return jsonOutput(getTabSettings());
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
+  if (action === 'getCardStats') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(getCardStats());
+  }
 
   return jsonOutput({ ok: false, message: 'Unknown action' });
 }
@@ -372,6 +376,36 @@ function editNotice(body) {
   sheet.getRange(rowIndex, 2).setValue(title);
   sheet.getRange(rowIndex, 3).setValue(content);
   return { ok: true };
+}
+
+// ── 카드 통계 ─────────────────────────────────────
+function getCardStats() {
+  const draws = getOrCreateDrawSheet();
+  const last  = draws.getLastRow();
+  if (last < 2) return { ok: true, cardCounts: {}, userStats: [], totalDraws: 0 };
+
+  const rows = draws.getRange(2, 1, last - 1, 5).getValues();
+  const cardCounts = {};
+  SPIRIT_CARDS.forEach(c => { cardCounts[c.id] = 0; });
+
+  const userMap = {};
+  rows.forEach(row => {
+    const userId = String(row[0]);
+    const cardId = Number(row[2]);
+    if (!userId) return;
+    cardCounts[cardId] = (cardCounts[cardId] || 0) + 1;
+    if (!userMap[userId]) userMap[userId] = { unique: new Set(), total: 0 };
+    userMap[userId].unique.add(cardId);
+    userMap[userId].total++;
+  });
+
+  const userStats = Object.entries(userMap).map(([nickname, s]) => ({
+    nickname,
+    unique: s.unique.size,
+    total:  s.total
+  })).sort((a, b) => b.unique - a.unique || b.total - a.total);
+
+  return { ok: true, cardCounts, userStats, totalDraws: rows.length };
 }
 
 // ── 공통 ─────────────────────────────────────────

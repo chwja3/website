@@ -144,10 +144,11 @@
 
       <!-- 탭 -->
       <div class="tabs">
-        <button class="tab-btn active" data-tab="checkin">📊 체크인 현황</button>
-        <button class="tab-btn" data-tab="users">👥 유저 관리</button>
-        <button class="tab-btn" data-tab="notice">📢 공지사항</button>
-        <button class="tab-btn" data-tab="settings">⚙️ 탭 설정</button>
+        <button class="tab-btn active" data-tab="checkin">📊 체크인</button>
+        <button class="tab-btn" data-tab="cards">🃏 카드</button>
+        <button class="tab-btn" data-tab="users">👥 유저</button>
+        <button class="tab-btn" data-tab="notice">📢 공지</button>
+        <button class="tab-btn" data-tab="settings">⚙️ 설정</button>
       </div>
 
       <!-- ① 유저 관리 -->
@@ -207,7 +208,37 @@
         </div>
       </div>
 
-      <!-- ③ 공지사항 -->
+      <!-- ③ 카드 현황 -->
+      <div id="tab-cards" class="tab-panel">
+        <div class="stats-grid" id="cardSummary">
+          <div class="stat-card"><div class="stat-label">총 뽑기 횟수</div><div class="stat-value" id="cardTotalDraws">-</div></div>
+          <div class="stat-card"><div class="stat-label">뽑기 참여자</div><div class="stat-value" id="cardTotalUsers">-</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h2 class="card-title" style="margin:0;">카드별 뽑힌 횟수</h2>
+            <button class="btn btn-ghost btn-sm" id="refreshCardsBtn">새로고침</button>
+          </div>
+          <div id="cardStatsGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px;">
+            <p style="color:var(--sub); font-size:14px; text-align:center; padding:20px; grid-column:1/-1;">불러오는 중...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">유저별 보유 현황</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>닉네임</th><th>보유 종수</th><th>총 뽑기</th></tr></thead>
+              <tbody id="cardUserTableBody">
+                <tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ 공지사항 -->
       <div id="tab-notice" class="tab-panel">
         <div class="card">
           <h2 class="card-title">공지사항 작성</h2>
@@ -315,6 +346,7 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'cards') loadCardStats();
       });
     });
 
@@ -369,6 +401,66 @@
       } catch(e) {}
     }
     document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
+
+    /* ── 카드 현황 ── */
+    const SPIRIT_CARDS_ADMIN = [
+      {id:1,name:'사랑',emoji:'❤️',g1:'#ff758c',g2:'#c0392b'},
+      {id:2,name:'희락',emoji:'☀️',g1:'#f7971e',g2:'#c0850a'},
+      {id:3,name:'화평',emoji:'🕊️',g1:'#185a9d',g2:'#43cea2'},
+      {id:4,name:'오래참음',emoji:'⏳',g1:'#8b6914',g2:'#c8a96e'},
+      {id:5,name:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788'},
+      {id:6,name:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d'},
+      {id:7,name:'충성',emoji:'⭐',g1:'#b5451b',g2:'#e8a87c'},
+      {id:8,name:'온유',emoji:'🌸',g1:'#7b4fa6',g2:'#c084fc'},
+      {id:9,name:'절제',emoji:'🛡️',g1:'#1a3a5c',g2:'#2e86c1'},
+    ];
+
+    async function loadCardStats() {
+      try {
+        const res = await get({ action: 'getCardStats', adminPw });
+        if (!res.ok) return;
+
+        document.getElementById('cardTotalDraws').textContent = res.totalDraws;
+        document.getElementById('cardTotalUsers').textContent = res.userStats.length;
+
+        // 카드별 현황
+        const grid = document.getElementById('cardStatsGrid');
+        grid.innerHTML = SPIRIT_CARDS_ADMIN.map(c => {
+          const cnt = res.cardCounts[c.id] || 0;
+          return `
+            <div style="border-radius:12px; padding:10px 6px; text-align:center;
+                        background:linear-gradient(135deg,${c.g1},${c.g2}); color:white;">
+              <div style="font-size:22px;">${c.emoji}</div>
+              <div style="font-size:11px; font-weight:800; margin:4px 0 2px;">${c.name}</div>
+              <div style="font-size:18px; font-weight:900;">${cnt}</div>
+              <div style="font-size:10px; opacity:.8;">회</div>
+            </div>`;
+        }).join('');
+
+        // 유저별 현황
+        const tbody = document.getElementById('cardUserTableBody');
+        if (!res.userStats.length) {
+          tbody.innerHTML = '<tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">뽑기 기록이 없어요.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = res.userStats.map(u => `
+          <tr>
+            <td><strong>${esc(u.nickname)}</strong></td>
+            <td>
+              <span style="font-weight:800;">${u.unique}</span>
+              <span style="color:var(--sub); font-size:12px;"> / 9종</span>
+              <div style="height:4px; background:var(--line); border-radius:4px; margin-top:4px;">
+                <div style="height:100%; width:${Math.round(u.unique/9*100)}%; background:linear-gradient(90deg,#f7971e,#ff758c); border-radius:4px;"></div>
+              </div>
+            </td>
+            <td style="color:var(--sub);">${u.total}회</td>
+          </tr>`).join('');
+      } catch(e) {
+        document.getElementById('cardUserTableBody').innerHTML =
+          '<tr><td colspan="3" style="color:var(--danger);">서버 연결 오류</td></tr>';
+      }
+    }
+    document.getElementById('refreshCardsBtn').addEventListener('click', loadCardStats);
 
     /* ── 비밀번호 초기화 모달 ── */
     function openResetModal(nickname, name) {
