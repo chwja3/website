@@ -1260,11 +1260,17 @@
     /* ════ 뽑기 오버레이 ════ */
     function openDrawOverlay() {
       pendingCard = null;
+      isFlipping = false;
       document.getElementById('packStage').classList.remove('hidden');
       document.getElementById('cardFlipStage').classList.add('hidden');
       document.getElementById('revealStage').classList.add('hidden');
       document.getElementById('drawPack').classList.remove('opening');
       document.getElementById('cardFlip').classList.remove('flipped');
+      document.getElementById('cardFace').innerHTML = `
+        <div class="card-face-back">
+          <span class="back-emoji">🃏</span>
+          <span class="back-label">BEYOND US</span>
+        </div>`;
       document.getElementById('drawOverlay').classList.remove('hidden');
     }
 
