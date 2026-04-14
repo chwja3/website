@@ -210,14 +210,11 @@
       <!-- ③ 공지사항 -->
       <div id="tab-notice" class="tab-panel">
         <div class="card">
-          <h2 class="card-title" id="noticeFormTitle">공지사항 작성</h2>
+          <h2 class="card-title">공지사항 작성</h2>
           <input type="text" id="noticeTitle" class="input" placeholder="제목" />
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
           <div class="status" id="noticePostStatus"></div>
-          <div style="display:flex; gap:8px; margin-top:4px;">
-            <button class="btn btn-ghost hidden" id="noticeCancelEditBtn" style="flex:1;">취소</button>
-            <button class="btn btn-primary" id="noticePostBtn" style="flex:1;">등록</button>
-          </div>
+          <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
         </div>
 
         <div class="card">
@@ -472,6 +469,32 @@
     /* ── 공지사항 ── */
     let cachedAdminNotices = [];
 
+    function noticeViewHTML(n) {
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div>
+            <div style="font-size:15px; font-weight:800; margin-bottom:4px;">${esc(n.title)}</div>
+            <div style="font-size:13px; color:var(--sub); white-space:pre-wrap;">${esc(n.content)}</div>
+            <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
+          </div>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button class="btn btn-ghost btn-sm" onclick="startInlineEdit(${n.rowIndex})">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteNotice(${n.rowIndex})">삭제</button>
+          </div>
+        </div>`;
+    }
+
+    function noticeEditHTML(n) {
+      return `
+        <input type="text" id="inlineTitle_${n.rowIndex}" class="input" value="${esc(n.title)}" style="margin-bottom:8px;" />
+        <textarea id="inlineContent_${n.rowIndex}" class="input" rows="4" style="resize:vertical; font-family:inherit; line-height:1.6; margin-bottom:6px;">${esc(n.content)}</textarea>
+        <div class="status" id="inlineStatus_${n.rowIndex}"></div>
+        <div style="display:flex; gap:8px; margin-top:4px;">
+          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="cancelInlineEdit(${n.rowIndex})">취소</button>
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveInlineEdit(${n.rowIndex})">저장</button>
+        </div>`;
+    }
+
     function renderAdminNotices(notices) {
       const list = document.getElementById('noticeAdminList');
       if (!notices.length) {
@@ -479,19 +502,53 @@
         return;
       }
       list.innerHTML = notices.map(n => `
-          <div style="padding:14px 0; border-bottom:1px solid var(--line);">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-              <div>
-                <div style="font-size:15px; font-weight:800; margin-bottom:4px;">${esc(n.title)}</div>
-                <div style="font-size:13px; color:var(--sub); white-space:pre-wrap;">${esc(n.content)}</div>
-                <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
-              </div>
-              <div style="display:flex; gap:6px; flex-shrink:0;">
-                <button class="btn btn-ghost btn-sm" onclick="openEditNotice(${n.rowIndex}, '${esc(n.title).replace(/'/g,"\\'")}', '${esc(n.content).replace(/\n/g,'\\n').replace(/'/g,"\\'")}')">수정</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteNotice(${n.rowIndex})">삭제</button>
-              </div>
-            </div>
-          </div>`).join('');
+        <div id="noticeItem_${n.rowIndex}" data-row="${n.rowIndex}" data-title="${esc(n.title)}" data-content="${esc(n.content)}" data-date="${n.createdAt}" style="padding:14px 0; border-bottom:1px solid var(--line);">
+          ${noticeViewHTML(n)}
+        </div>`).join('');
+    }
+
+    function startInlineEdit(rowIndex) {
+      const item = document.getElementById(`noticeItem_${rowIndex}`);
+      const n = {
+        rowIndex,
+        title:   item.dataset.title,
+        content: item.dataset.content,
+        createdAt: item.dataset.date
+      };
+      item.innerHTML = noticeEditHTML(n);
+      item.querySelector(`#inlineTitle_${rowIndex}`).focus();
+    }
+
+    function cancelInlineEdit(rowIndex) {
+      const item = document.getElementById(`noticeItem_${rowIndex}`);
+      const n = {
+        rowIndex,
+        title:   item.dataset.title,
+        content: item.dataset.content,
+        createdAt: item.dataset.date
+      };
+      item.innerHTML = noticeViewHTML(n);
+    }
+
+    async function saveInlineEdit(rowIndex) {
+      const item    = document.getElementById(`noticeItem_${rowIndex}`);
+      const title   = document.getElementById(`inlineTitle_${rowIndex}`).value.trim();
+      const content = document.getElementById(`inlineContent_${rowIndex}`).value.trim();
+      const statusEl = document.getElementById(`inlineStatus_${rowIndex}`);
+      if (!title || !content) { statusEl.textContent = '제목과 내용을 입력해주세요.'; return; }
+      statusEl.textContent = '저장 중...';
+      try {
+        const res = await post({ action: 'editNotice', adminPw, rowIndex, title, content });
+        if (res.ok) {
+          item.dataset.title   = title;
+          item.dataset.content = content;
+          cancelInlineEdit(rowIndex);
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      }
     }
 
     async function loadAdminNotices() {
@@ -518,33 +575,6 @@
       renderAdminNotices(filtered);
     });
 
-    let editTargetRow = null;
-
-    function setNoticeFormMode(mode) { // 'create' | 'edit'
-      const isEdit = mode === 'edit';
-      document.getElementById('noticeFormTitle').textContent = isEdit ? '공지사항 수정' : '공지사항 작성';
-      document.getElementById('noticePostBtn').textContent   = isEdit ? '저장' : '등록';
-      document.getElementById('noticeCancelEditBtn').classList.toggle('hidden', !isEdit);
-    }
-
-    function openEditNotice(rowIndex, title, content) {
-      editTargetRow = rowIndex;
-      document.getElementById('noticeTitle').value   = title;
-      document.getElementById('noticeContent').value = content;
-      document.getElementById('noticePostStatus').textContent = '';
-      document.getElementById('noticePostStatus').className  = 'status';
-      setNoticeFormMode('edit');
-      document.getElementById('noticeTitle').focus();
-      document.getElementById('tab-notice').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    document.getElementById('noticeCancelEditBtn').addEventListener('click', () => {
-      editTargetRow = null;
-      document.getElementById('noticeTitle').value   = '';
-      document.getElementById('noticeContent').value = '';
-      document.getElementById('noticePostStatus').textContent = '';
-      setNoticeFormMode('create');
-    });
 
     async function deleteNotice(rowIndex) {
       if (!confirm('이 공지사항을 삭제할까요?')) return;
@@ -561,22 +591,16 @@
       const statusEl = document.getElementById('noticePostStatus');
       if (!title || !content) { statusEl.textContent = '제목과 내용을 모두 입력해주세요.'; return; }
       const btn = document.getElementById('noticePostBtn');
-      const isEdit = editTargetRow !== null;
       btn.disabled = true;
-      statusEl.textContent = isEdit ? '저장 중...' : '등록 중...';
+      statusEl.textContent = '등록 중...';
       statusEl.className = 'status';
       try {
-        const body = isEdit
-          ? { action: 'editNotice', adminPw, rowIndex: editTargetRow, title, content }
-          : { action: 'postNotice', adminPw, title, content };
-        const res = await post(body);
+        const res = await post({ action: 'postNotice', adminPw, title, content });
         if (res.ok) {
           statusEl.className = 'status ok';
-          statusEl.textContent = isEdit ? '수정되었어요!' : '등록되었어요!';
+          statusEl.textContent = '등록되었어요!';
           document.getElementById('noticeTitle').value = '';
           document.getElementById('noticeContent').value = '';
-          editTargetRow = null;
-          setNoticeFormMode('create');
           loadAdminNotices();
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
