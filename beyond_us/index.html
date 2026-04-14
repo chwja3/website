@@ -765,6 +765,7 @@
         <div class="wrap">
           <section class="card" style="margin-top:16px;">
             <h2 class="card-title">공지사항</h2>
+            <input type="search" id="noticeSearch" placeholder="🔍 검색" style="width:100%; padding:10px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--primary-soft); color:var(--text); outline:none; margin-bottom:16px; box-sizing:border-box;" />
             <div id="noticeList"><p class="notice-empty">불러오는 중...</p></div>
           </section>
         </div>
@@ -1633,6 +1634,23 @@
       document.getElementById('drawerNoticeDot').classList.remove('visible');
     }
 
+    function renderNoticeList(notices, seen) {
+      const list = document.getElementById('noticeList');
+      if (!notices.length) {
+        list.innerHTML = '<p class="notice-empty">검색 결과가 없어요.</p>';
+        return;
+      }
+      list.innerHTML = notices.map(n => {
+        const isNew = !seen.includes(n.id);
+        return `
+        <div class="notice-item">
+          <div class="notice-title">📢 ${escHtml(n.title)}${isNew ? ' <span style="font-size:10px;background:#ef4444;color:white;border-radius:999px;padding:1px 7px;font-weight:700;vertical-align:middle;">NEW</span>' : ''}</div>
+          <div class="notice-content">${escHtml(n.content)}</div>
+          <div class="notice-date">${formatNoticeDate(n.createdAt)}</div>
+        </div>`;
+      }).join('');
+    }
+
     async function loadNotices() {
       const list = document.getElementById('noticeList');
       try {
@@ -1643,21 +1661,20 @@
           return;
         }
         cachedNotices = res.notices;
-        const seen = getSeenIds();
-        list.innerHTML = res.notices.map(n => {
-          const isNew = !seen.includes(n.id);
-          return `
-          <div class="notice-item">
-            <div class="notice-title">📢 ${escHtml(n.title)}${isNew ? ' <span style="font-size:10px;background:#ef4444;color:white;border-radius:999px;padding:1px 7px;font-weight:700;vertical-align:middle;">NEW</span>' : ''}</div>
-            <div class="notice-content">${escHtml(n.content)}</div>
-            <div class="notice-date">${formatNoticeDate(n.createdAt)}</div>
-          </div>`;
-        }).join('');
+        renderNoticeList(cachedNotices, getSeenIds());
         updateNoticeDot();
       } catch(e) {
         list.innerHTML = '<p class="notice-empty">불러오기 실패. 잠시 후 다시 시도해주세요.</p>';
       }
     }
+
+    document.getElementById('noticeSearch').addEventListener('input', function() {
+      const q = this.value.trim().toLowerCase();
+      const filtered = q
+        ? cachedNotices.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
+        : cachedNotices;
+      renderNoticeList(filtered, getSeenIds());
+    });
     function escHtml(s) {
       return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
     }

@@ -218,10 +218,11 @@
         </div>
 
         <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h2 class="card-title" style="margin:0;">등록된 공지사항</h2>
             <button class="btn btn-ghost btn-sm" id="refreshNoticeBtn">새로고침</button>
           </div>
+          <input type="search" id="adminNoticeSearch" placeholder="🔍 검색" class="input" style="margin-bottom:12px;" />
           <div id="noticeAdminList"><p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">불러오는 중...</p></div>
         </div>
       </div>
@@ -466,15 +467,15 @@
     });
 
     /* ── 공지사항 ── */
-    async function loadAdminNotices() {
+    let cachedAdminNotices = [];
+
+    function renderAdminNotices(notices) {
       const list = document.getElementById('noticeAdminList');
-      try {
-        const res = await get({ action: 'getNotices' });
-        if (!res.ok || !res.notices.length) {
-          list.innerHTML = '<p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">등록된 공지사항이 없어요.</p>';
-          return;
-        }
-        list.innerHTML = res.notices.map(n => `
+      if (!notices.length) {
+        list.innerHTML = '<p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">검색 결과가 없어요.</p>';
+        return;
+      }
+      list.innerHTML = notices.map(n => `
           <div style="padding:14px 0; border-bottom:1px solid var(--line);">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
               <div>
@@ -485,10 +486,31 @@
               <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="deleteNotice(${n.rowIndex})">삭제</button>
             </div>
           </div>`).join('');
+    }
+
+    async function loadAdminNotices() {
+      const list = document.getElementById('noticeAdminList');
+      try {
+        const res = await get({ action: 'getNotices' });
+        if (!res.ok || !res.notices.length) {
+          cachedAdminNotices = [];
+          list.innerHTML = '<p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">등록된 공지사항이 없어요.</p>';
+          return;
+        }
+        cachedAdminNotices = res.notices;
+        renderAdminNotices(cachedAdminNotices);
       } catch(e) {
         list.innerHTML = '<p style="color:var(--danger); font-size:14px;">서버 연결 오류</p>';
       }
     }
+
+    document.getElementById('adminNoticeSearch').addEventListener('input', function() {
+      const q = this.value.trim().toLowerCase();
+      const filtered = q
+        ? cachedAdminNotices.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
+        : cachedAdminNotices;
+      renderAdminNotices(filtered);
+    });
 
     async function deleteNotice(rowIndex) {
       if (!confirm('이 공지사항을 삭제할까요?')) return;
