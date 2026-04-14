@@ -210,11 +210,14 @@
       <!-- ③ 공지사항 -->
       <div id="tab-notice" class="tab-panel">
         <div class="card">
-          <h2 class="card-title">공지사항 작성</h2>
+          <h2 class="card-title" id="noticeFormTitle">공지사항 작성</h2>
           <input type="text" id="noticeTitle" class="input" placeholder="제목" />
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
           <div class="status" id="noticePostStatus"></div>
-          <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
+          <div style="display:flex; gap:8px; margin-top:4px;">
+            <button class="btn btn-ghost hidden" id="noticeCancelEditBtn" style="flex:1;">취소</button>
+            <button class="btn btn-primary" id="noticePostBtn" style="flex:1;">등록</button>
+          </div>
         </div>
 
         <div class="card">
@@ -253,20 +256,6 @@
   </div>
 
   <!-- ── 비밀번호 초기화 모달 ── -->
-  <!-- ── 공지 수정 모달 ── -->
-  <div class="modal-overlay hidden" id="editNoticeModal">
-    <div class="modal-box" style="max-width:400px;">
-      <h3 class="modal-title">공지사항 수정</h3>
-      <input type="text" id="editNoticeTitle" class="input" placeholder="제목" />
-      <textarea id="editNoticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
-      <div class="status" id="editNoticeStatus"></div>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <button class="btn btn-ghost" style="flex:1;" id="editNoticeCancelBtn">취소</button>
-        <button class="btn btn-primary" style="flex:1;" id="editNoticeConfirmBtn">저장</button>
-      </div>
-    </div>
-  </div>
-
   <div class="modal-overlay hidden" id="resetModal">
     <div class="modal-box">
       <h3 class="modal-title">비밀번호 초기화</h3>
@@ -530,42 +519,31 @@
     });
 
     let editTargetRow = null;
+
+    function setNoticeFormMode(mode) { // 'create' | 'edit'
+      const isEdit = mode === 'edit';
+      document.getElementById('noticeFormTitle').textContent = isEdit ? '공지사항 수정' : '공지사항 작성';
+      document.getElementById('noticePostBtn').textContent   = isEdit ? '저장' : '등록';
+      document.getElementById('noticeCancelEditBtn').classList.toggle('hidden', !isEdit);
+    }
+
     function openEditNotice(rowIndex, title, content) {
       editTargetRow = rowIndex;
-      document.getElementById('editNoticeTitle').value = title;
-      document.getElementById('editNoticeContent').value = content;
-      document.getElementById('editNoticeStatus').textContent = '';
-      document.getElementById('editNoticeStatus').className = 'status';
-      document.getElementById('editNoticeModal').classList.remove('hidden');
+      document.getElementById('noticeTitle').value   = title;
+      document.getElementById('noticeContent').value = content;
+      document.getElementById('noticePostStatus').textContent = '';
+      document.getElementById('noticePostStatus').className  = 'status';
+      setNoticeFormMode('edit');
+      document.getElementById('noticeTitle').focus();
+      document.getElementById('tab-notice').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    document.getElementById('editNoticeCancelBtn').addEventListener('click', () => {
-      document.getElementById('editNoticeModal').classList.add('hidden');
-    });
-    document.getElementById('editNoticeConfirmBtn').addEventListener('click', async () => {
-      const title   = document.getElementById('editNoticeTitle').value.trim();
-      const content = document.getElementById('editNoticeContent').value.trim();
-      const statusEl = document.getElementById('editNoticeStatus');
-      if (!title || !content) { statusEl.textContent = '제목과 내용을 입력해주세요.'; return; }
-      const btn = document.getElementById('editNoticeConfirmBtn');
-      btn.disabled = true;
-      statusEl.textContent = '저장 중...';
-      try {
-        const res = await post({ action: 'editNotice', adminPw, rowIndex: editTargetRow, title, content });
-        if (res.ok) {
-          statusEl.className = 'status ok';
-          statusEl.textContent = '저장되었어요!';
-          setTimeout(() => {
-            document.getElementById('editNoticeModal').classList.add('hidden');
-            loadAdminNotices();
-          }, 800);
-        } else {
-          statusEl.textContent = '오류: ' + (res.error || '실패');
-        }
-      } catch(e) {
-        statusEl.textContent = '연결 오류';
-      } finally {
-        btn.disabled = false;
-      }
+
+    document.getElementById('noticeCancelEditBtn').addEventListener('click', () => {
+      editTargetRow = null;
+      document.getElementById('noticeTitle').value   = '';
+      document.getElementById('noticeContent').value = '';
+      document.getElementById('noticePostStatus').textContent = '';
+      setNoticeFormMode('create');
     });
 
     async function deleteNotice(rowIndex) {
@@ -583,16 +561,22 @@
       const statusEl = document.getElementById('noticePostStatus');
       if (!title || !content) { statusEl.textContent = '제목과 내용을 모두 입력해주세요.'; return; }
       const btn = document.getElementById('noticePostBtn');
+      const isEdit = editTargetRow !== null;
       btn.disabled = true;
-      statusEl.textContent = '등록 중...';
+      statusEl.textContent = isEdit ? '저장 중...' : '등록 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'postNotice', adminPw, title, content });
+        const body = isEdit
+          ? { action: 'editNotice', adminPw, rowIndex: editTargetRow, title, content }
+          : { action: 'postNotice', adminPw, title, content };
+        const res = await post(body);
         if (res.ok) {
           statusEl.className = 'status ok';
-          statusEl.textContent = '등록되었어요!';
+          statusEl.textContent = isEdit ? '수정되었어요!' : '등록되었어요!';
           document.getElementById('noticeTitle').value = '';
           document.getElementById('noticeContent').value = '';
+          editTargetRow = null;
+          setNoticeFormMode('create');
           loadAdminNotices();
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
