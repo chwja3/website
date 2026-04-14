@@ -79,6 +79,10 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(deleteNotice(body));
     }
+    if (action === 'editNotice') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(editNotice(body));
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -355,6 +359,18 @@ function deleteNotice(body) {
   const rowIndex = Number(body.rowIndex);
   if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
   getOrCreateNoticeSheet().deleteRow(rowIndex);
+  return { ok: true };
+}
+
+function editNotice(body) {
+  const rowIndex = Number(body.rowIndex);
+  const title   = String(body.title   || '').trim();
+  const content = String(body.content || '').trim();
+  if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
+  if (!title || !content) return { error: 'missing_fields' };
+  const sheet = getOrCreateNoticeSheet();
+  sheet.getRange(rowIndex, 2).setValue(title);
+  sheet.getRange(rowIndex, 3).setValue(content);
   return { ok: true };
 }
 

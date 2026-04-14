@@ -253,6 +253,20 @@
   </div>
 
   <!-- ── 비밀번호 초기화 모달 ── -->
+  <!-- ── 공지 수정 모달 ── -->
+  <div class="modal-overlay hidden" id="editNoticeModal">
+    <div class="modal-box" style="max-width:400px;">
+      <h3 class="modal-title">공지사항 수정</h3>
+      <input type="text" id="editNoticeTitle" class="input" placeholder="제목" />
+      <textarea id="editNoticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
+      <div class="status" id="editNoticeStatus"></div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn btn-ghost" style="flex:1;" id="editNoticeCancelBtn">취소</button>
+        <button class="btn btn-primary" style="flex:1;" id="editNoticeConfirmBtn">저장</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="resetModal">
     <div class="modal-box">
       <h3 class="modal-title">비밀번호 초기화</h3>
@@ -483,7 +497,10 @@
                 <div style="font-size:13px; color:var(--sub); white-space:pre-wrap;">${esc(n.content)}</div>
                 <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
               </div>
-              <button class="btn btn-danger btn-sm" style="flex-shrink:0;" onclick="deleteNotice(${n.rowIndex})">삭제</button>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="btn btn-ghost btn-sm" onclick="openEditNotice(${n.rowIndex}, '${esc(n.title).replace(/'/g,"\\'")}', '${esc(n.content).replace(/\n/g,'\\n').replace(/'/g,"\\'")}')">수정</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteNotice(${n.rowIndex})">삭제</button>
+              </div>
             </div>
           </div>`).join('');
     }
@@ -510,6 +527,45 @@
         ? cachedAdminNotices.filter(n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q))
         : cachedAdminNotices;
       renderAdminNotices(filtered);
+    });
+
+    let editTargetRow = null;
+    function openEditNotice(rowIndex, title, content) {
+      editTargetRow = rowIndex;
+      document.getElementById('editNoticeTitle').value = title;
+      document.getElementById('editNoticeContent').value = content;
+      document.getElementById('editNoticeStatus').textContent = '';
+      document.getElementById('editNoticeStatus').className = 'status';
+      document.getElementById('editNoticeModal').classList.remove('hidden');
+    }
+    document.getElementById('editNoticeCancelBtn').addEventListener('click', () => {
+      document.getElementById('editNoticeModal').classList.add('hidden');
+    });
+    document.getElementById('editNoticeConfirmBtn').addEventListener('click', async () => {
+      const title   = document.getElementById('editNoticeTitle').value.trim();
+      const content = document.getElementById('editNoticeContent').value.trim();
+      const statusEl = document.getElementById('editNoticeStatus');
+      if (!title || !content) { statusEl.textContent = '제목과 내용을 입력해주세요.'; return; }
+      const btn = document.getElementById('editNoticeConfirmBtn');
+      btn.disabled = true;
+      statusEl.textContent = '저장 중...';
+      try {
+        const res = await post({ action: 'editNotice', adminPw, rowIndex: editTargetRow, title, content });
+        if (res.ok) {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '저장되었어요!';
+          setTimeout(() => {
+            document.getElementById('editNoticeModal').classList.add('hidden');
+            loadAdminNotices();
+          }, 800);
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     async function deleteNotice(rowIndex) {
