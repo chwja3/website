@@ -802,7 +802,17 @@
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
             <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
-            <p class="card-sub">오늘 실천한 항목이 있다면 체크 후 제출해주세요.</p>
+            <p class="card-sub" id="missionCardSub">오늘 실천한 항목이 있다면 체크 후 제출해주세요.</p>
+            <div id="scoreProgressWrap" style="display:none; margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:13px; font-weight:700; color:var(--text);">이번 주 누적 점수</span>
+                <span style="font-size:13px; font-weight:800;" id="scoreProgressText"></span>
+              </div>
+              <div style="height:8px; background:var(--line); border-radius:999px; overflow:hidden;">
+                <div id="scoreProgressBar" style="height:100%; background:linear-gradient(90deg,#f7971e,#ff758c); border-radius:999px; width:0%; transition:width 0.4s;"></div>
+              </div>
+              <p style="font-size:12px; color:var(--sub); margin-top:6px; margin-bottom:0;" id="scoreProgressHint"></p>
+            </div>
             <form id="checkForm">
               <div class="check-list" id="checkList"></div>
               <div class="actions">
@@ -1305,6 +1315,7 @@
       }
       renderDrawSection();
       renderCollection();
+      updateScoreProgress();
     }
 
     /* ════ 뽑기 오버레이 ════ */
@@ -1460,9 +1471,29 @@
       if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
     }
 
+    function updateScoreProgress() {
+      const wrap = document.getElementById('scoreProgressWrap');
+      if (!currentNickname || !userStatus || userStatus.error || !lastConfigData) { wrap.style.display = 'none'; return; }
+      const ws = userStatus.weekScore || 0;
+      const dt = userStatus.drawThreshold || lastConfigData.drawThreshold || 6;
+      const pct = Math.min(100, Math.round(ws / dt * 100));
+      wrap.style.display = '';
+      document.getElementById('scoreProgressText').textContent = `${ws} / ${dt}점`;
+      document.getElementById('scoreProgressBar').style.width = pct + '%';
+      const hint = document.getElementById('scoreProgressHint');
+      if (ws >= dt) {
+        hint.textContent = '뽑기 기준 달성! 카드 뽑기가 가능해요 🎉';
+        hint.style.color = 'var(--success)';
+      } else {
+        hint.textContent = `앞으로 ${dt - ws}점 더 모으면 카드 뽑기권 획득!`;
+        hint.style.color = 'var(--sub)';
+      }
+    }
+
     function renderConfig(data) {
       lastConfigData = data;
       weekTitleEl.textContent = data.weekTitle;
+      document.getElementById('missionCardSub').textContent = `이번 주 ${data.drawThreshold}점 이상 모으면 카드 뽑기권 획득!`;
       checkListEl.innerHTML = '';
       const submittedToday = getSubmittedToday();
       data.items.forEach((item, i) => {
