@@ -1,5 +1,5 @@
 const SPREADSHEET_ID = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q';
-const ADMIN_PASSWORD = 'ansj0214';
+const ADMIN_PASSWORD = 'zmsdmsgP';
 const RAW_SHEET_NAME = 'raw_checkins';
 const CONFIG_SHEET_NAME = 'config';
 
@@ -34,6 +34,15 @@ function doGet(e) {
     return jsonOutput(getTabSettings());
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
+  if (action === 'getCurrentWeek') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+    return jsonOutput({ ok: true, week: Number(sheet.getRange('B1').getValue()) || 1 });
+  }
+  if (action === 'getMissionConfig') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(getMissionConfig(Number(e.parameter.week) || 1));
+  }
   if (action === 'getCardStats') {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getCardStats());
@@ -49,7 +58,7 @@ function doPost(e) {
     const action = body.action;
 
     if (action === 'submit') {
-      saveCheckin(body.items || [], body.userId || '', body.weekKey || '');
+      saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0);
       return jsonOutput({ ok: true });
     }
     if (action === 'drawCard') {
@@ -75,6 +84,18 @@ function doPost(e) {
     if (action === 'setTabSettings') {
       return jsonOutput(setTabSettings(body));
     }
+    if (action === 'setCurrentWeek') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      const week = Number(body.week);
+      if (!week || week < 1 || week > 6) return jsonOutput({ error: 'invalid_week' });
+      const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+      sheet.getRange('B1').setValue(week);
+      return jsonOutput({ ok: true, week });
+    }
+    if (action === 'setMissionConfig') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(setMissionConfig(body));
+    }
     if (action === 'postNotice') {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(postNotice(body));
@@ -94,7 +115,16 @@ function doPost(e) {
   }
 }
 
-// ── 기존 함수들 ───────────────────────────────────
+// ── config 시트 구조 ──────────────────────────────
+// B1: 현재 주차 번호 (1~6) ← 어드민에서 변경
+// B2: prayer 탭 on/off
+// B3: secret 탭 on/off
+//
+// 주차별 데이터 (6행 단위 블록):
+// startRow = (week - 1) * 6 + 5
+// startRow+0: B=주차 제목, C=drawThreshold
+// startRow+1~4: A=항목 텍스트, B=점수
+
 function getSpreadsheet() {
   return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
@@ -102,12 +132,29 @@ function getSpreadsheet() {
 function getConfig() {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
-  const weekTitle = sheet.getRange('B1').getValue();
-  const items     = sheet.getRange('A3:A100').getValues().flat().filter(Boolean);
-  return { weekTitle, items };
+
+  const currentWeek   = Number(sheet.getRange('B1').getValue()) || 1;
+  const startRow      = (currentWeek - 1) * 6 + 5;
+  const weekTitle     = sheet.getRange(startRow, 2).getValue();
+  const drawThreshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
+
+  const rawItems = sheet.getRange(startRow + 1, 1, 4, 2).getValues();
+  const items  = [];
+  const scores = {};
+  rawItems.forEach(([item, score]) => {
+    if (!item) return;
+    const key = String(item);
+    items.push(key);
+    scores[key] = Number(score) || 1;
+  });
+  return { weekTitle, items, scores, drawThreshold, currentWeek };
 }
 
-function saveCheckin(items, userId, weekKey) {
+// ── raw_checkins 컬럼 구조 ────────────────────────
+// [0] timestamp  [1] weekTitle  [2] items_json
+// [3] userId     [4] weekKey    [5] dateKey  [6] score
+
+function saveCheckin(items, userId, weekKey, dateKey, score) {
   const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!cleanItems.length) throw new Error('No items selected');
 
@@ -116,7 +163,8 @@ function saveCheckin(items, userId, weekKey) {
   const config   = getConfig();
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
 
-  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(cleanItems), userId, weekKey]);
+  const today = dateKey || Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(cleanItems), userId, weekKey, today, Number(score) || 0]);
 }
 
 function getDashboardData() {
@@ -126,7 +174,7 @@ function getDashboardData() {
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다.');
 
   const lastRow = rawSheet.getLastRow();
-  const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 3).getValues() : [];
+  const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 7).getValues() : [];
 
   const currentWeekRows = values.filter(row => row[1] === config.weekTitle);
   const counts = {};
@@ -142,8 +190,10 @@ function getDashboardData() {
 
   return {
     ok: true,
-    weekTitle: config.weekTitle,
-    items: config.items,
+    weekTitle:       config.weekTitle,
+    items:           config.items,
+    scores:          config.scores,
+    drawThreshold:   config.drawThreshold,
     counts,
     totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
     submissionCount: currentWeekRows.length,
@@ -163,23 +213,34 @@ function getOrCreateDrawSheet() {
 }
 
 function getUserStatus(userId, weekKey) {
-  const ss = getSpreadsheet();
-  let submittedThisWeek = false, drawnThisWeek = false, weekCard = null;
+  const ss     = getSpreadsheet();
+  const config = getConfig();
+  let weekScore = 0, drawnThisWeek = false, weekCard = null;
   const collection = [];
+  const todayItems = [];
 
-  // 이번 주 제출 여부 확인
+  const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+
+  // 이번 주 누적 점수 + 오늘 체크한 항목 확인
   try {
     const raw     = ss.getSheetByName(RAW_SHEET_NAME);
     const lastRow = raw.getLastRow();
     if (lastRow >= 2) {
-      const rows = raw.getRange(2, 1, lastRow - 1, 5).getValues();
+      const rows = raw.getRange(2, 1, lastRow - 1, 7).getValues();
       for (const row of rows) {
         if (String(row[3]) === userId && String(row[4]) === weekKey) {
-          submittedThisWeek = true; break;
+          weekScore += Number(row[6]) || 0;
+          if (String(row[5]) === today) {
+            try {
+              JSON.parse(row[2] || '[]').forEach(item => todayItems.push(item));
+            } catch(e) {}
+          }
         }
       }
     }
   } catch(e) {}
+
+  const canDraw = weekScore >= config.drawThreshold;
 
   // 카드 뽑기 이력
   try {
@@ -197,28 +258,54 @@ function getUserStatus(userId, weekKey) {
     }
   } catch(e) {}
 
-  return { ok: true, submittedThisWeek, drawnThisWeek, weekCard, collection };
+  return {
+    ok: true,
+    weekScore,
+    drawThreshold: config.drawThreshold,
+    canDraw,
+    drawnThisWeek,
+    weekCard,
+    collection,
+    todayItems
+  };
 }
 
 function drawCard(userId, weekKey, testMode) {
   if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
 
-  const ss  = getSpreadsheet();
-  const raw = ss.getSheetByName(RAW_SHEET_NAME);
-  let eligible = false;
+  const config = getConfig();
+  const ss     = getSpreadsheet();
+  const raw    = ss.getSheetByName(RAW_SHEET_NAME);
+  let weekScore = 0;
+
   try {
     const last = raw.getLastRow();
     if (last >= 2) {
-      const rows = raw.getRange(2, 1, last - 1, 5).getValues();
+      const rows = raw.getRange(2, 1, last - 1, 7).getValues();
       for (const row of rows) {
-        if (String(row[3]) === userId && String(row[4]) === weekKey) { eligible = true; break; }
+        if (String(row[3]) === userId && String(row[4]) === weekKey) {
+          weekScore += Number(row[6]) || 0;
+        }
       }
     }
   } catch(e) {}
-  if (!testMode && !eligible) return { ok: false, error: '이번 주 체크 제출이 필요합니다.' };
+
+  if (!testMode && weekScore < config.drawThreshold) {
+    return { ok: false, error: `뽑기 기준(${config.drawThreshold}점)에 아직 도달하지 못했습니다.` };
+  }
 
   const draws = getOrCreateDrawSheet();
-  const card  = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+  const last  = draws.getLastRow();
+  if (!testMode && last >= 2) {
+    const rows = draws.getRange(2, 1, last - 1, 2).getValues();
+    for (const row of rows) {
+      if (String(row[0]) === userId && String(row[1]) === weekKey) {
+        return { ok: false, error: '이번 주에 이미 뽑았습니다.' };
+      }
+    }
+  }
+
+  const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
   draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
   return { ok: true, card };
 }
@@ -406,6 +493,99 @@ function getCardStats() {
   })).sort((a, b) => b.unique - a.unique || b.total - a.total);
 
   return { ok: true, cardCounts, userStats, totalDraws: rows.length };
+}
+
+// ── 전체 주차 데이터 초기 세팅 (Apps Script 편집기에서 1회 실행) ──
+// 사용법: setupAllWeeks() 실행 → 이후 어드민에서 주차만 변경
+const ALL_WEEK_DATA = [
+  { title: '1주차 5/10',  threshold: 6, items: [
+    ['이번주 예배 송리스트 전체 듣기', 2],
+    ['손기도에 손대고 그 자리에서 중보기도하기', 1],
+    ['"장로님/권사님/집사님 안녕하세요"하고 먼저 불러 인사하기', 1],
+    ['밥 먹기 전에 식기도하기', 1],
+  ]},
+  { title: '2주차 5/17', threshold: 6, items: [
+    ['아침 첫 알람 끈 직후 30초 기도하기 (다시 자고 지각 금지)', 1],
+    ['5분 동안 폰 대신 창 밖이나 하늘보기', 1],
+    ['자신이 소속된 "CLUB" 활동 참석하기 (없다면 새로 가입하기)', 2],
+    ['학교와 직장에서 먼저 웃으며 인사하기', 1],
+  ]},
+  { title: '3주차 5/24', threshold: 5, items: [
+    ['예배 시작 전 10분 먼저 와서 앉아 있기', 1],
+    ['지금 붙들고 있는 걱정 1가지 적고 "주님께 맡깁니다" 쓰기', 1],
+    ['셀에서 찬양 1곡씩 추천해서 셀 플레이리스트 만들기', 1],
+    ['문 잡아주기 / 자리 양보하기 택 1', 1],
+  ]},
+  { title: '4주차 5/31', threshold: 7, items: [
+    ['잠들기 30분 전 휴대폰 보지 않기', 2],
+    ['"하나님, 이번 수련회에서는 ____" 문장 완성하기', 1],
+    ['손바닥에 작은 점 하나 찍고, 볼 때마다 셀원/팀원 위해 짧게 중보하기', 1],
+    ['험담의 자리에 끼지 않고 자리를 피하기 (맞장구 치지 않기)', 2],
+  ]},
+  { title: '5주차 6/7',  threshold: 7, items: [
+    ['콘텐츠 소비 없이 조용히 10분 산책하기', 1],
+    ['주중 예배 (수요예배/금요예배/새벽기도 택1) 1번 참석하기', 2],
+    ['잘 모르는 지체와 카드 교환하고 기도제목 나누고 기도하기', 2],
+    ['타인에 대한 판단이 들 때 판단 그린카드 꺼내고 판단 멈추기', 1],
+  ]},
+  { title: '6주차 6/14', threshold: 8, items: [
+    ['하루를 돌아보며 감사한 것 1가지 적기', 1],
+    ['마태복음 5장 소리내서 1번 읽기', 2],
+    ['다른 교구와 카드 교환하고 기도제목 나누고 기도하기', 2],
+    ['아무도 시키지 않은 좋은 일 1개 하기', 2],
+  ]},
+];
+
+function setupAllWeeks() {
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+
+  // 헤더 세팅 (첫 실행 시)
+  sheet.getRange('A1').setValue('current_week');
+  if (!sheet.getRange('B1').getValue()) sheet.getRange('B1').setValue(1);
+  // B2(prayer), B3(secret) 기존 값 유지 — 건드리지 않음
+
+  // 기존 주차 데이터 영역 초기화
+  sheet.getRange('A5:C100').clearContent();
+
+  ALL_WEEK_DATA.forEach((w, i) => {
+    const startRow = i * 6 + 5;
+    sheet.getRange(startRow, 2).setValue(w.title);
+    sheet.getRange(startRow, 3).setValue(w.threshold);
+    w.items.forEach(([item, score], j) => {
+      sheet.getRange(startRow + 1 + j, 1).setValue(item);
+      sheet.getRange(startRow + 1 + j, 2).setValue(score);
+    });
+  });
+
+  Logger.log('전체 주차 세팅 완료');
+}
+
+// ── 미션 config 읽기/쓰기 ─────────────────────────
+function getMissionConfig(week) {
+  if (week < 1 || week > 6) return { error: 'invalid_week' };
+  const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  const startRow = (week - 1) * 6 + 5;
+  const title     = sheet.getRange(startRow, 2).getValue();
+  const threshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
+  const rawItems  = sheet.getRange(startRow + 1, 1, 4, 2).getValues();
+  const items = rawItems.map(([item, score]) => ({ item: String(item || ''), score: Number(score) || 1 }));
+  return { ok: true, week, title, threshold, items };
+}
+
+function setMissionConfig(body) {
+  const week = Number(body.week);
+  if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
+  const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  const startRow = (week - 1) * 6 + 5;
+  sheet.getRange(startRow, 2).setValue(String(body.title || ''));
+  sheet.getRange(startRow, 3).setValue(Number(body.threshold) || 6);
+  const items = Array.isArray(body.items) ? body.items : [];
+  for (let i = 0; i < 4; i++) {
+    const it = items[i] || {};
+    sheet.getRange(startRow + 1 + i, 1).setValue(String(it.item || ''));
+    sheet.getRange(startRow + 1 + i, 2).setValue(Number(it.score) || 1);
+  }
+  return { ok: true };
 }
 
 // ── 공통 ─────────────────────────────────────────

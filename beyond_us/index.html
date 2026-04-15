@@ -108,6 +108,8 @@
     .check-item.submitted input { accent-color: var(--primary); }
     .check-item input[type="checkbox"] { flex-shrink: 0; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--primary); cursor: pointer; }
     .check-item label { flex: 1; font-size: 15px; font-weight: 600; line-height: 1.5; cursor: pointer; min-width: 0; }
+    .score-badge { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--sub); background: var(--primary-soft); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; align-self: center; }
+    .check-item.submitted .score-badge { opacity: 0.5; }
 
     /* ── 버튼 ── */
     .actions { display: flex; gap: 10px; margin-top: 4px; }
@@ -926,6 +928,7 @@
     let currentParish   = localStorage.getItem('beyondus_parish')   || null;
     let userStatus = null;
     let pendingCard = null;   // API에서 받아온 카드 데이터
+    let lastConfigData = null; // 항목별 점수 계산용 캐시
 
     /* ── DOM ── */
     const weekTitleEl       = document.getElementById('weekTitle');
@@ -1223,12 +1226,14 @@
       }
 
       // 서비스 모드: 정책 적용
-      if (!userStatus.submittedThisWeek) {
+      if (!userStatus.canDraw) {
+        const ws = userStatus.weekScore || 0;
+        const dt = userStatus.drawThreshold || 6;
         el.innerHTML = `
           <div class="draw-notice">
             <div>
-              <div class="draw-notice-title">이번 주 체크를 먼저 해주세요</div>
-              <div class="draw-notice-sub">체크를 한 번 이상 제출하면 카드를 뽑을 수 있어요</div>
+              <div class="draw-notice-title">이번 주 ${dt}점을 모으면 카드를 뽑을 수 있어요</div>
+              <div class="draw-notice-sub">현재 ${ws}점 / ${dt}점</div>
             </div>
           </div>`;
         return;
@@ -1456,15 +1461,17 @@
     }
 
     function renderConfig(data) {
+      lastConfigData = data;
       weekTitleEl.textContent = data.weekTitle;
       checkListEl.innerHTML = '';
       const submittedToday = getSubmittedToday();
       data.items.forEach((item, i) => {
         const id = `item_${i}`;
         const done = submittedToday.includes(item);
+        const score = data.scores ? (data.scores[item] || 1) : 1;
         const div = document.createElement('div');
         div.className = 'check-item' + (done ? ' submitted' : '');
-        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${item}</label>`;
+        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${item}</label><span class="score-badge">${score}점</span>`;
         if (!done) {
           div.querySelector('input').addEventListener('change', e => {
             div.classList.toggle('checked', e.target.checked);
@@ -1542,10 +1549,10 @@
       }).join('');
     }
     function getSubmittedToday() {
-      return JSON.parse(localStorage.getItem('beyondus_submitted_' + getWeekKey()) || '[]');
+      return JSON.parse(localStorage.getItem('beyondus_submitted_' + getTodayKey()) || '[]');
     }
     function saveSubmittedItems(items) {
-      const key = 'beyondus_submitted_' + getWeekKey();
+      const key = 'beyondus_submitted_' + getTodayKey();
       const merged = [...new Set([...getSubmittedToday(), ...items])];
       localStorage.setItem(key, JSON.stringify(merged));
     }
@@ -1587,7 +1594,7 @@
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey() })
+          body: JSON.stringify({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0) })
         });
         if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
         await res.json();
