@@ -1493,6 +1493,7 @@
     function renderConfig(data) {
       lastConfigData = data;
       weekTitleEl.textContent = data.weekTitle;
+      document.getElementById('missionCardSub').textContent = `이번 주 ${data.drawThreshold}점 이상 모으면 카드 뽑기권 획득!`;
       checkListEl.innerHTML = '';
       const submittedToday = getSubmittedToday();
       data.items.forEach((item, i) => {
