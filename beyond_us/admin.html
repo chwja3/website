@@ -559,7 +559,7 @@
     async function loadCurrentWeek() {
       try {
         const res = await get({ action: 'getCurrentWeek', adminPw });
-        if (res.ok) updateWeekUI(res.week);
+        if (res.ok) { updateWeekUI(res.week); loadMissionConfig(res.week); }
       } catch(e) {}
     }
 
