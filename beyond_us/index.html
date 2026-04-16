@@ -153,11 +153,9 @@
     /* ── 주차 달력 ── */
     .week-cal { display: flex; justify-content: space-between; gap: 6px; padding: 4px 0; }
     .week-cal-day { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 10px; }
-    .week-cal-star-wrap { height: 18px; display: flex; align-items: center; justify-content: center; }
-    .week-cal-star { width: 18px; height: 18px; object-fit: contain; }
     .week-cal-label { font-size: 11px; font-weight: 700; color: var(--sub); }
     .week-cal-dot-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
-    .week-cal-sheep { position: absolute; width: 56px; height: 56px; top: 50%; left: 50%; transform: translate(-50%, -50%); object-fit: contain; pointer-events: none; }
+    .week-cal-sheep { position: absolute; object-fit: contain; pointer-events: none; }
     .week-cal-dot {
       width: 36px; height: 36px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
@@ -1576,7 +1574,12 @@
       const weekNum = Math.ceil(monday.getDate() / 7);
       if (titleEl) titleEl.textContent = `${monday.getMonth() + 1}월 ${weekNum}째주`;
 
-      const SHEEP_BY_DAY = { 0: '월요일앤.png', 2: '수요일앤.png', 4: '금요일앤.png', 6: '일요일앤.png' };
+      const SHEEP_BY_DAY = {
+        0: { img: '월요일앤.png', style: 'width:52px;top:50%;transform:translateY(-50%);left:-38px;' },
+        2: { img: '수요일앤.png', style: 'width:52px;top:50%;left:50%;transform:translate(-50%,-50%);' },
+        4: { img: '금요일앤.png', style: 'width:52px;top:50%;left:50%;transform:translate(-50%,-50%);' },
+        6: { img: '일요일앤.png', style: 'width:52px;top:50%;left:50%;transform:translate(-50%,-50%);' },
+      };
       const labels = ['월','화','수','목','금','토','일'];
       calEl.innerHTML = labels.map((label, i) => {
         const d = new Date(monday);
@@ -1584,16 +1587,12 @@
         const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const isChecked = checkDates.includes(dateStr);
         const isToday = dateStr === todayStr;
-        const starImg = i === 6 ? '일요일별.png' : '요일별.png';
-        const sheepImg = SHEEP_BY_DAY[i] || null;
+        const sheep = SHEEP_BY_DAY[i] || null;
         return `<div class="week-cal-day">
-          <div class="week-cal-star-wrap">
-            ${isChecked ? `<img src="images/${starImg}" class="week-cal-star" alt="" />` : ''}
-          </div>
           <span class="week-cal-label">${label}</span>
           <div class="week-cal-dot-wrap">
             <div class="week-cal-dot${isChecked ? ' checked' : ''}${isToday && !isChecked ? ' today' : ''}">${d.getDate()}</div>
-            ${isChecked && sheepImg ? `<img src="images/${sheepImg}" class="week-cal-sheep" alt="" />` : ''}
+            ${isChecked && sheep ? `<img src="images/${sheep.img}" class="week-cal-sheep" style="${sheep.style}" alt="" />` : ''}
           </div>
         </div>`;
       }).join('');
