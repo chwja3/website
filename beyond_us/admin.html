@@ -613,6 +613,11 @@
             <input type="text" class="input mission-item-text" data-idx="${i}" value="${it.item.replace(/"/g,'&quot;')}" placeholder="미션 항목" style="flex:1; font-size:14px;" />
             <input type="number" class="input mission-item-score" data-idx="${i}" value="${it.score}" min="1" max="5" style="width:60px; font-size:14px;" />
             <span style="font-size:12px; color:var(--sub);">점</span>
+            <select class="input mission-item-cat" data-idx="${i}" style="width:76px; font-size:13px; padding:8px 6px;">
+              <option value="L"${it.cat==='L'?' selected':''}>L 개인</option>
+              <option value="MC"${it.cat==='MC'?' selected':''}>M 교회</option>
+              <option value="MW"${it.cat==='MW'?' selected':''}>M 세상</option>
+            </select>
           </div>`).join('');
         document.getElementById('missionSaveStatus').textContent = '';
         document.getElementById('missionEditForm').style.display = '';
@@ -632,6 +637,7 @@
       const items = Array.from({ length: 4 }, (_, i) => ({
         item:  document.querySelector(`.mission-item-text[data-idx="${i}"]`)?.value.trim() || '',
         score: Number(document.querySelector(`.mission-item-score[data-idx="${i}"]`)?.value) || 1,
+        cat:   document.querySelector(`.mission-item-cat[data-idx="${i}"]`)?.value || 'L',
       }));
       statusEl.textContent = '저장 중...';
       statusEl.className = 'status';

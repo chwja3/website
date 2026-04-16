@@ -98,6 +98,9 @@
       border-left-color: var(--primary);
       background: var(--primary-soft);
     }
+    .check-item.cat-L  { border-left-color: #93c5fd; }
+    .check-item.cat-MC { border-left-color: #86efac; }
+    .check-item.cat-MW { border-left-color: #fdba74; }
     .check-item.submitted {
       border-left-color: var(--sub);
       background: #ece5d8;
@@ -1498,8 +1501,9 @@
         const id = `item_${i}`;
         const done = submittedToday.includes(item);
         const score = data.scores ? (data.scores[item] || 1) : 1;
+        const cat   = data.cats   ? (data.cats[item]   || '') : '';
         const div = document.createElement('div');
-        div.className = 'check-item' + (done ? ' submitted' : '');
+        div.className = 'check-item' + (done ? ' submitted' : '') + (cat ? ` cat-${cat}` : '');
         div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${item}</label><span class="score-badge">${score}점</span>`;
         if (!done) {
           div.querySelector('input').addEventListener('change', e => {
