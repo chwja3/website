@@ -195,6 +195,7 @@ function getDashboardData() {
     weekTitle:       config.weekTitle,
     items:           config.items,
     scores:          config.scores,
+    cats:            config.cats,
     drawThreshold:   config.drawThreshold,
     counts,
     totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
