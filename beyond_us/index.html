@@ -1495,6 +1495,13 @@
       }
     }
 
+    function renderItemText(text) {
+      return text
+        .replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;">$1</a>')
+        .replace(/\n/g, '<br>');
+    }
+
     function renderConfig(data) {
       lastConfigData = data;
       weekTitleEl.textContent = data.weekTitle;
@@ -1509,7 +1516,7 @@
         const cat   = data.cats   ? (data.cats[item]   || '') : '';
         const div = document.createElement('div');
         div.className = 'check-item' + (done ? ' submitted' : '') + (cat ? ` cat-${cat}` : '');
-        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${item.replace(/\n/g,'<br>')}</label><span class="score-badge">${score}점</span>`;
+        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${renderItemText(item)}</label><span class="score-badge">${score}점</span>`;
         if (!done) {
           div.querySelector('input').addEventListener('change', e => {
             div.classList.toggle('checked', e.target.checked);
