@@ -1,0 +1,3 @@
+[submodule "K-translate"]
+	path = K-translate
+	url = https://github.com/chwja3/K-translate.git
