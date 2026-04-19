@@ -1568,7 +1568,7 @@
         const pct = Math.round((cnt / maxCnt) * 100);
         const div = document.createElement('div');
         div.className = 'count-item';
-        div.innerHTML = `<span class="count-item-name">${renderItemText(item)}</span><div class="count-item-bar-wrap"><div class="count-item-bar" style="width:${pct}%"></div></div><span class="count-item-count">${cnt}</span>`;
+        div.innerHTML = `<span class="count-item-name">${item.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])).replace(/\n/g, ' ')}</span><div class="count-item-bar-wrap"><div class="count-item-bar" style="width:${pct}%"></div></div><span class="count-item-count">${cnt}</span>`;
         countListEl.appendChild(div);
       });
       renderProgress(data.totalCount);
