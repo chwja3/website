@@ -1867,7 +1867,7 @@
     function renderInquiries(inquiries) {
       const list = document.getElementById('inquiryList');
       if (!inquiries.length) {
-        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">아직 문의가 없어요.</p>';
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 문의가 없어요.</p>';
         return;
       }
       list.innerHTML = inquiries.map(inq => {
@@ -1883,7 +1883,7 @@
               </div>
               <div style="display:flex; gap:6px; flex-shrink:0; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
                 ${!hasReply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:2px 8px;">미답변</span>' : ''}
-                ${isOwn ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;" onclick="startInquiryEdit('${inq.id}')">수정</button>` : ''}
+                ${isOwn ? `<button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;" onclick="startInquiryEdit('${inq.id}')">수정</button><button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;color:var(--danger);" onclick="startInquiryDelete('${inq.id}')">삭제</button>` : ''}
               </div>
             </div>
             ${hasReply ? `
@@ -1899,13 +1899,58 @@
       const item = document.getElementById(`inqItem_${id}`);
       const content = item.dataset.content;
       item.innerHTML = `
-        <textarea id="inqEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:72px;" maxlength="200">${escHtml(content)}</textarea>
+        <textarea id="inqEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:72px;" maxlength="500">${escHtml(content)}</textarea>
         <input type="password" id="inqEditPw_${id}" placeholder="내 비밀번호 입력" style="width:100%;margin-top:8px;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;" />
         <div id="inqEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn btn-secondary" style="flex:1;" onclick="loadInquiries()">취소</button>
           <button class="btn btn-primary" style="flex:1;" onclick="saveInquiryEdit('${id}')">저장</button>
         </div>`;
+    }
+
+    function startInquiryDelete(id) {
+      const item = document.getElementById(`inqItem_${id}`);
+      const delWrap = document.createElement('div');
+      delWrap.id = `inqDelWrap_${id}`;
+      delWrap.style.cssText = 'margin-top:10px; padding:10px 12px; background:#fee2e2; border-radius:10px;';
+      delWrap.innerHTML = `
+        <div style="font-size:13px; font-weight:700; color:var(--danger); margin-bottom:8px;">정말 삭제할까요? 비밀번호를 입력해주세요.</div>
+        <input type="password" id="inqDelPw_${id}" placeholder="비밀번호" style="width:100%;padding:8px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:10px;background:white;color:var(--text);outline:none;font-family:inherit;" />
+        <div id="inqDelStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;" onclick="document.getElementById('inqDelWrap_${id}').remove()">취소</button>
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;color:var(--danger);" onclick="confirmInquiryDelete('${id}')">삭제</button>
+        </div>`;
+      item.appendChild(delWrap);
+      document.getElementById(`inqDelPw_${id}`).focus();
+    }
+
+    async function confirmInquiryDelete(id) {
+      const password = document.getElementById(`inqDelPw_${id}`).value;
+      const statusEl = document.getElementById(`inqDelStatus_${id}`);
+      if (!password) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
+      statusEl.textContent = '삭제 중...';
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'deleteInquiry', nickname: currentNickname, password, id })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          loadInquiries();
+        } else if (data.error === 'wrong_password') {
+          statusEl.textContent = '비밀번호가 틀렸어요.';
+          statusEl.style.color = 'var(--danger)';
+        } else {
+          statusEl.textContent = '오류가 발생했어요.';
+          statusEl.style.color = 'var(--danger)';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.style.color = 'var(--danger)';
+      }
     }
 
     async function saveInquiryEdit(id) {
