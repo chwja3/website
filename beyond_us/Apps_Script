@@ -383,7 +383,9 @@ function resetPassword(body) {
     if (String(data[i][0]).trim() === nickname &&
         String(data[i][2]).trim() === name &&
         String(data[i][3]).trim() === parish) {
-      sheet.getRange(i + 1, 2).setValue(newPassword);
+      const cell = sheet.getRange(i + 1, 2);
+      cell.setNumberFormat('@');
+      cell.setValue(newPassword);
       return { ok: true };
     }
   }
@@ -410,7 +412,9 @@ function adminResetPassword(body) {
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === nickname) {
-      sheet.getRange(i + 1, 2).setValue(newPassword);
+      const cell = sheet.getRange(i + 1, 2);
+      cell.setNumberFormat('@');
+      cell.setValue(newPassword);
       return { ok: true };
     }
   }
