@@ -111,7 +111,7 @@
     .check-item.submitted input { accent-color: var(--primary); }
     .check-item input[type="checkbox"] { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); cursor: pointer; }
     .check-item label { flex: 1; font-size: 15px; font-weight: 600; line-height: 1.5; cursor: pointer; min-width: 0; word-break: keep-all; }
-    .score-badge { font-size: 12px; font-weight: 400; color: var(--sub); opacity: 0.7; }
+    .score-badge { flex-shrink: 0; font-size: 12px; font-weight: 400; color: var(--sub); opacity: 0.7; align-self: center; }
     .check-item.submitted .score-badge { opacity: 0.4; }
 
     /* ── 버튼 ── */
@@ -1546,7 +1546,7 @@
         const cat   = data.cats   ? (data.cats[item]   || '') : '';
         const div = document.createElement('div');
         div.className = 'check-item' + (done ? ' submitted' : '') + (cat ? ` cat-${cat}` : '');
-        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${renderItemText(item)} <span class="score-badge">(${score}점)</span></label>`;
+        div.innerHTML = `<input type="checkbox" id="${id}" name="items" value="${item}"${done ? ' checked disabled' : ''}><label for="${id}">${renderItemText(item)}</label><span class="score-badge">(${score}점)</span>`;
         if (!done) {
           div.querySelector('input').addEventListener('change', e => {
             div.classList.toggle('checked', e.target.checked);
