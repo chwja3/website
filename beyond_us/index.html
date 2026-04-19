@@ -773,6 +773,7 @@
         <li class="drawer-item" data-section="collection">컬렉션</li>
         <li class="drawer-item" data-section="prayer">손기도</li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
+        <li class="drawer-item" data-section="inquiry">개발자 문의</li>
       </ul>
       <!-- 로그아웃 버튼 (임시 비활성화)
       <div class="drawer-logout">
@@ -867,6 +868,19 @@
             <div class="count-list" id="countList"></div>
           </section>
 
+          <section class="card" style="margin-top:0;">
+            <h2 class="card-title">💬 개발자 문의</h2>
+            <div id="inquiryQuickWrap">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="inquiryQuickInput" placeholder="익명으로 문의를 남겨요 (최대 200자)" maxlength="200"
+                  style="flex:1; padding:11px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:12px; background:var(--primary-soft); color:var(--text); outline:none; font-family:inherit;" />
+                <button class="btn btn-secondary" id="inquiryQuickBtn" style="flex-shrink:0; padding:11px 16px;">등록</button>
+              </div>
+              <div id="inquiryQuickStatus" style="font-size:13px; min-height:18px; margin-top:6px; font-weight:600; color:var(--danger);"></div>
+            </div>
+            <p id="inquiryLoginMsg" style="font-size:14px; color:var(--sub); margin:0; display:none;">로그인 후 문의를 남길 수 있어요.</p>
+          </section>
+
           <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"</p>
         </div>
       </div>
@@ -889,6 +903,20 @@
           <section class="card" style="margin-top:16px;">
             <h2 class="card-title">🙏 손기도</h2>
             <p class="card-sub">곧 오픈 예정이에요.</p>
+          </section>
+        </div>
+      </div>
+
+      <!-- ⑤ 개발자 문의 -->
+      <div id="sectionInquiry" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <h2 class="card-title" style="margin:0;">💬 개발자 문의</h2>
+              <button class="btn btn-secondary btn-sm" id="refreshInquiryBtn" style="font-size:13px; padding:6px 12px;">새로고침</button>
+            </div>
+            <p class="card-sub">문의를 남기면 개발자가 답변을 드려요.</p>
+            <div id="inquiryList"><p style="color:var(--sub); text-align:center; padding:16px;">불러오는 중...</p></div>
           </section>
         </div>
       </div>
@@ -979,6 +1007,7 @@
     function showApp() {
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
+      updateInquiryLoginUI();
     }
 
     /* ════ Auth 패인 전환 ════ */
@@ -1720,6 +1749,7 @@
       collection: 'sectionCollection',
       prayer:     'sectionPrayer',
       secret:     'sectionSecret',
+      inquiry:    'sectionInquiry',
     };
     function switchSection(name) {
       Object.values(SECTION_IDS).forEach(id => {
@@ -1730,6 +1760,7 @@
         el.classList.toggle('active', el.dataset.section === name);
       });
       if (name === 'notice') markAllSeen();
+      if (name === 'inquiry') loadInquiries();
       window.scrollTo(0, 0);
       closeDrawer();
     }
@@ -1809,6 +1840,143 @@
       if (isNaN(d)) return String(v).slice(0, 10);
       return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
     }
+
+    /* ════ 개발자 문의 ════ */
+    function updateInquiryLoginUI() {
+      const loggedIn = !!currentNickname;
+      const wrap = document.getElementById('inquiryQuickWrap');
+      const msg  = document.getElementById('inquiryLoginMsg');
+      if (wrap) wrap.style.display = loggedIn ? '' : 'none';
+      if (msg)  msg.style.display  = loggedIn ? 'none' : '';
+    }
+
+    async function loadInquiries() {
+      const list = document.getElementById('inquiryList');
+      if (!list) return;
+      list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const res  = await fetch(`${API_BASE}?action=getInquiries&t=${Date.now()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!data.ok) throw new Error();
+        renderInquiries(data.inquiries);
+      } catch(e) {
+        list.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">연결 오류</p>';
+      }
+    }
+
+    function renderInquiries(inquiries) {
+      const list = document.getElementById('inquiryList');
+      if (!inquiries.length) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">아직 문의가 없어요.</p>';
+        return;
+      }
+      list.innerHTML = inquiries.map(inq => {
+        const isOwn    = currentNickname && inq.nickname === currentNickname;
+        const hasReply = !!inq.reply;
+        const dateStr  = formatNoticeDate(inq.createdAt);
+        return `
+          <div class="inq-item" id="inqItem_${inq.id}" data-id="${inq.id}" data-content="${escHtml(inq.content)}" style="padding:14px 0; border-bottom:1px solid var(--line);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+              <div style="flex:1;">
+                <div style="font-size:14px; font-weight:600; line-height:1.5; word-break:keep-all;">${escHtml(inq.content)}</div>
+                <div style="font-size:12px; color:var(--sub); margin-top:4px;">${dateStr}</div>
+              </div>
+              <div style="display:flex; gap:6px; flex-shrink:0; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                ${!hasReply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:2px 8px;">미답변</span>' : ''}
+                ${isOwn ? `<button class="btn btn-secondary" style="font-size:12px;padding:4px 10px;" onclick="startInquiryEdit('${inq.id}')">수정</button>` : ''}
+              </div>
+            </div>
+            ${hasReply ? `
+              <div style="margin-top:10px;padding:10px 12px;background:var(--primary-soft);border-radius:10px;border-left:3px solid var(--primary);">
+                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:4px;">개발자 답변</div>
+                <div style="font-size:14px;line-height:1.5;white-space:pre-wrap;">${escHtml(inq.reply)}</div>
+              </div>` : ''}
+          </div>`;
+      }).join('');
+    }
+
+    function startInquiryEdit(id) {
+      const item = document.getElementById(`inqItem_${id}`);
+      const content = item.dataset.content;
+      item.innerHTML = `
+        <textarea id="inqEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:72px;" maxlength="200">${escHtml(content)}</textarea>
+        <input type="password" id="inqEditPw_${id}" placeholder="내 비밀번호 입력" style="width:100%;margin-top:8px;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;" />
+        <div id="inqEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="loadInquiries()">취소</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="saveInquiryEdit('${id}')">저장</button>
+        </div>`;
+    }
+
+    async function saveInquiryEdit(id) {
+      const content  = document.getElementById(`inqEditText_${id}`).value.trim();
+      const password = document.getElementById(`inqEditPw_${id}`).value;
+      const statusEl = document.getElementById(`inqEditStatus_${id}`);
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      if (!password) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
+      statusEl.textContent = '저장 중...';
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'editInquiry', nickname: currentNickname, password, id, content })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          loadInquiries();
+        } else if (data.error === 'wrong_password') {
+          statusEl.textContent = '비밀번호가 틀렸어요.';
+          statusEl.style.color = 'var(--danger)';
+        } else {
+          statusEl.textContent = '오류가 발생했어요.';
+          statusEl.style.color = 'var(--danger)';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    document.getElementById('inquiryQuickBtn').addEventListener('click', async () => {
+      if (!currentNickname) return;
+      const input    = document.getElementById('inquiryQuickInput');
+      const statusEl = document.getElementById('inquiryQuickStatus');
+      const content  = input.value.trim();
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      const password = localStorage.getItem('beyondus_password') || '';
+      const btn = document.getElementById('inquiryQuickBtn');
+      btn.disabled = true;
+      statusEl.textContent = '등록 중...';
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'postInquiry', nickname: currentNickname, password, content })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          input.value = '';
+          statusEl.textContent = '등록됐어요!';
+          statusEl.style.color = 'var(--success)';
+          setTimeout(() => { statusEl.textContent = ''; }, 2000);
+        } else if (data.error === 'wrong_password') {
+          statusEl.textContent = '인증 오류. 다시 로그인해주세요.';
+          statusEl.style.color = 'var(--danger)';
+        } else {
+          statusEl.textContent = '오류가 발생했어요.';
+          statusEl.style.color = 'var(--danger)';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.style.color = 'var(--danger)';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('refreshInquiryBtn').addEventListener('click', loadInquiries);
 
     /* ════ 초기화 ════ */
     renderWeekCal();

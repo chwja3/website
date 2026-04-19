@@ -148,6 +148,7 @@
         <button class="tab-btn" data-tab="cards">🃏 카드</button>
         <button class="tab-btn" data-tab="users">👥 유저</button>
         <button class="tab-btn" data-tab="notice">📢 공지</button>
+        <button class="tab-btn" data-tab="inquiry">💬 문의</button>
         <button class="tab-btn" data-tab="settings">⚙️ 설정</button>
       </div>
 
@@ -255,6 +256,17 @@
           </div>
           <input type="search" id="adminNoticeSearch" placeholder="🔍 검색" class="input" style="margin-bottom:12px;" />
           <div id="noticeAdminList"><p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- ⑤ 개발자 문의 -->
+      <div id="tab-inquiry" class="tab-panel">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h2 class="card-title" style="margin:0;">문의 목록</h2>
+            <button class="btn btn-ghost btn-sm" id="refreshInquiryAdminBtn">새로고침</button>
+          </div>
+          <div id="inquiryAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -380,7 +392,8 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'cards') loadCardStats();
+        if (btn.dataset.tab === 'cards')   loadCardStats();
+        if (btn.dataset.tab === 'inquiry') loadAdminInquiries();
       });
     });
 
@@ -846,6 +859,90 @@
     });
 
     document.getElementById('refreshNoticeBtn').addEventListener('click', loadAdminNotices);
+
+    /* ── 개발자 문의 ── */
+    async function loadAdminInquiries() {
+      const listEl = document.getElementById('inquiryAdminList');
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const res = await get({ action: 'getInquiries' });
+        if (!res.ok) throw new Error();
+        renderAdminInquiries(res.inquiries);
+      } catch(e) {
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+      }
+    }
+
+    function renderAdminInquiries(inquiries) {
+      const listEl = document.getElementById('inquiryAdminList');
+      if (!inquiries.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">문의가 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = inquiries.map(inq => `
+        <div id="inqAdmin_${inq.id}" style="padding:14px 0; border-bottom:1px solid var(--line);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
+            <div style="flex:1;">
+              <div style="font-size:13px; color:var(--sub); margin-bottom:4px;">${esc(inq.nickname)} · ${formatDate(inq.createdAt)}</div>
+              <div style="font-size:14px; font-weight:600; line-height:1.5;">${esc(inq.content)}</div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+              ${!inq.reply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:2px 8px;white-space:nowrap;">미답변</span>' : ''}
+              <button class="btn btn-danger btn-sm" onclick="deleteAdminInquiry('${inq.id}')">삭제</button>
+            </div>
+          </div>
+          ${inq.reply ? `
+            <div style="margin-bottom:8px; padding:10px 12px; background:#f0ebe0; border-radius:10px; border-left:3px solid var(--primary);">
+              <div style="font-size:11px; font-weight:700; color:var(--sub); margin-bottom:4px;">현재 답변</div>
+              <div style="font-size:14px; line-height:1.5; white-space:pre-wrap;">${esc(inq.reply)}</div>
+            </div>` : ''}
+          <div style="display:flex; gap:8px; align-items:flex-end;">
+            <textarea id="replyInput_${inq.id}" class="input" rows="2" placeholder="${inq.reply ? '답변 수정...' : '답변 작성...'}" style="flex:1; resize:vertical; font-family:inherit; line-height:1.5; margin:0; font-size:14px;">${esc(inq.reply)}</textarea>
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0; padding:9px 14px;" onclick="submitReply('${inq.id}')">저장</button>
+            ${inq.reply ? `<button class="btn btn-ghost btn-sm" style="flex-shrink:0;" onclick="deleteReply('${inq.id}')">삭제</button>` : ''}
+          </div>
+          <div id="replyStatus_${inq.id}" class="status" style="margin-top:4px;"></div>
+        </div>`).join('');
+    }
+
+    async function submitReply(id) {
+      const reply    = document.getElementById(`replyInput_${id}`).value.trim();
+      const statusEl = document.getElementById(`replyStatus_${id}`);
+      statusEl.textContent = '저장 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'replyInquiry', adminPw, id, reply });
+        if (res.ok) {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '저장됐어요!';
+          setTimeout(loadAdminInquiries, 800);
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      }
+    }
+
+    async function deleteReply(id) {
+      if (!confirm('답변을 삭제할까요?')) return;
+      try {
+        const res = await post({ action: 'replyInquiry', adminPw, id, reply: '' });
+        if (res.ok) loadAdminInquiries();
+        else alert('오류: ' + (res.error || ''));
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    async function deleteAdminInquiry(id) {
+      if (!confirm('이 문의를 삭제할까요?')) return;
+      try {
+        const res = await post({ action: 'deleteInquiry', adminPw, id });
+        if (res.ok) loadAdminInquiries();
+        else alert('삭제 실패: ' + (res.error || ''));
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
 
     /* ── 세션 복원 ── */
     const saved = sessionStorage.getItem('adminPw');

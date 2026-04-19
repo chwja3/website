@@ -34,6 +34,7 @@ function doGet(e) {
     return jsonOutput(getTabSettings());
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
+  if (action === 'getInquiries') return jsonOutput(getInquiries());
   if (action === 'getCurrentWeek') {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
@@ -81,6 +82,10 @@ function doPost(e) {
     if (action === 'resetPassword') {
       return jsonOutput(resetPassword(body));
     }
+    if (action === 'postInquiry')   return jsonOutput(postInquiry(body));
+    if (action === 'editInquiry')   return jsonOutput(editInquiry(body));
+    if (action === 'deleteInquiry') return jsonOutput(deleteInquiry(body));
+    if (action === 'replyInquiry')  return jsonOutput(replyInquiry(body));
     if (action === 'setTabSettings') {
       return jsonOutput(setTabSettings(body));
     }
@@ -615,6 +620,120 @@ function setMissionConfig(body) {
     sheet.getRange(startRow + 1 + i, 3).setValue(String(it.cat || 'L'));
   }
   return { ok: true };
+}
+
+// ── 문의하기 ──────────────────────────────────────
+function getOrCreateInquirySheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('Inquiries');
+  if (!sheet) {
+    sheet = ss.insertSheet('Inquiries');
+    sheet.appendRow(['id','nickname','content','createdAt','reply','repliedAt']);
+  }
+  return sheet;
+}
+
+function verifyUserPassword(nickname, password) {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const data  = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === nickname && String(data[i][1]).trim() === password) return true;
+  }
+  return false;
+}
+
+function getInquiries() {
+  const sheet = getOrCreateInquirySheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { ok: true, inquiries: [] };
+  const rows = sheet.getRange(2, 1, last - 1, 6).getValues();
+  const inquiries = rows
+    .filter(r => r[0])
+    .map((r, i) => ({
+      rowIndex:  i + 2,
+      id:        String(r[0]),
+      nickname:  String(r[1]),
+      content:   String(r[2]),
+      createdAt: r[3],
+      reply:     String(r[4] || ''),
+      repliedAt: r[5] || ''
+    }))
+    .reverse();
+  return { ok: true, inquiries };
+}
+
+function postInquiry(body) {
+  const nickname = String(body.nickname || '').trim();
+  const password = String(body.password || '').trim();
+  const content  = String(body.content  || '').trim();
+  if (!nickname || !password || !content) return { error: 'missing_fields' };
+  if (!verifyUserPassword(nickname, password)) return { error: 'wrong_password' };
+  const sheet = getOrCreateInquirySheet();
+  sheet.appendRow([new Date().getTime(), nickname, content, new Date().toISOString(), '', '']);
+  return { ok: true };
+}
+
+function editInquiry(body) {
+  const nickname = String(body.nickname || '').trim();
+  const password = String(body.password || '').trim();
+  const id       = String(body.id       || '');
+  const content  = String(body.content  || '').trim();
+  if (!nickname || !password || !id || !content) return { error: 'missing_fields' };
+  if (!verifyUserPassword(nickname, password)) return { error: 'wrong_password' };
+  const sheet = getOrCreateInquirySheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+  const rows = sheet.getRange(2, 1, last - 1, 2).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) === id && String(rows[i][1]).trim() === nickname) {
+      sheet.getRange(i + 2, 3).setValue(content);
+      return { ok: true };
+    }
+  }
+  return { error: 'not_found' };
+}
+
+function deleteInquiry(body) {
+  const id = String(body.id || '');
+  if (!id) return { error: 'missing_fields' };
+  const sheet = getOrCreateInquirySheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+  const rows = sheet.getRange(2, 1, last - 1, 2).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) !== id) continue;
+    if (body.adminPw === ADMIN_PASSWORD) {
+      sheet.deleteRow(i + 2);
+      return { ok: true };
+    }
+    const nickname = String(body.nickname || '').trim();
+    const password = String(body.password || '').trim();
+    if (String(rows[i][1]).trim() === nickname && verifyUserPassword(nickname, password)) {
+      sheet.deleteRow(i + 2);
+      return { ok: true };
+    }
+    return { error: 'unauthorized' };
+  }
+  return { error: 'not_found' };
+}
+
+function replyInquiry(body) {
+  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  const id    = String(body.id    || '');
+  const reply = String(body.reply || '').trim();
+  if (!id) return { error: 'missing_fields' };
+  const sheet = getOrCreateInquirySheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+  const rows = sheet.getRange(2, 1, last - 1, 1).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) === id) {
+      sheet.getRange(i + 2, 5).setValue(reply);
+      sheet.getRange(i + 2, 6).setValue(reply ? new Date().toISOString() : '');
+      return { ok: true };
+    }
+  }
+  return { error: 'not_found' };
 }
 
 // ── 공통 ─────────────────────────────────────────
