@@ -125,10 +125,10 @@ function doPost(e) {
 // B2: prayer 탭 on/off
 // B3: secret 탭 on/off
 //
-// 주차별 데이터 (6행 단위 블록):
-// startRow = (week - 1) * 6 + 5
+// 주차별 데이터 (8행 단위 블록):
+// startRow = (week - 1) * 8 + 5
 // startRow+0: B=주차 제목, C=drawThreshold
-// startRow+1~4: A=항목 텍스트, B=점수
+// startRow+1~6: A=항목 텍스트, B=점수, C=카테고리
 
 function getSpreadsheet() {
   return SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -139,11 +139,11 @@ function getConfig() {
   if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
 
   const currentWeek   = Number(sheet.getRange('B1').getValue()) || 1;
-  const startRow      = (currentWeek - 1) * 6 + 5;
+  const startRow      = (currentWeek - 1) * 8 + 5;
   const weekTitle     = sheet.getRange(startRow, 2).getValue();
   const drawThreshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
 
-  const rawItems = sheet.getRange(startRow + 1, 1, 4, 3).getValues();
+  const rawItems = sheet.getRange(startRow + 1, 1, 6, 3).getValues();
   const items  = [];
   const scores = {};
   const cats   = {};
