@@ -1060,9 +1060,9 @@
         });
         const data = await res.json();
         if (!data.ok) {
-          localStorage.removeItem('beyondus_nickname');
-          localStorage.removeItem('beyondus_password');
-          localStorage.removeItem('beyondus_parish');
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('beyondus_'))
+            .forEach(k => localStorage.removeItem(k));
           currentNickname = null;
           currentParish   = null;
           showAuth('login');
@@ -1608,8 +1608,8 @@
       monday.setDate(today.getDate() - (dayOfWeek - 1));
 
       // "4월 2째주" 형식 타이틀
-      const weekNum = Math.ceil(monday.getDate() / 7);
-      if (titleEl) titleEl.textContent = `${monday.getMonth() + 1}월 ${weekNum}째주`;
+      const weekNum = Math.ceil(today.getDate() / 7);
+      if (titleEl) titleEl.textContent = `${today.getMonth() + 1}월 ${weekNum}째주`;
 
       const SHEEP_BY_DAY = {
         0: { img: '월요일앤.png', style: 'width:31px;top:calc(50% - 16px);left:calc(50% - 16px);transform:translate(-50%,-50%);' },
