@@ -166,7 +166,26 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
 
   const today = dateKey || Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
-  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(cleanItems), userId, weekKey, today, Number(score) || 0]);
+
+  // 서버사이드 중복 제출 방지: 오늘 이미 제출한 항목 수집
+  const submittedToday = new Set();
+  const lastRow = rawSheet.getLastRow();
+  if (lastRow >= 2) {
+    const rows = rawSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    for (const row of rows) {
+      if (String(row[3]) === userId && String(row[5]) === today) {
+        try { JSON.parse(row[2] || '[]').forEach(item => submittedToday.add(item)); } catch(e) {}
+      }
+    }
+  }
+
+  const newItems = cleanItems.filter(item => !submittedToday.has(item));
+  if (!newItems.length) return; // 모두 이미 제출됨
+
+  // 점수 서버에서 재계산
+  const newScore = newItems.reduce((s, item) => s + (config.scores[item] || 1), 0);
+
+  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore]);
 }
 
 function getDashboardData() {
