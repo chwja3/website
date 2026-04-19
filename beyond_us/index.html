@@ -871,12 +871,12 @@
           <section class="card" style="margin-top:0;">
             <h2 class="card-title">💬 개발자 문의</h2>
             <div id="inquiryQuickWrap">
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="inquiryQuickInput" placeholder="익명으로 문의를 남겨요 (최대 200자)" maxlength="200"
-                  style="flex:1; padding:11px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:12px; background:var(--primary-soft); color:var(--text); outline:none; font-family:inherit;" />
-                <button class="btn btn-secondary" id="inquiryQuickBtn" style="flex-shrink:0; padding:11px 16px;">등록</button>
+              <textarea id="inquiryQuickInput" placeholder="익명으로 문의를 남겨요 (최대 200자)" maxlength="200" rows="4"
+                style="width:100%; padding:12px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:12px; background:var(--primary-soft); color:var(--text); outline:none; font-family:inherit; resize:none; line-height:1.6; display:block;"></textarea>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <div id="inquiryQuickStatus" style="font-size:13px; font-weight:600; color:var(--danger);"></div>
+                <button class="btn btn-secondary" id="inquiryQuickBtn" style="font-size:13px; padding:6px 14px;">등록</button>
               </div>
-              <div id="inquiryQuickStatus" style="font-size:13px; min-height:18px; margin-top:6px; font-weight:600; color:var(--danger);"></div>
             </div>
             <p id="inquiryLoginMsg" style="font-size:14px; color:var(--sub); margin:0; display:none;">로그인 후 문의를 남길 수 있어요.</p>
           </section>
