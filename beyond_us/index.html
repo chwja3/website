@@ -346,35 +346,14 @@
       to   { transform: rotateY(0deg);   opacity: 1; }
     }
 
-    /* 카드 뒷면 — 딥 퍼플 프리미엄 */
+    /* 카드 뒷면 */
     .card-face-back {
-      background: linear-gradient(145deg, #0f0a2a 0%, #1e1050 45%, #150d40 100%);
-      background-image:
-        linear-gradient(145deg, #0f0a2a 0%, #1e1050 45%, #150d40 100%),
-        repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(150,100,255,0.04) 10px, rgba(150,100,255,0.04) 12px),
-        repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(150,100,255,0.04) 10px, rgba(150,100,255,0.04) 12px);
-      border: 2px solid rgba(140,100,255,0.4);
-      box-shadow: inset 0 0 40px rgba(80,40,180,0.3),
-                  0 0 16px rgba(100,60,220,0.2);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 10px;
       width: 100%; height: 100%; border-radius: 16px;
-      position: relative;
+      background-image: url('images/앤카드뒷면.png');
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
     }
-    .card-face-back::before {
-      content: '';
-      position: absolute; inset: 8px;
-      border: 1px solid rgba(140,100,255,0.25);
-      border-radius: 10px;
-    }
-    .card-face-back::after {
-      content: '';
-      position: absolute; inset: 12px;
-      border: 1px solid rgba(140,100,255,0.12);
-      border-radius: 8px;
-    }
-    .card-face-back .back-emoji { font-size: 52px; filter: drop-shadow(0 0 12px rgba(180,120,255,0.6)); position: relative; z-index: 1; }
-    .card-face-back .back-label { font-size: 10px; font-weight: 800; color: rgba(180,140,255,0.7); letter-spacing: .15em; position: relative; z-index: 1; }
 
     /* ── 성령의 열매 카드 ── */
     .spirit-card {
@@ -719,10 +698,7 @@
       <p class="draw-hint">카드를 눌러서 확인하세요 👆</p>
       <div class="card-flip" id="cardFlip">
         <div class="card-flip-face" id="cardFace">
-          <div class="card-face-back">
-            <span class="back-emoji">🃏</span>
-            <span class="back-label">BEYOND US</span>
-          </div>
+          <div class="card-face-back"></div>
         </div>
       </div>
     </div>
@@ -1361,11 +1337,7 @@
       document.getElementById('revealStage').classList.add('hidden');
       document.getElementById('drawPack').classList.remove('opening');
       document.getElementById('cardFlip').classList.remove('flipped');
-      document.getElementById('cardFace').innerHTML = `
-        <div class="card-face-back">
-          <span class="back-emoji">🃏</span>
-          <span class="back-label">BEYOND US</span>
-        </div>`;
+      document.getElementById('cardFace').innerHTML = `<div class="card-face-back"></div>`;
       document.getElementById('drawOverlay').classList.remove('hidden');
     }
 
@@ -1410,9 +1382,7 @@
 
         // API 대기 중 로딩 표시
         const hintEl = document.querySelector('#cardFlipStage .draw-hint');
-        const backEmoji = document.querySelector('.back-emoji');
         if (hintEl) hintEl.textContent = '카드 준비 중...';
-        if (backEmoji) backEmoji.textContent = '⏳';
 
         // API 결과 대기
         const result = await drawPromise;
