@@ -1580,16 +1580,16 @@
         .to('#cardInner', { rotateX:  4, duration: 0.15, ease: 'power1.out' }, '<')
         .to('#cardInner', { rotateX:  0, duration: 0.15, ease: 'power1.in'  })
       // 스케일 강조
-        .to('#cardInner', { scale: 1.13, duration: 0.22, ease: 'power2.out'   }, '<-=0.1')
+        .to('#cardInner', { scale: 1.13, duration: 0.22, ease: 'power2.out'   }, '-=0.1')
         .to('#cardInner', { scale: 1.0,  duration: 0.32, ease: 'power2.inOut' })
       // 광택 스윕
-        .to('#cardFlipShine', { opacity: 1, x: '130%', duration: 0.46, ease: 'power1.inOut' }, '<-=0.25')
+        .to('#cardFlipShine', { opacity: 1, x: '130%', duration: 0.46, ease: 'power1.inOut' }, '-=0.25')
         .to('#cardFlipShine', { opacity: 0, duration: 0.08 }, '+=0.02')
       // 링 버스트
-        .to('#ringEl', { opacity: 1, scale: 2.0, duration: 0.5, ease: 'power2.out' }, '<-=0.4')
+        .to('#ringEl', { opacity: 1, scale: 2.0, duration: 0.5, ease: 'power2.out' }, '-=0.4')
         .to('#ringEl', { opacity: 0, duration: 0.3 }, '-=0.12')
       // 카드 글로우 강화
-        .to('#cardGlow', { opacity: 0.9, duration: 0.3 }, '<-=0.3');
+        .to('#cardGlow', { opacity: 0.9, duration: 0.3 }, '-=0.3');
     });
 
     /* ════════════════════════════
