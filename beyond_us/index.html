@@ -1523,9 +1523,10 @@
       lastConfigData = data;
       weekTitleEl.textContent = data.weekTitle;
       checkListEl.innerHTML = '';
-      const submittedToday = (userStatus && userStatus.todayItems && userStatus.todayItems.length > 0)
-        ? userStatus.todayItems
-        : getSubmittedToday();
+      const submittedToday = [...new Set([
+        ...(userStatus?.todayItems || []),
+        ...getSubmittedToday()
+      ])];
       data.items.forEach((item, i) => {
         const id = `item_${i}`;
         const done = submittedToday.includes(item);
@@ -1653,7 +1654,7 @@
 
     checkForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const submittedToday = getSubmittedToday();
+      const submittedToday = [...new Set([...(userStatus?.todayItems || []), ...getSubmittedToday()])];
       const checked = [...document.querySelectorAll('input[name="items"]:checked:not(:disabled)')]
         .map(el => el.value)
         .filter(v => !submittedToday.includes(v));
