@@ -1053,6 +1053,8 @@
       updateUserBadge();
       showApp();
       try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
+      // 두 API 모두 완료된 시점에서 최종 renderConfig — 크로스디바이스 submitted 반영
+      if (lastConfigData) renderConfig(lastConfigData);
       hideSplash();
 
       // 백그라운드에서 서버 검증 (비번이 바뀐 경우만 로그아웃)
@@ -1677,10 +1679,10 @@
         saveCheckDate();
         renderWeekCal();
         const data = await fetchDashboard();
-        renderConfig(data);   // 제출된 항목 비활성화 반영
         renderCounts(data);
         setStatus('실천이 저장되었어요!', 'success');
-        await loadUserStatus();
+        await loadUserStatus();           // userStatus.todayItems 갱신
+        if (lastConfigData) renderConfig(lastConfigData); // 최신 상태로 최종 렌더
       } catch(err) {
         setStatus(err.message || '오류가 발생했습니다.', 'error');
         submitBtn.disabled = false;
