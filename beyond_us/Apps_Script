@@ -374,7 +374,10 @@ function registerUser(body) {
     if (String(data[i][0]).trim() === nickname) return { error: 'duplicate' };
   }
 
-  sheet.appendRow([nickname, password, name, parish, new Date()]);
+  sheet.appendRow([nickname, '', name, parish, new Date()]);
+  const pwCell = sheet.getRange(sheet.getLastRow(), 2);
+  pwCell.setNumberFormat('@');
+  pwCell.setValue(password);
   return { ok: true };
 }
 
