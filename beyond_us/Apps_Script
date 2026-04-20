@@ -178,7 +178,8 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   if (lastRow >= 2) {
     const rows = rawSheet.getRange(2, 1, lastRow - 1, 7).getValues();
     for (const row of rows) {
-      if (String(row[3]) === userId && String(row[5]) === today) {
+      const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
+      if (String(row[3]) === userId && rowDate === today) {
         try { JSON.parse(row[2] || '[]').forEach(item => submittedToday.add(item)); } catch(e) {}
       }
     }
@@ -257,7 +258,8 @@ function getUserStatus(userId, weekKey) {
       for (const row of rows) {
         if (String(row[3]) === userId && String(row[4]) === weekKey) {
           weekScore += Number(row[6]) || 0;
-          if (String(row[5]) === today) {
+          const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
+          if (rowDate === today) {
             try {
               JSON.parse(row[2] || '[]').forEach(item => todayItems.push(item));
             } catch(e) {}
