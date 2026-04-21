@@ -278,7 +278,7 @@
       border-radius: 10px;
       pointer-events: none;
     }
-    .pack:hover { transform: translateY(-6px) rotate(1deg); }
+    .pack:hover { transform: none; }
 
     .pack-shine {
       position: absolute; inset: 0;
@@ -455,6 +455,28 @@
       background: radial-gradient(ellipse at center, rgba(255,230,80,0.6), transparent 70%);
       filter: blur(14px);
       opacity: 0; pointer-events: none;
+    }
+    #packCardPreview {
+      position: absolute;
+      width: 150px; height: 220px;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      border-radius: 14px;
+      background-image: url('images/앤카드뒷면.png');
+      background-size: 100% 100%;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    #packCardPreview::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -130%;
+      width: 60%; height: 100%;
+      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.35) 50%, transparent 80%);
+      animation: cardBackShimmer 2.8s ease-in-out infinite;
+      pointer-events: none;
     }
     #cardLayer {
       position: absolute; inset: 0;
@@ -761,7 +783,8 @@
 
       <!-- 팩 레이어 -->
       <div id="packLayer">
-        <p class="draw-hint" id="packHint">Tap the pack to open! ✨</p>
+        <p class="draw-hint" id="packHint">위로 밀어서 열어봐요 ↑</p>
+        <div id="packCardPreview"></div>
         <div id="packInnerGlow"></div>
         <div class="pack" id="drawPack">
           <div class="pack-shine"></div>
@@ -1429,10 +1452,12 @@
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
 
       // 팩 레이어 초기화
-      gsap.set('#packLayer',     { opacity: 1, pointerEvents: 'auto' });
+      gsap.set('#packLayer',     { opacity: 1, pointerEvents: 'auto', display: 'flex' });
       gsap.set('#packInnerGlow', { opacity: 0 });
       gsap.set('#drawPack',      { scale: 1, scaleX: 1, scaleY: 1, opacity: 1, y: 0, rotate: 0 });
+      document.getElementById('drawPack').style.clipPath = '';
       gsap.set('#packHint',      { opacity: 1 });
+      gsap.set('#packCardPreview', { opacity: 0 });
 
       // 카드 레이어 초기화
       gsap.set('#cardLayer',     { opacity: 0, pointerEvents: 'none' });
@@ -1478,54 +1503,100 @@
     document.getElementById('drawCloseBtn').onclick = closeDrawOverlay;
     document.getElementById('revealDoneBtn').onclick = closeDrawOverlay;
 
-    /* 팩 클릭 — Timeline A (팩 찢기) */
-    document.getElementById('drawPack').addEventListener('click', function() {
-      if (drawState !== 'idle') return;
-      drawState = 'tearing_pack';
-      drawResult = null;
-      revealClickEnabled = false;
+    /* ════ 팩 드래그 (위로 밀기) ════ */
+    (function() {
+      var packEl = document.getElementById('drawPack');
+      var previewEl = document.getElementById('packCardPreview');
+      var hintEl = document.getElementById('packHint');
+      var dragActive = false;
+      var dragStartY = 0;
+      var THRESHOLD = 60;
 
-      // 팩 레이어 클릭 비활성
-      gsap.set('#packLayer', { pointerEvents: 'none' });
+      packEl.addEventListener('pointerdown', function(e) {
+        if (drawState !== 'idle') return;
+        e.preventDefault();
+        dragActive = true;
+        dragStartY = e.clientY;
+        packEl.setPointerCapture(e.pointerId);
+        packEl.style.transition = 'none';
+      });
 
-      // API 호출 동시 시작 (레이스 컨디션 처리)
-      fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE })
-      }).then(function(r) { return r.json(); }).catch(function() { return null; }).then(function(result) {
-        if (result && !result.error && result.card) {
-          pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
+      packEl.addEventListener('pointermove', function(e) {
+        if (!dragActive) return;
+        var dy = Math.max(0, dragStartY - e.clientY);
+        packEl.style.clipPath = 'inset(' + Math.min(dy, 220) + 'px 0 0 0 round 14px)';
+        previewEl.style.opacity = Math.min(dy / THRESHOLD, 1);
+        hintEl.style.opacity = Math.max(0, 1 - dy / 25);
+      });
+
+      packEl.addEventListener('pointerup', function(e) {
+        if (!dragActive) return;
+        dragActive = false;
+        var dy = Math.max(0, dragStartY - e.clientY);
+        if (dy >= THRESHOLD) {
+          triggerPackOpen();
         } else {
-          pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
-        }
-        drawResult = pendingCard;
-        document.getElementById('cardFace').innerHTML = makeCardHTML(pendingCard);
-        enableRevealClick();
-      });
-
-      // Timeline A: 팩 흔들림 → 내부 발광 → 찢기 → 카드 레이어로 전환
-      var tlA = gsap.timeline({
-        onComplete: function() {
-          drawState = 'card_back_rise';
-          startCardRise();
+          packEl.style.transition = 'clip-path 0.3s ease';
+          packEl.style.clipPath = '';
+          previewEl.style.transition = 'opacity 0.3s ease';
+          previewEl.style.opacity = '0';
+          hintEl.style.opacity = '1';
+          setTimeout(function() {
+            packEl.style.transition = '';
+            previewEl.style.transition = '';
+          }, 300);
         }
       });
 
-      tlA
-        .to('#packHint', { opacity: 0, duration: 0.2 })
-        .to('#packInnerGlow', { opacity: 1, duration: 0.25 }, '<')
-        .to('#drawPack', { scale: 1.05, duration: 0.12, ease: 'power1.out' })
-        .to('#drawPack', { scale: 1.0,  duration: 0.10 })
-        .to('#drawPack', { y: -10, rotate: -3, duration: 0.10, ease: 'power1.out' })
-        .to('#drawPack', { y:   6, rotate:  3, duration: 0.09 })
-        .to('#drawPack', { y:  -5, rotate: -2, duration: 0.08 })
-        .to('#drawPack', { y:   0, rotate:  0, duration: 0.08 })
-        .to('#flashEl',  { opacity: 0.65, duration: 0.07 })
-        .to('#flashEl',  { opacity: 0,    duration: 0.14 })
-        .to('#drawPack', { scaleX: 0, scaleY: 1.5, opacity: 0, duration: 0.32, ease: 'power2.in' }, '-=0.05')
-        .to('#packInnerGlow', { opacity: 0, duration: 0.2 }, '<');
-    });
+      packEl.addEventListener('pointercancel', function() {
+        if (!dragActive) return;
+        dragActive = false;
+        packEl.style.transition = 'clip-path 0.3s ease';
+        packEl.style.clipPath = '';
+        previewEl.style.opacity = '0';
+        hintEl.style.opacity = '1';
+        setTimeout(function() { packEl.style.transition = ''; }, 300);
+      });
+
+      function triggerPackOpen() {
+        drawState = 'tearing_pack';
+        drawResult = null;
+        revealClickEnabled = false;
+        packEl.style.transition = '';
+        gsap.set('#packLayer', { pointerEvents: 'none' });
+
+        // API 호출
+        fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE })
+        }).then(function(r) { return r.json(); }).catch(function() { return null; }).then(function(result) {
+          if (result && !result.error && result.card) {
+            pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
+          } else {
+            pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+          }
+          drawResult = pendingCard;
+          document.getElementById('cardFace').innerHTML = makeCardHTML(pendingCard);
+          enableRevealClick();
+        });
+
+        // 완료 애니메이션: 남은 팩 하단 사라지기 → 플래시 → 카드 상승
+        gsap.timeline({
+          onComplete: function() {
+            packEl.style.clipPath = '';
+            gsap.set('#packLayer', { opacity: 0 });
+            drawState = 'card_back_rise';
+            startCardRise();
+          }
+        })
+        .to(hintEl,     { opacity: 0, duration: 0.1 })
+        .to(previewEl,  { opacity: 0, duration: 0.15 })
+        .to('#flashEl', { opacity: 0.65, duration: 0.07 })
+        .to('#flashEl', { opacity: 0,    duration: 0.14 })
+        .to(packEl,     { opacity: 0, duration: 0.25 }, '<');
+      }
+    })();
 
     /* 카드 상승 — Timeline B */
     function startCardRise() {
