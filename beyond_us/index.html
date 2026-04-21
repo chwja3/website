@@ -418,7 +418,7 @@
 
     /* ── 신규 뽑기 씬 ── */
     #sceneWrap {
-      position: relative;
+      position: relative; z-index: 1;
       width: 280px; height: 440px;
       display: flex; align-items: center; justify-content: center;
     }
@@ -504,10 +504,9 @@
 
     /* ════ 별빛 배경 ════ */
     #starBg {
-      position: absolute; inset: 0;
+      position: fixed; inset: 0;
       background: radial-gradient(ellipse at 50% 70%, #1a2a5e 0%, #0a1230 55%, #020610 100%);
       opacity: 0; pointer-events: none; z-index: 0;
-      border-radius: inherit;
     }
     #starBg::before, #starBg::after {
       content: '';
@@ -910,10 +909,10 @@
 
   <!-- ▣ 카드 뽑기 오버레이 -->
   <div id="drawOverlay" class="draw-overlay hidden">
+    <div id="starBg"></div>
     <button class="draw-close-btn" id="drawCloseBtn">✕</button>
 
     <div id="sceneWrap">
-      <div id="starBg"></div>
       <div id="sceneGlow"></div>
 
       <!-- 이펙트 레이어 -->
