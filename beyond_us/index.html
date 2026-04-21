@@ -246,7 +246,7 @@
     .draw-overlay.hidden { display: none; }
 
     .draw-close-btn {
-      position: absolute; top: 20px; right: 20px;
+      position: absolute; top: 20px; right: 20px; z-index: 10;
       width: 36px; height: 36px; border-radius: 50%;
       border: 0; background: rgba(255,246,239,0.15);
       color: rgba(255,246,239,0.8); font-size: 16px;
@@ -418,7 +418,7 @@
 
     /* ── 신규 뽑기 씬 ── */
     #sceneWrap {
-      position: relative; z-index: 1;
+      position: relative; z-index: 2;
       width: 280px; height: 440px;
       display: flex; align-items: center; justify-content: center;
     }
@@ -504,9 +504,9 @@
 
     /* ════ 별빛 배경 ════ */
     #starBg {
-      position: fixed; inset: 0;
+      position: absolute; inset: 0;
       background: radial-gradient(ellipse at 50% 70%, #1a2a5e 0%, #0a1230 55%, #020610 100%);
-      opacity: 0; pointer-events: none; z-index: 0;
+      opacity: 0; pointer-events: none; z-index: 1;
     }
     #starBg::before, #starBg::after {
       content: '';
