@@ -970,7 +970,7 @@
       <div id="cardLayer">
         <div id="cardGlow"></div>
         <div id="cardTrigger">
-          <div style="width:170px;height:238px;perspective:900px;position:relative;">
+          <div style="width:150px;height:220px;perspective:800px;position:relative;">
             <div id="cardInner" style="width:100%;height:100%;position:relative;transform-style:preserve-3d;">
               <div class="card-face card-back"><div class="card-face-back"></div></div>
               <div class="card-face card-front" id="cardFace"></div>
@@ -1840,7 +1840,7 @@
         }
       });
 
-      gsap.set('#cardTrigger', { scale: 1.6 });
+      gsap.set('#cardTrigger', { scale: 1.82 });
       tlB
         .to('#cardLayer',     { opacity: 1, duration: 0.4, ease: 'power2.out' })
         .from('#cardTrigger', { y: 110, duration: 0.65, ease: 'power3.out' }, '<0.05')
