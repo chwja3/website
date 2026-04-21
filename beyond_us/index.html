@@ -502,6 +502,147 @@
       opacity: 0;
     }
 
+    /* ════ 별빛 배경 ════ */
+    #starBg {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 70%, #1a2a5e 0%, #0a1230 55%, #020610 100%);
+      opacity: 0; pointer-events: none; z-index: 0;
+      border-radius: inherit;
+    }
+    #starBg::before, #starBg::after {
+      content: '';
+      position: absolute;
+      width: 1px; height: 1px; border-radius: 50%; background: transparent;
+      box-shadow:
+        18px 45px 0 1px rgba(255,255,255,0.85),
+        52px 120px 0 0 rgba(200,220,255,0.7),
+        90px 30px 0 1px rgba(255,255,255,0.9),
+        130px 80px 0 0 rgba(255,255,255,0.6),
+        160px 160px 0 1px rgba(200,220,255,0.8),
+        30px 200px 0 0 rgba(255,255,255,0.7),
+        210px 50px 0 1px rgba(255,255,255,0.9),
+        240px 130px 0 0 rgba(200,220,255,0.65),
+        70px 260px 0 1px rgba(255,255,255,0.8),
+        190px 210px 0 0 rgba(255,255,255,0.75),
+        110px 350px 0 1px rgba(200,220,255,0.7),
+        255px 300px 0 0 rgba(255,255,255,0.85),
+        40px 380px 0 1px rgba(255,255,255,0.6),
+        180px 390px 0 0 rgba(200,220,255,0.8),
+        230px 420px 0 1px rgba(255,255,255,0.7);
+      animation: starTwinkle 2.8s ease-in-out infinite alternate;
+    }
+    #starBg::after {
+      box-shadow:
+        35px 70px 0 1px rgba(255,255,255,0.7),
+        80px 140px 0 0 rgba(200,220,255,0.85),
+        140px 20px 0 1px rgba(255,255,255,0.6),
+        200px 100px 0 0 rgba(255,255,255,0.9),
+        15px 160px 0 1px rgba(200,220,255,0.7),
+        260px 180px 0 0 rgba(255,255,255,0.75),
+        100px 310px 0 1px rgba(255,255,255,0.8),
+        50px 330px 0 0 rgba(200,220,255,0.65),
+        220px 350px 0 1px rgba(255,255,255,0.9),
+        170px 60px 0 0 rgba(255,255,255,0.7),
+        270px 240px 0 1px rgba(200,220,255,0.8),
+        10px 420px 0 0 rgba(255,255,255,0.6),
+        145px 410px 0 1px rgba(255,255,255,0.85),
+        205px 280px 0 0 rgba(200,220,255,0.7),
+        60px 440px 0 1px rgba(255,255,255,0.75);
+      animation-delay: 1.4s;
+    }
+    @keyframes starTwinkle {
+      from { opacity: 0.45; }
+      to   { opacity: 1; }
+    }
+
+    /* ════ 캐러셀 ════ */
+    #carouselLayer {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      opacity: 0; pointer-events: none; z-index: 5;
+    }
+    #carouselTrack {
+      position: relative;
+      width: 280px; height: 250px;
+      perspective: 700px;
+      cursor: grab;
+      touch-action: none;
+    }
+    #carouselTrack:active { cursor: grabbing; }
+    .c-pack {
+      width: 150px; height: 220px;
+      border-radius: 14px;
+      background: linear-gradient(170deg, #7a4f00 0%, #c48000 30%, #8b5c00 55%, #4a2e00 100%);
+      border: 2px solid rgba(255,215,0,0.5);
+      box-shadow: 0 14px 40px rgba(0,0,0,0.6),
+                  inset 0 1px 0 rgba(255,235,100,0.3),
+                  inset 0 -1px 0 rgba(0,0,0,0.4),
+                  0 0 20px rgba(196,128,0,0.25);
+      position: absolute; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+      top: 50%; left: 50%;
+      transform-style: preserve-3d;
+      will-change: transform, opacity;
+      transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),
+                  opacity 0.38s ease, box-shadow 0.38s ease;
+      user-select: none; cursor: pointer;
+    }
+    .c-pack::before {
+      content: '';
+      position: absolute; inset: 4px;
+      border: 1px solid rgba(255,215,0,0.2);
+      border-radius: 10px; pointer-events: none;
+    }
+    .c-pack[data-pos="center"] {
+      transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
+      opacity: 1; z-index: 2;
+      box-shadow: 0 0 42px rgba(255,200,50,0.6), 0 14px 40px rgba(0,0,0,0.6);
+    }
+    .c-pack[data-pos="left"] {
+      transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
+      opacity: 0.58; z-index: 1;
+    }
+    .c-pack[data-pos="right"] {
+      transform: translate(-50%,-50%) translateX(108px) translateZ(-70px) rotateY(-30deg) scale(0.78);
+      opacity: 0.58; z-index: 1;
+    }
+    #carouselSub { font-size: 12px; opacity: 0.5; margin: 0; }
+
+    /* ════ 팩 찢기 존 ════ */
+    #packLayer { gap: 14px; }
+    #packTearZone {
+      width: 100%; height: 22px;
+      position: relative; flex-shrink: 0;
+      overflow: hidden; cursor: ew-resize;
+      touch-action: none;
+    }
+    #packTearLine {
+      position: absolute; top: 50%; left: 6px; right: 6px;
+      height: 2px; transform: translateY(-50%);
+      background: repeating-linear-gradient(
+        90deg, transparent, transparent 3px,
+        rgba(255,60,60,0.9) 3px, rgba(255,60,60,0.9) 7px);
+    }
+    #packTearLight {
+      position: absolute; inset: 0; width: 0%;
+      background: linear-gradient(90deg,
+        transparent 0%,
+        rgba(255,200,80,0.35) 55%,
+        rgba(255,255,180,0.92) 82%,
+        white 100%);
+      pointer-events: none;
+    }
+
+    /* ════ 찢긴 팩 윗조각 ════ */
+    #packTopPiece {
+      position: absolute; border-radius: 14px 14px 0 0;
+      background: linear-gradient(170deg, #7a4f00 0%, #c48000 30%, #8b5c00 55%, #4a2e00 100%);
+      border: 2px solid rgba(255,215,0,0.5);
+      opacity: 0; pointer-events: none; z-index: 10;
+      box-shadow: 0 0 30px rgba(255,220,80,0.5);
+    }
+
     /* ════════════════════════════
        컬렉션 그리드
     ════════════════════════════ */
@@ -771,31 +912,62 @@
   <div id="drawOverlay" class="draw-overlay hidden">
     <button class="draw-close-btn" id="drawCloseBtn">✕</button>
 
-    <!-- 씬 래퍼: 팩·카드 레이어가 같은 공간을 공유 -->
     <div id="sceneWrap">
+      <div id="starBg"></div>
       <div id="sceneGlow"></div>
 
-      <!-- 이펙트 레이어 (플래시·링) -->
+      <!-- 이펙트 레이어 -->
       <div id="effectsLayer">
         <div id="flashEl"></div>
         <div id="ringEl"></div>
       </div>
 
-      <!-- 팩 레이어 -->
+      <!-- Phase 1: 캐러셀 -->
+      <div id="carouselLayer">
+        <p class="draw-hint" id="carouselHint">팩을 골라봐요 ✦</p>
+        <div id="carouselTrack">
+          <div class="c-pack" id="cpack0">
+            <div class="pack-shine"></div>
+            <div class="pack-top-area">2026 · BEYOND US</div>
+            <div class="pack-tear"></div>
+            <div class="pack-center">🃏</div>
+            <div class="pack-bottom-area">성령의 열매</div>
+          </div>
+          <div class="c-pack" id="cpack1">
+            <div class="pack-shine"></div>
+            <div class="pack-top-area">2026 · BEYOND US</div>
+            <div class="pack-tear"></div>
+            <div class="pack-center">🃏</div>
+            <div class="pack-bottom-area">성령의 열매</div>
+          </div>
+          <div class="c-pack" id="cpack2">
+            <div class="pack-shine"></div>
+            <div class="pack-top-area">2026 · BEYOND US</div>
+            <div class="pack-tear"></div>
+            <div class="pack-center">🃏</div>
+            <div class="pack-bottom-area">성령의 열매</div>
+          </div>
+        </div>
+        <p class="draw-hint" id="carouselSub">← 스와이프로 선택 →</p>
+      </div>
+
+      <!-- Phase 2: 팩 줌 + 가로 찢기 -->
       <div id="packLayer">
-        <p class="draw-hint" id="packHint">위로 밀어서 열어봐요 ↑</p>
-        <div id="packCardPreview"></div>
-        <div id="packInnerGlow"></div>
         <div class="pack" id="drawPack">
           <div class="pack-shine"></div>
           <div class="pack-top-area">2026 · BEYOND US</div>
-          <div class="pack-tear"></div>
+          <div id="packTearZone">
+            <div id="packTearLine"></div>
+            <div id="packTearLight"></div>
+          </div>
           <div class="pack-center">🃏</div>
           <div class="pack-bottom-area">성령의 열매</div>
         </div>
+        <div id="packTopPiece"></div>
+        <p class="draw-hint" id="packHint">← 빨간 선을 밀어서 열기</p>
       </div>
 
-      <!-- 카드 레이어 -->
+      <!-- Phase 3: 카드 -->
       <div id="cardLayer">
         <div id="cardGlow"></div>
         <div id="cardTrigger">
@@ -1440,24 +1612,40 @@
     let drawState = 'idle';
     let drawResult = null;
     let revealClickEnabled = false;
-    let isFlipping = false; // 호환성 유지
+    let isFlipping = false;
+    var carouselCenter = 1; // 현재 가운데 팩 인덱스 (0,1,2)
+
+    function applyCarouselPositions() {
+      ['cpack0','cpack1','cpack2'].forEach(function(id, i) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (i === carouselCenter)            el.dataset.pos = 'center';
+        else if (i === (carouselCenter+2)%3) el.dataset.pos = 'left';
+        else                                 el.dataset.pos = 'right';
+      });
+    }
 
     function openDrawOverlay() {
-      drawState = 'idle';
+      drawState = 'carousel';
       drawResult = null;
       revealClickEnabled = false;
       isFlipping = false;
       pendingCard = null;
+      carouselCenter = 1;
 
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
 
+      // 캐러셀 레이어
+      applyCarouselPositions();
+      gsap.set('#carouselLayer', { opacity: 0, pointerEvents: 'none' });
+
       // 팩 레이어 초기화
-      gsap.set('#packLayer',     { opacity: 1, pointerEvents: 'auto', display: 'flex' });
-      gsap.set('#packInnerGlow', { opacity: 0 });
-      gsap.set('#drawPack',      { scale: 1, scaleX: 1, scaleY: 1, opacity: 1, y: 0, rotate: 0 });
+      gsap.set('#packLayer',   { opacity: 0, pointerEvents: 'none' });
+      gsap.set('#drawPack',    { scale: 0.55, opacity: 1, y: 0, rotate: 0 });
       document.getElementById('drawPack').style.clipPath = '';
-      gsap.set('#packHint',      { opacity: 1 });
-      gsap.set('#packCardPreview', { opacity: 0 });
+      document.getElementById('packTearLight').style.width = '0%';
+      gsap.set('#packHint',    { opacity: 0 });
+      gsap.set('#packTopPiece', { opacity: 0, y: 0, rotate: 0 });
 
       // 카드 레이어 초기화
       gsap.set('#cardLayer',     { opacity: 0, pointerEvents: 'none' });
@@ -1470,17 +1658,20 @@
 
       // 이펙트 레이어 초기화
       gsap.set('#sceneGlow', { opacity: 0 });
+      gsap.set('#starBg',    { opacity: 0 });
       gsap.set('#flashEl',   { opacity: 0 });
       gsap.set('#ringEl',    { opacity: 0, scale: 0.5 });
 
       document.getElementById('cardFace').innerHTML = '';
       document.getElementById('flipHint').textContent = '';
       document.getElementById('revealMsg').textContent = '';
-      document.getElementById('packHint').textContent = 'Tap the pack to open! ✨';
       document.getElementById('cardTrigger').classList.remove('clickable');
 
       document.getElementById('drawOverlay').classList.remove('hidden');
-      gsap.to('#sceneGlow', { opacity: 1, duration: 0.7 });
+      gsap.to('#sceneGlow',     { opacity: 1, duration: 0.6 });
+      gsap.to('#carouselLayer', { opacity: 1, duration: 0.5, delay: 0.1,
+        onStart: function() { gsap.set('#carouselLayer', { pointerEvents: 'auto' }); }
+      });
     }
 
     function closeDrawOverlay() {
@@ -1503,66 +1694,86 @@
     document.getElementById('drawCloseBtn').onclick = closeDrawOverlay;
     document.getElementById('revealDoneBtn').onclick = closeDrawOverlay;
 
-    /* ════ 팩 드래그 (위로 밀기) ════ */
+    /* ════ 캐러셀 ════ */
     (function() {
-      var packEl = document.getElementById('drawPack');
-      var previewEl = document.getElementById('packCardPreview');
-      var hintEl = document.getElementById('packHint');
-      var dragActive = false;
-      var dragStartY = 0;
-      var THRESHOLD = 60;
+      var trackEl  = document.getElementById('carouselTrack');
+      var dragStartX = 0, dragging = false;
 
-      packEl.addEventListener('pointerdown', function(e) {
-        if (drawState !== 'idle') return;
+      function rotateCarousel(dir) {
+        carouselCenter = (carouselCenter + dir + 3) % 3;
+        applyCarouselPositions();
+      }
+
+      trackEl.addEventListener('pointerdown', function(e) {
+        if (drawState !== 'carousel') return;
         e.preventDefault();
-        dragActive = true;
-        dragStartY = e.clientY;
-        packEl.setPointerCapture(e.pointerId);
-        packEl.style.transition = 'none';
+        dragStartX = e.clientX;
+        dragging = true;
+        trackEl.setPointerCapture(e.pointerId);
       });
-
-      packEl.addEventListener('pointermove', function(e) {
-        if (!dragActive) return;
-        var dy = Math.max(0, dragStartY - e.clientY);
-        packEl.style.clipPath = 'inset(' + Math.min(dy, 220) + 'px 0 0 0 round 14px)';
-        previewEl.style.opacity = Math.min(dy / THRESHOLD, 1);
-        hintEl.style.opacity = Math.max(0, 1 - dy / 25);
+      trackEl.addEventListener('pointermove', function(e) {
+        if (!dragging) return;
       });
-
-      packEl.addEventListener('pointerup', function(e) {
-        if (!dragActive) return;
-        dragActive = false;
-        var dy = Math.max(0, dragStartY - e.clientY);
-        if (dy >= THRESHOLD) {
-          triggerPackOpen();
-        } else {
-          packEl.style.transition = 'clip-path 0.3s ease';
-          packEl.style.clipPath = '';
-          previewEl.style.transition = 'opacity 0.3s ease';
-          previewEl.style.opacity = '0';
-          hintEl.style.opacity = '1';
-          setTimeout(function() {
-            packEl.style.transition = '';
-            previewEl.style.transition = '';
-          }, 300);
+      trackEl.addEventListener('pointerup', function(e) {
+        if (!dragging) return;
+        dragging = false;
+        var dx = e.clientX - dragStartX;
+        if (Math.abs(dx) < 18) {
+          // 탭 — 사이드팩이면 회전, 센터팩이면 선택
+          var tapped = e.target.closest('.c-pack');
+          var packs = [document.getElementById('cpack0'), document.getElementById('cpack1'), document.getElementById('cpack2')];
+          if (tapped === packs[(carouselCenter+2)%3]) { rotateCarousel(-1); return; }
+          if (tapped === packs[(carouselCenter+1)%3]) { rotateCarousel(1); return; }
+          selectCenterPack();
+        } else if (dx < -28) {
+          rotateCarousel(1);
+        } else if (dx > 28) {
+          rotateCarousel(-1);
         }
       });
+      trackEl.addEventListener('pointercancel', function() { dragging = false; });
 
-      packEl.addEventListener('pointercancel', function() {
-        if (!dragActive) return;
-        dragActive = false;
-        packEl.style.transition = 'clip-path 0.3s ease';
-        packEl.style.clipPath = '';
-        previewEl.style.opacity = '0';
-        hintEl.style.opacity = '1';
-        setTimeout(function() { packEl.style.transition = ''; }, 300);
+      function selectCenterPack() {
+        if (drawState !== 'carousel') return;
+        drawState = 'pack_zoom';
+        gsap.set('#carouselLayer', { pointerEvents: 'none' });
+
+        gsap.timeline({ onComplete: function() {
+          drawState = 'pack_tear_slide';
+          gsap.set('#packLayer', { pointerEvents: 'auto' });
+          gsap.to('#packHint', { opacity: 1, duration: 0.4 });
+        }})
+        .to('#carouselLayer', { opacity: 0, duration: 0.28 })
+        .set('#packLayer',    { opacity: 1 })
+        .to('#drawPack',      { scale: 1.82, duration: 0.52, ease: 'power2.out' }, '<0.05');
+      }
+    })();
+
+    /* ════ 팩 가로 찢기 ════ */
+    (function() {
+      var tearZone  = document.getElementById('packTearZone');
+      var tearLight = document.getElementById('packTearLight');
+      var active = false;
+
+      tearZone.addEventListener('pointerdown', function(e) {
+        if (drawState !== 'pack_tear_slide') return;
+        e.preventDefault();
+        active = true;
+        tearZone.setPointerCapture(e.pointerId);
       });
+      tearZone.addEventListener('pointermove', function(e) {
+        if (!active) return;
+        var rect = tearZone.getBoundingClientRect();
+        var pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        tearLight.style.width = (pct * 100) + '%';
+        if (pct >= 0.88) { active = false; completeTear(); }
+      });
+      tearZone.addEventListener('pointerup',     function() { active = false; });
+      tearZone.addEventListener('pointercancel', function() { active = false; });
 
-      function triggerPackOpen() {
+      function completeTear() {
+        if (drawState !== 'pack_tear_slide') return;
         drawState = 'tearing_pack';
-        drawResult = null;
-        revealClickEnabled = false;
-        packEl.style.transition = '';
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
         // API 호출
@@ -1570,9 +1781,9 @@
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE })
-        }).then(function(r) { return r.json(); }).catch(function() { return null; }).then(function(result) {
+        }).then(function(r){ return r.json(); }).catch(function(){ return null; }).then(function(result) {
           if (result && !result.error && result.card) {
-            pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
+            pendingCard = SPIRIT_CARDS.find(function(c){ return c.id === result.card.id; }) || result.card;
           } else {
             pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
           }
@@ -1581,20 +1792,41 @@
           enableRevealClick();
         });
 
-        // 완료 애니메이션: 남은 팩 하단 사라지기 → 플래시 → 카드 상승
-        gsap.timeline({
-          onComplete: function() {
-            packEl.style.clipPath = '';
-            gsap.set('#packLayer', { opacity: 0 });
-            drawState = 'card_back_rise';
-            startCardRise();
-          }
-        })
-        .to(hintEl,     { opacity: 0, duration: 0.1 })
-        .to(previewEl,  { opacity: 0, duration: 0.15 })
-        .to('#flashEl', { opacity: 0.65, duration: 0.07 })
-        .to('#flashEl', { opacity: 0,    duration: 0.14 })
-        .to(packEl,     { opacity: 0, duration: 0.25 }, '<');
+        // 팩 윗조각 위치 계산 + 배치
+        var packEl   = document.getElementById('drawPack');
+        var layerEl  = document.getElementById('packLayer');
+        var topPiece = document.getElementById('packTopPiece');
+        var packRect  = packEl.getBoundingClientRect();
+        var layerRect = layerEl.getBoundingClientRect();
+        var TEAR_FRAC = 0.40; // 팩 위 40% 가 윗조각
+        var topH = packRect.height * TEAR_FRAC;
+
+        topPiece.style.left   = (packRect.left - layerRect.left) + 'px';
+        topPiece.style.top    = (packRect.top  - layerRect.top)  + 'px';
+        topPiece.style.width  = packRect.width  + 'px';
+        topPiece.style.height = topH + 'px';
+        gsap.set(topPiece, { opacity: 1, y: 0, rotate: 0 });
+
+        // 팩 아랫부분만 남기기
+        var clipPct = Math.round(TEAR_FRAC * 100);
+        packEl.style.clipPath = 'inset(' + clipPct + '% -2px 0 -2px)';
+
+        // 애니메이션
+        gsap.timeline({ onComplete: function() {
+          packEl.style.clipPath = '';
+          gsap.set('#packLayer', { opacity: 0 });
+          drawState = 'card_back_rise';
+          startCardRise();
+        }})
+        .to('#packHint',  { opacity: 0, duration: 0.12 }, 0)
+        .to('#flashEl',   { opacity: 0.92, duration: 0.07 }, 0.05)
+        .to('#flashEl',   { opacity: 0,    duration: 0.22 }, '+=0')
+        .to('#starBg',    { opacity: 1, duration: 0.75 }, 0.04)
+        .to('#sceneGlow', { opacity: 0, duration: 0.5  }, 0.1)
+        .to(topPiece,     { y: -(topH + layerRect.top - packRect.top + 60),
+                            rotate: -9, opacity: 0,
+                            duration: 0.46, ease: 'power2.in' }, 0.06)
+        .to(packEl,       { y: 280, opacity: 0, duration: 0.52, ease: 'power2.in' }, 0.22);
       }
     })();
 
