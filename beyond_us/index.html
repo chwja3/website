@@ -1841,10 +1841,11 @@
         }
       });
 
+      gsap.set('#cardTrigger', { scale: 1.6 });
       tlB
-        .to('#cardLayer',   { opacity: 1, duration: 0.4, ease: 'power2.out' })
-        .from('#cardTrigger', { y: 90, duration: 0.65, ease: 'power3.out' }, '<0.05')
-        .to('#cardGlow',    { opacity: 1, duration: 0.5 }, '<');
+        .to('#cardLayer',     { opacity: 1, duration: 0.4, ease: 'power2.out' })
+        .from('#cardTrigger', { y: 110, duration: 0.65, ease: 'power3.out' }, '<0.05')
+        .to('#cardGlow',      { opacity: 1, duration: 0.5 }, '<');
     }
 
     /* 클릭 활성화 (레이스 컨디션: 타임라인B 완료 AND API 응답 둘 다 필요) */
@@ -1856,7 +1857,7 @@
 
       document.getElementById('cardLayer').style.pointerEvents = 'auto';
       document.getElementById('cardTrigger').classList.add('clickable');
-      document.getElementById('flipHint').innerHTML = '<em>Tap to reveal</em>';
+      document.getElementById('flipHint').innerHTML = '<em>Tap to flip it open</em>';
       gsap.to('#flipHint', { opacity: 1, duration: 0.4 });
 
       // gentle float
