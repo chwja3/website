@@ -341,6 +341,25 @@
       background-image: url('images/앤카드뒷면.png');
       background-size: 100% 100%;
       background-position: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-face-back::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -130%;
+      width: 60%; height: 100%;
+      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.38) 50%, transparent 80%);
+      border-radius: 16px;
+      animation: cardBackShimmer 2.8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes cardBackShimmer {
+      0%   { left: -130%; opacity: 0; }
+      10%  { opacity: 1; }
+      50%  { left: 160%; opacity: 1; }
+      60%  { opacity: 0; }
+      100% { left: 160%; opacity: 0; }
     }
 
     /* 광택 sweep 오버레이 — GSAP으로 제어 */
@@ -742,7 +761,7 @@
 
       <!-- 팩 레이어 -->
       <div id="packLayer">
-        <p class="draw-hint" id="packHint">팩을 눌러서 열어보세요 ✨</p>
+        <p class="draw-hint" id="packHint">Tap the pack to open! ✨</p>
         <div id="packInnerGlow"></div>
         <div class="pack" id="drawPack">
           <div class="pack-shine"></div>
@@ -1432,7 +1451,7 @@
       document.getElementById('cardFace').innerHTML = '';
       document.getElementById('flipHint').textContent = '';
       document.getElementById('revealMsg').textContent = '';
-      document.getElementById('packHint').textContent = '팩을 눌러서 열어보세요 ✨';
+      document.getElementById('packHint').textContent = 'Tap the pack to open! ✨';
       document.getElementById('cardTrigger').classList.remove('clickable');
 
       document.getElementById('drawOverlay').classList.remove('hidden');
