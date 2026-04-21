@@ -1653,7 +1653,7 @@
       gsap.set('#cardInner',     { rotateY: 0, rotateX: 0, scale: 1, y: 0 });
       gsap.set('#cardTrigger',   { y: 0 });
       gsap.set('#cardFlipShine', { opacity: 0, x: '-130%' });
-      gsap.set('#settleActions', { opacity: 0 });
+      gsap.set('#settleActions', { opacity: 0, display: 'none' });
       gsap.set('#flipHint',      { opacity: 0 });
 
       // 이펙트 레이어 초기화
@@ -1856,7 +1856,7 @@
 
       document.getElementById('cardLayer').style.pointerEvents = 'auto';
       document.getElementById('cardTrigger').classList.add('clickable');
-      document.getElementById('flipHint').textContent = '카드를 눌러서 공개하세요 👆';
+      document.getElementById('flipHint').innerHTML = '<em>Tap to reveal</em>';
       gsap.to('#flipHint', { opacity: 1, duration: 0.4 });
 
       // gentle float
@@ -1886,6 +1886,7 @@
           if (card) {
             document.getElementById('revealMsg').textContent = '✨ ' + card.name + ' 카드를 얻었어요!';
           }
+          gsap.set('#settleActions', { display: 'flex' });
           gsap.to('#settleActions', { opacity: 1, duration: 0.5 });
         }
       });
