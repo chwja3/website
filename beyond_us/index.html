@@ -2260,6 +2260,7 @@
           gsap.set('#settleActions', { display: 'flex' });
           gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
 
+          // 카드 float
           gsap.to('#cardTrigger', {
             y: -5,
             duration: 1.9,
@@ -2268,13 +2269,35 @@
             repeat: -1
           });
 
+          // 후광 펄스
           gsap.to('#cardGlow', {
-            opacity: 0.78,
-            duration: 2.0,
+            opacity: 0.95,
+            scale: 1.12,
+            duration: 1.8,
             ease: 'sine.inOut',
             yoyo: true,
             repeat: -1
           });
+
+          gsap.to('#sceneGlow', {
+            opacity: 1.0,
+            scale: 1.18,
+            duration: 2.4,
+            ease: 'sine.inOut',
+            yoyo: true,
+            repeat: -1
+          });
+
+          // 앞면 반짝임 sweep 루프
+          var shimmerTl = gsap.timeline({ repeat: -1, repeatDelay: 2.2 });
+          shimmerTl
+            .fromTo('#cardFlipShine',
+              { opacity: 0, x: '-150%' },
+              { opacity: 0.82, x: '20%', duration: 0.28, ease: 'power2.in' }
+            )
+            .to('#cardFlipShine',
+              { opacity: 0, x: '160%', duration: 0.32, ease: 'power2.out' }
+            );
         }
       });
 
