@@ -347,6 +347,7 @@
       width: 100%;
       height: 100%;
       position: relative;
+      overflow: hidden;
       background-image: url('images/앤카드뒷면.png');
       background-repeat: no-repeat;
       background-position: center center;
@@ -566,6 +567,7 @@
       pointer-events: none;
       z-index: 0;
       filter: drop-shadow(0 14px 24px rgba(0,0,0,0.3));
+      overflow: hidden;
     }
 
     #packCardPreview::before {
@@ -1180,7 +1182,9 @@
               <div class="card-face card-back"><div class="card-face-back"></div></div>
               <div class="card-face card-front" id="cardFace"></div>
             </div>
-            <div class="card-flip-shine" id="cardFlipShine"></div>
+            <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:22px;">
+              <div class="card-flip-shine" id="cardFlipShine"></div>
+            </div>
           </div>
         </div>
         <div id="settleActions">
