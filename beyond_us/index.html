@@ -329,8 +329,6 @@
     .card-face {
       position: absolute;
       inset: 0;
-      border-radius: 22px;
-      overflow: hidden;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
     }
@@ -349,8 +347,6 @@
       width: 100%;
       height: 100%;
       position: relative;
-      overflow: hidden;
-      border-radius: 22px;
       background-image: url('images/앤카드뒷면.png');
       background-repeat: no-repeat;
       background-position: center center;
@@ -361,7 +357,6 @@
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 22px;
       background:
         radial-gradient(circle at 50% 44%, rgba(255,255,255,0.15) 0%, transparent 30%),
         radial-gradient(circle at 50% 72%, rgba(102,190,255,0.12) 0%, transparent 34%);
@@ -401,7 +396,6 @@
     .card-flip-shine {
       position: absolute;
       inset: -8%;
-      border-radius: 28px;
       background:
         linear-gradient(104deg,
           transparent 18%,
@@ -564,7 +558,6 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      border-radius: 22px;
       background-image: url('images/앤카드뒷면.png');
       background-repeat: no-repeat;
       background-position: center center;
@@ -572,7 +565,6 @@
       opacity: 0;
       pointer-events: none;
       z-index: 0;
-      overflow: hidden;
       filter: drop-shadow(0 14px 24px rgba(0,0,0,0.3));
     }
 
