@@ -2131,8 +2131,8 @@
 
             gsap.set('#cardTrigger', {
               scale: 1.72,
-              rotateZ: -3.2,
-              rotateX: 6
+              rotateZ: 0,
+              rotateX: 0
             });
 
             tlB
@@ -2140,8 +2140,8 @@
               .to('#cardLayer', { opacity: 1, duration: 0.28, ease: 'power2.out' }, 0)
               .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.64, ease: 'power2.out' }, 0.02)
               .fromTo('#cardTrigger',
-                { y: 128, rotateZ: -7, rotateX: 8, scale: 1.56 },
-                { y: -8, rotateZ: -1.8, rotateX: 3, scale: 1.82, duration: 0.7, ease: 'power3.out' },
+                { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
+                { y: -8, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.7, ease: 'power3.out' },
                 0.04
               )
               .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.55, ease: 'power2.out' }, 0.08)
@@ -2220,15 +2220,6 @@
 
       gsap.to('#cardTrigger', {
         y: -11,
-        rotateZ: -1.4,
-        duration: 1.55,
-        ease: 'sine.inOut',
-        yoyo: true,
-        repeat: -1
-      });
-
-      gsap.to('#cardInner', {
-        rotateX: 2.5,
         duration: 1.55,
         ease: 'sine.inOut',
         yoyo: true,
@@ -2248,7 +2239,7 @@
       gsap.killTweensOf('#cardInner');
       gsap.killTweensOf('#cardGlow');
 
-      gsap.set('#cardTrigger', { y: 0, rotateZ: -1 });
+      gsap.set('#cardTrigger', { y: 0, rotateZ: 0 });
       gsap.set('#cardInner', { rotateX: 0 });
 
       document.getElementById('cardTrigger').classList.remove('clickable');
@@ -2299,7 +2290,6 @@
         )
         .to('#cardTrigger', {
           scale: 1.9,
-          rotateZ: 1.2,
           duration: 0.18,
           ease: 'power2.out'
         }, 0.05)
@@ -2337,6 +2327,7 @@
         }, 0.58)
         .to('#cardTrigger', {
           scale: 1.92,
+          rotateZ: 0,
           duration: 0.30,
           ease: 'power2.out'
         }, 0.84)
