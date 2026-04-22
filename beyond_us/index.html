@@ -599,12 +599,12 @@
     }
     #cardGlow {
       position: absolute;
-      width: 280px;
-      height: 360px;
+      width: 320px;
+      height: 400px;
       border-radius: 999px;
       background:
-        radial-gradient(circle at 50% 50%, rgba(255,237,176,0.34) 0%, rgba(255,165,84,0.30) 22%, rgba(255,105,220,0.18) 42%, rgba(88,148,255,0.16) 58%, transparent 74%);
-      filter: blur(28px);
+        radial-gradient(circle at 50% 50%, rgba(255,237,176,0.82) 0%, rgba(255,165,84,0.72) 22%, rgba(255,105,220,0.52) 42%, rgba(88,148,255,0.40) 58%, transparent 74%);
+      filter: blur(32px);
       opacity: 0;
       pointer-events: none;
     }
@@ -655,6 +655,7 @@
       bottom: 48px;
       left: 0;
       right: 0;
+      z-index: 10;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1201,7 +1202,7 @@
     </div>
     <div id="settleActions">
       <p class="draw-hint" id="revealMsg"></p>
-      <button class="btn btn-primary" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;">컬렉션 확인하기</button>
+      <button class="btn" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;background:rgba(255,215,80,0.95);color:#2c2417;box-shadow:0 4px 24px rgba(255,200,50,0.55);">컬렉션 확인하기</button>
     </div>
   </div>
 
