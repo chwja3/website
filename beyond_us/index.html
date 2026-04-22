@@ -645,6 +645,10 @@
     }
 
     #settleActions {
+      position: absolute;
+      bottom: 48px;
+      left: 0;
+      right: 0;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1187,11 +1191,11 @@
             </div>
           </div>
         </div>
-        <div id="settleActions">
-          <p class="draw-hint" id="revealMsg"></p>
-          <button class="btn btn-primary" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;">컬렉션 확인하기</button>
-        </div>
       </div>
+    </div>
+    <div id="settleActions">
+      <p class="draw-hint" id="revealMsg"></p>
+      <button class="btn btn-primary" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;">컬렉션 확인하기</button>
     </div>
   </div>
 
@@ -2255,15 +2259,6 @@
 
           gsap.set('#settleActions', { display: 'flex' });
           gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
-
-          // 카드 float
-          gsap.to('#cardTrigger', {
-            y: -5,
-            duration: 1.9,
-            ease: 'sine.inOut',
-            yoyo: true,
-            repeat: -1
-          });
 
           // 후광 펄스
           gsap.to('#cardGlow', {
