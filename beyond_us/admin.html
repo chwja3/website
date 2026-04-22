@@ -880,28 +880,34 @@
         return;
       }
       listEl.innerHTML = inquiries.map(inq => `
-        <div id="inqAdmin_${inq.id}" style="padding:14px 0; border-bottom:1px solid var(--line);">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
+        <div id="inqAdmin_${inq.id}" style="padding:16px 0; border-bottom:1px solid var(--line);">
+
+          <!-- 문의 헤더: 닉네임/날짜 + 미답변 뱃지 + 삭제 -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px;">
             <div style="flex:1;">
-              <div style="font-size:13px; color:var(--sub); margin-bottom:4px;">${esc(inq.nickname)} · ${formatDate(inq.createdAt)}</div>
-              <div style="font-size:14px; font-weight:600; line-height:1.5;">${esc(inq.content)}</div>
+              <div style="font-size:12px; color:var(--sub); margin-bottom:5px;">${esc(inq.nickname)} · ${formatDate(inq.createdAt)}</div>
+              <div style="font-size:14px; font-weight:600; line-height:1.6;">${esc(inq.content)}</div>
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              ${!inq.reply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:2px 8px;white-space:nowrap;">미답변</span>' : ''}
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              ${!inq.reply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>' : '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변완료</span>'}
               <button class="btn btn-danger btn-sm" onclick="deleteAdminInquiry('${inq.id}')">삭제</button>
             </div>
           </div>
-          ${inq.reply ? `
-            <div style="margin-bottom:8px; padding:10px 12px; background:#f0ebe0; border-radius:10px; border-left:3px solid var(--primary);">
-              <div style="font-size:11px; font-weight:700; color:var(--sub); margin-bottom:4px;">현재 답변</div>
-              <div style="font-size:14px; line-height:1.5; white-space:pre-wrap;">${esc(inq.reply)}</div>
-            </div>` : ''}
-          <div style="display:flex; gap:8px; align-items:flex-end;">
-            <textarea id="replyInput_${inq.id}" class="input" rows="2" placeholder="${inq.reply ? '답변 수정...' : '답변 작성...'}" style="flex:1; resize:vertical; font-family:inherit; line-height:1.5; margin:0; font-size:14px;">${esc(inq.reply)}</textarea>
-            <button class="btn btn-primary btn-sm" style="flex-shrink:0; padding:9px 14px;" onclick="submitReply('${inq.id}')">저장</button>
-            ${inq.reply ? `<button class="btn btn-ghost btn-sm" style="flex-shrink:0;" onclick="deleteReply('${inq.id}')">삭제</button>` : ''}
+
+          <!-- 답변 영역 -->
+          <div style="background:var(--primary-soft); border-radius:12px; padding:12px;">
+            <div style="font-size:11px; font-weight:700; color:var(--sub); margin-bottom:8px;">💬 답변</div>
+            <textarea id="replyInput_${inq.id}" class="input" rows="3"
+              placeholder="${inq.reply ? '답변을 수정하세요...' : '답변을 작성하세요...'}"
+              style="width:100%; resize:vertical; font-family:inherit; line-height:1.6; margin-bottom:8px; font-size:14px; background:var(--card);"
+            >${esc(inq.reply || '')}</textarea>
+            <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px;">
+              ${inq.reply ? `<button class="btn btn-ghost btn-sm" onclick="deleteReply('${inq.id}')">답변삭제</button>` : ''}
+              <button class="btn btn-primary btn-sm" style="width:auto;" onclick="submitReply('${inq.id}')">${inq.reply ? '수정' : '저장'}</button>
+            </div>
+            <div id="replyStatus_${inq.id}" class="status" style="margin-top:6px; text-align:right;"></div>
           </div>
-          <div id="replyStatus_${inq.id}" class="status" style="margin-top:4px;"></div>
+
         </div>`).join('');
     }
 
