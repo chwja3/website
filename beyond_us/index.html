@@ -1181,6 +1181,7 @@
       <!-- Phase 3: 카드 -->
       <div id="cardLayer">
         <div id="cardGlow"></div>
+        <p class="draw-hint" id="flipHint"></p>
         <div id="cardTrigger">
           <div style="width:150px;height:220px;perspective:800px;position:relative;">
             <div id="cardInner" style="width:100%;height:100%;position:relative;transform-style:preserve-3d;">
@@ -1190,7 +1191,6 @@
             <div class="card-flip-shine" id="cardFlipShine"></div>
           </div>
         </div>
-        <p class="draw-hint" id="flipHint"></p>
         <div id="settleActions">
           <p class="draw-hint" id="revealMsg"></p>
           <button class="btn btn-primary" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;">컬렉션 확인하기</button>
@@ -2207,7 +2207,7 @@
 
       document.getElementById('cardLayer').style.pointerEvents = 'auto';
       document.getElementById('cardTrigger').classList.add('clickable');
-      document.getElementById('flipHint').innerHTML = '<em>Tap to reveal</em>';
+      document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
 
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
       gsap.to('#cardGlow', {
