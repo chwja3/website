@@ -327,47 +327,99 @@
       position: relative;
     }
     .card-face {
-      position: absolute; inset: 0;
-      border-radius: 16px; overflow: hidden;
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      overflow: hidden;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
+      transform-style: preserve-3d;
     }
-    .card-back  { transform: rotateY(0deg); background: white; }
-    .card-front { transform: rotateY(180deg); }
 
-    /* 뒷면 이미지 */
+    .card-back {
+      transform: rotateY(0deg);
+      background: transparent;
+    }
+
+    .card-front {
+      transform: rotateY(180deg);
+      background: transparent;
+    }
+
     .card-face-back {
-      width: 100%; height: 100%;
-      background-image: url('images/앤카드뒷면.png');
-      background-size: 100% 100%;
-      background-position: center;
+      width: 100%;
+      height: 100%;
       position: relative;
       overflow: hidden;
+      border-radius: 22px;
+      background-image: url('images/앤카드뒷면.png');
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 112% 112%;
+      filter:
+        drop-shadow(0 20px 30px rgba(0,0,0,0.34))
+        saturate(1.06)
+        contrast(1.04);
+      transform: scale(1.01);
     }
+
+    .card-face-back::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(255,255,255,0.15) 0%, transparent 30%),
+        radial-gradient(circle at 50% 72%, rgba(102,190,255,0.12) 0%, transparent 34%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+
     .card-face-back::after {
       content: '';
       position: absolute;
-      top: 0; left: -130%;
-      width: 60%; height: 100%;
-      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.38) 50%, transparent 80%);
-      border-radius: 16px;
-      animation: cardBackShimmer 2.8s ease-in-out infinite;
+      top: -10%;
+      left: -135%;
+      width: 62%;
+      height: 120%;
+      border-radius: 24px;
+      background: linear-gradient(
+        105deg,
+        transparent 10%,
+        rgba(255,255,255,0.05) 26%,
+        rgba(255,255,255,0.62) 48%,
+        rgba(255,255,255,0.1) 66%,
+        transparent 86%
+      );
+      transform: rotate(8deg);
+      animation: cardBackShimmer 2.9s cubic-bezier(.22,.61,.36,1) infinite;
       pointer-events: none;
     }
+
     @keyframes cardBackShimmer {
-      0%   { left: -130%; opacity: 0; }
-      10%  { opacity: 1; }
-      50%  { left: 160%; opacity: 1; }
-      60%  { opacity: 0; }
-      100% { left: 160%; opacity: 0; }
+      0%   { left: -135%; opacity: 0; }
+      12%  { opacity: 0.9; }
+      44%  { left: 155%; opacity: 1; }
+      58%  { opacity: 0; }
+      100% { left: 155%; opacity: 0; }
     }
 
-    /* 광택 sweep 오버레이 — GSAP으로 제어 */
     .card-flip-shine {
-      position: absolute; inset: 0; border-radius: 16px;
-      background: linear-gradient(105deg, transparent 25%, rgba(255,255,255,0.55) 50%, transparent 75%);
-      pointer-events: none; z-index: 20;
+      position: absolute;
+      inset: -8%;
+      border-radius: 28px;
+      background:
+        linear-gradient(104deg,
+          transparent 18%,
+          rgba(255,255,255,0.12) 34%,
+          rgba(255,255,255,0.92) 50%,
+          rgba(255,255,255,0.12) 66%,
+          transparent 82%);
+      pointer-events: none;
+      z-index: 20;
       opacity: 0;
+      mix-blend-mode: screen;
+      filter: blur(0.3px);
     }
 
     /* ── 성령의 열매 카드 ── */
@@ -423,25 +475,80 @@
       display: flex; align-items: center; justify-content: center;
     }
     #sceneGlow {
-      position: absolute; inset: -60px;
-      background: radial-gradient(ellipse at center, rgba(196,128,0,0.35) 0%, transparent 65%);
-      pointer-events: none; opacity: 0;
+      position: absolute;
+      inset: -96px;
+      background:
+        radial-gradient(circle at 50% 54%, rgba(255,184,84,0.28) 0%, rgba(255,132,0,0.14) 18%, transparent 40%),
+        radial-gradient(circle at 50% 42%, rgba(255,105,180,0.18) 0%, transparent 35%),
+        radial-gradient(circle at 50% 64%, rgba(98,150,255,0.16) 0%, transparent 30%);
+      filter: blur(18px);
+      pointer-events: none;
+      opacity: 0;
     }
+
+    #sceneWrap::before,
+    #sceneWrap::after {
+      content: '';
+      position: absolute;
+      inset: -40px;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+    }
+
+    #sceneWrap::before {
+      background:
+        radial-gradient(circle at 50% 52%, rgba(255,255,255,0.12) 0%, transparent 18%),
+        radial-gradient(circle at 50% 55%, rgba(255,130,210,0.16) 0%, transparent 30%),
+        radial-gradient(circle at 50% 58%, rgba(90,150,255,0.14) 0%, transparent 34%);
+      filter: blur(12px);
+    }
+
+    #sceneWrap::after {
+      background:
+        conic-gradient(from 0deg at 50% 52%,
+          transparent 0deg,
+          rgba(255,180,80,0.08) 30deg,
+          transparent 75deg,
+          rgba(255,110,210,0.08) 118deg,
+          transparent 170deg,
+          rgba(120,180,255,0.06) 220deg,
+          transparent 360deg);
+      filter: blur(20px);
+    }
+
     #effectsLayer {
-      position: absolute; inset: 0;
-      pointer-events: none; z-index: 30;
-      display: flex; align-items: center; justify-content: center;
+      position: absolute;
+      inset: 0;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+
     #flashEl {
-      position: absolute; inset: -200px;
-      background: rgba(255,248,200,1);
-      opacity: 0; pointer-events: none;
+      position: absolute;
+      inset: -260px;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,0.96) 0%, rgba(255,242,180,0.82) 14%, rgba(255,255,255,0.12) 34%, transparent 62%);
+      opacity: 0;
+      pointer-events: none;
     }
+
     #ringEl {
       position: absolute;
-      width: 220px; height: 220px; border-radius: 50%;
-      border: 3px solid rgba(255,220,80,0.9);
-      opacity: 0; transform: scale(0.5);
+      width: 230px;
+      height: 230px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,232,160,0.92);
+      box-shadow:
+        0 0 0 2px rgba(255,255,255,0.08) inset,
+        0 0 22px rgba(255,210,110,0.44),
+        0 0 80px rgba(255,120,220,0.18);
+      opacity: 0;
+      transform: scale(0.42);
       pointer-events: none;
     }
     #packLayer {
@@ -458,23 +565,41 @@
     }
     #packCardPreview {
       position: absolute;
-      width: 150px; height: 220px;
-      top: 50%; left: 50%;
+      width: 150px;
+      height: 220px;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
-      border-radius: 14px;
+      border-radius: 22px;
       background-image: url('images/앤카드뒷면.png');
-      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: 112% 112%;
       opacity: 0;
       pointer-events: none;
       z-index: 0;
       overflow: hidden;
+      filter: drop-shadow(0 14px 24px rgba(0,0,0,0.3));
     }
+
+    #packCardPreview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(255,255,255,0.12) 0%, transparent 28%),
+        radial-gradient(circle at 50% 70%, rgba(110,190,255,0.08) 0%, transparent 34%);
+    }
+
     #packCardPreview::after {
       content: '';
       position: absolute;
-      top: 0; left: -130%;
-      width: 60%; height: 100%;
-      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.35) 50%, transparent 80%);
+      top: -10%;
+      left: -135%;
+      width: 62%;
+      height: 120%;
+      background: linear-gradient(105deg, transparent 18%, rgba(255,255,255,0.48) 50%, transparent 82%);
       animation: cardBackShimmer 2.8s ease-in-out infinite;
       pointer-events: none;
     }
@@ -486,72 +611,165 @@
     }
     #cardGlow {
       position: absolute;
-      width: 210px; height: 290px; border-radius: 20px;
-      background: radial-gradient(ellipse at center, rgba(255,180,80,0.45), transparent 70%);
-      filter: blur(22px);
-      opacity: 0; pointer-events: none;
-    }
-    #cardTrigger {
-      position: relative; cursor: default;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #cardTrigger.clickable { cursor: pointer; }
-    #settleActions {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 0;
+      width: 280px;
+      height: 360px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,237,176,0.34) 0%, rgba(255,165,84,0.30) 22%, rgba(255,105,220,0.18) 42%, rgba(88,148,255,0.16) 58%, transparent 74%);
+      filter: blur(28px);
       opacity: 0;
+      pointer-events: none;
+    }
+
+    #cardTrigger {
+      position: relative;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+
+    #cardTrigger.clickable {
+      cursor: pointer;
+    }
+
+    #cardTrigger.clickable::after {
+      content: '';
+      position: absolute;
+      inset: -16px;
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 0 24px rgba(255,184,84,0.18),
+        0 0 56px rgba(255,105,210,0.10);
+      opacity: 0.7;
+      animation: revealPulse 1.9s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    #flipHint {
+      min-height: 20px;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    #settleActions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      opacity: 0;
+    }
+
+    .spark {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at center,
+          rgba(255,255,255,1) 0%,
+          rgba(255,238,185,0.96) 30%,
+          rgba(255,164,90,0.68) 62%,
+          transparent 100%);
+      box-shadow:
+        0 0 8px rgba(255,255,255,0.8),
+        0 0 18px rgba(255,167,98,0.55),
+        0 0 30px rgba(255,100,220,0.22);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes revealPulse {
+      0%, 100% {
+        transform: scale(0.96);
+        opacity: 0.38;
+      }
+      50% {
+        transform: scale(1.02);
+        opacity: 0.86;
+      }
     }
 
     /* ════ 별빛 배경 ════ */
     #starBg {
-      position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 50% 70%, #1a2a5e 0%, #0a1230 55%, #020610 100%);
-      opacity: 0; pointer-events: none; z-index: 1;
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 78%, #192b67 0%, #09112f 52%, #02050d 100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
     }
-    #starBg::before, #starBg::after {
+
+    #starBg::before,
+    #starBg::after {
       content: '';
       position: absolute;
-      width: 1px; height: 1px; border-radius: 50%; background: transparent;
-      box-shadow:
-        18px 45px 0 1px rgba(255,255,255,0.85),
-        52px 120px 0 0 rgba(200,220,255,0.7),
-        90px 30px 0 1px rgba(255,255,255,0.9),
-        130px 80px 0 0 rgba(255,255,255,0.6),
-        160px 160px 0 1px rgba(200,220,255,0.8),
-        30px 200px 0 0 rgba(255,255,255,0.7),
-        210px 50px 0 1px rgba(255,255,255,0.9),
-        240px 130px 0 0 rgba(200,220,255,0.65),
-        70px 260px 0 1px rgba(255,255,255,0.8),
-        190px 210px 0 0 rgba(255,255,255,0.75),
-        110px 350px 0 1px rgba(200,220,255,0.7),
-        255px 300px 0 0 rgba(255,255,255,0.85),
-        40px 380px 0 1px rgba(255,255,255,0.6),
-        180px 390px 0 0 rgba(200,220,255,0.8),
-        230px 420px 0 1px rgba(255,255,255,0.7);
-      animation: starTwinkle 2.8s ease-in-out infinite alternate;
+      inset: -10%;
+      pointer-events: none;
     }
+
+    #starBg::before {
+      background:
+        radial-gradient(circle at 4% 8%, rgba(255,255,255,0.88) 0 1.4px, transparent 2.1px),
+        radial-gradient(circle at 12% 22%, rgba(255,255,255,0.55) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 18% 11%, rgba(170,210,255,0.85) 0 1.5px, transparent 2.1px),
+        radial-gradient(circle at 27% 34%, rgba(255,255,255,0.62) 0 1.1px, transparent 1.9px),
+        radial-gradient(circle at 35% 18%, rgba(255,255,255,0.92) 0 1.6px, transparent 2.2px),
+        radial-gradient(circle at 42% 52%, rgba(255,255,255,0.62) 0 1.1px, transparent 1.9px),
+        radial-gradient(circle at 55% 16%, rgba(255,255,255,0.88) 0 1.4px, transparent 2.1px),
+        radial-gradient(circle at 63% 30%, rgba(170,210,255,0.78) 0 1.3px, transparent 2px),
+        radial-gradient(circle at 71% 12%, rgba(255,255,255,0.78) 0 1.4px, transparent 2px),
+        radial-gradient(circle at 82% 25%, rgba(255,255,255,0.94) 0 1.8px, transparent 2.5px),
+        radial-gradient(circle at 91% 13%, rgba(255,255,255,0.58) 0 1px, transparent 1.8px),
+        radial-gradient(circle at 8% 68%, rgba(255,255,255,0.65) 0 1.2px, transparent 2px),
+        radial-gradient(circle at 22% 76%, rgba(170,210,255,0.8) 0 1.4px, transparent 2px),
+        radial-gradient(circle at 40% 71%, rgba(255,255,255,0.62) 0 1.1px, transparent 1.9px),
+        radial-gradient(circle at 58% 82%, rgba(255,255,255,0.7) 0 1.3px, transparent 2px),
+        radial-gradient(circle at 76% 72%, rgba(170,210,255,0.82) 0 1.4px, transparent 2px),
+        radial-gradient(circle at 88% 66%, rgba(255,255,255,0.58) 0 1px, transparent 1.8px);
+      animation: starDriftA 18s linear infinite, starTwinkle 3.2s ease-in-out infinite alternate;
+    }
+
     #starBg::after {
-      box-shadow:
-        35px 70px 0 1px rgba(255,255,255,0.7),
-        80px 140px 0 0 rgba(200,220,255,0.85),
-        140px 20px 0 1px rgba(255,255,255,0.6),
-        200px 100px 0 0 rgba(255,255,255,0.9),
-        15px 160px 0 1px rgba(200,220,255,0.7),
-        260px 180px 0 0 rgba(255,255,255,0.75),
-        100px 310px 0 1px rgba(255,255,255,0.8),
-        50px 330px 0 0 rgba(200,220,255,0.65),
-        220px 350px 0 1px rgba(255,255,255,0.9),
-        170px 60px 0 0 rgba(255,255,255,0.7),
-        270px 240px 0 1px rgba(200,220,255,0.8),
-        10px 420px 0 0 rgba(255,255,255,0.6),
-        145px 410px 0 1px rgba(255,255,255,0.85),
-        205px 280px 0 0 rgba(200,220,255,0.7),
-        60px 440px 0 1px rgba(255,255,255,0.75);
-      animation-delay: 1.4s;
+      background:
+        radial-gradient(circle at 7% 16%, rgba(255,255,255,0.28) 0 0.8px, transparent 1.4px),
+        radial-gradient(circle at 16% 44%, rgba(255,255,255,0.22) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 25% 27%, rgba(255,255,255,0.3) 0 0.8px, transparent 1.4px),
+        radial-gradient(circle at 33% 61%, rgba(255,255,255,0.24) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 47% 21%, rgba(255,255,255,0.22) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 52% 48%, rgba(255,255,255,0.28) 0 0.8px, transparent 1.4px),
+        radial-gradient(circle at 61% 67%, rgba(255,255,255,0.24) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 69% 39%, rgba(255,255,255,0.30) 0 0.8px, transparent 1.4px),
+        radial-gradient(circle at 77% 57%, rgba(255,255,255,0.22) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 85% 31%, rgba(255,255,255,0.30) 0 0.8px, transparent 1.4px),
+        radial-gradient(circle at 93% 54%, rgba(255,255,255,0.22) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 12% 88%, rgba(255,255,255,0.24) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 34% 89%, rgba(255,255,255,0.28) 0 0.8px, transparent 1.4px),
+        radial-gradient(circle at 56% 91%, rgba(255,255,255,0.22) 0 0.7px, transparent 1.3px),
+        radial-gradient(circle at 79% 86%, rgba(255,255,255,0.28) 0 0.8px, transparent 1.4px);
+      opacity: 0.8;
+      animation: starDriftB 24s linear infinite reverse, starTwinkle 4.5s ease-in-out infinite alternate;
     }
+
     @keyframes starTwinkle {
-      from { opacity: 0.45; }
+      from { opacity: 0.52; }
       to   { opacity: 1; }
+    }
+
+    @keyframes starDriftA {
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(-10px, 8px, 0); }
+    }
+
+    @keyframes starDriftB {
+      from { transform: translate3d(0, 0, 0); }
+      to   { transform: translate3d(12px, -10px, 0); }
     }
 
     /* ════ 캐러셀 ════ */
@@ -1607,6 +1825,69 @@
       if (lastConfigData) renderConfig(lastConfigData);
     }
 
+    function ensureRevealSparks() {
+      var layer = document.getElementById('effectsLayer');
+      if (!layer) return [];
+      var sparks = layer.querySelectorAll('.spark');
+      if (sparks.length) return Array.from(sparks);
+
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < 18; i++) {
+        var s = document.createElement('span');
+        s.className = 'spark';
+        frag.appendChild(s);
+      }
+      layer.appendChild(frag);
+      return Array.from(layer.querySelectorAll('.spark'));
+    }
+
+    function resetRevealSparks() {
+      ensureRevealSparks().forEach(function(el) {
+        gsap.set(el, { opacity: 0, x: 0, y: 0, scale: 0.2 });
+      });
+    }
+
+    function burstRevealSparks(power) {
+      power = power || 1;
+      ensureRevealSparks().forEach(function(el, i) {
+        var angle = (Math.PI * 2 * i) / 18;
+        var radius = (78 + Math.random() * 68) * power;
+        var dx = Math.cos(angle) * radius;
+        var dy = Math.sin(angle) * radius * 0.82;
+
+        gsap.fromTo(el,
+          {
+            x: 0,
+            y: 0,
+            scale: 0.15 + Math.random() * 0.28,
+            opacity: 0
+          },
+          {
+            x: dx,
+            y: dy,
+            scale: 0.9 + Math.random() * 0.7,
+            opacity: 1,
+            duration: 0.16,
+            ease: 'power2.out',
+            onComplete: function() {
+              gsap.to(el, {
+                opacity: 0,
+                scale: 0.28,
+                duration: 0.5 + Math.random() * 0.22,
+                ease: 'power2.out'
+              });
+            }
+          }
+        );
+
+        gsap.to(el, {
+          y: dy + (Math.random() * 18 - 9),
+          duration: 0.72 + Math.random() * 0.22,
+          ease: 'power2.out'
+        });
+      });
+    }
+
     /* ════ 뽑기 오버레이 (GSAP 시네마틱) ════ */
     let drawState = 'idle';
     let drawResult = null;
@@ -1633,33 +1914,52 @@
       carouselCenter = 1;
 
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
+      resetRevealSparks();
 
-      // 캐러셀 레이어
       applyCarouselPositions();
+
       gsap.set('#carouselLayer', { opacity: 0, pointerEvents: 'none' });
 
-      // 팩 레이어 초기화
-      gsap.set('#packLayer',   { opacity: 0, pointerEvents: 'none' });
-      gsap.set('#drawPack',    { scale: 0.55, opacity: 1, y: 0, rotate: 0 });
+      gsap.set('#packLayer', { opacity: 0, pointerEvents: 'none' });
+      gsap.set('#drawPack', {
+        scale: 0.55,
+        opacity: 1,
+        y: 0,
+        rotate: 0,
+        rotateX: 0,
+        filter: 'drop-shadow(0 18px 34px rgba(0,0,0,0.42))'
+      });
       document.getElementById('drawPack').style.clipPath = '';
       document.getElementById('packTearLight').style.width = '0%';
-      gsap.set('#packHint',    { opacity: 0 });
-      gsap.set('#packTopPiece', { opacity: 0, y: 0, rotate: 0 });
+      gsap.set('#packHint', { opacity: 0, y: 10 });
+      gsap.set('#packTopPiece', { opacity: 0, y: 0, rotate: 0, rotateZ: 0 });
+      gsap.set('#packInnerGlow', { opacity: 0, scale: 0.8 });
+      gsap.set('#packCardPreview', { opacity: 0, scale: 0.9, y: 18 });
 
-      // 카드 레이어 초기화
-      gsap.set('#cardLayer',     { opacity: 0, pointerEvents: 'none' });
-      gsap.set('#cardGlow',      { opacity: 0 });
-      gsap.set('#cardInner',     { rotateY: 0, rotateX: 0, scale: 1, y: 0 });
-      gsap.set('#cardTrigger',   { y: 0 });
-      gsap.set('#cardFlipShine', { opacity: 0, x: '-130%' });
+      gsap.set('#cardLayer', { opacity: 0, pointerEvents: 'none' });
+      gsap.set('#cardGlow', { opacity: 0, scale: 0.7 });
+      gsap.set('#cardInner', {
+        rotateY: 0,
+        rotateX: 0,
+        rotateZ: 0,
+        scale: 1,
+        y: 0,
+        transformPerspective: 1200
+      });
+      gsap.set('#cardTrigger', {
+        y: 0,
+        rotateZ: 0,
+        rotateX: 0,
+        scale: 1
+      });
+      gsap.set('#cardFlipShine', { opacity: 0, x: '-150%' });
       gsap.set('#settleActions', { opacity: 0, display: 'none' });
-      gsap.set('#flipHint',      { opacity: 0 });
+      gsap.set('#flipHint', { opacity: 0, y: 6 });
 
-      // 이펙트 레이어 초기화
-      gsap.set('#sceneGlow', { opacity: 0 });
-      gsap.set('#starBg',    { opacity: 0 });
-      gsap.set('#flashEl',   { opacity: 0 });
-      gsap.set('#ringEl',    { opacity: 0, scale: 0.5 });
+      gsap.set('#sceneGlow', { opacity: 0, scale: 0.8 });
+      gsap.set('#starBg', { opacity: 0 });
+      gsap.set('#flashEl', { opacity: 0 });
+      gsap.set('#ringEl', { opacity: 0, scale: 0.42 });
 
       document.getElementById('cardFace').innerHTML = '';
       document.getElementById('flipHint').textContent = '';
@@ -1667,10 +1967,18 @@
       document.getElementById('cardTrigger').classList.remove('clickable');
 
       document.getElementById('drawOverlay').classList.remove('hidden');
-      gsap.to('#sceneGlow',     { opacity: 1, duration: 0.6 });
-      gsap.to('#carouselLayer', { opacity: 1, duration: 0.5, delay: 0.1,
-        onStart: function() { gsap.set('#carouselLayer', { pointerEvents: 'auto' }); }
-      });
+
+      gsap.timeline()
+        .to('#starBg', { opacity: 1, duration: 0.55, ease: 'power2.out' }, 0)
+        .to('#sceneGlow', { opacity: 1, scale: 1, duration: 0.75, ease: 'power2.out' }, 0.02)
+        .to('#carouselLayer', {
+          opacity: 1,
+          duration: 0.46,
+          delay: 0.08,
+          onStart: function() {
+            gsap.set('#carouselLayer', { pointerEvents: 'auto' });
+          }
+        }, 0.08);
     }
 
     function closeDrawOverlay() {
@@ -1775,144 +2083,285 @@
         drawState = 'tearing_pack';
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
-        // API 호출
         fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE })
-        }).then(function(r){ return r.json(); }).catch(function(){ return null; }).then(function(result) {
+          body: JSON.stringify({
+            action: 'drawCard',
+            userId: currentNickname,
+            weekKey: getWeekKey(),
+            testMode: TEST_MODE
+          })
+        })
+        .then(function(r) { return r.json(); })
+        .catch(function() { return null; })
+        .then(function(result) {
           if (result && !result.error && result.card) {
-            pendingCard = SPIRIT_CARDS.find(function(c){ return c.id === result.card.id; }) || result.card;
+            pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
           } else {
             pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
           }
           drawResult = pendingCard;
-          document.getElementById('cardFace').innerHTML = makeCardHTML(pendingCard);
+          document.getElementById('cardFace').innerHTML = makeCardHTML(drawResult);
           enableRevealClick();
         });
 
-        // 팩 윗조각 위치 계산 + 배치
-        var packEl   = document.getElementById('drawPack');
-        var layerEl  = document.getElementById('packLayer');
+        var packRect = document.getElementById('drawPack').getBoundingClientRect();
+        var wrapRect = document.getElementById('sceneWrap').getBoundingClientRect();
         var topPiece = document.getElementById('packTopPiece');
-        var packRect  = packEl.getBoundingClientRect();
-        var layerRect = layerEl.getBoundingClientRect();
-        var TEAR_FRAC = 0.40; // 팩 위 40% 가 윗조각
-        var topH = packRect.height * TEAR_FRAC;
 
-        topPiece.style.left   = (packRect.left - layerRect.left) + 'px';
-        topPiece.style.top    = (packRect.top  - layerRect.top)  + 'px';
-        topPiece.style.width  = packRect.width  + 'px';
-        topPiece.style.height = topH + 'px';
-        gsap.set(topPiece, { opacity: 1, y: 0, rotate: 0 });
+        topPiece.style.width = packRect.width + 'px';
+        topPiece.style.height = Math.max(62, packRect.height * 0.26) + 'px';
+        topPiece.style.left = (packRect.left - wrapRect.left) + 'px';
+        topPiece.style.top = (packRect.top - wrapRect.top) + 'px';
 
-        // 팩 아랫부분만 남기기
-        var clipPct = Math.round(TEAR_FRAC * 100);
-        packEl.style.clipPath = 'inset(' + clipPct + '% -2px 0 -2px)';
+        gsap.set('#packTopPiece', {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          rotateZ: 0,
+          transformOrigin: '50% 50%'
+        });
 
-        // 애니메이션
-        gsap.timeline({ onComplete: function() {
-          packEl.style.clipPath = '';
-          gsap.set('#packLayer', { opacity: 0 });
-          drawState = 'card_back_rise';
-          startCardRise();
-        }})
-        .to('#packHint',  { opacity: 0, duration: 0.12 }, 0)
-        .to('#flashEl',   { opacity: 0.92, duration: 0.07 }, 0.05)
-        .to('#flashEl',   { opacity: 0,    duration: 0.22 }, '+=0')
-        .to('#starBg',    { opacity: 1, duration: 0.75 }, 0.04)
-        .to('#sceneGlow', { opacity: 0, duration: 0.5  }, 0.1)
-        .to(topPiece,     { y: -(topH + layerRect.top - packRect.top + 60),
-                            rotate: -9, opacity: 0,
-                            duration: 0.46, ease: 'power2.in' }, 0.06)
-        .to(packEl,       { y: 280, opacity: 0, duration: 0.52, ease: 'power2.in' }, 0.22);
+        gsap.timeline({
+          onComplete: function() {
+            drawState = 'card_back_rise';
+            gsap.set('#packLayer', { opacity: 0, pointerEvents: 'none' });
+
+            var tlB = gsap.timeline({
+              onComplete: function() {
+                drawState = 'card_back_wait';
+                enableRevealClick();
+              }
+            });
+
+            gsap.set('#cardTrigger', {
+              scale: 1.72,
+              rotateZ: -3.2,
+              rotateX: 6
+            });
+
+            tlB
+              .set('#cardLayer', { pointerEvents: 'none' })
+              .to('#cardLayer', { opacity: 1, duration: 0.28, ease: 'power2.out' }, 0)
+              .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.64, ease: 'power2.out' }, 0.02)
+              .fromTo('#cardTrigger',
+                { y: 128, rotateZ: -7, rotateX: 8, scale: 1.56 },
+                { y: -8, rotateZ: -1.8, rotateX: 3, scale: 1.82, duration: 0.7, ease: 'power3.out' },
+                0.04
+              )
+              .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.55, ease: 'power2.out' }, 0.08)
+              .fromTo('#flipHint',
+                { opacity: 0, y: 10 },
+                { opacity: 0.72, y: 0, duration: 0.34, ease: 'power2.out' },
+                0.44
+              );
+          }
+        })
+        .to('#packHint', { opacity: 0, y: -8, duration: 0.15 }, 0)
+        .to('#packTearLight', { width: '100%', duration: 0.14, ease: 'power2.out' }, 0)
+        .to('#packInnerGlow', { opacity: 1, scale: 1.16, duration: 0.22, ease: 'power2.out' }, 0.02)
+        .to('#drawPack', {
+          clipPath: 'polygon(0 0, 100% 0, 100% 20%, 0 33%)',
+          duration: 0.18,
+          ease: 'power1.out'
+        }, 0.03)
+        .fromTo('#packCardPreview',
+          { opacity: 0, scale: 0.9, y: 20 },
+          { opacity: 0.92, scale: 1.04, y: -10, duration: 0.34, ease: 'power2.out' },
+          0.08
+        )
+        .to('#packTopPiece', {
+          y: -78,
+          x: 8,
+          rotateZ: 12,
+          opacity: 0.98,
+          duration: 0.32,
+          ease: 'power2.out'
+        }, 0.07)
+        .to('#packTopPiece', {
+          y: -126,
+          x: 26,
+          rotateZ: 24,
+          opacity: 0,
+          duration: 0.46,
+          ease: 'power2.in'
+        }, 0.30)
+        .to('#drawPack', {
+          scale: 1.9,
+          y: 38,
+          opacity: 0,
+          duration: 0.42,
+          ease: 'power2.in'
+        }, 0.22)
+        .to('#packCardPreview', {
+          opacity: 0,
+          scale: 1.08,
+          y: -46,
+          duration: 0.34,
+          ease: 'power2.in'
+        }, 0.34);
       }
     })();
 
-    /* 카드 상승 — Timeline B */
-    function startCardRise() {
-      gsap.set('#cardLayer', { opacity: 0, pointerEvents: 'none' });
-
-      var tlB = gsap.timeline({
-        onComplete: function() {
-          drawState = 'card_back_wait';
-          enableRevealClick();
-        }
-      });
-
-      gsap.set('#cardTrigger', { scale: 1.82 });
-      tlB
-        .to('#cardLayer',     { opacity: 1, duration: 0.4, ease: 'power2.out' })
-        .from('#cardTrigger', { y: 110, duration: 0.65, ease: 'power3.out' }, '<0.05')
-        .to('#cardGlow',      { opacity: 1, duration: 0.5 }, '<');
-    }
-
-    /* 클릭 활성화 (레이스 컨디션: 타임라인B 완료 AND API 응답 둘 다 필요) */
     function enableRevealClick() {
-      if (drawState !== 'card_back_wait') return; // 둘 중 하나가 먼저 도착하면 대기
+      if (drawState !== 'card_back_wait') return;
       if (!drawResult) return;
       if (revealClickEnabled) return;
+
       revealClickEnabled = true;
 
       document.getElementById('cardLayer').style.pointerEvents = 'auto';
       document.getElementById('cardTrigger').classList.add('clickable');
-      document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
-      gsap.to('#flipHint', { opacity: 1, duration: 0.4 });
+      document.getElementById('flipHint').innerHTML = '<em>Tap to reveal</em>';
 
-      // gentle float
+      gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
+      gsap.to('#cardGlow', {
+        opacity: 0.88,
+        duration: 1.5,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut'
+      });
+
       gsap.to('#cardTrigger', {
-        y: -9, duration: 1.5, ease: 'sine.inOut',
-        yoyo: true, repeat: -1
+        y: -11,
+        rotateZ: -1.4,
+        duration: 1.55,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1
+      });
+
+      gsap.to('#cardInner', {
+        rotateX: 2.5,
+        duration: 1.55,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1
       });
     }
 
     /* 카드 클릭 — Timeline C (3D 플립 공개) */
     document.getElementById('cardTrigger').addEventListener('click', function() {
       if (!revealClickEnabled || drawState !== 'card_back_wait') return;
+
       revealClickEnabled = false;
       drawState = 'card_flip_reveal';
       isFlipping = true;
 
       gsap.killTweensOf('#cardTrigger');
-      gsap.set('#cardTrigger', { y: 0 });
+      gsap.killTweensOf('#cardInner');
+      gsap.killTweensOf('#cardGlow');
+
+      gsap.set('#cardTrigger', { y: 0, rotateZ: -1 });
+      gsap.set('#cardInner', { rotateX: 0 });
+
       document.getElementById('cardTrigger').classList.remove('clickable');
-      gsap.to('#flipHint', { opacity: 0, duration: 0.15 });
+      gsap.to('#flipHint', { opacity: 0, y: -6, duration: 0.14 });
+
+      burstRevealSparks(1.0);
 
       var tlC = gsap.timeline({
         onComplete: function() {
           drawState = 'card_front_settle';
           isFlipping = false;
+
           var card = pendingCard || drawResult;
           if (card) {
             document.getElementById('revealMsg').textContent = '✨ ' + card.name + ' 카드를 얻었어요!';
           }
+
           gsap.set('#settleActions', { display: 'flex' });
-          gsap.to('#settleActions', { opacity: 1, duration: 0.5 });
+          gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
+
+          gsap.to('#cardTrigger', {
+            y: -5,
+            duration: 1.9,
+            ease: 'sine.inOut',
+            yoyo: true,
+            repeat: -1
+          });
+
+          gsap.to('#cardGlow', {
+            opacity: 0.78,
+            duration: 2.0,
+            ease: 'sine.inOut',
+            yoyo: true,
+            repeat: -1
+          });
         }
       });
 
-      // Phase 1: 0→90° 뒷면 숨기기
       tlC
-        .to('#cardInner', { rotateY: 90, duration: 0.26, ease: 'power2.in' })
-      // 90° 지점 플래시
-        .to('#flashEl', { opacity: 0.75, duration: 0.06 }, '-=0.03')
-        .to('#flashEl', { opacity: 0,    duration: 0.13 })
-      // Phase 2: 90→180° 앞면 공개
-        .to('#cardInner', { rotateY: 180, duration: 0.30, ease: 'power2.out' })
-      // 회전 중 X축 wobble
-        .to('#cardInner', { rotateX:  4, duration: 0.15, ease: 'power1.out' }, '<')
-        .to('#cardInner', { rotateX:  0, duration: 0.15, ease: 'power1.in'  })
-      // 스케일 강조
-        .to('#cardInner', { scale: 1.13, duration: 0.22, ease: 'power2.out'   }, '-=0.1')
-        .to('#cardInner', { scale: 1.0,  duration: 0.32, ease: 'power2.inOut' })
-      // 광택 스윕
-        .to('#cardFlipShine', { opacity: 1, x: '130%', duration: 0.46, ease: 'power1.inOut' }, '-=0.25')
-        .to('#cardFlipShine', { opacity: 0, duration: 0.08 }, '+=0.02')
-      // 링 버스트
-        .to('#ringEl', { opacity: 1, scale: 2.0, duration: 0.5, ease: 'power2.out' }, '-=0.4')
-        .to('#ringEl', { opacity: 0, duration: 0.3 }, '-=0.12')
-      // 카드 글로우 강화
-        .to('#cardGlow', { opacity: 0.9, duration: 0.3 }, '-=0.3');
+        .to('#sceneGlow', { opacity: 1, scale: 1.22, duration: 0.22, ease: 'power2.out' }, 0)
+        .to('#cardGlow', { opacity: 1, scale: 1.12, duration: 0.22, ease: 'power2.out' }, 0)
+        .to('#flashEl', { opacity: 0.96, duration: 0.05, ease: 'none' }, 0.06)
+        .to('#flashEl', { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
+        .fromTo('#ringEl',
+          { opacity: 0.95, scale: 0.42 },
+          { opacity: 0, scale: 1.55, duration: 0.52, ease: 'power2.out' },
+          0.08
+        )
+        .to('#cardTrigger', {
+          scale: 1.9,
+          rotateZ: 1.2,
+          duration: 0.18,
+          ease: 'power2.out'
+        }, 0.05)
+        .to('#cardInner', {
+          rotateY: 106,
+          rotateX: 9,
+          rotateZ: -3,
+          duration: 0.28,
+          ease: 'power2.in'
+        }, 0.08)
+        .to('#cardFlipShine', {
+          opacity: 0.98,
+          x: '155%',
+          duration: 0.34,
+          ease: 'power2.out'
+        }, 0.26)
+        .to('#cardInner', {
+          rotateY: 194,
+          rotateX: -3,
+          rotateZ: 1.6,
+          duration: 0.34,
+          ease: 'power2.out'
+        }, 0.31)
+        .to('#cardInner', {
+          rotateY: 180,
+          rotateX: 0,
+          rotateZ: 0,
+          duration: 0.26,
+          ease: 'back.out(1.3)'
+        }, 0.62)
+        .to('#cardTrigger', {
+          scale: 2.06,
+          duration: 0.22,
+          ease: 'back.out(1.4)'
+        }, 0.58)
+        .to('#cardTrigger', {
+          scale: 1.92,
+          duration: 0.30,
+          ease: 'power2.out'
+        }, 0.84)
+        .to('#sceneGlow', {
+          opacity: 0.92,
+          scale: 1.08,
+          duration: 0.48,
+          ease: 'power2.out'
+        }, 0.72)
+        .to('#cardGlow', {
+          opacity: 0.86,
+          scale: 1.02,
+          duration: 0.48,
+          ease: 'power2.out'
+        }, 0.78);
+
+      setTimeout(function() {
+        burstRevealSparks(1.15);
+      }, 120);
     });
 
     /* ════════════════════════════
