@@ -89,7 +89,71 @@ beyond_us/
 
 ---
 
-## 6. 향후 작업 (Pending)
+## 6. 카드 뽑기 씬 구조 (중요)
+
+카드 뽑기 오버레이(`#drawOverlay`)의 DOM/레이아웃 구조:
+
+```
+#drawOverlay (position:fixed; inset:0; flex column center)
+├── #starBg
+├── .draw-close-btn
+├── #sceneWrap (280×440px; position:relative; z-index:2)
+│   ├── #sceneGlow
+│   ├── #effectsLayer (#flashEl, #ringEl)
+│   ├── #carouselLayer (팩 선택 캐러셀)
+│   ├── #packLayer (팩 뜯기 애니메이션)
+│   └── #cardLayer (position:absolute; inset:0; flex column center)
+│       ├── #cardGlow (position:absolute — 후광, flex 흐름 밖)
+│       ├── #flipHint (position:absolute; top:-36px; z-index:10 — 카드 위 안내문구)
+│       └── #cardTrigger (flex 흐름)
+│           └── [perspective wrapper]
+│               ├── #cardInner (transform-style:preserve-3d)
+│               │   ├── .card-face.card-back > .card-face-back (뒷면 PNG)
+│               │   └── .card-face.card-front#cardFace (앞면)
+│               └── [overflow:hidden 클리핑 div; border-radius:22px]
+│                   └── #cardFlipShine (shimmer 효과)
+└── #settleActions (position:absolute; bottom:48px; z-index:10 — 컬렉션 버튼)
+```
+
+### 핵심 CSS 주의사항
+
+- **`overflow:hidden` + `transform-style:preserve-3d` 동시 사용 불가** (스펙 충돌 — 3D flatten됨)
+- **`#cardFlipShine`는 반드시 `overflow:hidden` 클리핑 div 안에 있어야 함** — GSAP `x:'155%'` 이동 시 카드 밖으로 삐져나오는 것을 막기 위함
+- **`#settleActions`는 `#cardLayer` 안에 두면 안 됨** — display:none→flex 전환 시 flex 재정렬로 카드가 위로 이동하는 버그 발생
+- **`#flipHint`는 `position:absolute; top:-36px`** — 카드 scale:1.82로 인해 레이아웃 박스 위로 시각적으로 튀어나옴, 그냥 top:8px 정도면 카드에 가려짐
+
+### 카드 애니메이션 단계
+
+| 단계 | 상태(`drawState`) | 설명 |
+|------|-------------------|------|
+| tlB  | `card_back_wait`  | 카드 등장 (y:128→-8, scale:1.56→1.82) |
+| enableRevealClick | `card_back_wait` | 힌트 표시, 클릭 활성화 |
+| tlC (클릭 시) | `card_flip_reveal` | rotateY 0→106→194→180, shimmer sweep |
+| onComplete | `card_front_settle` | settleActions 표시, 후광 펄스 루프 |
+
+- 카드 클릭 시 `gsap.killTweensOf('#cardTrigger')` 후 `gsap.set({ y:-8 })` (float 위치 유지)
+- tlC에서 scale 변경 없음 — 제자리 플립
+
+---
+
+## 7. 이미지 파일 현황
+
+| 파일 | 용도 |
+|------|------|
+| `images/앤카드뒷면.png` | 카드 뒷면 (투명 배경 PNG, 라운드 내장) |
+| `images/BEYONDUS2.png` | 메인 히어로 Beyond Us 로고 (979×150) |
+| `images/hc_illust4.png` | 메인 히어로 양 일러스트 |
+| `images/hc_logo_png2.png` | 스플래시/로그인 로고 |
+| `images/pabicon.png` | 앱 아이콘 |
+
+### PNG 카드 관련 주의
+
+- `images/앤카드뒷면.png`는 투명 배경 PNG — `overflow:hidden` 적용해도 PNG의 투명 픽셀은 그대로 보임 (레이아웃 박스 내부이므로 클리핑 안 됨)
+- `.spirit-card`와 `.card-face`의 `border-radius`는 반드시 일치해야 함 (현재 22px)
+
+---
+
+## 8. 향후 작업 (Pending)
 
 - [ ] 주차별 뽑기 횟수 정책 GAS 로직 반영 (현재 주 1회 고정)
 - [ ] 현장 카드 4종 + 히든 카드 2종 데이터 정의 및 앱 반영
