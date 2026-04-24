@@ -762,7 +762,7 @@
     }
     #carouselTrack {
       position: relative;
-      width: 280px; height: 250px;
+      width: 280px; height: 295px;
       perspective: 700px;
       cursor: grab;
       touch-action: none;
@@ -789,7 +789,11 @@
     .c-pack[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-      box-shadow: 0 0 28px rgba(255,245,160,0.55), 0 0 56px rgba(160,230,180,0.3), 0 14px 40px rgba(0,0,0,0.55);
+      box-shadow:
+        0 0 12px rgba(255,255,240,0.6),
+        0 0 32px rgba(255,230,140,0.4),
+        0 0 64px rgba(255,200,80,0.2),
+        0 14px 36px rgba(0,0,0,0.5);
     }
     .c-pack[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
