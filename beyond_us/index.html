@@ -288,7 +288,7 @@
     .pack-top-area { display: none; }
     .pack-tear {
       position: absolute;
-      top: 72%; left: 3%; right: 3%;
+      top: 62%; left: 3%; right: 3%;
       height: 2px;
       background: rgba(255, 40, 40, 0.95);
       box-shadow: 0 0 4px rgba(255,60,60,1), 0 0 12px rgba(255,60,60,0.8), 0 0 24px rgba(255,80,80,0.5);
@@ -818,7 +818,7 @@
     #packLayer { gap: 14px; }
     #packTearZone {
       position: absolute;
-      top: 72%; left: 0; right: 0;
+      top: 62%; left: 0; right: 0;
       height: 22px;
       transform: translateY(-50%);
       overflow: hidden; cursor: ew-resize;
@@ -845,7 +845,7 @@
     #packTopPiece {
       position: absolute; border-radius: 14px 14px 0 0;
       background-image: url('images/앤카드팩디자인배경제거.png');
-      background-size: 100% 142%;
+      background-size: 100% 162%;
       background-position: top center;
       border: none;
       opacity: 0; pointer-events: none; z-index: 10;
@@ -2122,7 +2122,7 @@
         var topPiece = document.getElementById('packTopPiece');
 
         topPiece.style.width = packRect.width + 'px';
-        topPiece.style.height = Math.max(62, packRect.height * 0.26) + 'px';
+        topPiece.style.height = Math.max(62, packRect.height * 0.62) + 'px';
         topPiece.style.left = (packRect.left - wrapRect.left) + 'px';
         topPiece.style.top = (packRect.top - wrapRect.top) + 'px';
 
@@ -2173,7 +2173,7 @@
         .to('#packTearLight', { width: '100%', duration: 0.14, ease: 'power2.out' }, 0)
         .to('#packInnerGlow', { opacity: 1, scale: 1.16, duration: 0.22, ease: 'power2.out' }, 0.02)
         .to('#drawPack', {
-          clipPath: 'polygon(0 0, 100% 0, 100% 69%, 0 75%)',
+          clipPath: 'polygon(0 0, 100% 0, 100% 59%, 0 65%)',
           duration: 0.18,
           ease: 'power1.out'
         }, 0.03)
