@@ -274,13 +274,14 @@
 
     .pack-shine {
       position: absolute; inset: 0;
-      background: linear-gradient(120deg, transparent 25%, rgba(255,240,120,0.2) 50%, transparent 75%);
-      animation: packShineAnim 2s infinite;
+      background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.06) 55%, transparent 75%);
+      animation: packShineAnim 2.6s cubic-bezier(0.4,0,0.6,1) infinite;
       pointer-events: none;
     }
     @keyframes packShineAnim {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(200%); }
+      0%   { transform: translateX(-100%); opacity: 0; }
+      15%  { opacity: 1; }
+      100% { transform: translateX(200%); opacity: 0; }
     }
 
     .pack-top-area { display: none; }
@@ -784,10 +785,11 @@
       user-select: none; cursor: pointer;
     }
     .c-pack::before { display: none; }
+    .c-pack .pack-tear { display: none; }
     .c-pack[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-      box-shadow: 0 0 42px rgba(255,200,50,0.6), 0 14px 40px rgba(0,0,0,0.6);
+      box-shadow: 0 0 28px rgba(255,245,160,0.55), 0 0 56px rgba(160,230,180,0.3), 0 14px 40px rgba(0,0,0,0.55);
     }
     .c-pack[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
