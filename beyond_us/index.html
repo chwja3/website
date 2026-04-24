@@ -316,7 +316,7 @@
 
     /* 카드 플립 */
     .card-flip {
-      width: 170px; height: 238px;
+      width: 170px; height: 270px;
       cursor: pointer;
       perspective: 900px;
       position: relative;
@@ -348,7 +348,7 @@
       height: 100%;
       position: relative;
       overflow: hidden;
-      background-image: url('images/앤카드뒷면.png');
+      background-image: url('images/앤카드뒷면최종.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 100% 100%;
@@ -455,7 +455,7 @@
       color: rgba(255,246,239,0.9); font-size: 16px; font-weight: 700;
       text-align: center; margin-top: 8px;
     }
-    .reveal-card-wrap { width: 170px; height: 238px; }
+    .reveal-card-wrap { width: 170px; height: 270px; }
 
     /* ── 신규 뽑기 씬 ── */
     #sceneWrap {
@@ -547,7 +547,7 @@
     }
     #packInnerGlow {
       position: absolute;
-      width: 160px; height: 240px; border-radius: 14px;
+      width: 160px; height: 255px; border-radius: 14px;
       background: radial-gradient(ellipse at center, rgba(255,230,80,0.6), transparent 70%);
       filter: blur(14px);
       opacity: 0; pointer-events: none;
@@ -555,11 +555,11 @@
     #packCardPreview {
       position: absolute;
       width: 150px;
-      height: 220px;
+      height: 239px;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background-image: url('images/앤카드뒷면.png');
+      background-image: url('images/앤카드뒷면최종.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 100% 100%;
@@ -879,7 +879,7 @@
     .mini-card-ghost-2 { transform: rotate(5deg) translateY(3px); }
     .mini-card {
       border-radius: 12px;
-      aspect-ratio: 3 / 4;
+      aspect-ratio: 54 / 86;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 4px;
       border: 2px solid rgba(255,255,255,0.3);
@@ -905,6 +905,16 @@
       width: 22px; height: 22px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
       border: 2px solid white; z-index: 2;
+    }
+    .mini-card-silhouette {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 12px;
+      opacity: 0.45;
+      padding: 6px;
     }
 
     /* ════════════════════════════
@@ -1188,7 +1198,7 @@
         <div id="cardGlow"></div>
         <p class="draw-hint" id="flipHint"></p>
         <div id="cardTrigger">
-          <div style="width:150px;height:220px;perspective:800px;position:relative;">
+          <div style="width:150px;height:239px;perspective:800px;position:relative;">
             <div id="cardInner" style="width:100%;height:100%;position:relative;transform-style:preserve-3d;">
               <div class="card-face card-back"><div class="card-face-back"></div></div>
               <div class="card-face card-front" id="cardFace"></div>
@@ -1797,9 +1807,12 @@
           <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
             ${ghosts}
             <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${gStyle}">
-              <div class="mini-card-label">${locked ? '' : '성령의 열매'}</div>
-              <div class="mini-card-emoji">${locked ? '?' : card.emoji}</div>
-              <div class="mini-card-name">${locked ? '???' : card.name}</div>
+              ${locked
+                ? `<img src="images/${card.name}실루엣.png" class="mini-card-silhouette" alt="">`
+                : `<div class="mini-card-label">성령의 열매</div>
+              <div class="mini-card-emoji">${card.emoji}</div>
+              <div class="mini-card-name">${card.name}</div>`
+              }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
           </div>`;
