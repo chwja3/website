@@ -277,13 +277,6 @@
       background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.22) 46%, rgba(200,235,255,0.14) 54%, transparent 72%);
       animation: packShineAnim 3s cubic-bezier(0.4,0,0.6,1) infinite;
       pointer-events: none;
-      mix-blend-mode: screen;
-      -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
-      -webkit-mask-size: 100% 100%;
-      -webkit-mask-repeat: no-repeat;
-      mask-image: url('images/앤카드팩디자인배경제거.png');
-      mask-size: 100% 100%;
-      mask-repeat: no-repeat;
     }
     @keyframes packShineAnim {
       0%   { transform: translateX(-150%); opacity: 0; }
@@ -802,6 +795,12 @@
         drop-shadow(0 0 18px rgba(220,165,50,0.7))
         drop-shadow(0 0 42px rgba(200,145,40,0.35))
         drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+      -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
+      -webkit-mask-size: 100% 100%;
+      -webkit-mask-repeat: no-repeat;
+      mask-image: url('images/앤카드팩디자인배경제거.png');
+      mask-size: 100% 100%;
+      mask-repeat: no-repeat;
     }
     .c-pack[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
