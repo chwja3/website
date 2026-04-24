@@ -1430,14 +1430,14 @@
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
       { id:1, name:'사랑',    en:'Love',         desc:'모든 것을 참으며 모든 것을 믿으며 모든 것을 바라며', emoji:'❤️',  g1:'#ff758c', g2:'#c0392b' },
-      { id:2, name:'희락',    en:'Joy',          desc:'주 안에서 항상 기뻐하라 내가 다시 말하노니 기뻐하라', emoji:'☀️',  g1:'#f7971e', g2:'#c0850a' },
-      { id:3, name:'화평',    en:'Peace',        desc:'하나님의 평강이 모든 지각에 뛰어나 너희 마음을 지키시리라', emoji:'🕊️', g1:'#185a9d', g2:'#43cea2' },
-      { id:4, name:'오래참음', en:'Patience',     desc:'끝까지 견디는 자는 구원을 얻으리라',               emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e' },
-      { id:5, name:'자비',    en:'Kindness',     desc:'서로 친절하게 하며 불쌍히 여기며 서로 용서하기를',   emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788' },
-      { id:6, name:'양선',    en:'Goodness',     desc:'선을 행하되 낙심하지 말지니 때가 이르매 거두리로다', emoji:'🌿',  g1:'#11998e', g2:'#38ef7d' },
-      { id:7, name:'충성',    en:'Faithfulness', desc:'네가 작은 일에 충성하였으매 내가 많은 것을 맡기리니', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c' },
-      { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc' },
-      { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1' },
+      { id:2, name:'희락',    en:'Joy',          desc:'주 안에서 항상 기뻐하라 내가 다시 말하노니 기뻐하라', emoji:'☀️',  g1:'#f7971e', g2:'#c0850a', img:'images/희락.png' },
+      { id:3, name:'화평',    en:'Peace',        desc:'하나님의 평강이 모든 지각에 뛰어나 너희 마음을 지키시리라', emoji:'🕊️', g1:'#185a9d', g2:'#43cea2', img:'images/화평.png' },
+      { id:4, name:'오래참음', en:'Patience',     desc:'끝까지 견디는 자는 구원을 얻으리라',               emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e', img:'images/오래참음.png' },
+      { id:5, name:'자비',    en:'Kindness',     desc:'서로 친절하게 하며 불쌍히 여기며 서로 용서하기를',   emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788', img:'images/자비.png' },
+      { id:6, name:'양선',    en:'Goodness',     desc:'선을 행하되 낙심하지 말지니 때가 이르매 거두리로다', emoji:'🌿',  g1:'#11998e', g2:'#38ef7d', img:'images/양선.png' },
+      { id:7, name:'충성',    en:'Faithfulness', desc:'네가 작은 일에 충성하였으매 내가 많은 것을 맡기리니', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c', img:'images/충성.png' },
+      { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc', img:'images/온유.png' },
+      { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1', img:'images/절제.png' },
     ];
 
     /* ── 주차 키 (ISO week) ── */
@@ -1713,6 +1713,12 @@
 
     /* ════ 카드 HTML 생성 ════ */
     function makeCardHTML(card) {
+      if (card.img) {
+        return `
+          <div class="spirit-card" style="background:#000;">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:cover;border-radius:22px;display:block;">
+          </div>`;
+      }
       return `
         <div class="spirit-card" style="background:linear-gradient(135deg,${card.g1},${card.g2});">
           <div class="spirit-card-header">
