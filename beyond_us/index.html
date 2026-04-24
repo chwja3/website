@@ -837,7 +837,8 @@
     }
     .c-pack::before { display: none; }
     .c-pack .pack-tear { display: none; }
-    #carouselSub { font-size: 12px; opacity: 0.5; margin: 0; }
+    #carouselHint { font-size: 12px; opacity: 0.5; font-style: italic; font-weight: 400; }
+    #carouselSub  { font-size: 12px; opacity: 0.5; margin: 0; font-style: italic; font-weight: 400; }
 
     /* ════ 팩 찢기 존 ════ */
     #packLayer { gap: 14px; }
@@ -933,6 +934,11 @@
       object-fit: contain;
       opacity: 0.45;
     }
+    .mini-card-img {
+      padding: 0;
+      border: none;
+    }
+    .mini-card-img::before { display: none; }
 
     /* ════════════════════════════
        Auth 화면 (전체 페이지)
@@ -1167,7 +1173,7 @@
 
       <!-- Phase 1: 캐러셀 -->
       <div id="carouselLayer">
-        <p class="draw-hint" id="carouselHint">팩을 골라봐요 ✦</p>
+        <p class="draw-hint" id="carouselHint">Choose your pack</p>
         <div id="carouselTrack">
           <div class="c-pack-wrap" id="cpack0">
             <div class="c-pack">
@@ -1197,7 +1203,7 @@
             </div>
           </div>
         </div>
-        <p class="draw-hint" id="carouselSub">← 스와이프로 선택 →</p>
+        <p class="draw-hint" id="carouselSub">swipe to select</p>
       </div>
 
       <!-- Phase 2: 팩 줌 + 가로 찢기 -->
@@ -1234,8 +1240,7 @@
       </div>
     </div>
     <div id="settleActions">
-      <p class="draw-hint" id="revealMsg"></p>
-      <button class="btn" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;background:rgba(255,215,80,0.95);color:#2c2417;box-shadow:0 4px 24px rgba(255,200,50,0.55);">컬렉션 확인하기</button>
+      <button class="btn" id="revealDoneBtn" style="width:160px;flex:none;background:rgba(255,255,255,0.15);color:rgba(255,246,239,0.9);border:1px solid rgba(255,255,255,0.25);box-shadow:none;font-size:14px;">컬렉션 확인하기</button>
     </div>
   </div>
 
@@ -1737,7 +1742,7 @@
       if (card.img) {
         return `
           <div class="spirit-card" style="background:#000;">
-            <img src="${card.img}" style="width:100%;height:100%;object-fit:cover;border-radius:22px;display:block;">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
           </div>`;
       }
       return `
@@ -1845,7 +1850,7 @@
         return `
           <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
             ${ghosts}
-            <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${locked || card.img ? '' : gStyle}">
+            <div class="mini-card ${locked ? 'mini-card-locked' : ''}${!locked && card.img ? ' mini-card-img' : ''}" style="${locked || card.img ? '' : gStyle}">
               ${locked
                 ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
                 : unlockedContent
@@ -2014,7 +2019,6 @@
 
       document.getElementById('cardFace').innerHTML = '';
       document.getElementById('flipHint').textContent = '';
-      document.getElementById('revealMsg').textContent = '';
       document.getElementById('cardTrigger').classList.remove('clickable');
 
       document.getElementById('drawOverlay').classList.remove('hidden');
@@ -2197,7 +2201,7 @@
               .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.35, ease: 'power2.out' }, 0)
               .fromTo('#cardTrigger',
                 { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
-                { y: -8, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.7, ease: 'power3.out' },
+                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.7, ease: 'power3.out' },
                 0.04
               )
               .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.35, ease: 'power2.out' }, 0)
@@ -2307,10 +2311,6 @@
           drawState = 'card_front_settle';
           isFlipping = false;
 
-          var card = pendingCard || drawResult;
-          if (card) {
-            document.getElementById('revealMsg').textContent = '✨ ' + card.name + ' 카드를 얻었어요!';
-          }
 
           gsap.set('#settleActions', { display: 'flex' });
           gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
