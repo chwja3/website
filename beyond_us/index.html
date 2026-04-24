@@ -274,14 +274,15 @@
 
     .pack-shine {
       position: absolute; inset: 0;
-      background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.06) 55%, transparent 75%);
-      animation: packShineAnim 2.6s cubic-bezier(0.4,0,0.6,1) infinite;
+      background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.22) 46%, rgba(200,235,255,0.14) 54%, transparent 72%);
+      animation: packShineAnim 3s cubic-bezier(0.4,0,0.6,1) infinite;
       pointer-events: none;
     }
     @keyframes packShineAnim {
-      0%   { transform: translateX(-100%); opacity: 0; }
-      15%  { opacity: 1; }
-      100% { transform: translateX(200%); opacity: 0; }
+      0%   { transform: translateX(-150%); opacity: 0; }
+      12%  { opacity: 1; }
+      85%  { opacity: 0.85; }
+      100% { transform: translateX(150%); opacity: 0; }
     }
 
     .pack-top-area { display: none; }
@@ -790,8 +791,9 @@
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
       box-shadow:
-        0 0 40px rgba(135,195,235,0.22),
-        0 14px 36px rgba(0,0,0,0.5);
+        0 0 16px rgba(135,195,235,0.55),
+        0 0 36px rgba(135,195,235,0.25),
+        0 4px 20px rgba(0,0,0,0.55);
     }
     .c-pack[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
