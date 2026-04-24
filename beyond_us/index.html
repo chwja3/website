@@ -1711,14 +1711,19 @@
       const card = SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
 
-      const cardsHTML = Array.from({ length: cnt }, () => `
-        <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
-          ${makeCardHTML(card)}
-        </div>`).join('');
-
       const wrap = document.getElementById('cardDetailWrap');
-      wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:320px;';
-      wrap.innerHTML = cardsHTML;
+
+      if (card.img) {
+        wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0;';
+        wrap.innerHTML = `<img src="${card.img}" style="width:260px; max-width:80vw; height:auto; display:block; object-fit:contain;">`;
+      } else {
+        const cardsHTML = Array.from({ length: Math.min(cnt, 3) }, () => `
+          <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
+            ${makeCardHTML(card)}
+          </div>`).join('');
+        wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:320px;';
+        wrap.innerHTML = cardsHTML;
+      }
 
       document.getElementById('cardDetailCnt').textContent = cnt > 1 ? `${cnt}장 보유` : '';
       document.getElementById('cardDetailOverlay').classList.remove('hidden');
@@ -1832,15 +1837,18 @@
                  <div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
+        const unlockedContent = card.img
+          ? `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`
+          : `<div class="mini-card-label">성령의 열매</div>
+             <div class="mini-card-emoji">${card.emoji}</div>
+             <div class="mini-card-name">${card.name}</div>`;
         return `
           <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
             ${ghosts}
-            <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${gStyle}">
+            <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${locked || card.img ? '' : gStyle}">
               ${locked
                 ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
-                : `<div class="mini-card-label">성령의 열매</div>
-              <div class="mini-card-emoji">${card.emoji}</div>
-              <div class="mini-card-name">${card.name}</div>`
+                : unlockedContent
               }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
