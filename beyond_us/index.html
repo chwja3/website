@@ -781,13 +781,10 @@
     .c-pack-wrap[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-    }
-    .c-pack-wrap[data-pos="center"] .c-pack-glow {
-      display: block;
-      box-shadow:
-        0 0 18px rgba(220,165,50,0.65),
-        0 0 42px rgba(200,145,40,0.28),
-        0 8px 24px rgba(0,0,0,0.55);
+      filter:
+        drop-shadow(0 0 18px rgba(220,165,50,0.7))
+        drop-shadow(0 0 42px rgba(200,145,40,0.35))
+        drop-shadow(0 14px 20px rgba(0,0,0,0.5));
     }
     .c-pack-wrap[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
@@ -796,15 +793,6 @@
     .c-pack-wrap[data-pos="right"] {
       transform: translate(-50%,-50%) translateX(108px) translateZ(-70px) rotateY(-30deg) scale(0.78);
       opacity: 0.58; z-index: 1;
-    }
-    /* 후광 레이어 — 마스크 없이 깔끔한 직사각형 glow */
-    .c-pack-glow {
-      display: none;
-      position: absolute;
-      width: 150px; height: 239px;
-      border-radius: 14px;
-      pointer-events: none;
-      z-index: -1;
     }
     /* 내부: background-image·mask·overflow 담당 */
     .c-pack {
@@ -1157,7 +1145,6 @@
         <p class="draw-hint" id="carouselHint">팩을 골라봐요 ✦</p>
         <div id="carouselTrack">
           <div class="c-pack-wrap" id="cpack0">
-            <div class="c-pack-glow"></div>
             <div class="c-pack">
               <div class="pack-shine"></div>
               <div class="pack-top-area">2026 · BEYOND US</div>
@@ -1167,7 +1154,6 @@
             </div>
           </div>
           <div class="c-pack-wrap" id="cpack1">
-            <div class="c-pack-glow"></div>
             <div class="c-pack">
               <div class="pack-shine"></div>
               <div class="pack-top-area">2026 · BEYOND US</div>
@@ -1177,7 +1163,6 @@
             </div>
           </div>
           <div class="c-pack-wrap" id="cpack2">
-            <div class="c-pack-glow"></div>
             <div class="c-pack">
               <div class="pack-shine"></div>
               <div class="pack-top-area">2026 · BEYOND US</div>
