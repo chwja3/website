@@ -255,7 +255,7 @@
 
     .draw-stage { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
     .draw-hint { color: rgba(255,246,239,0.85); font-size: 14px; font-weight: 600; text-align: center; }
-    #packHint { position: absolute; top: -12px; left: 0; right: 0; z-index: 5; }
+    #packHint { position: absolute; top: -32px; left: 0; right: 0; z-index: 5; font-size: 12px; opacity: 0.5; font-style: italic; font-weight: 400; }
 
     /* 팩 — 황금 앰버 미스터리 */
     .pack {
@@ -1208,7 +1208,7 @@
 
       <!-- Phase 2: 팩 줌 + 가로 찢기 -->
       <div id="packLayer">
-        <p class="draw-hint" id="packHint">← 빨간 선을 밀어서 열기</p>
+        <p class="draw-hint" id="packHint"><em>Slide to open</em> ☞</p>
         <div class="pack" id="drawPack">
           <div class="pack-shine"></div>
           <div class="pack-top-area">2026 · BEYOND US</div>
