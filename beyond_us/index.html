@@ -274,14 +274,15 @@
 
     .pack-shine {
       position: absolute; inset: 0;
-      background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.06) 55%, transparent 75%);
-      animation: packShineAnim 2.6s cubic-bezier(0.4,0,0.6,1) infinite;
+      background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.22) 46%, rgba(200,235,255,0.14) 54%, transparent 72%);
+      animation: packShineAnim 3s cubic-bezier(0.4,0,0.6,1) infinite;
       pointer-events: none;
     }
     @keyframes packShineAnim {
-      0%   { transform: translateX(-100%); opacity: 0; }
-      15%  { opacity: 1; }
-      100% { transform: translateX(200%); opacity: 0; }
+      0%   { transform: translateX(-150%); opacity: 0; }
+      12%  { opacity: 1; }
+      85%  { opacity: 0.85; }
+      100% { transform: translateX(150%); opacity: 0; }
     }
 
     .pack-top-area { display: none; }
@@ -768,39 +769,49 @@
       touch-action: none;
     }
     #carouselTrack:active { cursor: grabbing; }
+    /* 래퍼: transform·filter(drop-shadow)·transition 담당 */
+    .c-pack-wrap {
+      position: absolute;
+      top: 50%; left: 50%;
+      will-change: transform, opacity;
+      transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),
+                  opacity 0.38s ease, filter 0.38s ease;
+      user-select: none; cursor: pointer;
+    }
+    .c-pack-wrap[data-pos="center"] {
+      transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
+      opacity: 1; z-index: 2;
+      filter:
+        drop-shadow(0 0 18px rgba(220,165,50,0.7))
+        drop-shadow(0 0 42px rgba(200,145,40,0.35))
+        drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+    }
+    .c-pack-wrap[data-pos="left"] {
+      transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
+      opacity: 0.58; z-index: 1;
+    }
+    .c-pack-wrap[data-pos="right"] {
+      transform: translate(-50%,-50%) translateX(108px) translateZ(-70px) rotateY(-30deg) scale(0.78);
+      opacity: 0.58; z-index: 1;
+    }
+    /* 내부: background-image·mask·overflow 담당 */
     .c-pack {
       width: 150px; height: 239px;
       border-radius: 14px;
       background-image: url('images/앤카드팩디자인배경제거.png');
       background-size: 100% 100%;
       border: none;
-      box-shadow: 0 14px 40px rgba(0,0,0,0.6), 0 0 20px rgba(196,128,0,0.25);
-      position: absolute; overflow: hidden;
+      overflow: hidden;
       display: flex; flex-direction: column; align-items: center;
-      top: 50%; left: 50%;
-      transform-style: preserve-3d;
-      will-change: transform, opacity;
-      transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),
-                  opacity 0.38s ease, box-shadow 0.38s ease;
-      user-select: none; cursor: pointer;
+      -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
+      -webkit-mask-size: 100% 100%;
+      -webkit-mask-repeat: no-repeat;
+      mask-image: url('images/앤카드팩디자인배경제거.png');
+      mask-size: 100% 100%;
+      mask-repeat: no-repeat;
     }
     .c-pack::before { display: none; }
     .c-pack .pack-tear { display: none; }
-    .c-pack[data-pos="center"] {
-      transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
-      opacity: 1; z-index: 2;
-      box-shadow:
-        0 0 40px rgba(135,195,235,0.22),
-        0 14px 36px rgba(0,0,0,0.5);
-    }
-    .c-pack[data-pos="left"] {
-      transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
-      opacity: 0.58; z-index: 1;
-    }
-    .c-pack[data-pos="right"] {
-      transform: translate(-50%,-50%) translateX(108px) translateZ(-70px) rotateY(-30deg) scale(0.78);
-      opacity: 0.58; z-index: 1;
-    }
     #carouselSub { font-size: 12px; opacity: 0.5; margin: 0; }
 
     /* ════ 팩 찢기 존 ════ */
@@ -1133,26 +1144,32 @@
       <div id="carouselLayer">
         <p class="draw-hint" id="carouselHint">팩을 골라봐요 ✦</p>
         <div id="carouselTrack">
-          <div class="c-pack" id="cpack0">
-            <div class="pack-shine"></div>
-            <div class="pack-top-area">2026 · BEYOND US</div>
-            <div class="pack-tear"></div>
-            <div class="pack-center">🃏</div>
-            <div class="pack-bottom-area">성령의 열매</div>
+          <div class="c-pack-wrap" id="cpack0">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
           </div>
-          <div class="c-pack" id="cpack1">
-            <div class="pack-shine"></div>
-            <div class="pack-top-area">2026 · BEYOND US</div>
-            <div class="pack-tear"></div>
-            <div class="pack-center">🃏</div>
-            <div class="pack-bottom-area">성령의 열매</div>
+          <div class="c-pack-wrap" id="cpack1">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
           </div>
-          <div class="c-pack" id="cpack2">
-            <div class="pack-shine"></div>
-            <div class="pack-top-area">2026 · BEYOND US</div>
-            <div class="pack-tear"></div>
-            <div class="pack-center">🃏</div>
-            <div class="pack-bottom-area">성령의 열매</div>
+          <div class="c-pack-wrap" id="cpack2">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
           </div>
         </div>
         <p class="draw-hint" id="carouselSub">← 스와이프로 선택 →</p>
@@ -1965,7 +1982,6 @@
 
       gsap.timeline()
         .to('#starBg', { opacity: 1, duration: 0.55, ease: 'power2.out' }, 0)
-        .to('#sceneGlow', { opacity: 1, scale: 1, duration: 0.75, ease: 'power2.out' }, 0.02)
         .to('#carouselLayer', {
           opacity: 1,
           duration: 0.46,
@@ -2022,7 +2038,7 @@
         var dx = e.clientX - dragStartX;
         if (Math.abs(dx) < 18) {
           // 탭 — 사이드팩이면 회전, 센터팩이면 선택
-          var tapped = e.target.closest('.c-pack');
+          var tapped = e.target.closest('.c-pack-wrap');
           var packs = [document.getElementById('cpack0'), document.getElementById('cpack1'), document.getElementById('cpack2')];
           if (tapped === packs[(carouselCenter+2)%3]) { rotateCarousel(-1); return; }
           if (tapped === packs[(carouselCenter+1)%3]) { rotateCarousel(1); return; }
