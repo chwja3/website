@@ -769,15 +769,9 @@
       touch-action: none;
     }
     #carouselTrack:active { cursor: grabbing; }
-    .c-pack {
-      width: 150px; height: 239px;
-      border-radius: 14px;
-      background-image: url('images/앤카드팩디자인배경제거.png');
-      background-size: 100% 100%;
-      border: none;
-      box-shadow: 0 14px 40px rgba(0,0,0,0.6);
-      position: absolute; overflow: hidden;
-      display: flex; flex-direction: column; align-items: center;
+    /* 래퍼: transform·filter(drop-shadow)·transition 담당 */
+    .c-pack-wrap {
+      position: absolute;
       top: 50%; left: 50%;
       transform-style: preserve-3d;
       will-change: transform, opacity;
@@ -785,16 +779,33 @@
                   opacity 0.38s ease, filter 0.38s ease;
       user-select: none; cursor: pointer;
     }
-    .c-pack::before { display: none; }
-    .c-pack .pack-tear { display: none; }
-    .c-pack[data-pos="center"] {
+    .c-pack-wrap[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-      box-shadow: none;
       filter:
         drop-shadow(0 0 18px rgba(220,165,50,0.7))
         drop-shadow(0 0 42px rgba(200,145,40,0.35))
         drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+    }
+    .c-pack-wrap[data-pos="left"] {
+      transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
+      opacity: 0.58; z-index: 1;
+    }
+    .c-pack-wrap[data-pos="right"] {
+      transform: translate(-50%,-50%) translateX(108px) translateZ(-70px) rotateY(-30deg) scale(0.78);
+      opacity: 0.58; z-index: 1;
+    }
+    /* 내부: background-image·mask·overflow 담당 */
+    .c-pack {
+      width: 150px; height: 239px;
+      border-radius: 14px;
+      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-size: 100% 100%;
+      border: none;
+      overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .c-pack-wrap[data-pos="center"] .c-pack {
       -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
       -webkit-mask-size: 100% 100%;
       -webkit-mask-repeat: no-repeat;
@@ -802,14 +813,8 @@
       mask-size: 100% 100%;
       mask-repeat: no-repeat;
     }
-    .c-pack[data-pos="left"] {
-      transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
-      opacity: 0.58; z-index: 1;
-    }
-    .c-pack[data-pos="right"] {
-      transform: translate(-50%,-50%) translateX(108px) translateZ(-70px) rotateY(-30deg) scale(0.78);
-      opacity: 0.58; z-index: 1;
-    }
+    .c-pack::before { display: none; }
+    .c-pack .pack-tear { display: none; }
     #carouselSub { font-size: 12px; opacity: 0.5; margin: 0; }
 
     /* ════ 팩 찢기 존 ════ */
@@ -1142,26 +1147,32 @@
       <div id="carouselLayer">
         <p class="draw-hint" id="carouselHint">팩을 골라봐요 ✦</p>
         <div id="carouselTrack">
-          <div class="c-pack" id="cpack0">
-            <div class="pack-shine"></div>
-            <div class="pack-top-area">2026 · BEYOND US</div>
-            <div class="pack-tear"></div>
-            <div class="pack-center">🃏</div>
-            <div class="pack-bottom-area">성령의 열매</div>
+          <div class="c-pack-wrap" id="cpack0">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
           </div>
-          <div class="c-pack" id="cpack1">
-            <div class="pack-shine"></div>
-            <div class="pack-top-area">2026 · BEYOND US</div>
-            <div class="pack-tear"></div>
-            <div class="pack-center">🃏</div>
-            <div class="pack-bottom-area">성령의 열매</div>
+          <div class="c-pack-wrap" id="cpack1">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
           </div>
-          <div class="c-pack" id="cpack2">
-            <div class="pack-shine"></div>
-            <div class="pack-top-area">2026 · BEYOND US</div>
-            <div class="pack-tear"></div>
-            <div class="pack-center">🃏</div>
-            <div class="pack-bottom-area">성령의 열매</div>
+          <div class="c-pack-wrap" id="cpack2">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
           </div>
         </div>
         <p class="draw-hint" id="carouselSub">← 스와이프로 선택 →</p>
@@ -2030,7 +2041,7 @@
         var dx = e.clientX - dragStartX;
         if (Math.abs(dx) < 18) {
           // 탭 — 사이드팩이면 회전, 센터팩이면 선택
-          var tapped = e.target.closest('.c-pack');
+          var tapped = e.target.closest('.c-pack-wrap');
           var packs = [document.getElementById('cpack0'), document.getElementById('cpack1'), document.getElementById('cpack2')];
           if (tapped === packs[(carouselCenter+2)%3]) { rotateCarousel(-1); return; }
           if (tapped === packs[(carouselCenter+1)%3]) { rotateCarousel(1); return; }
