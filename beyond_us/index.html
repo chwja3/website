@@ -777,22 +777,38 @@
       touch-action: none;
     }
     #carouselTrack:active { cursor: grabbing; }
-    /* 래퍼: transform·filter(drop-shadow)·transition 담당 */
+    /* 래퍼: transform·transition 담당 */
     .c-pack-wrap {
       position: absolute;
       top: 50%; left: 50%;
       will-change: transform, opacity;
       transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),
-                  opacity 0.38s ease, filter 0.38s ease;
+                  opacity 0.38s ease;
       user-select: none; cursor: pointer;
+    }
+    /* 후광: pseudo-element로 분리 — will-change와 filter 충돌 회피 */
+    .c-pack-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -18px;
+      border-radius: 28px;
+      background: radial-gradient(ellipse at 50% 50%,
+        rgba(220,165,50,0.6) 0%,
+        rgba(200,145,40,0.3) 40%,
+        transparent 70%);
+      filter: blur(14px);
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.38s ease;
     }
     .c-pack-wrap[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-      filter:
-        drop-shadow(0 0 18px rgba(220,165,50,0.7))
-        drop-shadow(0 0 42px rgba(200,145,40,0.35))
-        drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+      filter: drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+    }
+    .c-pack-wrap[data-pos="center"]::before {
+      opacity: 1;
     }
     .c-pack-wrap[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
