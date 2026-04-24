@@ -1185,6 +1185,7 @@
 
       <!-- Phase 2: 팩 줌 + 가로 찢기 -->
       <div id="packLayer">
+        <p class="draw-hint" id="packHint">← 빨간 선을 밀어서 열기</p>
         <div class="pack" id="drawPack">
           <div class="pack-shine"></div>
           <div class="pack-top-area">2026 · BEYOND US</div>
@@ -1196,7 +1197,6 @@
           <div class="pack-bottom-area">성령의 열매</div>
         </div>
         <div id="packTopPiece"></div>
-        <p class="draw-hint" id="packHint">← 빨간 선을 밀어서 열기</p>
       </div>
 
       <!-- Phase 3: 카드 -->
@@ -1951,7 +1951,7 @@
       });
       document.getElementById('drawPack').style.clipPath = '';
       document.getElementById('packTearLight').style.width = '0%';
-      gsap.set('#packHint', { opacity: 0, y: 10 });
+      gsap.set('#packHint', { opacity: 0, y: -10 });
       gsap.set('#packTopPiece', { opacity: 0, y: 0, rotate: 0, rotateZ: 0 });
       gsap.set('#packInnerGlow', { opacity: 0, scale: 0.8 });
       gsap.set('#packCardPreview', { opacity: 0, scale: 0.9, y: 18 });
