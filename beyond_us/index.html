@@ -773,7 +773,6 @@
     .c-pack-wrap {
       position: absolute;
       top: 50%; left: 50%;
-      transform-style: preserve-3d;
       will-change: transform, opacity;
       transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),
                   opacity 0.38s ease, filter 0.38s ease;
@@ -815,6 +814,7 @@
     }
     .c-pack::before { display: none; }
     .c-pack .pack-tear { display: none; }
+    .c-pack-wrap:not([data-pos="center"]) .pack-shine { display: none; }
     #carouselSub { font-size: 12px; opacity: 0.5; margin: 0; }
 
     /* ════ 팩 찢기 존 ════ */
