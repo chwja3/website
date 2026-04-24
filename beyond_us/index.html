@@ -258,61 +258,43 @@
 
     /* 팩 — 황금 앰버 미스터리 */
     .pack {
-      width: 150px; height: 220px;
+      width: 150px; height: 239px;
       border-radius: 14px;
-      background: linear-gradient(170deg, #7a4f00 0%, #c48000 30%, #8b5c00 55%, #4a2e00 100%);
-      border: 2px solid rgba(255,215,0,0.5);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.6),
-                  inset 0 1px 0 rgba(255,235,100,0.3),
-                  inset 0 -1px 0 rgba(0,0,0,0.4),
-                  0 0 20px rgba(196,128,0,0.25);
+      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-size: 100% 100%;
+      border: none;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.55), 0 0 20px rgba(196,128,0,0.2);
       position: relative; overflow: hidden;
       cursor: pointer;
       display: flex; flex-direction: column; align-items: center;
       transition: transform .2s;
     }
-    .pack::before {
-      content: '';
-      position: absolute; inset: 4px;
-      border: 1px solid rgba(255,215,0,0.2);
-      border-radius: 10px;
-      pointer-events: none;
-    }
+    .pack::before { display: none; }
     .pack:hover { transform: none; }
 
     .pack-shine {
       position: absolute; inset: 0;
-      background: linear-gradient(120deg, transparent 25%, rgba(255,240,120,0.2) 50%, transparent 75%);
-      animation: packShineAnim 2s infinite;
+      background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.06) 55%, transparent 75%);
+      animation: packShineAnim 2.6s cubic-bezier(0.4,0,0.6,1) infinite;
       pointer-events: none;
     }
     @keyframes packShineAnim {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(200%); }
+      0%   { transform: translateX(-100%); opacity: 0; }
+      15%  { opacity: 1; }
+      100% { transform: translateX(200%); opacity: 0; }
     }
 
-    .pack-top-area {
-      width: 100%; padding: 10px 10px 6px;
-      text-align: center;
-      font-size: 10px; font-weight: 800;
-      color: rgba(255,235,100,0.9);
-      letter-spacing: .1em;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
-    }
+    .pack-top-area { display: none; }
     .pack-tear {
-      width: 88%; height: 1px;
-      background: repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(255,215,0,0.5) 3px, rgba(255,215,0,0.5) 7px);
-      margin-bottom: 4px;
+      position: absolute;
+      top: 26%; left: 6%; right: 6%;
+      height: 2px;
+      background: rgba(255, 40, 40, 0.95);
+      box-shadow: 0 0 4px rgba(255,60,60,1), 0 0 12px rgba(255,60,60,0.8), 0 0 24px rgba(255,80,80,0.5);
+      pointer-events: none;
     }
-    .pack-center { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 52px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5)); }
-    .pack-bottom-area {
-      width: 100%; padding: 6px 10px 14px;
-      text-align: center;
-      font-size: 11px; font-weight: 800;
-      color: rgba(255,235,100,0.9);
-      letter-spacing: .08em;
-      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
-    }
+    .pack-center { display: none; }
+    .pack-bottom-area { display: none; }
 
     /* 카드 플립 */
     .card-flip {
@@ -467,9 +449,9 @@
       position: absolute;
       inset: -96px;
       background:
-        radial-gradient(circle at 50% 54%, rgba(255,184,84,0.28) 0%, rgba(255,132,0,0.14) 18%, transparent 40%),
-        radial-gradient(circle at 50% 42%, rgba(255,105,180,0.18) 0%, transparent 35%),
-        radial-gradient(circle at 50% 64%, rgba(98,150,255,0.16) 0%, transparent 30%);
+        radial-gradient(circle at 50% 54%, rgba(135,195,235,0.22) 0%, rgba(100,170,220,0.10) 18%, transparent 40%),
+        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.14) 0%, transparent 35%),
+        radial-gradient(circle at 50% 64%, rgba(120,190,120,0.10) 0%, transparent 30%);
       filter: blur(18px);
       pointer-events: none;
       opacity: 0;
@@ -780,21 +762,19 @@
     }
     #carouselTrack {
       position: relative;
-      width: 280px; height: 250px;
+      width: 280px; height: 295px;
       perspective: 700px;
       cursor: grab;
       touch-action: none;
     }
     #carouselTrack:active { cursor: grabbing; }
     .c-pack {
-      width: 150px; height: 220px;
+      width: 150px; height: 239px;
       border-radius: 14px;
-      background: linear-gradient(170deg, #7a4f00 0%, #c48000 30%, #8b5c00 55%, #4a2e00 100%);
-      border: 2px solid rgba(255,215,0,0.5);
-      box-shadow: 0 14px 40px rgba(0,0,0,0.6),
-                  inset 0 1px 0 rgba(255,235,100,0.3),
-                  inset 0 -1px 0 rgba(0,0,0,0.4),
-                  0 0 20px rgba(196,128,0,0.25);
+      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-size: 100% 100%;
+      border: none;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.6), 0 0 20px rgba(196,128,0,0.25);
       position: absolute; overflow: hidden;
       display: flex; flex-direction: column; align-items: center;
       top: 50%; left: 50%;
@@ -804,16 +784,14 @@
                   opacity 0.38s ease, box-shadow 0.38s ease;
       user-select: none; cursor: pointer;
     }
-    .c-pack::before {
-      content: '';
-      position: absolute; inset: 4px;
-      border: 1px solid rgba(255,215,0,0.2);
-      border-radius: 10px; pointer-events: none;
-    }
+    .c-pack::before { display: none; }
+    .c-pack .pack-tear { display: none; }
     .c-pack[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-      box-shadow: 0 0 42px rgba(255,200,50,0.6), 0 14px 40px rgba(0,0,0,0.6);
+      box-shadow:
+        0 0 40px rgba(135,195,235,0.22),
+        0 14px 36px rgba(0,0,0,0.5);
     }
     .c-pack[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
@@ -828,17 +806,19 @@
     /* ════ 팩 찢기 존 ════ */
     #packLayer { gap: 14px; }
     #packTearZone {
-      width: 100%; height: 22px;
-      position: relative; flex-shrink: 0;
+      position: absolute;
+      top: 26%; left: 0; right: 0;
+      height: 22px;
+      transform: translateY(-50%);
       overflow: hidden; cursor: ew-resize;
       touch-action: none;
+      z-index: 5;
     }
     #packTearLine {
       position: absolute; top: 50%; left: 6px; right: 6px;
       height: 2px; transform: translateY(-50%);
-      background: repeating-linear-gradient(
-        90deg, transparent, transparent 3px,
-        rgba(255,60,60,0.9) 3px, rgba(255,60,60,0.9) 7px);
+      background: rgba(255, 40, 40, 0.95);
+      box-shadow: 0 0 4px rgba(255,60,60,1), 0 0 10px rgba(255,60,60,0.8), 0 0 22px rgba(255,80,80,0.5);
     }
     #packTearLight {
       position: absolute; inset: 0; width: 0%;
@@ -853,8 +833,10 @@
     /* ════ 찢긴 팩 윗조각 ════ */
     #packTopPiece {
       position: absolute; border-radius: 14px 14px 0 0;
-      background: linear-gradient(170deg, #7a4f00 0%, #c48000 30%, #8b5c00 55%, #4a2e00 100%);
-      border: 2px solid rgba(255,215,0,0.5);
+      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-size: 100% 385%;
+      background-position: top center;
+      border: none;
       opacity: 0; pointer-events: none; z-index: 10;
       box-shadow: 0 0 30px rgba(255,220,80,0.5);
     }
