@@ -931,6 +931,8 @@
     .mini-card-img {
       padding: 0;
       border: none;
+      border-radius: 0;
+      overflow: visible;
     }
     .mini-card-img::before { display: none; }
 
@@ -1717,7 +1719,7 @@
 
       if (card.img) {
         wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0;';
-        wrap.innerHTML = `<div style="width:260px; max-width:80vw; border-radius:38px; overflow:hidden;"><img src="${card.img}" style="width:100%; height:auto; display:block; object-fit:contain;"></div>`;
+        wrap.innerHTML = `<div style="width:260px; max-width:80vw;"><img src="${card.img}" style="width:100%; height:auto; display:block; object-fit:contain;"></div>`;
       } else {
         const cardsHTML = Array.from({ length: Math.min(cnt, 3) }, () => `
           <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
@@ -1738,7 +1740,7 @@
     function makeCardHTML(card) {
       if (card.img) {
         return `
-          <div class="spirit-card" style="background:#000;">
+          <div class="spirit-card" style="background:transparent; border-radius:0; overflow:visible; border:none; box-shadow:none;">
             <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
           </div>`;
       }
@@ -2266,13 +2268,6 @@
       document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
 
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
-      gsap.to('#cardGlow', {
-        opacity: 0.88,
-        duration: 1.5,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
 
       gsap.to('#cardTrigger', {
         y: -11,
