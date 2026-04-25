@@ -255,6 +255,7 @@
 
     .draw-stage { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
     .draw-hint { color: rgba(255,246,239,0.85); font-size: 14px; font-weight: 600; text-align: center; }
+    #packHint { position: absolute; top: -32px; left: 0; right: 0; z-index: 5; font-size: 12px; opacity: 0.5; font-style: italic; font-weight: 400; }
 
     /* 팩 — 황금 앰버 미스터리 */
     .pack {
@@ -265,17 +266,24 @@
       border: none;
       box-shadow: 0 14px 40px rgba(0,0,0,0.55), 0 0 20px rgba(196,128,0,0.2);
       position: relative; overflow: hidden;
+      clip-path: inset(0 round 14px);
       cursor: pointer;
       display: flex; flex-direction: column; align-items: center;
       transition: transform .2s;
+      -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
+      -webkit-mask-size: 100% 100%;
+      -webkit-mask-repeat: no-repeat;
+      mask-image: url('images/앤카드팩디자인배경제거.png');
+      mask-size: 100% 100%;
+      mask-repeat: no-repeat;
     }
     .pack::before { display: none; }
     .pack:hover { transform: none; }
 
     .pack-shine {
       position: absolute; inset: 0;
-      background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.22) 46%, rgba(200,235,255,0.14) 54%, transparent 72%);
-      animation: packShineAnim 3s cubic-bezier(0.4,0,0.6,1) infinite;
+      background: linear-gradient(115deg, transparent 20%, rgba(255,255,255,0.65) 44%, rgba(200,235,255,0.45) 54%, transparent 75%);
+      animation: packShineAnim 2s cubic-bezier(0.4,0,0.6,1) infinite;
       pointer-events: none;
     }
     @keyframes packShineAnim {
@@ -288,7 +296,7 @@
     .pack-top-area { display: none; }
     .pack-tear {
       position: absolute;
-      top: 26%; left: 6%; right: 6%;
+      top: 10%; left: 9%; right: 8%;
       height: 2px;
       background: rgba(255, 40, 40, 0.95);
       box-shadow: 0 0 4px rgba(255,60,60,1), 0 0 12px rgba(255,60,60,0.8), 0 0 24px rgba(255,80,80,0.5);
@@ -447,15 +455,7 @@
       display: flex; align-items: center; justify-content: center;
     }
     #sceneGlow {
-      position: absolute;
-      inset: -96px;
-      background:
-        radial-gradient(circle at 50% 54%, rgba(135,195,235,0.22) 0%, rgba(100,170,220,0.10) 18%, transparent 40%),
-        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.14) 0%, transparent 35%),
-        radial-gradient(circle at 50% 64%, rgba(120,190,120,0.10) 0%, transparent 30%);
-      filter: blur(18px);
-      pointer-events: none;
-      opacity: 0;
+      display: none;
     }
 
     #sceneWrap::before,
@@ -581,6 +581,7 @@
       opacity: 0; pointer-events: none;
     }
     #cardGlow {
+      display: none;
       position: absolute;
       width: 320px;
       height: 400px;
@@ -606,18 +607,17 @@
       cursor: pointer;
     }
 
-    #cardTrigger.clickable::after {
-      content: '';
+    #cardLoadingHint {
       position: absolute;
-      inset: -16px;
-      border-radius: 26px;
-      border: 1px solid rgba(255,255,255,0.18);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.03) inset,
-        0 0 24px rgba(255,184,84,0.18),
-        0 0 56px rgba(255,105,210,0.10);
-      opacity: 0.7;
-      animation: revealPulse 1.9s ease-in-out infinite;
+      bottom: -72px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,246,239,0.75);
+      letter-spacing: 0.06em;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      opacity: 0;
       pointer-events: none;
     }
 
@@ -663,17 +663,6 @@
         0 0 30px rgba(255,100,220,0.22);
       opacity: 0;
       pointer-events: none;
-    }
-
-    @keyframes revealPulse {
-      0%, 100% {
-        transform: scale(0.96);
-        opacity: 0.38;
-      }
-      50% {
-        transform: scale(1.02);
-        opacity: 0.86;
-      }
     }
 
     /* ════ 별빛 배경 ════ */
@@ -769,22 +758,38 @@
       touch-action: none;
     }
     #carouselTrack:active { cursor: grabbing; }
-    /* 래퍼: transform·filter(drop-shadow)·transition 담당 */
+    /* 래퍼: transform·transition 담당 */
     .c-pack-wrap {
       position: absolute;
       top: 50%; left: 50%;
       will-change: transform, opacity;
       transition: transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),
-                  opacity 0.38s ease, filter 0.38s ease;
+                  opacity 0.38s ease;
       user-select: none; cursor: pointer;
+    }
+    /* 후광: pseudo-element로 분리 — will-change와 filter 충돌 회피 */
+    .c-pack-wrap::before {
+      content: '';
+      position: absolute;
+      inset: -18px;
+      border-radius: 28px;
+      background: radial-gradient(ellipse at 50% 50%,
+        rgba(220,165,50,0.6) 0%,
+        rgba(200,145,40,0.3) 40%,
+        transparent 70%);
+      filter: blur(14px);
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.38s ease;
     }
     .c-pack-wrap[data-pos="center"] {
       transform: translate(-50%,-50%) rotateY(0deg) translateZ(0px);
       opacity: 1; z-index: 2;
-      filter:
-        drop-shadow(0 0 18px rgba(220,165,50,0.7))
-        drop-shadow(0 0 42px rgba(200,145,40,0.35))
-        drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+      filter: drop-shadow(0 14px 20px rgba(0,0,0,0.5));
+    }
+    .c-pack-wrap[data-pos="center"]::before {
+      opacity: 1;
     }
     .c-pack-wrap[data-pos="left"] {
       transform: translate(-50%,-50%) translateX(-108px) translateZ(-70px) rotateY(30deg) scale(0.78);
@@ -802,6 +807,7 @@
       background-size: 100% 100%;
       border: none;
       overflow: hidden;
+      clip-path: inset(0 round 14px);
       display: flex; flex-direction: column; align-items: center;
       -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
       -webkit-mask-size: 100% 100%;
@@ -812,13 +818,14 @@
     }
     .c-pack::before { display: none; }
     .c-pack .pack-tear { display: none; }
-    #carouselSub { font-size: 12px; opacity: 0.5; margin: 0; }
+    #carouselHint { font-size: 12px; opacity: 0.5; font-style: italic; font-weight: 400; }
+    #carouselSub  { font-size: 12px; opacity: 0.5; margin: 0; font-style: italic; font-weight: 400; }
 
     /* ════ 팩 찢기 존 ════ */
     #packLayer { gap: 14px; }
     #packTearZone {
       position: absolute;
-      top: 26%; left: 0; right: 0;
+      top: 10%; left: 9%; right: 8%;
       height: 22px;
       transform: translateY(-50%);
       overflow: hidden; cursor: ew-resize;
@@ -826,13 +833,15 @@
       z-index: 5;
     }
     #packTearLine {
-      position: absolute; top: 50%; left: 6px; right: 6px;
+      position: absolute; top: 50%; left: 4px; right: 4px;
       height: 2px; transform: translateY(-50%);
       background: rgba(255, 40, 40, 0.95);
       box-shadow: 0 0 4px rgba(255,60,60,1), 0 0 10px rgba(255,60,60,0.8), 0 0 22px rgba(255,80,80,0.5);
     }
     #packTearLight {
-      position: absolute; inset: 0; width: 0%;
+      position: absolute; top: 50%; left: 0;
+      height: 6px; width: 0%;
+      transform: translateY(-50%);
       background: linear-gradient(90deg,
         transparent 0%,
         rgba(255,200,80,0.35) 55%,
@@ -845,11 +854,10 @@
     #packTopPiece {
       position: absolute; border-radius: 14px 14px 0 0;
       background-image: url('images/앤카드팩디자인배경제거.png');
-      background-size: 100% 385%;
+      background-size: 100% 1000%;
       background-position: top center;
       border: none;
       opacity: 0; pointer-events: none; z-index: 10;
-      box-shadow: 0 0 30px rgba(255,220,80,0.5);
     }
 
     /* ════════════════════════════
@@ -908,6 +916,13 @@
       object-fit: contain;
       opacity: 0.45;
     }
+    .mini-card-img {
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+    }
+    .mini-card-img::before { display: none; }
 
     /* ════════════════════════════
        Auth 화면 (전체 페이지)
@@ -1142,7 +1157,7 @@
 
       <!-- Phase 1: 캐러셀 -->
       <div id="carouselLayer">
-        <p class="draw-hint" id="carouselHint">팩을 골라봐요 ✦</p>
+        <p class="draw-hint" id="carouselHint">Choose your pack ↓</p>
         <div id="carouselTrack">
           <div class="c-pack-wrap" id="cpack0">
             <div class="c-pack">
@@ -1172,11 +1187,12 @@
             </div>
           </div>
         </div>
-        <p class="draw-hint" id="carouselSub">← 스와이프로 선택 →</p>
+        <p class="draw-hint" id="carouselSub"><em>Swipe to select</em> ☞</p>
       </div>
 
       <!-- Phase 2: 팩 줌 + 가로 찢기 -->
       <div id="packLayer">
+        <p class="draw-hint" id="packHint"><em>Slide to open</em> ☞</p>
         <div class="pack" id="drawPack">
           <div class="pack-shine"></div>
           <div class="pack-top-area">2026 · BEYOND US</div>
@@ -1188,7 +1204,6 @@
           <div class="pack-bottom-area">성령의 열매</div>
         </div>
         <div id="packTopPiece"></div>
-        <p class="draw-hint" id="packHint">← 빨간 선을 밀어서 열기</p>
       </div>
 
       <!-- Phase 3: 카드 -->
@@ -1206,11 +1221,11 @@
             </div>
           </div>
         </div>
+        <p id="cardLoadingHint">두 근 두 근 . . . !</p>
       </div>
     </div>
     <div id="settleActions">
-      <p class="draw-hint" id="revealMsg"></p>
-      <button class="btn" id="revealDoneBtn" style="width:200px;flex:none;margin-top:16px;background:rgba(255,215,80,0.95);color:#2c2417;box-shadow:0 4px 24px rgba(255,200,50,0.55);">컬렉션 확인하기</button>
+      <button class="btn" id="revealDoneBtn" style="width:160px;flex:none;background:rgba(255,255,255,0.15);color:rgba(255,246,239,0.9);border:1px solid rgba(255,255,255,0.25);box-shadow:none;font-size:14px;">컬렉션 확인하기</button>
     </div>
   </div>
 
@@ -1420,16 +1435,19 @@
 
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
-      { id:1, name:'사랑',    en:'Love',         desc:'모든 것을 참으며 모든 것을 믿으며 모든 것을 바라며', emoji:'❤️',  g1:'#ff758c', g2:'#c0392b' },
-      { id:2, name:'희락',    en:'Joy',          desc:'주 안에서 항상 기뻐하라 내가 다시 말하노니 기뻐하라', emoji:'☀️',  g1:'#f7971e', g2:'#c0850a' },
-      { id:3, name:'화평',    en:'Peace',        desc:'하나님의 평강이 모든 지각에 뛰어나 너희 마음을 지키시리라', emoji:'🕊️', g1:'#185a9d', g2:'#43cea2' },
-      { id:4, name:'오래참음', en:'Patience',     desc:'끝까지 견디는 자는 구원을 얻으리라',               emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e' },
-      { id:5, name:'자비',    en:'Kindness',     desc:'서로 친절하게 하며 불쌍히 여기며 서로 용서하기를',   emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788' },
-      { id:6, name:'양선',    en:'Goodness',     desc:'선을 행하되 낙심하지 말지니 때가 이르매 거두리로다', emoji:'🌿',  g1:'#11998e', g2:'#38ef7d' },
-      { id:7, name:'충성',    en:'Faithfulness', desc:'네가 작은 일에 충성하였으매 내가 많은 것을 맡기리니', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c' },
-      { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc' },
-      { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1' },
+      { id:1, name:'사랑',    en:'Love',         desc:'모든 것을 참으며 모든 것을 믿으며 모든 것을 바라며', emoji:'❤️',  g1:'#ff758c', g2:'#c0392b', img:'images/사랑.png' },
+      { id:2, name:'희락',    en:'Joy',          desc:'주 안에서 항상 기뻐하라 내가 다시 말하노니 기뻐하라', emoji:'☀️',  g1:'#f7971e', g2:'#c0850a', img:'images/희락.png' },
+      { id:3, name:'화평',    en:'Peace',        desc:'하나님의 평강이 모든 지각에 뛰어나 너희 마음을 지키시리라', emoji:'🕊️', g1:'#185a9d', g2:'#43cea2', img:'images/화평.png' },
+      { id:4, name:'오래참음', en:'Patience',     desc:'끝까지 견디는 자는 구원을 얻으리라',               emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e', img:'images/오래참음.png' },
+      { id:5, name:'자비',    en:'Kindness',     desc:'서로 친절하게 하며 불쌍히 여기며 서로 용서하기를',   emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788', img:'images/자비.png' },
+      { id:6, name:'양선',    en:'Goodness',     desc:'선을 행하되 낙심하지 말지니 때가 이르매 거두리로다', emoji:'🌿',  g1:'#11998e', g2:'#38ef7d', img:'images/양선.png' },
+      { id:7, name:'충성',    en:'Faithfulness', desc:'네가 작은 일에 충성하였으매 내가 많은 것을 맡기리니', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c', img:'images/충성.png' },
+      { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc', img:'images/온유.png' },
+      { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1', img:'images/절제.png' },
     ];
+
+    /* ── 카드 이미지 프리로드 ── */
+    SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
 
     /* ── 주차 키 (ISO week) ── */
     function getWeekKey() {
@@ -1686,14 +1704,19 @@
       const card = SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
 
-      const cardsHTML = Array.from({ length: cnt }, () => `
-        <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
-          ${makeCardHTML(card)}
-        </div>`).join('');
-
       const wrap = document.getElementById('cardDetailWrap');
-      wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:320px;';
-      wrap.innerHTML = cardsHTML;
+
+      if (card.img) {
+        wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0;';
+        wrap.innerHTML = `<div style="width:260px; max-width:80vw;"><img src="${card.img}" style="width:100%; height:auto; display:block; object-fit:contain;"></div>`;
+      } else {
+        const cardsHTML = Array.from({ length: Math.min(cnt, 3) }, () => `
+          <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
+            ${makeCardHTML(card)}
+          </div>`).join('');
+        wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:320px;';
+        wrap.innerHTML = cardsHTML;
+      }
 
       document.getElementById('cardDetailCnt').textContent = cnt > 1 ? `${cnt}장 보유` : '';
       document.getElementById('cardDetailOverlay').classList.remove('hidden');
@@ -1704,6 +1727,12 @@
 
     /* ════ 카드 HTML 생성 ════ */
     function makeCardHTML(card) {
+      if (card.img) {
+        return `
+          <div class="spirit-card" style="background:transparent; border-radius:0; overflow:visible; border:none; box-shadow:none;">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+          </div>`;
+      }
       return `
         <div class="spirit-card" style="background:linear-gradient(135deg,${card.g1},${card.g2});">
           <div class="spirit-card-header">
@@ -1801,15 +1830,18 @@
                  <div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
+        const unlockedContent = card.img
+          ? `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`
+          : `<div class="mini-card-label">성령의 열매</div>
+             <div class="mini-card-emoji">${card.emoji}</div>
+             <div class="mini-card-name">${card.name}</div>`;
         return `
           <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
             ${ghosts}
-            <div class="mini-card ${locked ? 'mini-card-locked' : ''}" style="${gStyle}">
+            <div class="mini-card ${locked ? 'mini-card-locked' : ''}${!locked && card.img ? ' mini-card-img' : ''}" style="${locked || card.img ? '' : gStyle}">
               ${locked
                 ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
-                : `<div class="mini-card-label">성령의 열매</div>
-              <div class="mini-card-emoji">${card.emoji}</div>
-              <div class="mini-card-name">${card.name}</div>`
+                : unlockedContent
               }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
@@ -1905,6 +1937,25 @@
     let drawResult = null;
     let revealClickEnabled = false;
     let isFlipping = false;
+    let loadingDotsTimer = null;
+
+    function startLoadingDots() {
+      const el = document.getElementById('cardLoadingHint');
+      const steps = ['두 근 두 근', '두 근 두 근 .', '두 근 두 근 . .', '두 근 두 근 . . .', '두 근 두 근 . . . !'];
+      let i = 0;
+      el.textContent = steps[0];
+      loadingDotsTimer = setInterval(function() {
+        i = (i + 1) % steps.length;
+        el.textContent = steps[i];
+      }, 600);
+    }
+
+    function stopLoadingDots() {
+      if (loadingDotsTimer) {
+        clearInterval(loadingDotsTimer);
+        loadingDotsTimer = null;
+      }
+    }
     var carouselCenter = 1; // 현재 가운데 팩 인덱스 (0,1,2)
 
     function applyCarouselPositions() {
@@ -1943,7 +1994,7 @@
       });
       document.getElementById('drawPack').style.clipPath = '';
       document.getElementById('packTearLight').style.width = '0%';
-      gsap.set('#packHint', { opacity: 0, y: 10 });
+      gsap.set('#packHint', { opacity: 0, y: -10 });
       gsap.set('#packTopPiece', { opacity: 0, y: 0, rotate: 0, rotateZ: 0 });
       gsap.set('#packInnerGlow', { opacity: 0, scale: 0.8 });
       gsap.set('#packCardPreview', { opacity: 0, scale: 0.9, y: 18 });
@@ -1967,6 +2018,8 @@
       gsap.set('#cardFlipShine', { opacity: 0, x: '-150%' });
       gsap.set('#settleActions', { opacity: 0, display: 'none' });
       gsap.set('#flipHint', { opacity: 0, y: 6 });
+      stopLoadingDots();
+      gsap.set('#cardLoadingHint', { opacity: 0 });
 
       gsap.set('#sceneGlow', { opacity: 0, scale: 0.8 });
       gsap.set('#starBg', { opacity: 0 });
@@ -1975,7 +2028,6 @@
 
       document.getElementById('cardFace').innerHTML = '';
       document.getElementById('flipHint').textContent = '';
-      document.getElementById('revealMsg').textContent = '';
       document.getElementById('cardTrigger').classList.remove('clickable');
 
       document.getElementById('drawOverlay').classList.remove('hidden');
@@ -2122,7 +2174,7 @@
         var topPiece = document.getElementById('packTopPiece');
 
         topPiece.style.width = packRect.width + 'px';
-        topPiece.style.height = Math.max(62, packRect.height * 0.26) + 'px';
+        topPiece.style.height = Math.max(62, packRect.height * 0.10) + 'px';
         topPiece.style.left = (packRect.left - wrapRect.left) + 'px';
         topPiece.style.top = (packRect.top - wrapRect.top) + 'px';
 
@@ -2142,6 +2194,8 @@
             var tlB = gsap.timeline({
               onComplete: function() {
                 drawState = 'card_back_wait';
+                startLoadingDots();
+                gsap.to('#cardLoadingHint', { opacity: 1, duration: 0.4, ease: 'power2.out' });
                 enableRevealClick();
               }
             });
@@ -2158,7 +2212,7 @@
               .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.35, ease: 'power2.out' }, 0)
               .fromTo('#cardTrigger',
                 { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
-                { y: -8, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.7, ease: 'power3.out' },
+                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.7, ease: 'power3.out' },
                 0.04
               )
               .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.35, ease: 'power2.out' }, 0)
@@ -2173,7 +2227,7 @@
         .to('#packTearLight', { width: '100%', duration: 0.14, ease: 'power2.out' }, 0)
         .to('#packInnerGlow', { opacity: 1, scale: 1.16, duration: 0.22, ease: 'power2.out' }, 0.02)
         .to('#drawPack', {
-          clipPath: 'polygon(0 0, 100% 0, 100% 20%, 0 33%)',
+          clipPath: 'polygon(0 12%, 100% 10%, 100% 100%, 0 100%)',
           duration: 0.18,
           ease: 'power1.out'
         }, 0.03)
@@ -2199,8 +2253,7 @@
           ease: 'power2.in'
         }, 0.30)
         .to('#drawPack', {
-          scale: 1.9,
-          y: 38,
+          y: 160,
           opacity: 0,
           duration: 0.42,
           ease: 'power2.in'
@@ -2227,13 +2280,8 @@
       document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
 
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
-      gsap.to('#cardGlow', {
-        opacity: 0.88,
-        duration: 1.5,
-        repeat: -1,
-        yoyo: true,
-        ease: 'sine.inOut'
-      });
+      stopLoadingDots();
+      document.getElementById('cardLoadingHint').textContent = '두 근 두 근 . . . !';
 
       gsap.to('#cardTrigger', {
         y: -11,
@@ -2255,6 +2303,8 @@
       gsap.killTweensOf('#cardTrigger');
       gsap.killTweensOf('#cardInner');
       gsap.killTweensOf('#cardGlow');
+      stopLoadingDots();
+      gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.15 });
 
       gsap.set('#cardTrigger', { y: -8, rotateZ: 0 });
       gsap.set('#cardInner', { rotateX: 0 });
@@ -2269,10 +2319,6 @@
           drawState = 'card_front_settle';
           isFlipping = false;
 
-          var card = pendingCard || drawResult;
-          if (card) {
-            document.getElementById('revealMsg').textContent = '✨ ' + card.name + ' 카드를 얻었어요!';
-          }
 
           gsap.set('#settleActions', { display: 'flex' });
           gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });

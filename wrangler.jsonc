@@ -1,7 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "website",
+<<<<<<< HEAD
   "compatibility_date": "2026-04-24",
+=======
+  "compatibility_date": "2026-04-25",
+>>>>>>> dd14ab75f5c4efe15c2166ec7f9568b538068e2f
   "observability": {
     "enabled": true
   },
