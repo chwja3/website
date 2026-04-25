@@ -1,4 +1,4 @@
-const CACHE = 'beyondus-v2';
+const CACHE = 'beyondus-v3';
 const ASSETS = [
   './',
   './index.html',
