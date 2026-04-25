@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" worktree remove --force \".claude/worktrees/group-chat\")",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" worktree remove --force \".claude/worktrees/keen-merkle-b6d108\")",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" branch -D worktree-group-chat sheep-moving)"
+    ]
+  }
+}
