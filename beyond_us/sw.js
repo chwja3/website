@@ -1,12 +1,11 @@
-const CACHE = 'beyondus-v1';
+const CACHE = 'beyondus-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './images/pabicon.png',
+  './images/hc_illust1.png',
   './images/hc_logo_png2.png',
   './images/BEYONDUS2.png',
-  './images/hc_illust1.png',
   './images/hc_illust4.png',
 ];
 
