@@ -1141,6 +1141,21 @@
       position: relative; z-index: 1;
       background: var(--bg); padding: 0 10px;
     }
+
+    /* ── Coming Soon ── */
+    #comingSoonScreen {
+      position: fixed; inset: 0; background: var(--bg);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 100; text-align: center; padding: 32px;
+    }
+    #comingSoonScreen.hidden { display: none; }
+    .cs-illust { width: 260px; max-width: 80vw; height: auto; margin-bottom: 32px;
+      filter: drop-shadow(0 10px 24px rgba(44,36,23,0.15)); }
+    .cs-title { font-size: 40px; font-weight: 900; letter-spacing: -.01em; color: var(--text); margin-bottom: 12px; }
+    .cs-date { font-size: 18px; font-weight: 600; color: var(--sub); }
+    .cs-login-link { margin-top: 40px; font-size: 13px; color: var(--sub); }
+    .cs-login-link button { background: none; border: none; color: var(--sub);
+      text-decoration: underline; cursor: pointer; font-size: 13px; font-family: inherit; }
   </style>
 </head>
 <body>
@@ -1152,6 +1167,16 @@
       <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
       <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
       <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
+    </div>
+  </div>
+
+  <!-- ▣ Coming Soon 화면 -->
+  <div id="comingSoonScreen" class="hidden">
+    <img src="images/hc_illust1.png" class="cs-illust" alt="Coming Soon" />
+    <p class="cs-title">Coming Soon</p>
+    <p class="cs-date">10th May Open</p>
+    <div class="cs-login-link">
+      <button onclick="showAuth('login')">다른 계정으로 로그인</button>
     </div>
   </div>
 
@@ -1349,11 +1374,9 @@
         <li class="drawer-item" data-section="chat">💬 단톡방</li>
         <li class="drawer-item" data-section="inquiry">개발자 문의</li>
       </ul>
-      <!-- 로그아웃 버튼 (임시 비활성화)
       <div class="drawer-logout">
         <button class="drawer-logout-btn" id="logoutBtn">로그아웃</button>
       </div>
-      -->
       <div class="drawer-user" id="drawerUser"></div>
     </nav>
 
@@ -1529,7 +1552,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script>
-    const API_BASE = 'https://script.google.com/macros/s/AKfycbwE1WmjS02tZh-jUJOqGEOBobAG73RGpQhxkM9vbgk4xBrq5C-UB8r6vx9lVftaZLAobQ/exec';
+    const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
@@ -1594,13 +1617,26 @@
       const splash = document.getElementById('splashScreen');
       if (splash) splash.style.display = 'none';
     }
+    function shouldEnterApp(isStaff, appOpenDate) {
+      if (isStaff) return true;
+      if (!appOpenDate) return false;
+      return new Date().toISOString().slice(0, 10) >= appOpenDate;
+    }
+    function showComingSoon() {
+      hideSplash();
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.add('hidden');
+      document.getElementById('comingSoonScreen').classList.remove('hidden');
+    }
     function showAuth(pane) {
       hideSplash();
+      document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('appScreen').classList.add('hidden');
       switchAuthPane(pane || 'register');
     }
     function showApp() {
+      document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       updateInquiryLoginUI();
@@ -1639,17 +1675,22 @@
         return;
       }
 
-      // 캐시 신뢰 → 즉시 앱 진입 + 스플래시 해제
+      // 캐시 신뢰 → 즉시 화면 분기 + 스플래시 해제
       currentNickname = savedNickname;
       currentParish   = savedParish || '';
       updateUserBadge();
-      showApp();
-      try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
-      // 두 API 모두 완료된 시점에서 최종 renderConfig — 크로스디바이스 submitted 반영
-      if (lastConfigData) renderConfig(lastConfigData);
+      const cachedIsStaff     = localStorage.getItem('beyondus_is_staff') === 'true';
+      const cachedAppOpenDate = localStorage.getItem('beyondus_app_open_date') || '';
+      if (shouldEnterApp(cachedIsStaff, cachedAppOpenDate)) {
+        showApp();
+        try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
+        if (lastConfigData) renderConfig(lastConfigData);
+      } else {
+        showComingSoon();
+      }
       hideSplash();
 
-      // 백그라운드에서 서버 검증 (비번이 바뀐 경우만 로그아웃)
+      // 백그라운드에서 서버 검증 (isStaff·appOpenDate 갱신 포함)
       try {
         const res  = await fetch(API_BASE, {
           method: 'POST',
@@ -1664,6 +1705,19 @@
           currentNickname = null;
           currentParish   = null;
           showAuth('login');
+        } else {
+          localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
+          localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
+          const canEnter = shouldEnterApp(data.isStaff, data.appOpenDate);
+          const onComingSoon = !document.getElementById('comingSoonScreen').classList.contains('hidden');
+          const onApp        = !document.getElementById('appScreen').classList.contains('hidden');
+          if (canEnter && onComingSoon) {
+            showApp();
+            try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
+            if (lastConfigData) renderConfig(lastConfigData);
+          } else if (!canEnter && onApp) {
+            showComingSoon();
+          }
         }
       } catch(e) {}
     }
@@ -1695,10 +1749,14 @@
         const data = await res.json();
         if (data.ok) {
           saveAuth(nickname, password, parish);
+          localStorage.setItem('beyondus_is_staff', 'false');
+          const aod = localStorage.getItem('beyondus_app_open_date') || '';
           updateUserBadge();
-          showApp();
-          loadAll();
-          loadUserStatus();
+          if (shouldEnterApp(false, aod)) {
+            showApp(); loadAll(); loadUserStatus();
+          } else {
+            showComingSoon();
+          }
         } else if (data.error === 'duplicate') {
           statusEl.textContent = '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.';
         } else {
@@ -1732,10 +1790,16 @@
         const data = await res.json();
         if (data.ok) {
           saveAuth(nickname, password, data.parish || '');
+          localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
+          localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
           updateUserBadge();
-          showApp();
-          loadAll();
-          loadUserStatus();
+          if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
+            showApp();
+            loadAll();
+            loadUserStatus();
+          } else {
+            showComingSoon();
+          }
         } else if (data.error === 'not_found') {
           statusEl.textContent = '닉네임을 찾을 수 없어요.';
         } else if (data.error === 'wrong_password') {
@@ -2760,17 +2824,15 @@
     if (drawerToggleEl) drawerToggleEl.addEventListener('click', openDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 
-    /* 로그아웃 버튼 (임시 비활성화)
     document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('beyondus_nickname');
-      localStorage.removeItem('beyondus_password');
-      localStorage.removeItem('beyondus_parish');
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('beyondus_'))
+        .forEach(k => localStorage.removeItem(k));
       currentNickname = null;
       currentParish   = null;
       closeDrawer();
       showAuth('login');
     });
-    */
 
     /* ════ 섹션 전환 ════ */
     const SECTION_IDS = {
