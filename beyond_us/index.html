@@ -607,6 +607,20 @@
       cursor: pointer;
     }
 
+    #cardLoadingHint {
+      position: absolute;
+      bottom: 28px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(255,246,239,0.75);
+      letter-spacing: 0.06em;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      opacity: 0;
+      pointer-events: none;
+    }
+
     #flipHint {
       position: absolute;
       top: -36px;
@@ -1207,6 +1221,7 @@
             </div>
           </div>
         </div>
+        <p id="cardLoadingHint">두근두근 . . .</p>
       </div>
     </div>
     <div id="settleActions">
@@ -1984,6 +1999,7 @@
       gsap.set('#cardFlipShine', { opacity: 0, x: '-150%' });
       gsap.set('#settleActions', { opacity: 0, display: 'none' });
       gsap.set('#flipHint', { opacity: 0, y: 6 });
+      gsap.set('#cardLoadingHint', { opacity: 0 });
 
       gsap.set('#sceneGlow', { opacity: 0, scale: 0.8 });
       gsap.set('#starBg', { opacity: 0 });
@@ -2158,6 +2174,9 @@
             var tlB = gsap.timeline({
               onComplete: function() {
                 drawState = 'card_back_wait';
+                if (!drawResult) {
+                  gsap.to('#cardLoadingHint', { opacity: 1, duration: 0.4, ease: 'power2.out' });
+                }
                 enableRevealClick();
               }
             });
@@ -2242,6 +2261,7 @@
       document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
 
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
+      gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.2 });
 
       gsap.to('#cardTrigger', {
         y: -11,
