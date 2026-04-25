@@ -3,7 +3,14 @@
     "allow": [
       "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" worktree remove --force \".claude/worktrees/group-chat\")",
       "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" worktree remove --force \".claude/worktrees/keen-merkle-b6d108\")",
-      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" branch -D worktree-group-chat sheep-moving)"
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" branch -D worktree-group-chat sheep-moving)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" branch --show-current)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" log --oneline -5)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" log --oneline --graph --all -20)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" log --oneline cloudflare/dohyun -20)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" show 66a0f5f --stat)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" diff main..cloudflare/dohyun --stat)",
+      "Bash(git -C \"C:\\\\Users\\\\jkjk9\\\\OneDrive\\\\Documents\\\\00_Work\\\\01_AGC\\\\AGC\\\\2026_Youth_treat\\\\website\" log --oneline main -10)"
     ]
   }
 }
