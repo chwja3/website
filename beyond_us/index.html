@@ -455,15 +455,7 @@
       display: flex; align-items: center; justify-content: center;
     }
     #sceneGlow {
-      position: absolute;
-      inset: -96px;
-      background:
-        radial-gradient(circle at 50% 54%, rgba(135,195,235,0.22) 0%, rgba(100,170,220,0.10) 18%, transparent 40%),
-        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.14) 0%, transparent 35%),
-        radial-gradient(circle at 50% 64%, rgba(120,190,120,0.10) 0%, transparent 30%);
-      filter: blur(18px);
-      pointer-events: none;
-      opacity: 0;
+      display: none;
     }
 
     #sceneWrap::before,
@@ -1462,6 +1454,9 @@
       { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc', img:'images/온유.png' },
       { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1', img:'images/절제.png' },
     ];
+
+    /* ── 카드 이미지 프리로드 ── */
+    SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
 
     /* ── 주차 키 (ISO week) ── */
     function getWeekKey() {
