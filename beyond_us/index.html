@@ -1722,7 +1722,7 @@
 
       if (card.img) {
         wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0;';
-        wrap.innerHTML = `<img src="${card.img}" style="width:260px; max-width:80vw; height:auto; display:block; object-fit:contain;">`;
+        wrap.innerHTML = `<div style="width:260px; max-width:80vw; border-radius:38px; overflow:hidden;"><img src="${card.img}" style="width:100%; height:auto; display:block; object-fit:contain;"></div>`;
       } else {
         const cardsHTML = Array.from({ length: Math.min(cnt, 3) }, () => `
           <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
