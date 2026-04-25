@@ -1142,6 +1142,26 @@
       background: var(--bg); padding: 0 10px;
     }
 
+    /* ── PWA 설치 배너 ── */
+    #installBanner {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 99999;
+      background: var(--primary); color: #faf6ef;
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 -4px 20px rgba(44,36,23,0.18);
+    }
+    #installBanner.hidden { display: none; }
+    .install-banner-text { flex: 1; font-size: 14px; line-height: 1.5; }
+    .install-banner-text strong { display: block; font-size: 15px; font-weight: 800; margin-bottom: 2px; }
+    .install-banner-btn {
+      flex-shrink: 0; padding: 8px 16px; border-radius: 10px; border: none;
+      background: #faf6ef; color: var(--primary); font-size: 13px;
+      font-weight: 800; cursor: pointer; font-family: inherit;
+    }
+    .install-banner-close {
+      flex-shrink: 0; background: none; border: none; color: rgba(255,246,239,0.6);
+      font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+
     /* ── Coming Soon ── */
     #comingSoonScreen {
       position: fixed; inset: 0; background: var(--bg);
@@ -1168,6 +1188,16 @@
       <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
       <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
     </div>
+  </div>
+
+  <!-- ▣ PWA 설치 배너 -->
+  <div id="installBanner" class="hidden">
+    <div class="install-banner-text">
+      <strong>앱으로 설치하기</strong>
+      <span id="installBannerDesc">홈 화면에 추가하면 더 편하게 이용할 수 있어요.</span>
+    </div>
+    <button class="install-banner-btn" id="installBannerBtn">설치</button>
+    <button class="install-banner-close" id="installBannerClose">✕</button>
   </div>
 
   <!-- ▣ Coming Soon 화면 -->
@@ -3262,6 +3292,58 @@
       const sendBtn = document.getElementById('chatSendBtn');
       if (input)   { input.disabled = true; input.value = ''; input.onkeydown = null; }
       if (sendBtn) { sendBtn.disabled = true; sendBtn.onclick = null; }
+    }
+
+    /* ════ PWA 설치 배너 ════ */
+    (function initInstallBanner() {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                        || window.navigator.standalone === true;
+      if (isStandalone) return;
+      if (localStorage.getItem('beyondus_install_dismissed')) return;
+
+      const banner  = document.getElementById('installBanner');
+      const btn     = document.getElementById('installBannerBtn');
+      const close   = document.getElementById('installBannerClose');
+      const desc    = document.getElementById('installBannerDesc');
+
+      close.addEventListener('click', () => {
+        banner.classList.add('hidden');
+        localStorage.setItem('beyondus_install_dismissed', '1');
+      });
+
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        desc.textContent = 'Safari 하단 공유(□↑) → "홈 화면에 추가" 탭하세요.';
+        btn.style.display = 'none';
+        banner.classList.remove('hidden');
+        return;
+      }
+
+      let deferredPrompt = null;
+      window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        banner.classList.remove('hidden');
+      });
+
+      btn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        banner.classList.add('hidden');
+        if (outcome === 'accepted') localStorage.setItem('beyondus_install_dismissed', '1');
+      });
+
+      window.addEventListener('appinstalled', () => {
+        banner.classList.add('hidden');
+        localStorage.setItem('beyondus_install_dismissed', '1');
+      });
+    })();
+
+    /* ════ 서비스 워커 등록 ════ */
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
     /* ════ 초기화 ════ */
