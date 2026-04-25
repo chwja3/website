@@ -1221,7 +1221,7 @@
             </div>
           </div>
         </div>
-        <p id="cardLoadingHint">두근두근 . . .</p>
+        <p id="cardLoadingHint">두 근 두 근 . . . !</p>
       </div>
     </div>
     <div id="settleActions">
@@ -1941,7 +1941,7 @@
 
     function startLoadingDots() {
       const el = document.getElementById('cardLoadingHint');
-      const steps = ['두근두근', '두근두근 .', '두근두근 . .', '두근두근 . . .'];
+      const steps = ['두 근 두 근', '두 근 두 근 .', '두 근 두 근 . .', '두 근 두 근 . . . !'];
       let i = 0;
       el.textContent = steps[0];
       loadingDotsTimer = setInterval(function() {
@@ -2281,7 +2281,7 @@
 
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
       stopLoadingDots();
-      document.getElementById('cardLoadingHint').textContent = '두근두근 . . .';
+      document.getElementById('cardLoadingHint').textContent = '두 근 두 근 . . . !';
 
       gsap.to('#cardTrigger', {
         y: -11,
