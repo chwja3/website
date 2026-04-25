@@ -609,7 +609,7 @@
 
     #cardLoadingHint {
       position: absolute;
-      bottom: 28px;
+      bottom: -72px;
       left: 0; right: 0;
       text-align: center;
       font-size: 13px;
@@ -1937,6 +1937,25 @@
     let drawResult = null;
     let revealClickEnabled = false;
     let isFlipping = false;
+    let loadingDotsTimer = null;
+
+    function startLoadingDots() {
+      const el = document.getElementById('cardLoadingHint');
+      const steps = ['두근두근', '두근두근 .', '두근두근 . .', '두근두근 . . .'];
+      let i = 0;
+      el.textContent = steps[0];
+      loadingDotsTimer = setInterval(function() {
+        i = (i + 1) % steps.length;
+        el.textContent = steps[i];
+      }, 600);
+    }
+
+    function stopLoadingDots() {
+      if (loadingDotsTimer) {
+        clearInterval(loadingDotsTimer);
+        loadingDotsTimer = null;
+      }
+    }
     var carouselCenter = 1; // 현재 가운데 팩 인덱스 (0,1,2)
 
     function applyCarouselPositions() {
@@ -1999,6 +2018,7 @@
       gsap.set('#cardFlipShine', { opacity: 0, x: '-150%' });
       gsap.set('#settleActions', { opacity: 0, display: 'none' });
       gsap.set('#flipHint', { opacity: 0, y: 6 });
+      stopLoadingDots();
       gsap.set('#cardLoadingHint', { opacity: 0 });
 
       gsap.set('#sceneGlow', { opacity: 0, scale: 0.8 });
@@ -2174,9 +2194,8 @@
             var tlB = gsap.timeline({
               onComplete: function() {
                 drawState = 'card_back_wait';
-                if (!drawResult) {
-                  gsap.to('#cardLoadingHint', { opacity: 1, duration: 0.4, ease: 'power2.out' });
-                }
+                startLoadingDots();
+                gsap.to('#cardLoadingHint', { opacity: 1, duration: 0.4, ease: 'power2.out' });
                 enableRevealClick();
               }
             });
@@ -2261,7 +2280,8 @@
       document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
 
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
-      gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.2 });
+      stopLoadingDots();
+      document.getElementById('cardLoadingHint').textContent = '두근두근 . . .';
 
       gsap.to('#cardTrigger', {
         y: -11,
@@ -2283,6 +2303,8 @@
       gsap.killTweensOf('#cardTrigger');
       gsap.killTweensOf('#cardInner');
       gsap.killTweensOf('#cardGlow');
+      stopLoadingDots();
+      gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.15 });
 
       gsap.set('#cardTrigger', { y: -8, rotateZ: 0 });
       gsap.set('#cardInner', { rotateX: 0 });
