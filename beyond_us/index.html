@@ -607,21 +607,6 @@
       cursor: pointer;
     }
 
-    #cardTrigger.clickable::after {
-      content: '';
-      position: absolute;
-      inset: -16px;
-      border-radius: 26px;
-      border: 1px solid rgba(255,255,255,0.18);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.03) inset,
-        0 0 24px rgba(255,184,84,0.18),
-        0 0 56px rgba(255,105,210,0.10);
-      opacity: 0.7;
-      animation: revealPulse 1.9s ease-in-out infinite;
-      pointer-events: none;
-    }
-
     #flipHint {
       position: absolute;
       top: -36px;
@@ -664,17 +649,6 @@
         0 0 30px rgba(255,100,220,0.22);
       opacity: 0;
       pointer-events: none;
-    }
-
-    @keyframes revealPulse {
-      0%, 100% {
-        transform: scale(0.96);
-        opacity: 0.38;
-      }
-      50% {
-        transform: scale(1.02);
-        opacity: 0.86;
-      }
     }
 
     /* ════ 별빛 배경 ════ */
