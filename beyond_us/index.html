@@ -419,28 +419,6 @@
       background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.35) 100%);
       pointer-events: none;
     }
-    .spirit-card-header {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 10px 12px 6px; font-size: 10px; font-weight: 700;
-      color: rgba(255,255,255,0.85); letter-spacing: .06em;
-      position: relative; z-index: 1;
-    }
-    .spirit-card-img {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      font-size: 56px;
-      position: relative; z-index: 1;
-    }
-    .spirit-card-footer {
-      padding: 8px 12px 12px;
-      position: relative; z-index: 1;
-    }
-    .spirit-card-name { font-size: 20px; font-weight: 900; line-height: 1.1; }
-    .spirit-card-en   { font-size: 11px; font-weight: 700; opacity: .8; margin-bottom: 6px; }
-    .spirit-card-desc {
-      font-size: 10px; line-height: 1.5; opacity: .85;
-      background: rgba(0,0,0,0.2); border-radius: 8px;
-      padding: 6px 8px; margin-top: 4px;
-    }
 
     /* 공개 후 메시지 */
     .reveal-msg {
@@ -883,23 +861,13 @@
       border-radius: 12px;
       aspect-ratio: 54 / 86;
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 4px;
-      border: 2px solid rgba(255,255,255,0.3);
+      align-items: center; justify-content: center;
       overflow: hidden; position: relative;
-      color: white; padding: 6px 4px;
-    }
-    .mini-card::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.3) 100%);
     }
     .mini-card-locked {
       background: #e8e0d4 !important;
-      border-color: #d6cfc6;
-      color: #b0a090;
+      border: 2px solid #d6cfc6;
     }
-    .mini-card-label { font-size: 8px; font-weight: 700; opacity: .8; letter-spacing: .04em; position: relative; z-index: 1; }
-    .mini-card-emoji { font-size: 28px; position: relative; z-index: 1; }
-    .mini-card-name  { font-size: 11px; font-weight: 800; position: relative; z-index: 1; }
     .mini-card-badge {
       position: absolute; top: -4px; right: -4px;
       background: #ff758c; color: white;
@@ -910,8 +878,7 @@
     }
     .mini-card-silhouette {
       position: absolute;
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       object-fit: contain;
@@ -920,10 +887,8 @@
     .mini-card-img {
       padding: 0;
       border: none;
-      border-radius: 0;
       overflow: visible;
     }
-    .mini-card-img::before { display: none; }
 
     /* ════════════════════════════
        Auth 화면 (전체 페이지)
@@ -1664,15 +1629,15 @@
 
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
-      { id:1, name:'사랑',    en:'Love',         desc:'모든 것을 참으며 모든 것을 믿으며 모든 것을 바라며', emoji:'❤️',  g1:'#ff758c', g2:'#c0392b', img:'images/사랑.png' },
-      { id:2, name:'희락',    en:'Joy',          desc:'주 안에서 항상 기뻐하라 내가 다시 말하노니 기뻐하라', emoji:'☀️',  g1:'#f7971e', g2:'#c0850a', img:'images/희락.png' },
-      { id:3, name:'화평',    en:'Peace',        desc:'하나님의 평강이 모든 지각에 뛰어나 너희 마음을 지키시리라', emoji:'🕊️', g1:'#185a9d', g2:'#43cea2', img:'images/화평.png' },
-      { id:4, name:'오래참음', en:'Patience',     desc:'끝까지 견디는 자는 구원을 얻으리라',               emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e', img:'images/오래참음.png' },
-      { id:5, name:'자비',    en:'Kindness',     desc:'서로 친절하게 하며 불쌍히 여기며 서로 용서하기를',   emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788', img:'images/자비.png' },
-      { id:6, name:'양선',    en:'Goodness',     desc:'선을 행하되 낙심하지 말지니 때가 이르매 거두리로다', emoji:'🌿',  g1:'#11998e', g2:'#38ef7d', img:'images/양선.png' },
-      { id:7, name:'충성',    en:'Faithfulness', desc:'네가 작은 일에 충성하였으매 내가 많은 것을 맡기리니', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c', img:'images/충성.png' },
-      { id:8, name:'온유',    en:'Gentleness',   desc:'온유한 자는 복이 있나니 저희가 땅을 기업으로 받을 것임이요', emoji:'🌸', g1:'#7b4fa6', g2:'#c084fc', img:'images/온유.png' },
-      { id:9, name:'절제',    en:'Self-Control', desc:'자기를 다스리는 자는 성을 빼앗는 자보다 나으니라',   emoji:'🛡️', g1:'#1a3a5c', g2:'#2e86c1', img:'images/절제.png' },
+      { id:1, name:'사랑',    g1:'#ff758c', g2:'#c0392b', img:'images/사랑.png' },
+      { id:2, name:'희락',    g1:'#f7971e', g2:'#c0850a', img:'images/희락.png' },
+      { id:3, name:'화평',    g1:'#185a9d', g2:'#43cea2', img:'images/화평.png' },
+      { id:4, name:'오래참음', g1:'#8b6914', g2:'#c8a96e', img:'images/오래참음.png' },
+      { id:5, name:'자비',    g1:'#2d6a4f', g2:'#52b788', img:'images/자비.png' },
+      { id:6, name:'양선',    g1:'#11998e', g2:'#38ef7d', img:'images/양선.png' },
+      { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/충성.png' },
+      { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/온유.png' },
+      { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/절제.png' },
     ];
 
     /* ── 카드 이미지 프리로드 ── */
@@ -2020,17 +1985,8 @@
 
       const wrap = document.getElementById('cardDetailWrap');
 
-      if (card.img) {
-        wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0;';
-        wrap.innerHTML = `<div style="width:260px; max-width:80vw;"><img src="${card.img}" style="width:100%; height:auto; display:block; object-fit:contain;"></div>`;
-      } else {
-        const cardsHTML = Array.from({ length: Math.min(cnt, 3) }, () => `
-          <div style="width:130px; height:182px; flex-shrink:0; border-radius:14px; overflow:hidden; box-shadow:0 6px 20px rgba(0,0,0,0.5);">
-            ${makeCardHTML(card)}
-          </div>`).join('');
-        wrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:320px;';
-        wrap.innerHTML = cardsHTML;
-      }
+      wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:0;';
+      wrap.innerHTML = `<div style="width:260px; max-width:80vw;"><img src="${card.img}" style="width:100%; height:auto; display:block; object-fit:contain;"></div>`;
 
       document.getElementById('cardDetailCnt').textContent = cnt > 1 ? `${cnt}장 보유` : '';
       document.getElementById('cardDetailOverlay').classList.remove('hidden');
@@ -2041,24 +1997,9 @@
 
     /* ════ 카드 HTML 생성 ════ */
     function makeCardHTML(card) {
-      if (card.img) {
-        return `
-          <div class="spirit-card" style="background:transparent; border-radius:0; overflow:visible; border:none; box-shadow:none;">
-            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
-          </div>`;
-      }
       return `
-        <div class="spirit-card" style="background:linear-gradient(135deg,${card.g1},${card.g2});">
-          <div class="spirit-card-header">
-            <span>성령의 열매</span>
-            <span>${String(card.id).padStart(2,'0')}/09</span>
-          </div>
-          <div class="spirit-card-img">${card.emoji}</div>
-          <div class="spirit-card-footer">
-            <div class="spirit-card-name">${card.name}</div>
-            <div class="spirit-card-en">${card.en}</div>
-            <div class="spirit-card-desc">${card.desc}</div>
-          </div>
+        <div class="spirit-card" style="background:transparent; border-radius:0; overflow:visible; border:none; box-shadow:none;">
+          <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
         </div>`;
     }
 
@@ -2144,15 +2085,11 @@
                  <div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
-        const unlockedContent = card.img
-          ? `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`
-          : `<div class="mini-card-label">성령의 열매</div>
-             <div class="mini-card-emoji">${card.emoji}</div>
-             <div class="mini-card-name">${card.name}</div>`;
+        const unlockedContent = `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
         return `
           <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
             ${ghosts}
-            <div class="mini-card ${locked ? 'mini-card-locked' : ''}${!locked && card.img ? ' mini-card-img' : ''}" style="${locked || card.img ? '' : gStyle}">
+            <div class="mini-card ${locked ? 'mini-card-locked' : 'mini-card-img'}">
               ${locked
                 ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
                 : unlockedContent

@@ -4,15 +4,15 @@ const RAW_SHEET_NAME = 'raw_checkins';
 const CONFIG_SHEET_NAME = 'config';
 
 const SPIRIT_CARDS = [
-  {id:1, name:'사랑',    en:'Love',         emoji:'❤️ ',  g1:'#ff758c', g2:'#c0392b'},
-  {id:2, name:'희락',    en:'Joy',          emoji:'☀️ ',  g1:'#f7971e', g2:'#c0850a'},
-  {id:3, name:'화평',    en:'Peace',        emoji:'🕊️ ', g1:'#185a9d', g2:'#43cea2'},
-  {id:4, name:'오래참음', en:'Patience',     emoji:'⏳',  g1:'#8b6914', g2:'#c8a96e'},
-  {id:5, name:'자비',    en:'Kindness',     emoji:'🤲',  g1:'#2d6a4f', g2:'#52b788'},
-  {id:6, name:'양선',    en:'Goodness',     emoji:'🌿',  g1:'#11998e', g2:'#38ef7d'},
-  {id:7, name:'충성',    en:'Faithfulness', emoji:'⭐',  g1:'#b5451b', g2:'#e8a87c'},
-  {id:8, name:'온유',    en:'Gentleness',   emoji:'🌸',  g1:'#7b4fa6', g2:'#c084fc'},
-  {id:9, name:'절제',    en:'Self-Control', emoji:'🛡️ ', g1:'#1a3a5c', g2:'#2e86c1'},
+  {id:1, name:'사랑'},
+  {id:2, name:'희락'},
+  {id:3, name:'화평'},
+  {id:4, name:'오래참음'},
+  {id:5, name:'자비'},
+  {id:6, name:'양선'},
+  {id:7, name:'충성'},
+  {id:8, name:'온유'},
+  {id:9, name:'절제'},
 ];
 
 // ── GET ──────────────────────────────────────────
