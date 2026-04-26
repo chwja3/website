@@ -250,13 +250,14 @@ function getUserStatus(userId, weekKey) {
   const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
 
   // 이번 주 누적 점수 + 오늘 체크한 항목 확인
+  // row[1] = weekTitle(1주차/2주차...) 기준으로 필터 — 달력 주가 아닌 미션 주차로 집계
   try {
     const raw     = ss.getSheetByName(RAW_SHEET_NAME);
     const lastRow = raw.getLastRow();
     if (lastRow >= 2) {
       const rows = raw.getRange(2, 1, lastRow - 1, 7).getValues();
       for (const row of rows) {
-        if (String(row[3]) === userId && String(row[4]) === weekKey) {
+        if (String(row[3]) === userId && String(row[1]) === config.weekTitle) {
           weekScore += Number(row[6]) || 0;
           const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
           if (rowDate === today) {
@@ -312,7 +313,8 @@ function drawCard(userId, weekKey, testMode) {
     if (last >= 2) {
       const rows = raw.getRange(2, 1, last - 1, 7).getValues();
       for (const row of rows) {
-        if (String(row[3]) === userId && String(row[4]) === weekKey) {
+        // row[1] = weekTitle 기준으로 집계 (달력 주 아닌 미션 주차)
+        if (String(row[3]) === userId && String(row[1]) === config.weekTitle) {
           weekScore += Number(row[6]) || 0;
         }
       }
