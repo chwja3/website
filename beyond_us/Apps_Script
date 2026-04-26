@@ -249,28 +249,25 @@ function getUserStatus(userId, weekKey) {
 
   const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
 
-  // 이번 주 누적 점수 + 오늘 체크한 항목 확인
-  // row[1] = weekTitle(1주차/2주차...) 기준으로 필터 — 달력 주가 아닌 미션 주차로 집계
+  // raw_checkins 전체 읽기 (이번 주 점수 + 오늘 항목 + 이월 계산에 재사용)
+  let allRows = [];
   try {
     const raw     = ss.getSheetByName(RAW_SHEET_NAME);
     const lastRow = raw.getLastRow();
     if (lastRow >= 2) {
-      const rows = raw.getRange(2, 1, lastRow - 1, 7).getValues();
-      for (const row of rows) {
-        if (String(row[3]) === userId && String(row[1]) === config.weekTitle) {
+      allRows = raw.getRange(2, 1, lastRow - 1, 7).getValues();
+      for (const row of allRows) {
+        if (String(row[3]) !== userId) continue;
+        if (String(row[1]) === config.weekTitle) {
           weekScore += Number(row[6]) || 0;
           const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
           if (rowDate === today) {
-            try {
-              JSON.parse(row[2] || '[]').forEach(item => todayItems.push(item));
-            } catch(e) {}
+            try { JSON.parse(row[2] || '[]').forEach(item => todayItems.push(item)); } catch(e) {}
           }
         }
       }
     }
   } catch(e) {}
-
-  const canDraw = weekScore >= config.drawThreshold;
 
   // 카드 뽑기 이력
   try {
@@ -288,11 +285,29 @@ function getUserStatus(userId, weekKey) {
     }
   } catch(e) {}
 
+  // 이월 뽑기권 계산: 1~currentWeek 중 자격 얻은 주 수 - 실제 뽑은 수
+  let pendingDraws = 0;
+  try {
+    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+    let qualifiedWeeks = 0;
+    for (let w = 1; w <= config.currentWeek; w++) {
+      const wTitle     = `${w}주차`;
+      const startRow   = (w - 1) * 8 + 5;
+      const wThreshold = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
+      const wScore     = allRows
+        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
+        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+      if (wScore >= wThreshold) qualifiedWeeks++;
+    }
+    pendingDraws = Math.max(0, qualifiedWeeks - collection.length);
+  } catch(e) {}
+
   return {
     ok: true,
     weekScore,
     drawThreshold: config.drawThreshold,
-    canDraw,
+    canDraw: pendingDraws > 0,
+    pendingDraws,
     drawnThisWeek,
     weekCard,
     collection,
@@ -305,38 +320,45 @@ function drawCard(userId, weekKey, testMode) {
 
   const config = getConfig();
   const ss     = getSpreadsheet();
-  const raw    = ss.getSheetByName(RAW_SHEET_NAME);
-  let weekScore = 0;
 
-  try {
-    const last = raw.getLastRow();
-    if (last >= 2) {
-      const rows = raw.getRange(2, 1, last - 1, 7).getValues();
-      for (const row of rows) {
-        // row[1] = weekTitle 기준으로 집계 (달력 주 아닌 미션 주차)
-        if (String(row[3]) === userId && String(row[1]) === config.weekTitle) {
-          weekScore += Number(row[6]) || 0;
-        }
+  if (!testMode) {
+    // 이월 포함 pendingDraws 계산
+    let allRows = [];
+    try {
+      const raw  = ss.getSheetByName(RAW_SHEET_NAME);
+      const last = raw.getLastRow();
+      if (last >= 2) allRows = raw.getRange(2, 1, last - 1, 7).getValues();
+    } catch(e) {}
+
+    let totalDraws = 0;
+    try {
+      const draws = getOrCreateDrawSheet();
+      const last  = draws.getLastRow();
+      if (last >= 2) {
+        totalDraws = draws.getRange(2, 1, last - 1, 2).getValues()
+          .filter(r => String(r[0]) === userId).length;
       }
-    }
-  } catch(e) {}
+    } catch(e) {}
 
-  if (!testMode && weekScore < config.drawThreshold) {
-    return { ok: false, error: `뽑기 기준(${config.drawThreshold}점)에 아직 도달하지 못했습니다.` };
+    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+    let qualifiedWeeks = 0;
+    for (let w = 1; w <= config.currentWeek; w++) {
+      const wTitle     = `${w}주차`;
+      const startRow   = (w - 1) * 8 + 5;
+      const wThreshold = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
+      const wScore     = allRows
+        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
+        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+      if (wScore >= wThreshold) qualifiedWeeks++;
+    }
+    const pendingDraws = Math.max(0, qualifiedWeeks - totalDraws);
+    if (pendingDraws <= 0) {
+      return { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
+    }
   }
 
   const draws = getOrCreateDrawSheet();
-  const last  = draws.getLastRow();
-  if (!testMode && last >= 2) {
-    const rows = draws.getRange(2, 1, last - 1, 2).getValues();
-    for (const row of rows) {
-      if (String(row[0]) === userId && String(row[1]) === weekKey) {
-        return { ok: false, error: '이번 주에 이미 뽑았습니다.' };
-      }
-    }
-  }
-
-  const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+  const card  = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
   draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
   return { ok: true, card };
 }

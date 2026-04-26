@@ -2035,16 +2035,17 @@
       }
 
       // 서비스 모드: 정책 적용
-      if (!userStatus.canDraw) {
-        const ws = userStatus.weekScore || 0;
-        const dt = userStatus.drawThreshold || 6;
+      const pending = userStatus.pendingDraws || 0;
+
+      if (pending > 0) {
+        const tickets = '🎫'.repeat(pending);
         el.innerHTML = `
-          <div class="draw-notice">
-            <div>
-              <div class="draw-notice-title">이번 주 ${dt}점을 모으면 카드를 뽑을 수 있어요</div>
-              <div class="draw-notice-sub">현재 ${ws}점 / ${dt}점</div>
-            </div>
-          </div>`;
+          <div style="text-align:center; margin-bottom:14px;">
+            <div style="font-size:28px; letter-spacing:4px; margin-bottom:6px;">${tickets}</div>
+            <div style="font-size:13px; font-weight:700; color:var(--text);">뽑기권 ${pending}장 보유</div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
+        document.getElementById('openDrawBtn').onclick = openDrawOverlay;
         return;
       }
       if (userStatus.drawnThisWeek) {
@@ -2059,9 +2060,15 @@
           <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="switchSection('collection')">카드 컬렉션 보기</button>`;
         return;
       }
+      const ws = userStatus.weekScore || 0;
+      const dt = userStatus.drawThreshold || 6;
       el.innerHTML = `
-        <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
-      document.getElementById('openDrawBtn').onclick = openDrawOverlay;
+        <div class="draw-notice">
+          <div>
+            <div class="draw-notice-title">이번 주 ${dt}점을 모으면 카드를 뽑을 수 있어요</div>
+            <div class="draw-notice-sub">현재 ${ws}점 / ${dt}점</div>
+          </div>
+        </div>`;
     }
 
     /* ════ 컬렉션 렌더 ════ */
@@ -2304,6 +2311,7 @@
           userStatus.weekCard = pendingCard;
           if (!userStatus.collection) userStatus.collection = [];
           userStatus.collection.push(pendingCard);
+          userStatus.pendingDraws = Math.max(0, (userStatus.pendingDraws || 1) - 1);
         }
         renderDrawSection();
         renderCollection();
