@@ -1166,14 +1166,57 @@
     #comingSoonScreen {
       position: fixed; inset: 0; background: var(--bg);
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      z-index: 100; text-align: center; padding: 32px;
+      z-index: 100; overflow: hidden;
     }
     #comingSoonScreen.hidden { display: none; }
-    .cs-illust { width: 260px; max-width: 80vw; height: auto; margin-bottom: 32px;
+
+    /* 캐러셀 트랙 */
+    .cs-track-wrap { width: 100%; flex: 1; display: flex; align-items: center; overflow: hidden; }
+    .cs-track {
+      display: flex; width: 100%; height: 100%;
+      transition: transform 0.45s cubic-bezier(0.4,0,0.2,1);
+      will-change: transform;
+    }
+    .cs-slide {
+      min-width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 32px; text-align: center;
+    }
+
+    /* 슬라이드 1 — 오픈 예정 */
+    .cs-illust { width: 220px; max-width: 72vw; height: auto; margin-bottom: 28px;
       filter: drop-shadow(0 10px 24px rgba(44,36,23,0.15)); }
-    .cs-title { font-size: 40px; font-weight: 900; letter-spacing: -.01em; color: var(--text); margin-bottom: 12px; }
-    .cs-date { font-size: 18px; font-weight: 600; color: var(--sub); }
-    .cs-login-link { margin-top: 40px; font-size: 13px; color: var(--sub); }
+    .cs-title { font-size: 38px; font-weight: 900; letter-spacing: -.01em; color: var(--text); margin-bottom: 20px; }
+    .cs-date-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--primary); color: #fff;
+      font-size: 22px; font-weight: 800; letter-spacing: .02em;
+      padding: 12px 28px; border-radius: 999px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+    }
+    .cs-date-badge .cs-star { font-size: 18px; opacity: 0.9; }
+
+    /* 슬라이드 2·3 — 공통 */
+    .cs-slide-icon { font-size: 52px; margin-bottom: 16px; }
+    .cs-slide-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+    .cs-slide-body { font-size: 15px; font-weight: 400; color: var(--sub); line-height: 1.7; white-space: pre-line; }
+
+    /* 하단 영역 */
+    .cs-footer {
+      width: 100%; padding: 16px 32px 36px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    /* 점 인디케이터 */
+    .cs-dots { display: flex; gap: 8px; }
+    .cs-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--sub); opacity: 0.3;
+      cursor: pointer; transition: all 0.25s;
+    }
+    .cs-dot.active { opacity: 1; background: var(--primary); width: 22px; border-radius: 4px; }
+
+    /* 로그인 링크 */
+    .cs-login-link { font-size: 13px; color: var(--sub); }
     .cs-login-link button { background: none; border: none; color: var(--sub);
       text-decoration: underline; cursor: pointer; font-size: 13px; font-family: inherit; }
   </style>
@@ -1202,11 +1245,46 @@
 
   <!-- ▣ Coming Soon 화면 -->
   <div id="comingSoonScreen" class="hidden">
-    <img src="images/hc_illust1.png" class="cs-illust" alt="Coming Soon" />
-    <p class="cs-title">Coming Soon</p>
-    <p class="cs-date">10th May Open</p>
-    <div class="cs-login-link">
-      <button onclick="showAuth('login')">다른 계정으로 로그인</button>
+    <div class="cs-track-wrap">
+      <div class="cs-track" id="csTrack">
+
+        <!-- 슬라이드 1: 오픈 예정 -->
+        <div class="cs-slide">
+          <img src="images/hc_illust1.png" class="cs-illust" alt="Coming Soon" />
+          <p class="cs-title">Coming Soon!</p>
+          <div class="cs-date-badge">
+            <span class="cs-star">★</span>
+            <span>5월 10일 OPEN</span>
+            <span class="cs-star">★</span>
+          </div>
+        </div>
+
+        <!-- 슬라이드 2: 배경화면 설치 매뉴얼 -->
+        <div class="cs-slide">
+          <div class="cs-slide-icon">📱</div>
+          <p class="cs-slide-title">배경화면 설치 매뉴얼</p>
+          <p class="cs-slide-body">준비 중입니다.</p>
+        </div>
+
+        <!-- 슬라이드 3: 추가 공지 (내용 교체 가능) -->
+        <div class="cs-slide">
+          <div class="cs-slide-icon">📢</div>
+          <p class="cs-slide-title">공지사항</p>
+          <p class="cs-slide-body">준비 중입니다.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="cs-footer">
+      <div class="cs-dots" id="csDots">
+        <div class="cs-dot active" onclick="csGoTo(0)"></div>
+        <div class="cs-dot" onclick="csGoTo(1)"></div>
+        <div class="cs-dot" onclick="csGoTo(2)"></div>
+      </div>
+      <div class="cs-login-link">
+        <button onclick="showAuth('login')">다른 계정으로 로그인</button>
+      </div>
     </div>
   </div>
 
@@ -1652,14 +1730,49 @@
       if (!appOpenDate) return false;
       return new Date().toISOString().slice(0, 10) >= appOpenDate;
     }
+    /* ── Coming Soon 캐러셀 ── */
+    let _csIdx = 0;
+    let _csTimer = null;
+    const CS_TOTAL = 3;
+    const CS_INTERVAL = 4000;
+
+    function csGoTo(idx) {
+      _csIdx = (idx + CS_TOTAL) % CS_TOTAL;
+      document.getElementById('csTrack').style.transform = `translateX(-${_csIdx * 100}%)`;
+      document.querySelectorAll('.cs-dot').forEach((d, i) => d.classList.toggle('active', i === _csIdx));
+    }
+    function csStartAuto() {
+      csStopAuto();
+      _csTimer = setInterval(() => csGoTo(_csIdx + 1), CS_INTERVAL);
+    }
+    function csStopAuto() {
+      if (_csTimer) { clearInterval(_csTimer); _csTimer = null; }
+    }
+    function csInitSwipe() {
+      const wrap = document.querySelector('.cs-track-wrap');
+      let startX = 0;
+      wrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+      wrap.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - startX;
+        if (Math.abs(dx) > 40) {
+          csGoTo(_csIdx + (dx < 0 ? 1 : -1));
+          csStartAuto(); // 스와이프 후 타이머 리셋
+        }
+      }, { passive: true });
+    }
+
     function showComingSoon() {
       hideSplash();
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.remove('hidden');
+      csGoTo(0);
+      csStartAuto();
+      csInitSwipe();
     }
     function showAuth(pane) {
       hideSplash();
+      csStopAuto();
       document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('appScreen').classList.add('hidden');
