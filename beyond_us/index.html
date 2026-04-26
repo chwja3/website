@@ -1748,18 +1748,28 @@
     function csStopAuto() {
       if (_csTimer) { clearInterval(_csTimer); _csTimer = null; }
     }
-    function csInitSwipe() {
+    /* 스와이프/드래그 — 한 번만 등록 */
+    (function csInitSwipe() {
       const wrap = document.querySelector('.cs-track-wrap');
-      let startX = 0;
-      wrap.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
-      wrap.addEventListener('touchend', e => {
-        const dx = e.changedTouches[0].clientX - startX;
-        if (Math.abs(dx) > 40) {
-          csGoTo(_csIdx + (dx < 0 ? 1 : -1));
-          csStartAuto(); // 스와이프 후 타이머 리셋
-        }
-      }, { passive: true });
-    }
+      let startX = 0, dragging = false;
+
+      function onStart(x) { startX = x; dragging = true; csStopAuto(); }
+      function onEnd(x) {
+        if (!dragging) return;
+        dragging = false;
+        const dx = x - startX;
+        if (Math.abs(dx) > 40) csGoTo(_csIdx + (dx < 0 ? 1 : -1));
+        csStartAuto();
+      }
+
+      /* 터치 */
+      wrap.addEventListener('touchstart', e => onStart(e.touches[0].clientX), { passive: true });
+      wrap.addEventListener('touchend',   e => onEnd(e.changedTouches[0].clientX), { passive: true });
+
+      /* 마우스 드래그 */
+      wrap.addEventListener('mousedown',  e => onStart(e.clientX));
+      window.addEventListener('mouseup',  e => onEnd(e.clientX));
+    })();
 
     function showComingSoon() {
       hideSplash();
@@ -1768,7 +1778,6 @@
       document.getElementById('comingSoonScreen').classList.remove('hidden');
       csGoTo(0);
       csStartAuto();
-      csInitSwipe();
     }
     function showAuth(pane) {
       hideSplash();
