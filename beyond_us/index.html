@@ -2790,8 +2790,9 @@
       const monday = new Date(today);
       monday.setDate(today.getDate() - (dayOfWeek - 1));
 
-      // "4월 2째주" 형식 타이틀
-      const weekNum = Math.ceil(today.getDate() / 7);
+      // "4월 2째주" 형식 타이틀 — 월 첫날 요일 기준으로 정확히 계산
+      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).getDay() || 7;
+      const weekNum = Math.ceil((today.getDate() + firstDayOfMonth - 1) / 7);
       if (titleEl) titleEl.textContent = `${today.getMonth() + 1}월 ${weekNum}째주`;
 
       const SHEEP_BY_DAY = {
