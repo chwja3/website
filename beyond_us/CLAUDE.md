@@ -185,7 +185,43 @@ website/
 
 ---
 
-## 8. 단톡방 (Firebase Firestore)
+## 8. Git 협업 워크플로우
+
+> 다른 워커와 함께 작업하므로 반드시 브랜치 전략 준수.
+
+**절대 main 브랜치에서 직접 작업 금지.**
+
+### 작업 시작 전 필수 (매번)
+
+```bash
+git checkout main
+git pull origin main
+```
+
+### 작업 순서
+
+```bash
+# 1. 최신 main 받기 (위에서 완료)
+
+# 2. 내 작업 브랜치 생성
+git checkout -b feature/작업-이름
+
+# 3. 작업 후 커밋 (기존대로)
+git add 파일명
+git commit -m "feat: 작업 내용"
+
+# 4. 푸시 전 main 변경사항 반영 (핵심 — 충돌 여기서 해결)
+git fetch origin main
+git rebase origin/main
+
+# 5. 브랜치 푸시 → PR 생성 → main에 머지
+git push origin feature/작업-이름
+gh pr create --title "작업 제목" --body "변경 내용"
+```
+
+---
+
+## 9. 단톡방 (Firebase Firestore)
 
 ### 구조
 - 드로어 메뉴: `💬 단톡방` (`data-section="chat"`)
@@ -213,7 +249,7 @@ website/
 
 ---
 
-## 9. 기능별 함수 인덱스
+## 10. 기능별 함수 인덱스
 
 `beyond_us/index.html` 내 주요 함수. 줄번호가 변동되어도 함수명으로 검색 가능.
 
@@ -316,7 +352,7 @@ website/
 
 ---
 
-## 10. 향후 작업 (Pending)
+## 11. 향후 작업 (Pending)
 
 - [ ] 주차별 뽑기 횟수 정책 GAS 로직 반영 (현재 주 1회 고정)
 - [ ] 현장 카드 4종 + 히든 카드 2종 데이터 정의 및 앱 반영
