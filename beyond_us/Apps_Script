@@ -172,20 +172,30 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
 
   const today = dateKey || Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
 
-  // 서버사이드 중복 제출 방지: 오늘 이미 제출한 항목 수집
-  const submittedToday = new Set();
+  // 서버사이드 중복 제출 방지: 텍스트 + 인덱스 둘 다 체크
+  const submittedToday   = new Set();
+  const submittedIndices = new Set();
   const lastRow = rawSheet.getLastRow();
   if (lastRow >= 2) {
-    const rows = rawSheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    const rows = rawSheet.getRange(2, 1, lastRow - 1, 8).getValues();
     for (const row of rows) {
       const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
       if (String(row[3]) === userId && rowDate === today) {
-        try { JSON.parse(row[2] || '[]').forEach(item => submittedToday.add(item)); } catch(e) {}
+        try { JSON.parse(row[2] || '[]').forEach(item => {
+          submittedToday.add(item);
+          const idx = config.items.indexOf(item);
+          if (idx >= 0) submittedIndices.add(idx);
+        }); } catch(e) {}
+        try { JSON.parse(row[7] || '[]').forEach(idx => { if (typeof idx === 'number') submittedIndices.add(idx); }); } catch(e) {}
       }
     }
   }
 
-  const newItems = cleanItems.filter(item => !submittedToday.has(item));
+  const newItems = cleanItems.filter(item => {
+    if (submittedToday.has(item)) return false;
+    const idx = config.items.indexOf(item);
+    return !(idx >= 0 && submittedIndices.has(idx));
+  });
   if (!newItems.length) return; // 모두 이미 제출됨
 
   // 점수 서버에서 재계산
