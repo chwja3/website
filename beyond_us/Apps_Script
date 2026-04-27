@@ -808,38 +808,3 @@ function jsonOutput(data) {
     .createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
-
-// ── 일회성 마이그레이션: raw_checkins 항목 텍스트 교체 ──────────
-// Apps Script 에디터에서 직접 실행 (배포 불필요)
-function migrateItemText() {
-  const MAPPINGS = [
-    {
-      from: "아침 첫 알람 끈 직후 30초 기도하기 \n(다시 자고 지각 금지)",
-      to:   "아침 첫 알람 끈 직후 30초\n기도하기(다시 자고 지각 금지)"
-    },
-    // 추가 변경 항목 있으면 여기에 계속 추가
-  ];
-
-  const sheet   = getSpreadsheet().getSheetByName(RAW_SHEET_NAME);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) { Logger.log('데이터 없음'); return; }
-
-  const range  = sheet.getRange(2, 3, lastRow - 1, 1); // C열 = items_json
-  const values = range.getValues();
-  let totalUpdated = 0;
-
-  values.forEach((row, i) => {
-    try {
-      const items = JSON.parse(row[0] || '[]');
-      let changed = false;
-      MAPPINGS.forEach(({ from, to }) => {
-        const idx = items.indexOf(from);
-        if (idx >= 0) { items[idx] = to; changed = true; }
-      });
-      if (changed) { values[i][0] = JSON.stringify(items); totalUpdated++; }
-    } catch(e) {}
-  });
-
-  if (totalUpdated > 0) range.setValues(values);
-  Logger.log('수정된 행: ' + totalUpdated);
-}
