@@ -2048,26 +2048,13 @@
         document.getElementById('openDrawBtn').onclick = openDrawOverlay;
         return;
       }
-      if (userStatus.drawnThisWeek) {
-        const c = userStatus.weekCard;
-        el.innerHTML = `
-          <div class="draw-notice">
-            <div>
-              <div class="draw-notice-title">이번 주 카드를 뽑았어요</div>
-            </div>
-          </div>
-          <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="switchSection('collection')">카드 컬렉션 보기</button>`;
-        return;
-      }
-      const ws = userStatus.weekScore || 0;
-      const dt = userStatus.drawThreshold || 6;
       el.innerHTML = `
         <div class="draw-notice">
           <div>
-            <div class="draw-notice-title">이번 주 ${dt}점을 모으면 카드를 뽑을 수 있어요</div>
-            <div class="draw-notice-sub">현재 ${ws}점 / ${dt}점</div>
+            <div class="draw-notice-title">뽑기권이 없어요</div>
           </div>
-        </div>`;
+        </div>
+        <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="switchSection('collection')">카드 컬렉션 보기</button>`;
     }
 
     /* ════ 컬렉션 렌더 ════ */
