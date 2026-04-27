@@ -214,18 +214,27 @@ function getDashboardData() {
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다.');
 
   const lastRow = rawSheet.getLastRow();
-  const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 7).getValues() : [];
+  const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 8).getValues() : [];
 
   const currentWeekRows = values.filter(row => row[1] === config.weekTitle);
   const counts = {};
   config.items.forEach(item => counts[item] = 0);
 
   currentWeekRows.forEach(row => {
+    const counted = new Set();
+    // 텍스트 기반 카운트
     try {
       JSON.parse(row[2] || '[]').forEach(item => {
-        if (counts[item] !== undefined) counts[item]++;
+        if (counts[item] !== undefined) counted.add(item);
       });
     } catch(e) {}
+    // 인덱스 기반 폴백 (텍스트 변경된 구 데이터 보완)
+    try {
+      JSON.parse(row[7] || '[]').forEach(idx => {
+        if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
+      });
+    } catch(e) {}
+    counted.forEach(item => { counts[item]++; });
   });
 
   return {
