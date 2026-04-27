@@ -266,7 +266,13 @@ function getUserStatus(userId, weekKey) {
           weekScore += Number(row[6]) || 0;
           const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
           if (rowDate === today) {
-            try { JSON.parse(row[2] || '[]').forEach(item => todayItems.push(item)); } catch(e) {}
+            try { JSON.parse(row[2] || '[]').forEach(item => {
+              todayItems.push(item);
+              // 인덱스 미저장 구 데이터: 현재 config 텍스트와 매칭해 인덱스 역추적
+              const idx = config.items.indexOf(item);
+              if (idx >= 0) todayIndices.push(idx);
+            }); } catch(e) {}
+            // 신규 데이터: 저장된 인덱스 추가 (텍스트 변경 후에도 유지)
             try { JSON.parse(row[7] || '[]').forEach(idx => { if (typeof idx === 'number') todayIndices.push(idx); }); } catch(e) {}
           }
         }
