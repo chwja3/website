@@ -191,7 +191,10 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   // 점수 서버에서 재계산
   const newScore = newItems.reduce((s, item) => s + (config.scores[item] || 1), 0);
 
-  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore]);
+  // 인덱스 저장: 텍스트 변경 시에도 제출 이력 유지
+  const newIndices = newItems.map(item => config.items.indexOf(item));
+
+  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices)]);
 }
 
 function getDashboardData() {
@@ -245,7 +248,8 @@ function getUserStatus(userId, weekKey) {
   const config = getConfig();
   let weekScore = 0, drawnThisWeek = false, weekCard = null;
   const collection = [];
-  const todayItems = [];
+  const todayItems   = [];
+  const todayIndices = [];
 
   const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
 
@@ -255,7 +259,7 @@ function getUserStatus(userId, weekKey) {
     const raw     = ss.getSheetByName(RAW_SHEET_NAME);
     const lastRow = raw.getLastRow();
     if (lastRow >= 2) {
-      allRows = raw.getRange(2, 1, lastRow - 1, 7).getValues();
+      allRows = raw.getRange(2, 1, lastRow - 1, 8).getValues();
       for (const row of allRows) {
         if (String(row[3]) !== userId) continue;
         if (String(row[1]) === config.weekTitle) {
@@ -263,6 +267,7 @@ function getUserStatus(userId, weekKey) {
           const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
           if (rowDate === today) {
             try { JSON.parse(row[2] || '[]').forEach(item => todayItems.push(item)); } catch(e) {}
+            try { JSON.parse(row[7] || '[]').forEach(idx => { if (typeof idx === 'number') todayIndices.push(idx); }); } catch(e) {}
           }
         }
       }
@@ -311,7 +316,8 @@ function getUserStatus(userId, weekKey) {
     drawnThisWeek,
     weekCard,
     collection,
-    todayItems
+    todayItems,
+    todayIndices
   };
 }
 
