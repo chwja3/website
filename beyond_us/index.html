@@ -2048,13 +2048,7 @@
         document.getElementById('openDrawBtn').onclick = openDrawOverlay;
         return;
       }
-      el.innerHTML = `
-        <div class="draw-notice">
-          <div>
-            <div class="draw-notice-title">뽑기권이 없어요</div>
-          </div>
-        </div>
-        <button class="btn btn-secondary" style="width:100%; margin-top:12px;" onclick="switchSection('collection')">카드 컬렉션 보기</button>`;
+      el.innerHTML = `<button class="btn btn-primary" style="width:100%;" disabled>카드 뽑기</button>`;
     }
 
     /* ════ 컬렉션 렌더 ════ */
