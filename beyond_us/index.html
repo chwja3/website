@@ -1627,6 +1627,19 @@
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
+    /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
+    const APP_VERSION = '20260427';
+    (function checkVersion() {
+      fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.text())
+        .then(remote => {
+          if (remote.trim() && remote.trim() !== APP_VERSION) {
+            location.reload(true);
+          }
+        })
+        .catch(() => {});
+    })();
+
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
       { id:1, name:'사랑',    g1:'#ff758c', g2:'#c0392b', img:'images/사랑.png' },
