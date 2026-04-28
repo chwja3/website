@@ -3668,10 +3668,12 @@
       }
 
       el.innerHTML = `
-        <div class="hp-card" style="margin-top:12px;">
-          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
-          <div class="hp-overlay" id="hpOverlay">
-            <img src="images/hc_illust4.png" class="hp-overlay-loading" alt="로딩 중" />
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 0;gap:20px;">
+          <img src="images/hc_logo_png2.png" style="width:120px;height:auto;" alt="Beyond Us" />
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
           </div>
         </div>`;
       try {
@@ -3683,8 +3685,7 @@
         _hpGuessCorrect = false;
         renderHoldPrayCard(data);
       } catch(e) {
-        const overlay = document.getElementById('hpOverlay');
-        if (overlay) overlay.innerHTML = '<p class="hp-overlay-text" style="font-size:14px;">불러오지 못했어요.</p>';
+        el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
       }
     }
 
