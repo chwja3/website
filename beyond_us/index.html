@@ -1405,7 +1405,7 @@
             <p class="cs-hp-sub">이번 주 함께 기도해요</p>
           </div>
           <div class="cs-hp-card-wrap">
-            <img src="images/Hold&Pray.jpeg" class="cs-hp-img" alt="Hold & Pray" />
+            <img src="images/h&p익명.jpeg" class="cs-hp-img" alt="Hold & Pray" />
           </div>
           <div class="cs-hp-preview" id="csHpPreview">
             <p class="cs-hp-content" id="csHpContent">불러오는 중...</p>
@@ -1727,7 +1727,7 @@
         <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission">미션</li>
         <li class="drawer-item" data-section="collection">컬렉션</li>
-        <li class="drawer-item" data-section="prayer">손기도</li>
+        <li class="drawer-item" data-section="prayer">Hold&amp;Pray</li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
         <li class="drawer-item" data-section="chat">💬 단톡방</li>
         <li class="drawer-item" data-section="inquiry">개발자 문의</li>
@@ -1919,7 +1919,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428c';
+    const APP_VERSION = '20260428d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3702,7 +3702,7 @@
 
       el.innerHTML = `
         <div style="margin-top:12px;">
-          <img src="images/Hold&amp;Pray.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
         </div>
         <section class="card" style="margin-top:12px;">
           ${parishHtml}
