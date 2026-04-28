@@ -1132,6 +1132,12 @@
 
     /* ── Hold & Pray ── */
     #sectionPrayer .wrap { padding-bottom: 32px; }
+    .hp-header-area { text-align: center; padding: 20px 0 4px; }
+    .hp-header-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; margin-bottom: 10px; }
+    .hp-header-sub { font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
+    .hp-bottom-area { margin-top: 20px; }
+    .hp-lobby-inline { font-size: 13px; color: var(--sub); line-height: 1.75; word-break: keep-all; margin-bottom: 14px; }
+    .hp-lobby-hint { font-size: 12px; opacity: 0.8; }
     .hp-card {
       position: relative; border-radius: 16px; overflow: hidden;
       margin: 16px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -1755,7 +1761,7 @@
         <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission">미션</li>
         <li class="drawer-item" data-section="collection">컬렉션</li>
-        <li class="drawer-item" data-section="prayer">Hold&amp;Pray</li>
+        <li class="drawer-item" data-section="prayer">Hold &amp; Pray</li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
         <li class="drawer-item" data-section="chat">💬 단톡방</li>
         <li class="drawer-item" data-section="inquiry">개발자 문의</li>
@@ -1883,12 +1889,10 @@
       <!-- ③ Hold & Pray -->
       <div id="sectionPrayer" class="section hidden">
         <div class="wrap">
-          <section class="card" style="margin-top:16px;">
-            <div class="hp-title-row">
-              <span class="hp-title">Hold &amp; Pray</span>
-            </div>
-            <p class="card-sub" style="margin-bottom:0; line-height:1.7;">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
-          </section>
+          <div class="hp-header-area">
+            <p class="hp-header-title">🕊️ Hold &amp; Pray 🕊️</p>
+            <p class="hp-header-sub">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
+          </div>
           <div id="hpContent">
             <div class="hp-loading">불러오는 중...</div>
           </div>
@@ -1946,7 +1950,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428f';
+    const APP_VERSION = '20260428g';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3733,18 +3737,12 @@
           </div>
         </div>
 
-        <section class="card hp-verse-card" style="margin-top:12px;">
-          <p class="hp-verse-text">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"</p>
-          <p class="hp-verse-ref">요한복음 13:34–35</p>
-        </section>
+        <p class="footer-note" style="margin-top:20px;">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"<br><span style="font-size:11px; opacity:0.7;">— 요한복음 13:34–35</span></p>
 
-        <section class="card" style="margin-top:12px;">
+        <div class="hp-bottom-area">
+          <p class="hp-lobby-inline">더 많은 지체를 위해 중보하고 싶다면,<br>1층 로비 Hold &amp; Pray 현수막에서 손을 얹고 기도해 주세요.<br><span class="hp-lobby-hint">(위 기도제목이 누구인지 궁금하다면 Hold &amp; Pray 현수막에서 찾아보세요!)</span></p>
           ${guessHtml}
-        </section>
-
-        <section class="card hp-lobby-card" style="margin-top:12px;">
-          <p class="hp-lobby-text">더 많은 지체를 위해 중보하고 싶다면,<br>1층 로비 Hold&amp;Pray 현수막에서 손을 얹고 기도할 수 있어요.</p>
-        </section>
+        </div>
 
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
