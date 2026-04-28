@@ -1145,17 +1145,19 @@
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
     .hp-overlay {
       position: absolute;
-      top: 42%; left: 50%; right: auto;
+      top: 55%; left: 50%; right: auto;
       transform: translateX(-50%);
       width: 76%;
-      display: flex; flex-direction: column; gap: 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
     }
     .hp-overlay-text {
-      font-size: 18px; line-height: 1.75; color: #2c2010;
+      font-size: 21px; line-height: 1.75; color: #2c2010;
       word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap;
       text-align: center;
       font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
     }
+    .hp-overlay-loading { width: 52px; height: auto; opacity: 0.7; animation: hpPulse 1.4s ease-in-out infinite; }
+    @keyframes hpPulse { 0%,100%{opacity:0.5;transform:scale(0.95)} 50%{opacity:0.9;transform:scale(1.05)} }
     .hp-parish-badge {
       display: inline-block; background: rgba(255,255,255,0.18);
       border: 1px solid rgba(255,255,255,0.35); color: #fff;
@@ -1271,8 +1273,8 @@
     .cs-hp-sub { font-size: 14px; color: var(--sub); margin-top: 2px; }
     .cs-hp-card-wrap { position: relative; width: 100%; max-width: 280px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.25); flex-shrink: 0; }
     .cs-hp-img { width: 100%; display: block; }
-    .cs-hp-overlay { position: absolute; top: 42%; left: 50%; right: auto; transform: translateX(-50%); width: 76%; display: flex; flex-direction: column; gap: 6px; }
-    .cs-hp-content { font-size: 16px; line-height: 1.75; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+    .cs-hp-overlay { position: absolute; top: 55%; left: 50%; right: auto; transform: translateX(-50%); width: 76%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .cs-hp-content { font-size: 18px; line-height: 1.75; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 
     .cs-illust { width: 220px; max-width: 72vw; height: auto; margin-bottom: 28px;
       filter: drop-shadow(0 10px 24px rgba(44,36,23,0.15)); }
@@ -3721,7 +3723,13 @@
         return;
       }
 
-      el.innerHTML = '<div class="hp-loading">불러오는 중...</div>';
+      el.innerHTML = `
+        <div class="hp-card" style="margin-top:12px;">
+          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+          <div class="hp-overlay" id="hpOverlay">
+            <img src="images/hc_illust4.png" class="hp-overlay-loading" alt="로딩 중" />
+          </div>
+        </div>`;
       try {
         const nick = localStorage.getItem('beyondus_nickname') || '';
         const res  = await fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`);
@@ -3731,7 +3739,8 @@
         _hpGuessCorrect = false;
         renderHoldPrayCard(data);
       } catch(e) {
-        el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
+        const overlay = document.getElementById('hpOverlay');
+        if (overlay) overlay.innerHTML = '<p class="hp-overlay-text" style="font-size:14px;">불러오지 못했어요.</p>';
       }
     }
 
