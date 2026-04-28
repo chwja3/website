@@ -1249,44 +1249,65 @@
     /* ── Coming Soon ── */
     #comingSoonScreen {
       position: fixed; inset: 0; background: var(--bg);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      display: flex; flex-direction: column; align-items: center;
       z-index: 100; overflow: hidden;
     }
     #comingSoonScreen.hidden { display: none; }
 
-    /* 캐러셀 트랙 */
-    .cs-track-wrap { width: 100%; flex: 1; display: flex; align-items: center; overflow: hidden; }
-    .cs-track {
-      display: flex; width: 100%; height: 100%;
-      transition: transform 0.45s cubic-bezier(0.4,0,0.2,1);
-      will-change: transform;
+    /* ── H&P 메인 영역 ── */
+    .cs-hp-main {
+      width: 100%; flex: 1; min-height: 0;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px 20px 10px; gap: 10px;
     }
-    .cs-slide {
-      min-width: 100%; height: 100%;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 32px; text-align: center;
+    .cs-hp-header { text-align: center; flex-shrink: 0; }
+    .cs-hp-sub { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .cs-hp-card-wrap {
+      position: relative; flex: 1; min-height: 0;
+      width: 100%; max-width: 260px;
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
     }
-
-    /* 슬라이드 1 — H&P 기도카드 */
-    .cs-hp-slide { justify-content: flex-start; padding: 24px 24px 28px; gap: 12px; }
-    .cs-hp-header { text-align: center; }
-    .cs-hp-sub { font-size: 14px; color: var(--sub); margin-top: 2px; }
-    .cs-hp-card-wrap { position: relative; width: 100%; max-width: 280px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.25); flex-shrink: 0; }
-    .cs-hp-img { width: 100%; display: block; }
+    .cs-hp-img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .cs-hp-overlay { position: absolute; top: 55%; left: 50%; right: auto; transform: translateX(-50%); width: 76%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .cs-hp-content { font-size: 18px; line-height: 1.75; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* ── 하단 배너 캐러셀 ── */
+    .cs-banner-area {
+      width: 100%; flex-shrink: 0;
+      padding: 0 16px 6px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .cs-banner-wrap {
+      width: 100%; overflow: hidden;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    }
+    .cs-banner-track {
+      display: flex;
+      transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+      will-change: transform;
+    }
+    .cs-banner-card {
+      min-width: 100%; max-height: 220px;
+      background: var(--card);
+      display: flex; flex-direction: column;
+      padding: 16px 18px 14px;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
 
     .cs-illust { width: 220px; max-width: 72vw; height: auto; margin-bottom: 28px;
       filter: drop-shadow(0 10px 24px rgba(44,36,23,0.15)); }
     .cs-title { font-size: 38px; font-weight: 900; letter-spacing: -.01em; color: var(--text); margin-bottom: 20px; }
     .cs-date-badge {
-      display: inline-flex; align-items: center; gap: 10px;
+      display: inline-flex; align-items: center; gap: 8px;
       background: var(--primary); color: #fff;
-      font-size: 22px; font-weight: 800; letter-spacing: .02em;
-      padding: 12px 28px; border-radius: 999px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.15);
+      font-size: 16px; font-weight: 800; letter-spacing: .02em;
+      padding: 8px 20px; border-radius: 999px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+      flex-shrink: 0;
     }
-    .cs-date-badge .cs-star { font-size: 18px; opacity: 0.9; }
+    .cs-date-badge .cs-star { font-size: 13px; opacity: 0.9; }
 
     /* 슬라이드 2·3 — 공통 */
     .cs-slide-icon { font-size: 52px; margin-bottom: 16px; }
@@ -1409,10 +1430,11 @@
     .cs-steps.dimmed .cs-step { opacity: 0.3; pointer-events: none; }
     .cs-steps.dimmed .cs-step-done { opacity: 0.3; }
 
-    /* 하단 영역 */
+    /* 하단 로그인 링크 */
     .cs-footer {
-      width: 100%; padding: 16px 32px 36px;
-      display: flex; flex-direction: column; align-items: center; gap: 16px;
+      width: 100%; padding: 4px 32px 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      flex-shrink: 0;
     }
     /* 점 인디케이터 */
     .cs-dots { display: flex; gap: 8px; }
@@ -1453,143 +1475,100 @@
 
   <!-- ▣ Coming Soon 화면 -->
   <div id="comingSoonScreen" class="hidden">
-    <div class="cs-track-wrap">
-      <div class="cs-track" id="csTrack">
 
-        <!-- 슬라이드 1: H&P 기도카드 미리보기 -->
-        <div class="cs-slide cs-hp-slide">
-          <div class="cs-hp-header">
-            <p class="cs-install-eyebrow">Hold &amp; Pray</p>
-            <p class="cs-hp-sub">이번 주 함께 기도해요</p>
-          </div>
-          <div class="cs-hp-card-wrap">
-            <img src="images/h&p익명.jpeg" class="cs-hp-img" alt="Hold & Pray" />
-            <div class="cs-hp-overlay">
-              <p class="cs-hp-content" id="csHpContent">불러오는 중...</p>
-            </div>
-          </div>
-          <div class="cs-date-badge" style="margin-top:auto;">
-            <span class="cs-star">★</span>
-            <span>5월 10일 OPEN</span>
-            <span class="cs-star">★</span>
-          </div>
+    <!-- H&P 메인 -->
+    <div class="cs-hp-main">
+      <div class="cs-hp-header">
+        <p class="cs-install-eyebrow">Hold &amp; Pray</p>
+        <p class="cs-hp-sub">이번 주 함께 기도해요</p>
+      </div>
+      <div class="cs-hp-card-wrap">
+        <img src="images/h&p익명.jpeg" class="cs-hp-img" alt="Hold &amp; Pray" />
+        <div class="cs-hp-overlay">
+          <p class="cs-hp-content" id="csHpContent">불러오는 중...</p>
         </div>
-
-        <!-- 슬라이드 2: 앱 설치 매뉴얼 -->
-        <div class="cs-install-slide">
-          <div class="cs-install-header">
-            <p class="cs-install-eyebrow">App Install Guide</p>
-            <h2>홈 화면에<br>저장하는 방법</h2>
-            <p>앱처럼 바로 열 수 있어요</p>
-          </div>
-
-          <!-- OS 탭 -->
-          <div class="cs-os-tabs">
-            <button class="cs-os-tab active" onclick="csOsTab('ios', this)">iPhone</button>
-            <button class="cs-os-tab" onclick="csOsTab('android', this)">Android</button>
-          </div>
-
-          <!-- iOS 가이드 -->
-          <div id="csGuideIos">
-            <div id="csBrowserStatusIos"></div>
-            <div class="cs-steps" id="csStepsIos">
-              <div class="cs-step">
-                <div class="cs-step-num">1</div>
-                <div><div class="cs-step-text">우측 하단 <strong>···</strong> 누르기</div></div>
-              </div>
-              <div class="cs-step">
-                <div class="cs-step-num">2</div>
-                <div><div class="cs-step-text"><strong>공유</strong> 누르기</div></div>
-              </div>
-              <div class="cs-step">
-                <div class="cs-step-num">3</div>
-                <div><div class="cs-step-text"><strong>더보기</strong> 누르기</div></div>
-              </div>
-              <div class="cs-step">
-                <div class="cs-step-num">4</div>
-                <div><div class="cs-step-text"><strong>홈 화면에 추가</strong> 누르기</div></div>
-              </div>
-              <div class="cs-step">
-                <div class="cs-step-num">5</div>
-                <div><div class="cs-step-text">우측 상단 <strong>추가</strong> 누르기</div></div>
-              </div>
-              <div class="cs-step-done"><span>저장 완료</span></div>
-            </div>
-          </div>
-
-          <!-- Android 가이드 -->
-          <div id="csGuideAndroid" style="display:none; flex-direction:column; flex:1; min-height:0;">
-            <div class="cs-browser-tabs">
-              <button class="cs-browser-tab active" onclick="csBrowserTab('samsung', this)">삼성인터넷</button>
-              <button class="cs-browser-tab" onclick="csBrowserTab('chrome', this)">Chrome</button>
-            </div>
-
-            <!-- 삼성인터넷 -->
-            <div id="csGuideSamsung">
-              <div id="csBrowserStatusSamsung"></div>
-              <div class="cs-steps" id="csStepsSamsung">
-                <div class="cs-step">
-                  <div class="cs-step-num">1</div>
-                  <div><div class="cs-step-text">우측 하단 <strong>≡</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step">
-                  <div class="cs-step-num">2</div>
-                  <div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step">
-                  <div class="cs-step-num">3</div>
-                  <div><div class="cs-step-text"><strong>홈 화면</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step">
-                  <div class="cs-step-num">4</div>
-                  <div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step-done"><span>저장 완료</span></div>
-              </div>
-            </div>
-
-            <!-- Chrome -->
-            <div id="csGuideChrome" style="display:none;">
-              <div id="csBrowserStatusChrome"></div>
-              <div class="cs-steps" id="csStepsChrome">
-                <div class="cs-step">
-                  <div class="cs-step-num">1</div>
-                  <div><div class="cs-step-text">우측 상단 <strong>⋮</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step">
-                  <div class="cs-step-num">2</div>
-                  <div><div class="cs-step-text">스크롤 내려 <strong>홈 화면에 추가</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step">
-                  <div class="cs-step-num">3</div>
-                  <div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div>
-                </div>
-                <div class="cs-step">
-                  <div class="cs-step-num">4</div>
-                  <div><div class="cs-step-text"><strong>추가</strong> 한 번 더 누르기</div></div>
-                </div>
-                <div class="cs-step-done"><span>저장 완료</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 슬라이드 3: 추가 공지 (내용 교체 가능) -->
-        <div class="cs-slide">
-          <div class="cs-slide-icon">📢</div>
-          <p class="cs-slide-title">공지사항</p>
-          <p class="cs-slide-body">준비 중입니다.</p>
-        </div>
-
+      </div>
+      <div class="cs-date-badge">
+        <span class="cs-star">★</span>
+        <span>5월 10일 OPEN</span>
+        <span class="cs-star">★</span>
       </div>
     </div>
 
-    <div class="cs-footer">
+    <!-- 하단 배너 캐러셀 -->
+    <div class="cs-banner-area">
+      <div class="cs-banner-wrap" id="csBannerWrap">
+        <div class="cs-banner-track" id="csBannerTrack">
+
+          <!-- 배너 1: Coming Soon -->
+          <div class="cs-banner-card">
+            <p class="cs-install-eyebrow" style="margin-bottom:6px;">Coming Soon</p>
+            <p style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:6px;">5월 10일, Beyond Us 오픈!</p>
+            <p style="font-size:13px;color:var(--sub);line-height:1.6;">미션 체크, EN카드 컬렉션, 단톡방까지<br>수련회를 함께 준비해요 🐑</p>
+          </div>
+
+          <!-- 배너 2: 앱 설치 가이드 -->
+          <div class="cs-banner-card" style="padding-bottom:10px;">
+            <p class="cs-install-eyebrow" style="margin-bottom:8px;">App Install Guide</p>
+            <div class="cs-os-tabs" style="margin-bottom:12px;">
+              <button class="cs-os-tab active" onclick="csOsTab('ios', this)">iPhone</button>
+              <button class="cs-os-tab" onclick="csOsTab('android', this)">Android</button>
+            </div>
+            <!-- iOS -->
+            <div id="csGuideIos">
+              <div id="csBrowserStatusIos"></div>
+              <div class="cs-steps" id="csStepsIos">
+                <div class="cs-step"><div class="cs-step-num">1</div><div><div class="cs-step-text">우측 하단 <strong>···</strong> 누르기</div></div></div>
+                <div class="cs-step"><div class="cs-step-num">2</div><div><div class="cs-step-text"><strong>공유</strong> 누르기</div></div></div>
+                <div class="cs-step"><div class="cs-step-num">3</div><div><div class="cs-step-text"><strong>홈 화면에 추가</strong> 누르기</div></div></div>
+                <div class="cs-step"><div class="cs-step-num">4</div><div><div class="cs-step-text">우측 상단 <strong>추가</strong> 누르기</div></div></div>
+                <div class="cs-step-done"><span>저장 완료</span></div>
+              </div>
+            </div>
+            <!-- Android -->
+            <div id="csGuideAndroid" style="display:none;flex-direction:column;">
+              <div class="cs-browser-tabs" style="margin-bottom:10px;">
+                <button class="cs-browser-tab active" onclick="csBrowserTab('samsung', this)">삼성인터넷</button>
+                <button class="cs-browser-tab" onclick="csBrowserTab('chrome', this)">Chrome</button>
+              </div>
+              <div id="csGuideSamsung">
+                <div id="csBrowserStatusSamsung"></div>
+                <div class="cs-steps" id="csStepsSamsung">
+                  <div class="cs-step"><div class="cs-step-num">1</div><div><div class="cs-step-text">우측 하단 <strong>≡</strong> 누르기</div></div></div>
+                  <div class="cs-step"><div class="cs-step-num">2</div><div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div></div>
+                  <div class="cs-step"><div class="cs-step-num">3</div><div><div class="cs-step-text"><strong>홈 화면</strong> → <strong>추가</strong> 누르기</div></div></div>
+                  <div class="cs-step-done"><span>저장 완료</span></div>
+                </div>
+              </div>
+              <div id="csGuideChrome" style="display:none;">
+                <div id="csBrowserStatusChrome"></div>
+                <div class="cs-steps" id="csStepsChrome">
+                  <div class="cs-step"><div class="cs-step-num">1</div><div><div class="cs-step-text">우측 상단 <strong>⋮</strong> 누르기</div></div></div>
+                  <div class="cs-step"><div class="cs-step-num">2</div><div><div class="cs-step-text"><strong>홈 화면에 추가</strong> 누르기</div></div></div>
+                  <div class="cs-step"><div class="cs-step-num">3</div><div><div class="cs-step-text"><strong>추가</strong> 두 번 누르기</div></div></div>
+                  <div class="cs-step-done"><span>저장 완료</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 배너 3: 공지 -->
+          <div class="cs-banner-card">
+            <p class="cs-install-eyebrow" style="margin-bottom:6px;">공지사항</p>
+            <p style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;">📢 안내</p>
+            <p style="font-size:13px;color:var(--sub);line-height:1.6;">준비 중입니다.</p>
+          </div>
+
+        </div>
+      </div>
       <div class="cs-dots" id="csDots">
         <div class="cs-dot active" onclick="csGoTo(0)"></div>
         <div class="cs-dot" onclick="csGoTo(1)"></div>
         <div class="cs-dot" onclick="csGoTo(2)"></div>
       </div>
+    </div>
+
+    <div class="cs-footer">
       <div class="cs-login-link">
         <button onclick="showAuth('login')">다른 계정으로 로그인</button>
       </div>
@@ -2089,7 +2068,7 @@
     }
     function csGoTo(idx) {
       _csIdx = (idx + CS_TOTAL) % CS_TOTAL;
-      document.getElementById('csTrack').style.transform = `translateX(-${_csIdx * 100}%)`;
+      document.getElementById('csBannerTrack').style.transform = `translateX(-${_csIdx * 100}%)`;
       document.querySelectorAll('.cs-dot').forEach((d, i) => d.classList.toggle('active', i === _csIdx));
     }
     function csStartAuto() {
@@ -2101,7 +2080,7 @@
     }
     /* 스와이프/드래그 — 한 번만 등록 */
     (function csInitSwipe() {
-      const wrap = document.querySelector('.cs-track-wrap');
+      const wrap = document.getElementById('csBannerWrap');
       let startX = 0, dragging = false;
 
       function onStart(x) { startX = x; dragging = true; csStopAuto(); }
