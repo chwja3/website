@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Beyond Us Check — 청년교구 수련회 실천 체크</title>
-  <link rel="icon" type="image/png" href="images/pabicon.png" />
-  <link rel="apple-touch-icon" href="images/pabicon.png" />
+  <link rel="icon" type="image/png" href="images/pabicon_192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="images/pabicon_180.png" />
   <link rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
@@ -1166,6 +1166,122 @@
     .cs-slide-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
     .cs-slide-body { font-size: 15px; font-weight: 400; color: var(--sub); line-height: 1.7; white-space: pre-line; }
 
+    /* 앱 설치 가이드 슬라이드 */
+    .cs-install-slide {
+      min-width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      padding: 32px 28px 12px;
+      text-align: left;
+    }
+    .cs-install-header { margin-bottom: 20px; flex-shrink: 0; }
+    .cs-install-eyebrow {
+      font-size: 10px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--sub);
+      margin-bottom: 6px;
+    }
+    .cs-install-header h2 {
+      font-size: 24px; font-weight: 900; color: var(--text);
+      letter-spacing: -.02em; line-height: 1.2;
+    }
+    .cs-install-header p { font-size: 13px; color: var(--sub); margin-top: 5px; line-height: 1.5; }
+
+    /* OS 탭 — 언더라인 스타일 */
+    .cs-os-tabs {
+      display: flex; gap: 0; margin-bottom: 20px; flex-shrink: 0;
+      border-bottom: 1.5px solid var(--line);
+    }
+    .cs-os-tab {
+      flex: 1; padding: 8px 0 10px; border: none; border-radius: 0;
+      background: transparent; font-size: 14px; font-weight: 600;
+      color: var(--sub); cursor: pointer; font-family: inherit;
+      position: relative; transition: color 0.2s;
+    }
+    .cs-os-tab::after {
+      content: ''; position: absolute; bottom: -1.5px; left: 0; right: 0;
+      height: 2px; background: var(--primary);
+      transform: scaleX(0); transition: transform 0.25s;
+    }
+    .cs-os-tab.active { color: var(--text); font-weight: 800; }
+    .cs-os-tab.active::after { transform: scaleX(1); }
+
+    /* Android 서브탭 — 작은 pill */
+    .cs-browser-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-shrink: 0; }
+    .cs-browser-tab {
+      padding: 4px 12px; border-radius: 999px;
+      border: 1px solid var(--line); background: transparent;
+      font-size: 11px; font-weight: 600; letter-spacing: .02em;
+      color: var(--sub); cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .cs-browser-tab.active {
+      border-color: var(--text); background: var(--text); color: var(--bg);
+    }
+
+    /* 스텝 목록 — 타임라인 스타일 */
+    .cs-steps {
+      flex: 1; overflow-y: auto;
+      display: flex; flex-direction: column;
+      padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cs-step {
+      display: flex; align-items: flex-start; gap: 14px;
+      position: relative; padding-bottom: 14px;
+    }
+    .cs-step:not(:last-child)::before {
+      content: ''; position: absolute;
+      left: 11px; top: 24px; bottom: 0;
+      width: 1px; background: var(--line);
+    }
+    .cs-step-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 1.5px solid var(--text); background: transparent; color: var(--text);
+      font-size: 11px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .cs-step-text { font-size: 14px; font-weight: 500; color: var(--text); line-height: 1.5; padding-top: 3px; }
+    .cs-step-text strong { font-weight: 800; }
+    .cs-step-sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+    .cs-step-done {
+      display: flex; align-items: center; gap: 10px;
+      padding-top: 6px; padding-bottom: 4px;
+    }
+    .cs-step-done::before, .cs-step-done::after {
+      content: ''; flex: 1; height: 1px; background: var(--line);
+    }
+    .cs-step-done span {
+      font-size: 11px; font-weight: 700; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--sub); white-space: nowrap;
+    }
+
+    /* 브라우저 상태 카드 */
+    .cs-browser-status {
+      border-radius: 12px; padding: 11px 14px;
+      font-size: 13px; font-weight: 600; line-height: 1.5;
+      margin-bottom: 14px; flex-shrink: 0;
+    }
+    .cs-browser-status.ok {
+      background: #f0fdf4; color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+    .cs-browser-status.ok::before { content: '✓  '; font-weight: 800; }
+    .cs-browser-status.warn {
+      background: #fffbeb; color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .cs-browser-status.warn .cs-warn-title { font-weight: 800; margin-bottom: 4px; }
+    .cs-browser-status.warn .cs-warn-body { font-size: 12px; font-weight: 400; color: #a16207; }
+    .cs-copy-btn {
+      display: inline-block; margin-top: 8px;
+      padding: 5px 12px; border-radius: 999px;
+      border: 1.5px solid #d97706; background: transparent;
+      font-size: 11px; font-weight: 700; color: #b45309;
+      cursor: pointer; font-family: inherit; transition: all 0.2s;
+    }
+    .cs-copy-btn:active { background: #fde68a; }
+    .cs-steps.dimmed .cs-step { opacity: 0.3; pointer-events: none; }
+    .cs-steps.dimmed .cs-step-done { opacity: 0.3; }
+
     /* 하단 영역 */
     .cs-footer {
       width: 100%; padding: 16px 32px 36px;
@@ -1224,11 +1340,103 @@
           </div>
         </div>
 
-        <!-- 슬라이드 2: 배경화면 설치 매뉴얼 -->
-        <div class="cs-slide">
-          <div class="cs-slide-icon">📱</div>
-          <p class="cs-slide-title">배경화면 설치 매뉴얼</p>
-          <p class="cs-slide-body">준비 중입니다.</p>
+        <!-- 슬라이드 2: 앱 설치 매뉴얼 -->
+        <div class="cs-install-slide">
+          <div class="cs-install-header">
+            <p class="cs-install-eyebrow">App Install Guide</p>
+            <h2>홈 화면에<br>저장하는 방법</h2>
+            <p>앱처럼 바로 열 수 있어요</p>
+          </div>
+
+          <!-- OS 탭 -->
+          <div class="cs-os-tabs">
+            <button class="cs-os-tab active" onclick="csOsTab('ios', this)">iPhone</button>
+            <button class="cs-os-tab" onclick="csOsTab('android', this)">Android</button>
+          </div>
+
+          <!-- iOS 가이드 -->
+          <div id="csGuideIos">
+            <div id="csBrowserStatusIos"></div>
+            <div class="cs-steps" id="csStepsIos">
+              <div class="cs-step">
+                <div class="cs-step-num">1</div>
+                <div><div class="cs-step-text">우측 하단 <strong>···</strong> 누르기</div></div>
+              </div>
+              <div class="cs-step">
+                <div class="cs-step-num">2</div>
+                <div><div class="cs-step-text"><strong>공유</strong> 누르기</div></div>
+              </div>
+              <div class="cs-step">
+                <div class="cs-step-num">3</div>
+                <div><div class="cs-step-text"><strong>더보기</strong> 누르기</div></div>
+              </div>
+              <div class="cs-step">
+                <div class="cs-step-num">4</div>
+                <div><div class="cs-step-text"><strong>홈 화면에 추가</strong> 누르기</div></div>
+              </div>
+              <div class="cs-step">
+                <div class="cs-step-num">5</div>
+                <div><div class="cs-step-text">우측 상단 <strong>추가</strong> 누르기</div></div>
+              </div>
+              <div class="cs-step-done"><span>저장 완료</span></div>
+            </div>
+          </div>
+
+          <!-- Android 가이드 -->
+          <div id="csGuideAndroid" style="display:none; flex-direction:column; flex:1; min-height:0;">
+            <div class="cs-browser-tabs">
+              <button class="cs-browser-tab active" onclick="csBrowserTab('samsung', this)">삼성인터넷</button>
+              <button class="cs-browser-tab" onclick="csBrowserTab('chrome', this)">Chrome</button>
+            </div>
+
+            <!-- 삼성인터넷 -->
+            <div id="csGuideSamsung">
+              <div id="csBrowserStatusSamsung"></div>
+              <div class="cs-steps" id="csStepsSamsung">
+                <div class="cs-step">
+                  <div class="cs-step-num">1</div>
+                  <div><div class="cs-step-text">우측 하단 <strong>≡</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step">
+                  <div class="cs-step-num">2</div>
+                  <div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step">
+                  <div class="cs-step-num">3</div>
+                  <div><div class="cs-step-text"><strong>홈 화면</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step">
+                  <div class="cs-step-num">4</div>
+                  <div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step-done"><span>저장 완료</span></div>
+              </div>
+            </div>
+
+            <!-- Chrome -->
+            <div id="csGuideChrome" style="display:none;">
+              <div id="csBrowserStatusChrome"></div>
+              <div class="cs-steps" id="csStepsChrome">
+                <div class="cs-step">
+                  <div class="cs-step-num">1</div>
+                  <div><div class="cs-step-text">우측 상단 <strong>⋮</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step">
+                  <div class="cs-step-num">2</div>
+                  <div><div class="cs-step-text">스크롤 내려 <strong>홈 화면에 추가</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step">
+                  <div class="cs-step-num">3</div>
+                  <div><div class="cs-step-text"><strong>추가</strong> 누르기</div></div>
+                </div>
+                <div class="cs-step">
+                  <div class="cs-step-num">4</div>
+                  <div><div class="cs-step-text"><strong>추가</strong> 한 번 더 누르기</div></div>
+                </div>
+                <div class="cs-step-done"><span>저장 완료</span></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 슬라이드 3: 추가 공지 (내용 교체 가능) -->
@@ -1628,7 +1836,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260427';
+    const APP_VERSION = '20260428';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -1714,6 +1922,32 @@
     const CS_TOTAL = 3;
     const CS_INTERVAL = 4000;
 
+    function csOsTab(os, btn) {
+      document.querySelectorAll('.cs-os-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const iosEl = document.getElementById('csGuideIos');
+      const andEl = document.getElementById('csGuideAndroid');
+      if (os === 'ios') {
+        iosEl.style.display = '';
+        andEl.style.display = 'none';
+      } else {
+        iosEl.style.display = 'none';
+        andEl.style.display = 'flex';
+      }
+    }
+    function csBrowserTab(browser, btn) {
+      document.querySelectorAll('.cs-browser-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const samEl = document.getElementById('csGuideSamsung');
+      const chrEl = document.getElementById('csGuideChrome');
+      if (browser === 'samsung') {
+        samEl.style.display = '';
+        chrEl.style.display = 'none';
+      } else {
+        samEl.style.display = 'none';
+        chrEl.style.display = '';
+      }
+    }
     function csGoTo(idx) {
       _csIdx = (idx + CS_TOTAL) % CS_TOTAL;
       document.getElementById('csTrack').style.transform = `translateX(-${_csIdx * 100}%)`;
@@ -1749,11 +1983,85 @@
       window.addEventListener('mouseup',  e => onEnd(e.clientX));
     })();
 
+    function detectBrowser() {
+      const ua = navigator.userAgent;
+      const isIOS = /iphone|ipad|ipod/i.test(ua) && !window.MSStream;
+      const isAndroid = /android/i.test(ua);
+      const isSamsung = /samsungbrowser/i.test(ua);
+      const isChrome = /chrome/i.test(ua) && !/edg/i.test(ua) && !isSamsung;
+      const isSafari = /safari/i.test(ua) && !isChrome && !isSamsung;
+      const os = isIOS ? 'ios' : isAndroid ? 'android' : 'other';
+      const browser = isSamsung ? 'samsung' : isChrome ? 'chrome' : isSafari ? 'safari' : 'other';
+      return { os, browser };
+    }
+
+    function renderBrowserStatus() {
+      const { os, browser } = detectBrowser();
+      const url = location.href;
+
+      function copyUrl() {
+        navigator.clipboard.writeText(url).catch(() => {});
+      }
+
+      function okHtml(msg) {
+        return `<div class="cs-browser-status ok">${msg}</div>`;
+      }
+      function warnHtml(title, body) {
+        return `<div class="cs-browser-status warn">
+          <div class="cs-warn-title">${title}</div>
+          <div class="cs-warn-body">${body}</div>
+          <button class="cs-copy-btn" onclick="(function(){navigator.clipboard.writeText(location.href).catch(()=>{})})()">링크 복사</button>
+        </div>`;
+      }
+
+      const iosOk   = os === 'ios' && browser === 'safari';
+      const samOk   = os === 'android' && browser === 'samsung';
+      const chrOk   = os === 'android' && browser === 'chrome';
+
+      document.getElementById('csBrowserStatusIos').innerHTML =
+        iosOk
+          ? okHtml('Safari로 열려 있어요. 아래 단계를 따라주세요.')
+          : warnHtml('Safari로 다시 열어야 해요', '크롬·네이버 앱은 홈 화면 추가가 안 돼요.<br>아래 버튼으로 링크를 복사한 뒤 Safari에서 붙여넣어 주세요.');
+
+      document.getElementById('csBrowserStatusSamsung').innerHTML =
+        samOk
+          ? okHtml('삼성인터넷으로 열려 있어요. 아래 단계를 따라주세요.')
+          : warnHtml('삼성인터넷으로 다시 열어야 해요', '링크를 복사한 뒤 삼성인터넷에서 붙여넣어 주세요.');
+
+      document.getElementById('csBrowserStatusChrome').innerHTML =
+        chrOk
+          ? okHtml('Chrome으로 열려 있어요. 아래 단계를 따라주세요.')
+          : warnHtml('Chrome으로 다시 열어야 해요', '링크를 복사한 뒤 Chrome에서 붙여넣어 주세요.');
+
+      /* 잘못된 브라우저면 단계 흐리게 */
+      document.getElementById('csStepsIos').classList.toggle('dimmed', !iosOk);
+      document.getElementById('csStepsSamsung').classList.toggle('dimmed', !samOk);
+      document.getElementById('csStepsChrome').classList.toggle('dimmed', !chrOk);
+
+      /* OS 탭 자동 선택 */
+      if (os === 'ios') {
+        document.querySelectorAll('.cs-os-tab').forEach((b, i) => b.classList.toggle('active', i === 0));
+        document.getElementById('csGuideIos').style.display = '';
+        document.getElementById('csGuideAndroid').style.display = 'none';
+      } else if (os === 'android') {
+        document.querySelectorAll('.cs-os-tab').forEach((b, i) => b.classList.toggle('active', i === 1));
+        document.getElementById('csGuideIos').style.display = 'none';
+        document.getElementById('csGuideAndroid').style.display = 'flex';
+        /* 브라우저 서브탭 자동 선택 */
+        if (browser === 'chrome') {
+          document.querySelectorAll('.cs-browser-tab').forEach((b, i) => b.classList.toggle('active', i === 1));
+          document.getElementById('csGuideSamsung').style.display = 'none';
+          document.getElementById('csGuideChrome').style.display = '';
+        }
+      }
+    }
+
     function showComingSoon() {
       hideSplash();
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.remove('hidden');
+      renderBrowserStatus();
       csGoTo(0);
       csStartAuto();
     }
