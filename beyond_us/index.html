@@ -1141,7 +1141,6 @@
     .hp-card {
       position: relative; border-radius: 16px; overflow: hidden;
       margin: 16px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      background: #ede3d0;
     }
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
     .hp-overlay {
@@ -1264,13 +1263,13 @@
     .cs-hp-header { text-align: center; flex-shrink: 0; }
     .cs-hp-sub { font-size: 12px; color: var(--sub); margin-top: 3px; line-height: 1.6; word-break: keep-all; }
     .cs-hp-card-wrap {
-      position: relative; flex: 1; min-height: 0;
+      position: relative;
       width: 100%; max-width: 260px;
       border-radius: 12px; overflow: hidden;
       box-shadow: 0 4px 16px rgba(0,0,0,0.25);
-      background: #ede3d0;
+      flex-shrink: 1; min-height: 0;
     }
-    .cs-hp-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .cs-hp-img { width: 100%; height: auto; display: block; }
     .cs-hp-overlay { position: absolute; top: 55%; left: 50%; right: auto; transform: translateX(-50%); width: 76%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .cs-hp-content { font-size: 18px; line-height: 1.75; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 
