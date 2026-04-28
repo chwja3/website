@@ -1475,8 +1475,16 @@
       </div>
       <div class="cs-hp-card-wrap">
         <img src="images/h&p익명.jpeg" class="cs-hp-img" alt="Hold &amp; Pray" />
-        <div class="cs-hp-overlay">
-          <p class="cs-hp-content" id="csHpContent">불러오는 중...</p>
+        <div class="cs-hp-overlay" id="csHpOverlay" style="display:none;">
+          <p class="cs-hp-content" id="csHpContent"></p>
+        </div>
+        <div id="csHpLoading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(237,227,208,0.85);">
+          <img src="images/hc_logo_png2.png" style="width:90px;height:auto;" alt="Beyond Us" />
+          <div style="display:flex;gap:7px;align-items:center;">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2154,18 +2162,27 @@
     }
 
     async function loadHoldPrayPreview() {
-      const el = document.getElementById('csHpContent');
+      const el      = document.getElementById('csHpContent');
+      const overlay = document.getElementById('csHpOverlay');
+      const loading = document.getElementById('csHpLoading');
       if (!el) return;
       try {
-        const wk  = getWeekKey();
-        const res = await fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&t=${Date.now()}`);
-        const d   = await res.json();
+        const wk = getWeekKey();
+        const nick = localStorage.getItem('beyondus_nickname') || '';
+        const [res] = await Promise.all([
+          fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
+        ]);
+        const d = await res.json();
         if (d.ok && d.content) {
           el.textContent = d.content;
           if (_hpData === null) _hpData = d;
         }
       } catch(e) {
-        el.textContent = '기도제목을 불러오지 못했어요.';
+        if (el) el.textContent = '';
+      } finally {
+        if (loading) loading.style.display = 'none';
+        if (overlay) overlay.style.display = '';
       }
     }
     function showAuth(pane) {
