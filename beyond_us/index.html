@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Beyond Us Check — 청년교구 수련회 실천 체크</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="images/pabicon_192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="images/pabicon_180.png" />
   <link rel="manifest" href="manifest.json" />
@@ -1134,6 +1137,16 @@
       margin: 16px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
+    .hp-overlay {
+      position: absolute;
+      top: 28%; left: 8%; right: 8%;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .hp-overlay-text {
+      font-size: 11px; line-height: 1.6; color: #2c2010;
+      word-break: keep-all; white-space: pre-wrap;
+      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
+    }
     .hp-parish-badge {
       display: inline-block; background: rgba(255,255,255,0.18);
       border: 1px solid rgba(255,255,255,0.35); color: #fff;
@@ -1858,7 +1871,6 @@
           <section class="card" style="margin-top:16px;">
             <div class="hp-title-row">
               <span class="hp-title">Hold &amp; Pray</span>
-              <span class="hp-week-badge" id="hpWeekBadge"></span>
             </div>
             <p class="card-sub" style="margin-bottom:0;">이번 주 기도제목이에요. 함께 기도해주세요 🙏</p>
           </section>
@@ -1919,7 +1931,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428d';
+    const APP_VERSION = '20260428e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3680,16 +3692,12 @@
     }
 
     function renderHoldPrayCard(data) {
-      const el    = document.getElementById('hpContent');
-      const badge = document.getElementById('hpWeekBadge');
+      const el = document.getElementById('hpContent');
       if (!el) return;
-
-      const wkLabel = (data.weekKey || '').replace(/^\d+-W/, 'W');
-      if (badge) badge.textContent = wkLabel;
 
       const parishDisplay = data.parish && !data.parish.startsWith('*') ? data.parish : '';
       const parishHtml    = parishDisplay
-        ? `<span class="hp-parish-badge">${escHtml(parishDisplay)}</span><br>`
+        ? `<span class="hp-parish-badge">${escHtml(parishDisplay)}</span>`
         : '';
 
       const guessHtml = data.anon
@@ -3701,12 +3709,14 @@
            <div class="hp-result" id="hpResult"></div>`;
 
       el.innerHTML = `
-        <div style="margin-top:12px;">
+        <div class="hp-card" style="margin-top:12px;">
           <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+          <div class="hp-overlay">
+            ${parishHtml}
+            <p class="hp-overlay-text">${escHtml(data.content)}</p>
+          </div>
         </div>
         <section class="card" style="margin-top:12px;">
-          ${parishHtml}
-          <div class="hp-content">${escHtml(data.content)}</div>
           ${guessHtml}
         </section>`;
 
