@@ -1162,6 +1162,21 @@
       font-size: 13px; color: var(--sub); text-align: center;
       padding: 12px 0; letter-spacing: 0.03em;
     }
+    .hp-guess-label {
+      font-size: 12px; color: var(--sub); margin-bottom: 8px; letter-spacing: 0.02em;
+    }
+    .hp-verse-card { text-align: center; }
+    .hp-verse-text {
+      font-size: 13px; line-height: 1.8; color: var(--sub);
+      font-style: italic; word-break: keep-all;
+    }
+    .hp-verse-ref {
+      font-size: 12px; color: var(--accent); font-weight: 600;
+      margin-top: 8px; letter-spacing: 0.03em;
+    }
+    .hp-lobby-card { background: rgba(var(--accent-rgb,255,183,110),0.08); border: 1px solid rgba(var(--accent-rgb,255,183,110),0.2); }
+    .hp-lobby-text { font-size: 13px; color: var(--sub); line-height: 1.7; text-align: center; }
+    .hp-home-btn { width: 100%; margin-top: 12px; margin-bottom: 8px; }
     .hp-guess-wrap {
       display: flex; gap: 8px; margin-top: 8px;
     }
@@ -1865,14 +1880,14 @@
         </div>
       </div>
 
-      <!-- ③ 손기도 -->
+      <!-- ③ Hold & Pray -->
       <div id="sectionPrayer" class="section hidden">
         <div class="wrap">
           <section class="card" style="margin-top:16px;">
             <div class="hp-title-row">
               <span class="hp-title">Hold &amp; Pray</span>
             </div>
-            <p class="card-sub" style="margin-bottom:0;">이번 주 기도제목이에요. 함께 기도해주세요 🙏</p>
+            <p class="card-sub" style="margin-bottom:0; line-height:1.7;">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
           </section>
           <div id="hpContent">
             <div class="hp-loading">불러오는 중...</div>
@@ -1931,7 +1946,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428e';
+    const APP_VERSION = '20260428f';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3702,8 +3717,9 @@
 
       const guessHtml = data.anon
         ? `<p class="hp-anon-label">무기명 기도제목이에요</p>`
-        : `<div class="hp-guess-wrap">
-            <input class="hp-guess-input" id="hpGuessInput" type="text" placeholder="이름을 맞춰보세요" maxlength="10" autocomplete="off" />
+        : `<p class="hp-guess-label">이 기도제목은 누구의 것일까요?</p>
+           <div class="hp-guess-wrap">
+            <input class="hp-guess-input" id="hpGuessInput" type="text" placeholder="이름 입력" maxlength="10" autocomplete="off" />
             <button class="hp-guess-btn" id="hpGuessBtn" onclick="guessHoldPray()">확인</button>
            </div>
            <div class="hp-result" id="hpResult"></div>`;
@@ -3716,9 +3732,21 @@
             <p class="hp-overlay-text">${escHtml(data.content)}</p>
           </div>
         </div>
+
+        <section class="card hp-verse-card" style="margin-top:12px;">
+          <p class="hp-verse-text">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"</p>
+          <p class="hp-verse-ref">요한복음 13:34–35</p>
+        </section>
+
         <section class="card" style="margin-top:12px;">
           ${guessHtml}
-        </section>`;
+        </section>
+
+        <section class="card hp-lobby-card" style="margin-top:12px;">
+          <p class="hp-lobby-text">더 많은 지체를 위해 중보하고 싶다면,<br>1층 로비 Hold&amp;Pray 현수막에서 손을 얹고 기도할 수 있어요.</p>
+        </section>
+
+        <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
       if (_hpGuessCorrect && !data.anon) {
         const resultEl = document.getElementById('hpResult');
