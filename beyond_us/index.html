@@ -3678,7 +3678,10 @@
         </div>`;
       try {
         const nick = localStorage.getItem('beyondus_nickname') || '';
-        const res  = await fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`);
+        const [res] = await Promise.all([
+          fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
+        ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
         _hpData = data;
