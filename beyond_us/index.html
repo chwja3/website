@@ -1507,7 +1507,7 @@
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card" id="drawSection">
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">열 가지 EN 카드를 모아보세요! <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="display:none;font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;"></span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종) <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button></span></h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -2038,10 +2038,7 @@
       const pending = userStatus.pendingDraws || 0;
 
       const ticketBadge = document.getElementById('ticketBadge');
-      if (ticketBadge) {
-        if (pending > 0) { ticketBadge.textContent = `🎫 ${pending}`; ticketBadge.style.display = ''; }
-        else { ticketBadge.style.display = 'none'; }
-      }
+      if (ticketBadge) ticketBadge.textContent = `🎫 ${pending}`;
 
       if (pending > 0) {
         el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
