@@ -1168,9 +1168,22 @@
       font-size: 13px; color: var(--sub); text-align: center;
       padding: 12px 0; letter-spacing: 0.03em;
     }
-    .hp-guess-label {
-      font-size: 12px; color: var(--sub); margin-bottom: 8px; letter-spacing: 0.02em;
+    .hp-guess-label { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+    .hp-inline-guess { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+    .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
+    .hp-inline-input {
+      flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
+      color: var(--text); font-size: 14px; padding: 2px 4px; outline: none; max-width: 120px;
     }
+    .hp-inline-input:focus { border-bottom-color: var(--accent); }
+    .hp-inline-btn {
+      background: none; border: none; color: var(--accent); font-size: 18px;
+      cursor: pointer; padding: 0 2px; line-height: 1;
+    }
+    .hp-inline-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .hp-result-inline { font-size: 12px; margin-top: 6px; display: block; }
+    .hp-result-inline.correct { color: #81c784; }
+    .hp-result-inline.wrong { color: #ef9a9a; }
     .hp-verse-card { text-align: center; }
     .hp-verse-text {
       font-size: 13px; line-height: 1.8; color: var(--sub);
@@ -1951,7 +1964,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428h';
+    const APP_VERSION = '20260428i';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3686,6 +3699,7 @@
     /* ════ Hold & Pray ════ */
     let _hpData = null;
     let _hpGuessCorrect = false;
+    let _hpCorrectName = '';
 
     async function loadHoldPray() {
       const wk = getWeekKey();
@@ -3720,14 +3734,13 @@
         ? `<span class="hp-parish-badge">${escHtml(parishDisplay)}</span>`
         : '';
 
-      const guessHtml = data.anon
-        ? `<p class="hp-anon-label">무기명 기도제목이에요</p>`
-        : `<p class="hp-guess-label">이 기도제목은 누구의 것일까요?</p>
-           <div class="hp-guess-wrap">
-            <input class="hp-guess-input" id="hpGuessInput" type="text" placeholder="이름 입력" maxlength="10" autocomplete="off" />
-            <button class="hp-guess-btn" id="hpGuessBtn" onclick="guessHoldPray()">확인</button>
-           </div>
-           <div class="hp-result" id="hpResult"></div>`;
+      const nameLineHtml = data.anon ? '' : `
+        <div class="hp-inline-guess" id="hpInlineGuess">
+          <span class="hp-inline-label">이름 :</span>
+          <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" />
+          <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray()">→</button>
+        </div>
+        <p class="hp-result" id="hpResult"></p>`;
 
       el.innerHTML = `
         <div class="hp-card" style="margin-top:12px;">
@@ -3740,19 +3753,14 @@
 
         <div class="hp-bottom-area">
           <p class="hp-lobby-inline">더 많은 지체를 위해 중보하고 싶다면,<br>1층 로비 Hold &amp; Pray 현수막에서 손을 얹고 기도해 주세요.<br><span class="hp-lobby-hint">(위 기도제목이 누구인지 궁금하다면 Hold &amp; Pray 현수막에서 찾아보세요!)</span></p>
-          ${guessHtml}
+          ${nameLineHtml}
         </div>
 
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
       if (_hpGuessCorrect && !data.anon) {
-        const resultEl = document.getElementById('hpResult');
-        if (resultEl) {
-          resultEl.className = 'hp-result correct';
-          resultEl.textContent = '정답이에요! 함께 기도해줘서 감사해요 ☺️';
-        }
-        const btn = document.getElementById('hpGuessBtn');
-        if (btn) btn.disabled = true;
+        const wrap = document.getElementById('hpInlineGuess');
+        if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(_hpCorrectName)}</span>`;
       }
 
       const input = document.getElementById('hpGuessInput');
@@ -3782,13 +3790,12 @@
         const data = await res.json();
         if (data.correct) {
           _hpGuessCorrect = true;
-          result.className = 'hp-result correct';
-          result.textContent = '정답이에요! 함께 기도해줘서 감사해요 ☺️';
-          result.style.display = 'block';
+          _hpCorrectName  = guess;
+          const wrap = document.getElementById('hpInlineGuess');
+          if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(guess)}</span>`;
+          if (result) { result.textContent = '정답이에요! 함께 기도해줘서 감사해요 ☺️'; result.className = 'hp-result-inline correct'; }
         } else {
-          result.className = 'hp-result wrong';
-          result.textContent = '아직 아니에요. 다시 생각해봐요!';
-          result.style.display = 'block';
+          if (result) { result.textContent = '아직 아니에요. 다시 생각해봐요!'; result.className = 'hp-result-inline wrong'; }
           btn.disabled = false;
           input.value = '';
           input.focus();
