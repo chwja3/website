@@ -1266,10 +1266,10 @@
     .cs-hp-slide { justify-content: flex-start; padding: 24px 24px 28px; gap: 12px; }
     .cs-hp-header { text-align: center; }
     .cs-hp-sub { font-size: 14px; color: var(--sub); margin-top: 2px; }
-    .cs-hp-card-wrap { width: 100%; max-width: 280px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.25); flex-shrink: 0; }
+    .cs-hp-card-wrap { position: relative; width: 100%; max-width: 280px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.25); flex-shrink: 0; }
     .cs-hp-img { width: 100%; display: block; }
-    .cs-hp-preview { width: 100%; background: var(--card); border-radius: 12px; padding: 12px 14px; flex: 1; overflow: hidden; }
-    .cs-hp-content { font-size: 13px; color: var(--sub); line-height: 1.7; text-align: left; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .cs-hp-overlay { position: absolute; top: 28%; left: 8%; right: 8%; display: flex; flex-direction: column; gap: 6px; }
+    .cs-hp-content { font-size: 14px; line-height: 1.7; color: #2c2010; word-break: keep-all; white-space: pre-wrap; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 
     .cs-illust { width: 220px; max-width: 72vw; height: auto; margin-bottom: 28px;
       filter: drop-shadow(0 10px 24px rgba(44,36,23,0.15)); }
@@ -1459,9 +1459,9 @@
           </div>
           <div class="cs-hp-card-wrap">
             <img src="images/h&p익명.jpeg" class="cs-hp-img" alt="Hold & Pray" />
-          </div>
-          <div class="cs-hp-preview" id="csHpPreview">
-            <p class="cs-hp-content" id="csHpContent">불러오는 중...</p>
+            <div class="cs-hp-overlay">
+              <p class="cs-hp-content" id="csHpContent">불러오는 중...</p>
+            </div>
           </div>
           <div class="cs-date-badge" style="margin-top:auto;">
             <span class="cs-star">★</span>
