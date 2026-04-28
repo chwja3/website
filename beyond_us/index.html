@@ -1169,7 +1169,8 @@
       padding: 12px 0; letter-spacing: 0.03em;
     }
     .hp-guess-label { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
-    .hp-inline-guess { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+    .hp-guess-prompt { font-size: 12px; color: var(--sub); margin-top: 14px; margin-bottom: 6px; }
+    .hp-inline-guess { display: flex; align-items: center; gap: 6px; }
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
       flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
@@ -1964,7 +1965,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428j';
+    const APP_VERSION = '20260428k';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3735,10 +3736,11 @@
         : '';
 
       const nameLineHtml = data.anon ? '' : `
+        <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
         <div class="hp-inline-guess" id="hpInlineGuess">
-          <span class="hp-inline-label">이름 :</span>
-          <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" />
-          <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray()">→</button>
+          <span class="hp-inline-label">이름</span>
+          <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="본명 입력" />
+          <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray()">확인</button>
         </div>
         <p class="hp-result" id="hpResult"></p>`;
 
@@ -3752,7 +3754,7 @@
         </div>
 
         <div class="hp-bottom-area">
-          <p class="hp-lobby-inline">더 많은 지체를 위해 중보하고 싶다면, 1층 로비 Hold &amp; Pray 현수막에서 손을 얹고 기도해 주세요.<br><span class="hp-lobby-hint">(위 기도제목이 누구인지 궁금하다면 Hold &amp; Pray 현수막에서 찾아보세요!)</span></p>
+          <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
           ${nameLineHtml}
         </div>
 
