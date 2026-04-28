@@ -1836,7 +1836,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428';
+    const APP_VERSION = '20260428b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2416,8 +2416,15 @@
         );
         if (!res.ok) throw new Error();
         userStatus = await res.json();
-        // 서버에 오늘 제출 이력 있으면 다른 기기에서도 캘린더 동기화
-        if ((userStatus.todayItems && userStatus.todayItems.length > 0) || (userStatus.todayIndices && userStatus.todayIndices.length > 0)) saveCheckDate();
+        // 서버 이번 주 제출 날짜로 로컬 캘린더 복원 (재설치 후에도 스탬프 유지)
+        if (userStatus.weekDates?.length) {
+          const stored = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
+          const merged = [...new Set([...stored, ...userStatus.weekDates])];
+          localStorage.setItem('beyondus_check_dates', JSON.stringify(merged));
+          renderWeekCal();
+        } else if ((userStatus.todayItems && userStatus.todayItems.length > 0) || (userStatus.todayIndices && userStatus.todayIndices.length > 0)) {
+          saveCheckDate();
+        }
       } catch(e) {
         userStatus = { error: true };
       }

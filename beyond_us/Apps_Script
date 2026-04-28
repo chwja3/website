@@ -269,8 +269,19 @@ function getUserStatus(userId, weekKey) {
   const collection = [];
   const todayItems   = [];
   const todayIndices = [];
+  const weekDates    = [];
 
   const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+
+  // 이번 주 월~일 범위 계산 (KST)
+  const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+  const dow = nowKST.getUTCDay() || 7;
+  const monday = new Date(nowKST);
+  monday.setUTCDate(nowKST.getUTCDate() - (dow - 1));
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const weekStart = monday.toISOString().slice(0, 10);
+  const weekEnd   = sunday.toISOString().slice(0, 10);
 
   // raw_checkins 전체 읽기 (이번 주 점수 + 오늘 항목 + 이월 계산에 재사용)
   let allRows = [];
@@ -284,6 +295,10 @@ function getUserStatus(userId, weekKey) {
         if (String(row[1]) === config.weekTitle) {
           weekScore += Number(row[6]) || 0;
           const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
+          // 이번 주 제출 날짜 수집
+          if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
+            weekDates.push(rowDate);
+          }
           if (rowDate === today) {
             try { JSON.parse(row[2] || '[]').forEach(item => {
               todayItems.push(item);
@@ -342,7 +357,8 @@ function getUserStatus(userId, weekKey) {
     weekCard,
     collection,
     todayItems,
-    todayIndices
+    todayIndices,
+    weekDates
   };
 }
 
