@@ -1145,12 +1145,15 @@
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
     .hp-overlay {
       position: absolute;
-      top: 28%; left: 8%; right: 8%;
+      top: 42%; left: 50%; right: auto;
+      transform: translateX(-50%);
+      width: 76%;
       display: flex; flex-direction: column; gap: 6px;
     }
     .hp-overlay-text {
-      font-size: 15px; line-height: 1.7; color: #2c2010;
-      word-break: keep-all; white-space: pre-wrap;
+      font-size: 18px; line-height: 1.75; color: #2c2010;
+      word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap;
+      text-align: center;
       font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
     }
     .hp-parish-badge {
@@ -1268,8 +1271,8 @@
     .cs-hp-sub { font-size: 14px; color: var(--sub); margin-top: 2px; }
     .cs-hp-card-wrap { position: relative; width: 100%; max-width: 280px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.25); flex-shrink: 0; }
     .cs-hp-img { width: 100%; display: block; }
-    .cs-hp-overlay { position: absolute; top: 28%; left: 8%; right: 8%; display: flex; flex-direction: column; gap: 6px; }
-    .cs-hp-content { font-size: 14px; line-height: 1.7; color: #2c2010; word-break: keep-all; white-space: pre-wrap; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+    .cs-hp-overlay { position: absolute; top: 42%; left: 50%; right: auto; transform: translateX(-50%); width: 76%; display: flex; flex-direction: column; gap: 6px; }
+    .cs-hp-content { font-size: 16px; line-height: 1.75; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 
     .cs-illust { width: 220px; max-width: 72vw; height: auto; margin-bottom: 28px;
       filter: drop-shadow(0 10px 24px rgba(44,36,23,0.15)); }
