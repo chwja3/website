@@ -35,7 +35,7 @@ function doGet(e) {
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
   if (action === 'getInquiries') return jsonOutput(getInquiries());
-  if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || ''));
+  if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || '', e.parameter.nickname || ''));
   if (action === 'getCurrentWeek') {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
@@ -84,7 +84,7 @@ function doPost(e) {
       return jsonOutput(resetPassword(body));
     }
     if (action === 'submitHoldPrayGuess') {
-      return jsonOutput(submitHoldPrayGuess(body.weekKey || '', body.guess || ''));
+      return jsonOutput(submitHoldPrayGuess(body.weekKey || '', body.guess || '', body.nickname || ''));
     }
     if (action === 'postInquiry')   return jsonOutput(postInquiry(body));
     if (action === 'editInquiry')   return jsonOutput(editInquiry(body));
@@ -423,9 +423,10 @@ function hashStr(s) {
   return Math.abs(h);
 }
 
-function getHoldPray(weekKey) {
+function getHoldPray(weekKey, nickname) {
   if (!weekKey) weekKey = 'w' + (getConfig().currentWeek);
-  const idx   = hashStr(weekKey) % HOLD_PRAY_ENTRIES.length;
+  const key   = weekKey + (nickname || '');
+  const idx   = hashStr(key) % HOLD_PRAY_ENTRIES.length;
   const entry = HOLD_PRAY_ENTRIES[idx];
   return {
     ok:      true,
@@ -436,9 +437,10 @@ function getHoldPray(weekKey) {
   };
 }
 
-function submitHoldPrayGuess(weekKey, guess) {
+function submitHoldPrayGuess(weekKey, guess, nickname) {
   if (!weekKey || !guess) return { ok: false, error: 'missing params' };
-  const idx   = hashStr(weekKey) % HOLD_PRAY_ENTRIES.length;
+  const key   = weekKey + (nickname || '');
+  const idx   = hashStr(key) % HOLD_PRAY_ENTRIES.length;
   const entry = HOLD_PRAY_ENTRIES[idx];
   if (entry.a) return { ok: false, error: 'anon entry' };
   const correct = entry.n.replace(/\s/g, '') === guess.trim().replace(/\s/g, '');

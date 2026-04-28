@@ -1169,7 +1169,8 @@
       padding: 12px 0; letter-spacing: 0.03em;
     }
     .hp-guess-label { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
-    .hp-guess-prompt { font-size: 12px; color: var(--sub); margin-top: 0; margin-bottom: 6px; text-align: center; padding-top: 20px; border-top: 1px solid var(--border); }
+    .hp-divider { width: 40px; height: 1px; background: var(--border); margin: 20px auto 16px; }
+    .hp-guess-prompt { font-size: 12px; color: var(--sub); margin-top: 0; margin-bottom: 6px; text-align: center; }
     .hp-inline-guess { display: flex; align-items: center; gap: 6px; justify-content: center; }
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
@@ -3719,7 +3720,8 @@
 
       el.innerHTML = '<div class="hp-loading">불러오는 중...</div>';
       try {
-        const res  = await fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&t=${Date.now()}`);
+        const nick = localStorage.getItem('beyondus_nickname') || '';
+        const res  = await fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
         _hpData = data;
@@ -3740,6 +3742,7 @@
         : '';
 
       const nameLineHtml = data.anon ? '' : `
+        <div class="hp-divider"></div>
         <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
         <div class="hp-inline-guess" id="hpInlineGuess">
           <span class="hp-inline-label">이름</span>
@@ -3791,7 +3794,7 @@
         const res  = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'submitHoldPrayGuess', weekKey: _hpData.weekKey, guess })
+          body: JSON.stringify({ action: 'submitHoldPrayGuess', weekKey: _hpData.weekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '' })
         });
         const data = await res.json();
         if (data.correct) {
