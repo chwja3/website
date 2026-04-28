@@ -1896,6 +1896,7 @@
           <div id="hpContent">
             <div class="hp-loading">불러오는 중...</div>
           </div>
+          <p class="footer-note">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"<br>— 요한복음 13:34–35</p>
         </div>
       </div>
 
@@ -1950,7 +1951,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428g';
+    const APP_VERSION = '20260428h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3736,8 +3737,6 @@
             <p class="hp-overlay-text">${escHtml(data.content)}</p>
           </div>
         </div>
-
-        <p class="footer-note" style="margin-top:20px;">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"<br><span style="font-size:11px; opacity:0.7;">— 요한복음 13:34–35</span></p>
 
         <div class="hp-bottom-area">
           <p class="hp-lobby-inline">더 많은 지체를 위해 중보하고 싶다면,<br>1층 로비 Hold &amp; Pray 현수막에서 손을 얹고 기도해 주세요.<br><span class="hp-lobby-hint">(위 기도제목이 누구인지 궁금하다면 Hold &amp; Pray 현수막에서 찾아보세요!)</span></p>
