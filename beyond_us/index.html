@@ -1709,8 +1709,8 @@
       <ul class="drawer-nav">
         <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission">미션</li>
-        <li class="drawer-item" data-section="collection">컬렉션</li>
         <li class="drawer-item" data-section="prayer">Hold &amp; Pray</li>
+        <li class="drawer-item" data-section="collection">컬렉션</li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
         <li class="drawer-item" data-section="chat">💬 단톡방</li>
         <li class="drawer-item" data-section="inquiry">개발자 문의</li>
@@ -1830,7 +1830,10 @@
             <h2 class="card-title">내 컬렉션</h2>
             <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
             <div class="collection-grid" id="collectionGrid"></div>
-            <button class="btn btn-secondary" style="width:100%; margin-top:20px;" onclick="switchSection('mission')">← 홈으로 돌아가기</button>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <button class="btn btn-secondary" style="flex:1;" onclick="switchSection('mission')">← 홈으로 돌아가기</button>
+              <button class="btn btn-primary" style="flex:1;" onclick="switchSection('prayer')">🕊️ 중보기도 하러가기</button>
+            </div>
           </section>
         </div>
       </div>
