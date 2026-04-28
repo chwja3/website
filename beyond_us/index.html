@@ -2096,7 +2096,7 @@
         if (!res.ok) throw new Error();
         userStatus = await res.json();
         // 서버에 오늘 제출 이력 있으면 다른 기기에서도 캘린더 동기화
-        if (userStatus.todayItems && userStatus.todayItems.length > 0) saveCheckDate();
+        if ((userStatus.todayItems && userStatus.todayItems.length > 0) || (userStatus.todayIndices && userStatus.todayIndices.length > 0)) saveCheckDate();
       } catch(e) {
         userStatus = { error: true };
       }
