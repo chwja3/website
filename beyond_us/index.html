@@ -1185,9 +1185,9 @@
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
     .hp-overlay {
       position: absolute;
-      top: 35%; bottom: 8%; left: 50%;
+      top: 28%; bottom: 22%; left: 50%;
       transform: translateX(-50%);
-      width: 60%;
+      width: 56%;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
       overflow: hidden;
     }
@@ -1300,7 +1300,7 @@
     /* ── H&P 메인 영역 ── */
     .cs-hp-main {
       width: 100%; flex: 1; min-height: 0;
-      display: flex; flex-direction: column; align-items: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
       padding: 14px 20px 8px; gap: 10px; overflow: hidden;
     }
     .cs-hp-header { text-align: center; flex-shrink: 0; }
@@ -1313,7 +1313,7 @@
       flex-shrink: 1; min-height: 0;
     }
     .cs-hp-img { width: 100%; height: auto; display: block; }
-    .cs-hp-overlay { position: absolute; top: 35%; bottom: 16%; left: 50%; transform: translateX(-50%); width: 56%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden; }
+    .cs-hp-overlay { position: absolute; top: 28%; bottom: 22%; left: 50%; transform: translateX(-50%); width: 56%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden; }
     .cs-hp-content { font-size: clamp(12px, 3.8vw, 17px); line-height: 1.65; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; }
 
     /* ── 하단 배너 캐러셀 ── */
@@ -1328,6 +1328,7 @@
       min-width: 100%; background: var(--card);
       display: flex; flex-direction: column;
       padding: 14px 18px 14px;
+      max-height: 170px; overflow: hidden;
     }
 
     .cs-illust { width: 220px; max-width: 72vw; height: auto; margin-bottom: 28px;
@@ -1538,27 +1539,32 @@
         <div class="cs-banner-track" id="csBannerTrack">
 
           <!-- 배너 1: Coming Soon -->
-          <div class="cs-banner-card">
-            <p class="cs-install-eyebrow" style="margin-bottom:5px;">Coming Soon</p>
-            <p style="font-size:17px;font-weight:800;color:var(--text);">5월 10일 Beyond Us 오픈!</p>
+          <div class="cs-banner-card" style="gap:0;padding:12px 16px;">
+            <span style="display:inline-block;align-self:flex-start;background:var(--primary-soft);color:var(--sub);font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:6px;">앱 오픈 안내</span>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.02em;margin-bottom:6px;">5월 10일 (일) 오픈!</p>
+            <p style="font-size:11px;color:var(--sub);line-height:1.6;">위 기도제목으로 함께 기도하면서<br>5월 10일 오픈을 기다려주세요 🙏</p>
           </div>
 
           <!-- 배너 2: 설치 가이드 (자동감지) -->
-          <div class="cs-banner-card" id="csBannerInstall">
-            <p class="cs-install-eyebrow" style="margin-bottom:8px;">App Install Guide</p>
-            <div id="csBannerInstallContent" style="font-size:12px;color:var(--sub);line-height:1.7;">감지 중...</div>
+          <div class="cs-banner-card" id="csBannerInstall" style="gap:0;padding:12px 16px;">
+            <span style="display:inline-block;align-self:flex-start;background:var(--primary-soft);color:var(--sub);font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:6px;">앱 설치 안내</span>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.02em;margin-bottom:8px;">홈 화면에 추가하기</p>
+            <div id="csBannerInstallContent" style="font-size:11px;color:var(--sub);line-height:1.8;">감지 중...</div>
           </div>
 
           <!-- 배너 3: 수련회 신청 -->
-          <div class="cs-banner-card">
-            <p class="cs-install-eyebrow" style="margin-bottom:6px;">✦ 2026 청년교구 수련회</p>
-            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.01em;margin-bottom:8px;">BEYOND US</p>
-            <p style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:6px;">📅 6.20(토) ~ 6.22(월)&nbsp;&nbsp;📍 가평 필그림하우스</p>
-            <a href="https://walla.my/a/2026.AGC.BeyondUs" target="_blank" rel="noopener"
-              style="display:inline-block;background:var(--primary);color:#fff;font-size:12px;font-weight:800;padding:7px 16px;border-radius:999px;text-decoration:none;margin-bottom:10px;letter-spacing:.02em;">
-              ⭐ 얼리버드 ~5/3(토) · 신청하기 →
-            </a>
-            <p style="font-size:11px;color:var(--sub);line-height:1.6;font-style:italic;">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요" — 마태복음 5:14</p>
+          <div class="cs-banner-card" style="gap:0;padding:12px 16px;">
+            <span style="display:inline-block;align-self:flex-start;background:#f5c842;color:#2c2417;font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:6px;">청년교구 수련회 신청 안내</span>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.02em;margin-bottom:6px;">BEYOND US</p>
+            <p style="font-size:11px;color:var(--sub);line-height:1.6;font-style:italic;margin-bottom:6px;">"너희는 세상의 빛이라. 산 위에 있는 동네가 숨겨지지 못할 것이요" — 마태복음 5:14</p>
+            <p style="font-size:11px;color:var(--sub);margin-bottom:6px;">📅 6.20(토)~6.22(월) &nbsp;📍 가평 필그림하우스</p>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="background:#dc2626;color:#fff;font-size:8px;font-weight:800;padding:2px 6px;border-radius:999px;flex-shrink:0;">EARLY BIRD</span>
+              <span style="font-size:11px;font-weight:700;color:#dc2626;">~ 5/3(일) 마감 · 이후 일반 신청</span>
+              <span style="font-size:11px;color:var(--sub);">→</span>
+              <a href="https://walla.my/a/2026.AGC.BeyondUs" target="_blank" rel="noopener"
+                style="font-size:11px;font-weight:800;color:var(--text);text-decoration:underline;">신청 바로가기</a>
+            </div>
           </div>
 
         </div>
@@ -2186,17 +2192,17 @@
       const { os, browser } = detectBrowser();
       let steps = [];
       if (os === 'ios') {
-        steps = ['우측 하단 <strong>···</strong> 탭', '<strong>공유</strong> 탭', '<strong>홈 화면에 추가</strong> 탭', '우측 상단 <strong>추가</strong> 탭'];
+        steps = ['우측 하단 <strong>···</strong> 선택', '<strong>공유</strong> 선택', '<strong>홈 화면에 추가</strong> 선택', '우측 상단 <strong>추가</strong> 선택'];
       } else if (browser === 'samsung') {
-        steps = ['우측 하단 <strong>≡</strong> 탭', '<strong>추가</strong> 탭', '<strong>홈 화면 → 추가</strong> 탭'];
+        steps = ['우측 하단 <strong>≡</strong> 선택', '<strong>추가</strong> 선택', '<strong>홈 화면 → 추가</strong> 선택'];
       } else if (browser === 'chrome') {
-        steps = ['우측 상단 <strong>⋮</strong> 탭', '<strong>홈 화면에 추가</strong> 탭', '<strong>추가</strong> 두 번 탭'];
+        steps = ['우측 상단 <strong>⋮</strong> 선택', '<strong>홈 화면에 추가</strong> 선택', '<strong>추가</strong> 선택', '<strong>추가</strong> 선택'];
       } else {
         el.textContent = 'Safari(iOS) 또는 삼성인터넷/Chrome(Android)으로 열어주세요.';
         return;
       }
       const label = os === 'ios' ? 'iPhone (Safari)' : browser === 'samsung' ? 'Android (삼성인터넷)' : 'Android (Chrome)';
-      el.innerHTML = `<span style="font-weight:700;color:var(--text);font-size:11px;">${label}</span><br>${steps.map((s, i) => `<span>${i + 1}. ${s}</span>`).join('<br>')}`;
+      el.innerHTML = `<span style="font-weight:700;color:var(--text);font-size:11px;">${label}</span><br><span>${steps.map((s, i) => `${i + 1}. ${s}`).join(' &nbsp;›&nbsp; ')}</span>`;
     }
 
     function showComingSoon() {
@@ -2226,6 +2232,10 @@
         if (d.ok && d.content) {
           el.textContent = d.content;
           if (_hpData === null) _hpData = d;
+          if (loading) loading.style.display = 'none';
+          if (overlay) overlay.style.display = '';
+          fitHpText(el, overlay);
+          return;
         }
       } catch(e) {
         if (el) el.textContent = '';
@@ -3774,6 +3784,30 @@
     let _hpGuessCorrect = false;
     let _hpCorrectName = '';
 
+    function fitHpText(textEl, boxEl, opts = {}) {
+      if (!textEl || !boxEl) return;
+      const max = opts.max ?? 19;
+      const min = opts.min ?? 9;
+      textEl.style.visibility = 'hidden';
+      textEl.style.fontSize = max + 'px';
+      textEl.style.lineHeight = '1.5';
+      if (boxEl.clientHeight === 0) {
+        requestAnimationFrame(() => {
+          textEl.style.visibility = '';
+          fitHpText(textEl, boxEl, opts);
+        });
+        return;
+      }
+      let fs = max;
+      while (fs > min &&
+             (textEl.scrollHeight > boxEl.clientHeight ||
+              textEl.scrollWidth  > boxEl.clientWidth)) {
+        fs -= 0.5;
+        textEl.style.fontSize = fs + 'px';
+      }
+      textEl.style.visibility = '';
+    }
+
     async function loadHoldPray() {
       const wk = getWeekKey();
       const el = document.getElementById('hpContent');
@@ -3851,6 +3885,10 @@
       if (input) {
         input.addEventListener('keydown', e => { if (e.key === 'Enter') guessHoldPray(); });
       }
+
+      const overlayEl  = el.querySelector('.hp-overlay');
+      const overlayTxt = el.querySelector('.hp-overlay-text');
+      if (overlayTxt && overlayEl) fitHpText(overlayTxt, overlayEl);
     }
 
     async function guessHoldPray() {
@@ -4091,6 +4129,23 @@
     renderWeekCal();
     loadNotices();
     autoLogin();
+
+    let _fitResizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(_fitResizeTimer);
+      _fitResizeTimer = setTimeout(() => {
+        const csOverlay = document.getElementById('csHpOverlay');
+        const csTxt     = document.getElementById('csHpContent');
+        if (csTxt && csOverlay && csTxt.textContent.trim()) fitHpText(csTxt, csOverlay);
+
+        const hpContent = document.getElementById('hpContent');
+        if (hpContent) {
+          const overlayEl  = hpContent.querySelector('.hp-overlay');
+          const overlayTxt = hpContent.querySelector('.hp-overlay-text');
+          if (overlayTxt && overlayEl && overlayTxt.textContent.trim()) fitHpText(overlayTxt, overlayEl);
+        }
+      }, 150);
+    });
   </script>
 </body>
 </html>
