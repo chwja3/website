@@ -1549,11 +1549,16 @@
             <div id="csBannerInstallContent" style="font-size:12px;color:var(--sub);line-height:1.7;">감지 중...</div>
           </div>
 
-          <!-- 배너 3: 공지 -->
+          <!-- 배너 3: 수련회 신청 -->
           <div class="cs-banner-card">
-            <p class="cs-install-eyebrow" style="margin-bottom:5px;">공지사항</p>
-            <p style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">📢 안내</p>
-            <p style="font-size:12px;color:var(--sub);line-height:1.65;">준비 중입니다.</p>
+            <p class="cs-install-eyebrow" style="margin-bottom:6px;">✦ 2026 청년교구 수련회</p>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.01em;margin-bottom:8px;">BEYOND US</p>
+            <p style="font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:6px;">📅 6.20(토) ~ 6.22(월)&nbsp;&nbsp;📍 가평 필그림하우스</p>
+            <a href="https://walla.my/a/2026.AGC.BeyondUs" target="_blank" rel="noopener"
+              style="display:inline-block;background:var(--primary);color:#fff;font-size:12px;font-weight:800;padding:7px 16px;border-radius:999px;text-decoration:none;margin-bottom:10px;letter-spacing:.02em;">
+              ⭐ 얼리버드 ~5/3(토) · 신청하기 →
+            </a>
+            <p style="font-size:11px;color:var(--sub);line-height:1.6;font-style:italic;">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요" — 마태복음 5:14</p>
           </div>
 
         </div>
@@ -1955,7 +1960,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260429';
+    const APP_VERSION = '20260430';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
