@@ -245,6 +245,13 @@
           <h2 class="card-title">공지사항 작성</h2>
           <input type="text" id="noticeTitle" class="input" placeholder="제목" />
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
+          <!-- 이미지 첨부 -->
+          <label style="display:block; margin-top:8px; font-size:13px; color:var(--sub); margin-bottom:4px;">📎 이미지 첨부 (선택)</label>
+          <input type="file" id="noticeImageFile" accept="image/*" style="font-size:13px; width:100%;" />
+          <div id="noticeImagePreview" style="display:none; margin-top:8px;">
+            <img id="noticePreviewImg" src="" style="max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--border);" />
+            <button type="button" id="noticeClearImage" style="margin-top:4px; font-size:12px; color:var(--sub); background:none; border:none; cursor:pointer;">✕ 이미지 제거</button>
+          </div>
           <div class="status" id="noticePostStatus"></div>
           <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
         </div>
@@ -831,6 +838,32 @@
       } catch(e) { alert('연결 오류'); }
     }
 
+    // 이미지 파일 선택 → 미리보기
+    let _pendingImageBase64 = '';
+    let _pendingImageMime   = '';
+    document.getElementById('noticeImageFile').addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        // dataUrl: "data:image/jpeg;base64,/9j/..."
+        const commaIdx = dataUrl.indexOf(',');
+        _pendingImageBase64 = dataUrl.slice(commaIdx + 1);
+        _pendingImageMime   = file.type || 'image/jpeg';
+        document.getElementById('noticePreviewImg').src = dataUrl;
+        document.getElementById('noticeImagePreview').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('noticeClearImage').addEventListener('click', function() {
+      _pendingImageBase64 = '';
+      _pendingImageMime   = '';
+      document.getElementById('noticeImageFile').value = '';
+      document.getElementById('noticeImagePreview').style.display = 'none';
+      document.getElementById('noticePreviewImg').src = '';
+    });
+
     document.getElementById('noticePostBtn').addEventListener('click', async () => {
       const title   = document.getElementById('noticeTitle').value.trim();
       const content = document.getElementById('noticeContent').value.trim();
@@ -838,15 +871,25 @@
       if (!title || !content) { statusEl.textContent = '제목과 내용을 모두 입력해주세요.'; return; }
       const btn = document.getElementById('noticePostBtn');
       btn.disabled = true;
-      statusEl.textContent = '등록 중...';
+      statusEl.textContent = _pendingImageBase64 ? '이미지 업로드 중...' : '등록 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'postNotice', adminPw, title, content });
+        const payload = { action: 'postNotice', adminPw, title, content };
+        if (_pendingImageBase64) {
+          payload.imageBase64 = _pendingImageBase64;
+          payload.imageMime   = _pendingImageMime;
+        }
+        const res = await post(payload);
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = '등록되었어요!';
           document.getElementById('noticeTitle').value = '';
           document.getElementById('noticeContent').value = '';
+          document.getElementById('noticeImageFile').value = '';
+          document.getElementById('noticeImagePreview').style.display = 'none';
+          document.getElementById('noticePreviewImg').src = '';
+          _pendingImageBase64 = '';
+          _pendingImageMime   = '';
           loadAdminNotices();
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
