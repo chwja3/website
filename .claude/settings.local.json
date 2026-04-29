@@ -15,7 +15,10 @@
       "Bash(dir /B *.md beyond_us\\\\*.md)",
       "Bash(findstr /N \"CACHE\")",
       "Bash(git pull *)",
-      "WebFetch(domain:dev.website-78h.pages.dev)"
+      "WebFetch(domain:dev.website-78h.pages.dev)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }
