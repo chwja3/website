@@ -1131,7 +1131,8 @@
     }
 
     /* ── Hold & Pray ── */
-    #sectionPrayer .wrap { padding-bottom: 32px; }
+    #sectionPrayer .wrap { padding: 8px 12px 32px; max-width: 420px; }
+    @media (min-width: 480px) { #sectionPrayer .hp-card { max-width: 380px; margin: 8px auto; } }
     .hp-header-area { text-align: center; padding: 20px 0 4px; }
     .hp-header-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; margin-bottom: 10px; }
     .hp-header-sub { font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
@@ -1145,13 +1146,14 @@
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
     .hp-overlay {
       position: absolute;
-      top: 55%; left: 50%; right: auto;
+      top: 35%; bottom: 16%; left: 50%;
       transform: translateX(-50%);
-      width: 76%;
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      width: 56%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      overflow: hidden;
     }
     .hp-overlay-text {
-      font-size: 21px; line-height: 1.75; color: #2c2010;
+      font-size: clamp(13px, 4vw, 19px); line-height: 1.65; color: #2c2010;
       word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap;
       text-align: center;
       font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
@@ -1271,8 +1273,8 @@
       flex-shrink: 1; min-height: 0;
     }
     .cs-hp-img { width: 100%; height: auto; display: block; }
-    .cs-hp-overlay { position: absolute; top: 55%; left: 50%; right: auto; transform: translateX(-50%); width: 76%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-    .cs-hp-content { font-size: 18px; line-height: 1.75; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+    .cs-hp-overlay { position: absolute; top: 35%; bottom: 16%; left: 50%; transform: translateX(-50%); width: 56%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden; }
+    .cs-hp-content { font-size: clamp(12px, 3.8vw, 17px); line-height: 1.65; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; }
 
     /* ── 하단 배너 캐러셀 ── */
     .cs-banner-area {
