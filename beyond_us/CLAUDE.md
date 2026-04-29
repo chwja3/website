@@ -22,8 +22,9 @@
 
 ## 1. 프로젝트 개요
 
-2026 청년교구 수련회 준비를 위한 실천 체크 + EN카드 컬렉션 + 단톡방 앱.
+2026 청년교구 수련회 준비를 위한 실천 체크 + EN카드 컬렉션 + Hold & Pray + 단톡방 앱.
 단일 `index.html` 파일로 구성되며 GitHub Pages로 배포, Google Apps Script(GAS)를 메인 백엔드, Firebase Firestore를 실시간 채팅 백엔드로 사용.
+PWA(홈화면 추가, 오프라인 캐시, 버전 체크 강제 갱신) 지원.
 
 - **서비스 URL**: `https://chwja3.github.io/website/beyond_us/`
 - **어드민**: `https://chwja3.github.io/website/beyond_us/admin.html`
@@ -51,11 +52,13 @@
 ```
 website/
 ├── index.html               # 루트 — beyond_us/로 리다이렉트
-├── wrangler.jsonc           # Cloudflare Workers/Pages 설정
+├── wrangler.jsonc           # Cloudflare Workers/Pages 설정 (충돌 해결됨)
 └── beyond_us/
     ├── index.html           # 앱 전체 (HTML + CSS + JS)
     ├── admin.html           # 관리자 페이지
     ├── manifest.json        # PWA 홈화면 추가 설정
+    ├── sw.js                # 서비스 워커 (오프라인 캐시 + 네트워크 우선)
+    ├── version.txt          # 앱 버전 문자열 (배포 시 동기화 필수)
     ├── Apps_Script          # GAS 소스 (편집 후 직접 배포 필요)
     ├── config_sheets/       # 주차별 미션 TSV (w1~w6.tsv)
     ├── 사전미션*.txt        # 사전미션 텍스트
@@ -69,26 +72,35 @@ website/
 ### 4.1 Google Apps Script (메인 API)
 
 - **SPREADSHEET_ID**: `1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q`
-- **시트**: `raw_checkins`, `config`, `CardDraws`, `Users`, `Notices`
-- **API**: `https://script.google.com/macros/s/AKfycbwE1WmjS02tZh-jUJOqGEOBobAG73RGpQhxkM9vbgk4xBrq5C-UB8r6vx9lVftaZLAobQ/exec`
+- **시트**: `raw_checkins`, `config`, `CardDraws`, `Users`, `Notices`, `Inquiries`, `HoldPray`
+- **API**: `https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec`
+  - GAS 재배포 시 URL이 바뀌면 `index.html` + `admin.html` 양쪽 `API_BASE` 동시 갱신 필수.
 
 | action | 메서드 | 설명 |
 |--------|--------|------|
 | `dashboard` | GET | 체크 현황·통계·탭설정 조회 |
-| `userStatus` | GET | 이번 주 제출 여부 + 보유 카드 |
+| `userStatus` | GET | 이번 주 제출 여부 + 보유 카드 + 뽑기권 |
 | `getUsers` | GET | 전체 유저 목록 (adminPw 필요) |
+| `getTabSettings` | GET | 탭 활성화 설정 조회 (adminPw 필요) |
+| `getCurrentWeek` | GET | 현재 미션 주차 조회 (adminPw 필요) |
 | `getNotices` | GET | 공지사항 목록 |
+| `getInquiries` | GET | 개발자 문의 목록 |
+| `getHoldPray` | GET | 이번 주 H&P 기도제목 (계정별 다른 카드 노출) |
 | `getMissionConfig` | GET | 주차별 미션 조회 (adminPw 필요) |
+| `getCardStats` | GET | 카드 뽑기 통계 (adminPw 필요) |
 | `submit` | POST | 항목별 미션 체크 제출 |
-| `drawCard` | POST | EN카드 뽑기 |
+| `drawCard` | POST | EN카드 뽑기 (이월 뽑기권 차감) |
 | `register` | POST | 회원가입 |
 | `login` | POST | 로그인 |
 | `resetPassword` | POST | 비밀번호 찾기 |
 | `adminLogin` | POST | 어드민 로그인 |
+| `adminResetPassword` | POST | 어드민 비밀번호 재설정 |
+| `submitHoldPrayGuess` | POST | H&P 이름 맞추기 정답 제출 |
+| `postInquiry` / `editInquiry` / `deleteInquiry` / `replyInquiry` | POST | 개발자 문의 CRUD |
 | `setMissionConfig` | POST | 미션 설정 저장 (adminPw 필요) |
+| `setCurrentWeek` | POST | 현재 주차 설정 (adminPw 필요) |
 | `setTabSettings` | POST | 탭 활성화 설정 (adminPw 필요) |
-| `postNotice` | POST | 공지사항 등록 (adminPw 필요) |
-| `deleteNotice` | POST | 공지사항 삭제 (adminPw 필요) |
+| `postNotice` / `editNotice` / `deleteNotice` | POST | 공지사항 CRUD (adminPw 필요) |
 
 ### 4.2 Firebase Firestore (단톡방 전용)
 
@@ -102,18 +114,32 @@ website/
 
 ### 4.3 Cloudflare Workers/Pages (옵션)
 
-- **wrangler.jsonc**: 정적 자산 배포 설정 (`assets.directory: "."`)
-- ⚠️ **현재 머지 충돌 마커가 남아있음** (`compatibility_date` 충돌) — 사용 전 해결 필요
+- **wrangler.jsonc**: 정적 자산 배포 설정 (`assets.directory: "."`, `compatibility_date: "2026-04-25"`)
+- 머지 충돌 해결됨. 현재는 GitHub Pages가 메인 배포 채널, Cloudflare는 미사용.
+
+### 4.4 PWA (홈화면 추가 + 오프라인 + 강제 갱신)
+
+- **`manifest.json`**: 아이콘 192/512 (`pabicon_192.png`, `pabicon_512.png`), `display: standalone`, `purpose: "any"` (maskable 사용 시 짤림 발생 → 일반 any로 고정)
+- **`sw.js`**: 캐시 버전 (`beyondus-vN`) + index.html은 네트워크 우선, 나머지 자산은 캐시 우선
+- **버전 체크 (강제 갱신)**: `index.html` 진입 시 `version.txt`를 `cache: 'no-store'`로 fetch → `APP_VERSION` 상수와 다르면 `location.reload(true)`
+  - **배포 시 `version.txt` + `APP_VERSION` 둘 다 갱신 필수** (작업 규칙 5번 참고)
+- **설치 가이드**: Coming Soon 화면에 브라우저 자동 감지 후 OS별 설치 방법 표시 (`detectBrowser`, `renderBrowserStatus`)
 
 ---
 
 ## 5. 주요 정책
 
 - **로그인**: 닉네임=ID, 자동 로그인(localStorage 캐시), 서버 검증 실패 시 `beyondus_` 키 전체 클리어
+- **isStaff 라우팅 / Coming Soon**: `shouldEnterApp(isStaff, appOpenDate)` — 운영진(`Users` F열) 또는 오늘 ≥ `config B4 (app_open_date)` 일 때만 앱 진입, 그 외엔 Coming Soon 화면. config B4=`2026-05-10`
 - **미션**: 주차별 6개 항목, 항목별 개별 제출, 날짜 단위 저장(`beyondus_submitted_YYYY-MM-DD`)
+- **미션 제출 즉시 반영**: optimistic update — 제출 직후 점수/캘린더 체크/버튼 비활성화 즉시 갱신, 다른 기기에서 제출해도 `loadUserStatus`가 서버 이력으로 캘린더 동기화 (`todayIndices` 포함)
+- **주차 점수 집계**: 미션 주차(`weekTitle`) 기준으로 집계 — 캘린더 주가 바뀌어도 미션 주차 정의가 바뀌지 않으면 같은 주로 처리
 - **config 시트 구조**: 8행 단위 블록, `startRow = (week-1)*8+5`, 항목 6개
 - **config 업데이트**: `Apps_Script`의 `setupAllWeeks()` 함수 실행
-- **EN카드**: 온라인 일반 6종(뽑기), 현장 4종, 히든 2종 / 뽑기 기준은 주차별 threshold
+- **EN카드 뽑기권 이월**: 이전 주에 자격 달성했지만 뽑지 않은 경우 다음 주로 이월. 보유 뽑기권은 헤더 🎫 배지로 표시, 권 0이면 뽑기 버튼 비활성화
+- **EN카드**: 온라인 일반 9종(뽑기), 현장 카드, 히든 카드 / 뽑기 기준은 주차별 threshold
+- **컬렉션 미획득 표시**: `앤뒷모습.png` 통일 실루엣
+- **Hold & Pray (H&P)**: 매주 다른 사람의 기도제목 1개를 랜덤 노출, 이름 빈칸 채우기 — 정답 시 이름 고정 표시 (정책 참고: 향후 정답 시 뽑기권 보상 검토)
 - **단톡방**: 로그인 상태에서만 메시지 입력, `parish`(교구) 뱃지 표시, 본인/타인 메시지 좌우 분리
 - **테스트 모드**: URL에 `?test=1` 추가 시 GAS 검증 스킵
 
@@ -174,13 +200,18 @@ website/
 
 | 파일 | 용도 |
 |------|------|
-| `images/앤카드뒷면.png` | 카드 뒷면 (투명 배경 PNG, 라운드 내장) |
+| `images/앤카드뒷면.png` / `앤카드뒷면최종.png` | 카드 뒷면 (투명 배경 PNG, 라운드 내장) |
+| `images/앤카드팩디자인배경제거.png` | 카드 팩 디자인 |
 | `images/BEYONDUS2.png` | 메인 히어로 Beyond Us 로고 (979×150) |
-| `images/hc_illust4.png` | 메인 히어로 양 일러스트 |
-| `images/hc_logo_png2.png` | 스플래시/로그인 로고 |
-| `images/pabicon.png` | 앱 아이콘 |
-| `images/월요일앤.png` | 캐러셀 인덱스 0번 팩 위 미니 카드 (요일별 캐릭터 중 하나) |
+| `images/hc_illust1.png` ~ `hc_illust5.png` | 히어로/티저 일러스트 (양·교회 등) |
+| `images/hc_logo_png1.png` / `hc_logo_png2.png` | 스플래시/로그인 로고 |
+| `images/pabicon.png` | 파비콘 |
+| `images/pabicon_192.png` / `pabicon_512.png` / `pabicon_180.png` | PWA 아이콘 (Android 192/512, iOS 180), `pabicon_large.png`도 존재 |
+| `images/sheep.png` | 양 (보조 일러스트) |
+| `images/요일별.png` / `일요일별.png` / `월·수·금·일요일앤.png` | 요일별 캐릭터 / 카드 팩 미니 |
 | `images/앤뒷모습.png` / `images/앤수배.png` | 미획득 컬렉션 카드 실루엣/표시 이미지 |
+| `images/사랑.png`~`절제.png`, `히든.png` | 9개 성령의 열매 카드 앞면 + 히든 |
+| `images/Hold&Pray.jpeg` / `images/h&p익명.jpeg` | H&P 탭 카드 / 익명 기도자 이미지 |
 
 ### PNG 카드 관련 주의
 
@@ -226,7 +257,28 @@ gh pr create --title "작업 제목" --body "변경 내용"
 
 ---
 
-## 9. 단톡방 (Firebase Firestore)
+## 9. Hold & Pray (H&P) 탭
+
+### 구조
+- 드로어 메뉴: `Hold & Pray` (`data-section="prayer"`, 정식 명칭, 구 "손기도")
+- 섹션 ID: `#sectionPrayer`
+- 진입 시 `loadHoldPray()` 호출 → GAS `getHoldPray?weekKey=&nickname=` API
+- Coming Soon 티저에서도 `loadHoldPrayPreview()`로 메인 슬라이드에 미리 노출
+
+### 동작
+1. 주차 키 + 닉네임으로 GAS에 요청 → 계정별로 다른 기도제목 1개 응답
+2. `renderHoldPrayCard(data)`로 카드 렌더 — 기도내용 이미지 위 손글씨 폰트(Nanum Pen Script) 오버레이
+3. 기도제목 작성자 이름은 빈칸 처리, 입력칸에 이름 + 교구 입력
+4. 정답 제출: `submitHoldPrayGuess` POST — 정답 시 이름 고정 표시
+5. 카드 하단: 말씀 구절(`.footer-note`, 이탤릭) + 홈 버튼
+
+### 자산
+- 카드 이미지: `images/h&p익명.jpeg` (익명 기도자 표지) / `images/Hold&Pray.jpeg`
+- 폰트: Nanum Pen Script (Google Fonts) — 폰트 로드 완료 대기 후 카드 렌더
+
+---
+
+## 10. 단톡방 (Firebase Firestore)
 
 ### 구조
 - 드로어 메뉴: `💬 단톡방` (`data-section="chat"`)
@@ -254,14 +306,16 @@ gh pr create --title "작업 제목" --body "변경 내용"
 
 ---
 
-## 10. 기능별 함수 인덱스
+## 11. 기능별 함수 인덱스
 
 `beyond_us/index.html` 내 주요 함수. 줄번호가 변동되어도 함수명으로 검색 가능.
 
-### 인증 / 세션
+### 인증 / 세션 / 라우팅
 | 기능 | 함수 / 핸들러 |
 |------|---------------|
 | 자동 로그인 | `autoLogin()` |
+| 앱 진입 자격 판정 | `shouldEnterApp(isStaff, appOpenDate)` |
+| Coming Soon 화면 표시 | `showComingSoon()` |
 | 인증 화면 표시 | `showAuth(pane)` |
 | 인증 패널 전환 | `switchAuthPane(pane)` |
 | 로그인 정보 저장 | `saveAuth(nickname, password, parish)` |
@@ -271,6 +325,18 @@ gh pr create --title "작업 제목" --body "변경 내용"
 | 회원가입 | `#registerBtn` click (`action=register`) |
 | 로그인 | `#loginBtn` click (`action=login`) |
 | 비밀번호 재설정 | `#resetBtn` click (`action=resetPassword`) |
+| 로그아웃 | 드로어 로그아웃 버튼 — `beyondus_*` localStorage 클리어 |
+
+### Coming Soon / PWA 설치
+| 기능 | 함수 |
+|------|------|
+| 버전 체크 (강제 갱신) | IIFE `checkVersion()` |
+| Coming Soon 캐러셀 이동 | `csGoTo(idx)` / `csStartAuto()` / `csStopAuto()` |
+| 스와이프/드래그 핸들러 | `onStart(x)` / `onEnd(x)` |
+| 브라우저 자동 감지 | `detectBrowser()` / `renderBrowserStatus()` |
+| 설치 가이드 OS/브라우저 탭 | `csOsTab(os, btn)` / `csBrowserTab(browser, btn)` |
+| 설치 배너 렌더 | `renderInstallBanner()` |
+| H&P 티저 미리보기 로드 | `loadHoldPrayPreview()` |
 
 ### 미션 (체크 / 제출)
 | 기능 | 함수 |
@@ -344,6 +410,14 @@ gh pr create --title "작업 제목" --body "변경 내용"
 | 단톡방 진입 | `initChat()` |
 | 단톡방 정리 | `teardownChat()` |
 
+### Hold & Pray
+| 기능 | 함수 |
+|------|------|
+| H&P 카드 로드 | `loadHoldPray()` |
+| H&P 카드 렌더 | `renderHoldPrayCard(data)` |
+| 티저용 미리보기 로드 | `loadHoldPrayPreview()` |
+| 정답 제출 | `submitHoldPrayGuess` POST |
+
 ### 네비게이션 / UI
 | 기능 | 함수 |
 |------|------|
@@ -352,20 +426,42 @@ gh pr create --title "작업 제목" --body "변경 내용"
 | 섹션 전환 | `switchSection(name)` |
 | HTML 이스케이프 | `escHtml(s)` |
 
+### 드로어 메뉴 순서 (현재)
+`공지사항 → 미션 → Hold & Pray → 컬렉션 → 비밀친구 → 단톡방 → 개발자 문의`
+(컬렉션 하단에 중보기도 버튼 별도 배치)
+
 ### SECTION_IDS (드로어 섹션 키)
-`notice` / `mission` / `collection` / `prayer` / `secret` / `inquiry` / `chat`
+`notice` / `mission` / `prayer` / `collection` / `secret` / `inquiry` / `chat`
 
 ---
 
-## 11. 향후 작업 (Pending)
+## 12. 향후 작업 (Pending)
 
-- [ ] 주차별 뽑기 횟수 정책 GAS 로직 반영 (현재 주 1회 고정)
-- [ ] 현장 카드 4종 + 히든 카드 2종 데이터 정의 및 앱 반영
-- [ ] 히든카드 비밀친구 연동 로직 구현
-- [ ] EN카드 팩·앞면·뒷면 실제 이미지로 교체 (제공 예정)
+### 5/10 OPEN 전 (긴급)
+- [ ] **앱(PWA) ↔ 웹(브라우저) 캘린더 동기화 버그** — 4월 4째주 박스에서 한쪽에서 체크한 게 다른 쪽에 반영 안 됨. 양쪽이 각자의 localStorage만 보고 있을 가능성 (서버 이력 머지 누락) — `loadUserStatus` / `saveSubmittedItems` / `getSubmittedIndices` 흐름 점검 필요
+- [ ] **카드팩 고르는 화면(캐러셀) 로딩 시간 단축** — 이미지 프리로드 / GAS `drawCard` 응답 시간 개선
+- [ ] **컬렉션 중복 보유 시 카드 상세에서 "N장 보유" 텍스트 대신 카드 병렬 시각화**
+
+### 운영 (코드 작업 아님)
+- [x] TF 제외 인원 Coming Soon 노출 — 코드 구현 완료. 시트 정리(`Users.isStaff` F열 운영진만 TRUE)만 남음
+
+### 게임/콘텐츠
+- [ ] **H&P 정답 보상**: 이름·교구 맞추면 뽑기권 지급 정책 확정 + 구현
+- [ ] **H&P 빈칸 답 공유 기능**: 다른 사람이 뭐라고 썼는지 앱에서 볼 수 있도록
+- [ ] **현장 미션 완료 시 그 사람이 미보유한 카드만 노출** — 현장 카드 보상 로직
+- [ ] **카드 확률 계산 재검토** (등급별 / 주차별 threshold)
+- [ ] 주차별 뽑기 횟수 정책 GAS 로직 (현재 주 1회 고정 + 이월 시스템)
+- [ ] **현장 카드 / 히든 카드 데이터 확정 및 앱 반영**
+- [ ] EN카드 팩·앞면·뒷면 실제 이미지로 교체
 - [ ] 물리카드 인쇄 발주 (레드프린팅 + 프린팅팅)
+
+### 비밀친구
+- [ ] **비밀친구 명칭 변경**: B. B. B (Be a Better Buddy 등 — 확정 필요)
+- [ ] **비밀친구 익명 메시지 기능** — 매일 22:00 또는 admin 토글로만 메시지 입력 오픈
+
+### 인프라/보안
 - [ ] **Firestore 보안 규칙 강화** — 5/24 만료 전 닉네임 검증·rate limit 룰 적용
-- [ ] **wrangler.jsonc 머지 충돌 해결** — `compatibility_date` 충돌 마커 제거
 - [ ] 단톡방 페이지네이션 (현재 `limitToLast(100)`만)
 - [ ] 단톡방 메시지 신고/삭제/수정 기능
 - [ ] (선택) Firebase Cloud Messaging 푸시 알림 검토
+- [ ] Cloudflare Pages 배포 채널 활성화 검토 (현재 `https://website-78h.pages.dev/beyond_us/`도 살아있음)
