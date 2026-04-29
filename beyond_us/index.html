@@ -3722,10 +3722,7 @@
       const el = document.getElementById('hpContent');
       if (!el) return;
 
-      const parishDisplay = data.parish && !data.parish.startsWith('*') ? data.parish : '';
-      const parishHtml    = parishDisplay
-        ? `<span class="hp-parish-badge">${escHtml(parishDisplay)}</span>`
-        : '';
+      const parishHtml = ''; // 손바닥 위 교구 뱃지 미표시
 
       const nameLineHtml = data.anon ? '' : `
         <div class="hp-divider"></div>
