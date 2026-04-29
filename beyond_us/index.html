@@ -1185,9 +1185,9 @@
     .hp-card-img { width: 100%; display: block; border-radius: 16px; }
     .hp-overlay {
       position: absolute;
-      top: 28%; bottom: 22%; left: 50%;
+      top: 49%; bottom: 20%; left: 50%;
       transform: translateX(-50%);
-      width: 56%;
+      width: 58%;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
       overflow: hidden;
     }
@@ -1313,7 +1313,7 @@
       flex-shrink: 1; min-height: 0;
     }
     .cs-hp-img { width: 100%; height: auto; display: block; }
-    .cs-hp-overlay { position: absolute; top: 28%; bottom: 22%; left: 50%; transform: translateX(-50%); width: 56%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden; }
+    .cs-hp-overlay { position: absolute; top: 49%; bottom: 20%; left: 50%; transform: translateX(-50%); width: 58%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; overflow: hidden; }
     .cs-hp-content { font-size: clamp(12px, 3.8vw, 17px); line-height: 1.65; color: #2c2010; word-break: keep-all; overflow-wrap: break-word; white-space: pre-wrap; text-align: center; font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; }
 
     /* ── 하단 배너 캐러셀 ── */
@@ -1325,7 +1325,7 @@
     .cs-banner-wrap { width: 100%; overflow: hidden; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,0.10); }
     .cs-banner-track { display: flex; transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); will-change: transform; }
     .cs-banner-card {
-      min-width: 100%; background: var(--card);
+      min-width: 100%; box-sizing: border-box; background: var(--card);
       display: flex; flex-direction: column;
       padding: 14px 18px 14px;
       max-height: 170px; overflow: hidden;
@@ -1966,7 +1966,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260430';
+    const APP_VERSION = '20260430b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
