@@ -1186,7 +1186,8 @@
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
       flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
-      color: var(--text); font-size: 14px; padding: 2px 4px; outline: none; max-width: 120px;
+      color: var(--text); font-size: 18px; padding: 2px 4px; outline: none; max-width: 120px;
+      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
     }
     .hp-inline-input:focus { border-bottom-color: var(--accent); }
     .hp-inline-btn {
@@ -1194,7 +1195,7 @@
       cursor: pointer; padding: 3px 8px; border-radius: 6px;
       border: 1px solid var(--accent); line-height: 1.4; white-space: nowrap;
     }
-    .hp-inline-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .hp-inline-name { font-size: 20px; font-weight: 400; color: var(--text); font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; }
     .hp-result-inline { font-size: 12px; margin-top: 6px; display: block; }
     .hp-result-inline.correct { color: #81c784; }
     .hp-result-inline.wrong { color: #ef9a9a; }
@@ -1917,7 +1918,7 @@
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260428n';
+    const APP_VERSION = '20260429';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
