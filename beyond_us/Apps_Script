@@ -53,6 +53,24 @@ function doGet(e) {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getCardStats());
   }
+  if (action === 'getPublicCollection') {
+    const uid = e.parameter.userId || '';
+    if (!uid) return jsonOutput({ error: 'missing_userId' });
+    return jsonOutput({ ok: true, collection: getUserCollection(uid) });
+  }
+  if (action === 'getTrades') {
+    const uid = e.parameter.userId || '';
+    if (!uid) return jsonOutput({ error: 'missing_userId' });
+    return jsonOutput(getTrades(uid));
+  }
+  if (action === 'getAdminTrades') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(getAdminTrades());
+  }
+  if (action === 'migrateCardDrawsToCollection') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(migrateCardDrawsToCollection());
+  }
 
   return jsonOutput({ ok: false, message: 'Unknown action' });
 }
@@ -122,6 +140,10 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(editNotice(body));
     }
+    if (action === 'requestTrade') return jsonOutput(requestTrade(body));
+    if (action === 'acceptTrade')  return jsonOutput(acceptTrade(body));
+    if (action === 'rejectTrade')  return jsonOutput(rejectTrade(body));
+    if (action === 'cancelTrade')  return jsonOutput(cancelTrade(body));
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -323,7 +345,8 @@ function getUserStatus(userId, weekKey) {
     }
   } catch(e) {}
 
-  // 카드 뽑기 이력
+  // 카드 뽑기 이력 (drawnThisWeek, weekCard, 총 뽑기 수 카운트용)
+  let totalDraws = 0;
   try {
     const draws = getOrCreateDrawSheet();
     const last  = draws.getLastRow();
@@ -331,12 +354,21 @@ function getUserStatus(userId, weekKey) {
       const rows = draws.getRange(2, 1, last - 1, 5).getValues();
       for (const row of rows) {
         if (String(row[0]) !== userId) continue;
+        totalDraws++;
         const card = SPIRIT_CARDS.find(c => c.id === Number(row[2]));
         if (!card) continue;
-        collection.push({...card, drawnAt: row[4]});
         if (String(row[1]) === weekKey) { drawnThisWeek = true; weekCard = card; }
       }
     }
+  } catch(e) {}
+
+  // 컬렉션 (Collection 시트에서 읽기 — 교환 결과 반영됨)
+  try {
+    const collCounts = getUserCollection(userId);
+    SPIRIT_CARDS.forEach(card => {
+      const cnt = collCounts[card.id] || 0;
+      for (let j = 0; j < cnt; j++) collection.push({...card});
+    });
   } catch(e) {}
 
   // 이월 뽑기권 계산: 1~currentWeek 중 자격 얻은 주 수 - 실제 뽑은 수
@@ -353,7 +385,7 @@ function getUserStatus(userId, weekKey) {
         .reduce((s, r) => s + (Number(r[6]) || 0), 0);
       if (wScore >= wThreshold) qualifiedWeeks++;
     }
-    pendingDraws = Math.max(0, qualifiedWeeks - collection.length);
+    pendingDraws = Math.max(0, qualifiedWeeks - totalDraws);
   } catch(e) {}
 
   return {
@@ -418,6 +450,7 @@ function drawCard(userId, weekKey, testMode) {
     // 테스트 모드가 아닐 때만 시트에 기록
     const draws = getOrCreateDrawSheet();
     draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
+    updateCollectionSheet(userId, card.id, 1);
   }
   return { ok: true, card };
 }
@@ -915,6 +948,293 @@ function replyInquiry(body) {
     }
   }
   return { error: 'not_found' };
+}
+
+// ── Collection 시트 ───────────────────────────────
+function getOrCreateCollectionSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('Collection');
+  if (!sheet) {
+    sheet = ss.insertSheet('Collection');
+    sheet.appendRow(['userId','card1','card2','card3','card4','card5','card6','card7','card8','card9']);
+  }
+  return sheet;
+}
+
+// { cardId: count } 형태로 반환
+function getUserCollection(userId) {
+  const sheet = getOrCreateCollectionSheet();
+  const last = sheet.getLastRow();
+  if (last < 2) return {};
+  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  for (const row of rows) {
+    if (String(row[0]) !== userId) continue;
+    const counts = {};
+    for (let i = 1; i <= 9; i++) {
+      const cnt = Number(row[i]) || 0;
+      if (cnt > 0) counts[i] = cnt;
+    }
+    return counts;
+  }
+  return {};
+}
+
+// delta: +1 추가, -1 제거
+function updateCollectionSheet(userId, cardId, delta) {
+  const sheet = getOrCreateCollectionSheet();
+  const last = sheet.getLastRow();
+  let rowIndex = -1;
+  if (last >= 2) {
+    const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === userId) { rowIndex = i + 2; break; }
+    }
+  }
+  if (rowIndex === -1) {
+    const newRow = [userId, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    if (delta > 0) newRow[cardId] = delta; // cardId 1~9 → index 1~9
+    sheet.appendRow(newRow);
+  } else {
+    const col = cardId + 1; // userId=col1, card1=col2, ..., card9=col10
+    const cell = sheet.getRange(rowIndex, col);
+    cell.setValue(Math.max(0, (Number(cell.getValue()) || 0) + delta));
+  }
+}
+
+// CardDraws → Collection 마이그레이션 (admin에서 1회 실행)
+function migrateCardDrawsToCollection() {
+  const draws = getOrCreateDrawSheet();
+  const last = draws.getLastRow();
+  if (last < 2) return { ok: true, migrated: 0 };
+
+  const rows = draws.getRange(2, 1, last - 1, 5).getValues();
+  const userCounts = {};
+  for (const row of rows) {
+    const uid = String(row[0]);
+    const cid = Number(row[2]);
+    if (!uid || !cid) continue;
+    if (!userCounts[uid]) userCounts[uid] = {};
+    userCounts[uid][cid] = (userCounts[uid][cid] || 0) + 1;
+  }
+
+  const collSheet = getOrCreateCollectionSheet();
+  if (collSheet.getLastRow() > 1) {
+    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 10).clearContent();
+  }
+  for (const [uid, cards] of Object.entries(userCounts)) {
+    const row = [uid, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (let i = 1; i <= 9; i++) row[i] = cards[i] || 0;
+    collSheet.appendRow(row);
+  }
+  return { ok: true, migrated: Object.keys(userCounts).length };
+}
+
+// ── Trades 시트 ───────────────────────────────────
+function getOrCreateTradesSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('Trades');
+  if (!sheet) {
+    sheet = ss.insertSheet('Trades');
+    sheet.appendRow(['id','requester','requesterCardId','requesterCardName','target','targetCardId','targetCardName','status','createdAt','resolvedAt']);
+  }
+  return sheet;
+}
+
+function requestTrade(body) {
+  const requester       = String(body.nickname       || '').trim();
+  const requesterCardId = Number(body.requesterCardId);
+  const target          = String(body.targetNickname  || '').trim();
+  const targetCardId    = Number(body.targetCardId);
+
+  if (!requester || !target || !requesterCardId || !targetCardId)
+    return { error: '필수 항목이 누락됐어요.' };
+  if (requester === target)
+    return { error: '자기 자신과 교환할 수 없어요.' };
+
+  const reqCard = SPIRIT_CARDS.find(c => c.id === requesterCardId);
+  const tgtCard = SPIRIT_CARDS.find(c => c.id === targetCardId);
+  if (!reqCard || !tgtCard) return { error: '유효하지 않은 카드예요.' };
+
+  // 보유 확인
+  const reqColl = getUserCollection(requester);
+  if (!(reqColl[requesterCardId] > 0)) return { error: '내가 해당 카드를 보유하고 있지 않아요.' };
+  const tgtColl = getUserCollection(target);
+  if (!(tgtColl[targetCardId] > 0)) return { error: '상대방이 해당 카드를 보유하고 있지 않아요.' };
+
+  const id = String(new Date().getTime());
+  getOrCreateTradesSheet().appendRow([
+    id, requester, requesterCardId, reqCard.name,
+    target, targetCardId, tgtCard.name,
+    'pending', new Date().toISOString(), ''
+  ]);
+  return { ok: true, tradeId: id };
+}
+
+function acceptTrade(body) {
+  const tradeId  = String(body.tradeId   || '');
+  const nickname = String(body.nickname  || '').trim();
+  if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
+
+  const sheet = getOrCreateTradesSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+
+  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) !== tradeId) continue;
+    if (String(rows[i][4]) !== nickname) return { error: 'unauthorized' };
+    if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
+
+    const requester       = String(rows[i][1]);
+    const requesterCardId = Number(rows[i][2]);
+    const targetCardId    = Number(rows[i][5]);
+
+    // 카드 보유 재확인
+    if (!(getUserCollection(requester)[requesterCardId] > 0))
+      return { error: '상대방이 더 이상 해당 카드를 보유하지 않아요.' };
+    if (!(getUserCollection(nickname)[targetCardId] > 0))
+      return { error: '내가 더 이상 해당 카드를 보유하지 않아요.' };
+
+    // 양쪽 컬렉션 업데이트
+    updateCollectionSheet(requester, requesterCardId, -1);
+    updateCollectionSheet(requester, targetCardId,    +1);
+    updateCollectionSheet(nickname,  targetCardId,    -1);
+    updateCollectionSheet(nickname,  requesterCardId, +1);
+
+    sheet.getRange(i + 2, 8).setValue('accepted');
+    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    return { ok: true };
+  }
+  return { error: 'not_found' };
+}
+
+function rejectTrade(body) {
+  const tradeId  = String(body.tradeId  || '');
+  const nickname = String(body.nickname || '').trim();
+  if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
+
+  const sheet = getOrCreateTradesSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+
+  const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) !== tradeId) continue;
+    if (String(rows[i][4]) !== nickname) return { error: 'unauthorized' };
+    if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
+    sheet.getRange(i + 2, 8).setValue('rejected');
+    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    return { ok: true };
+  }
+  return { error: 'not_found' };
+}
+
+function cancelTrade(body) {
+  const tradeId  = String(body.tradeId  || '');
+  const nickname = String(body.nickname || '').trim();
+  if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
+
+  const sheet = getOrCreateTradesSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+
+  const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) !== tradeId) continue;
+    if (String(rows[i][1]) !== nickname) return { error: 'unauthorized' };
+    if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
+    sheet.getRange(i + 2, 8).setValue('cancelled');
+    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    return { ok: true };
+  }
+  return { error: 'not_found' };
+}
+
+function getTrades(userId) {
+  const sheet = getOrCreateTradesSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { ok: true, incoming: [], outgoing: [] };
+
+  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const incoming = [], outgoing = [];
+  rows.forEach(row => {
+    if (!row[0]) return;
+    const t = {
+      id: String(row[0]), requester: String(row[1]),
+      requesterCardId: Number(row[2]), requesterCardName: String(row[3]),
+      target: String(row[4]),
+      targetCardId: Number(row[5]), targetCardName: String(row[6]),
+      status: String(row[7]), createdAt: String(row[8]), resolvedAt: String(row[9])
+    };
+    if (t.target   === userId) incoming.push(t);
+    if (t.requester === userId) outgoing.push(t);
+  });
+  incoming.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  outgoing.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { ok: true, incoming, outgoing };
+}
+
+function getAdminTrades() {
+  const sheet = getOrCreateTradesSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { ok: true, trades: [] };
+
+  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const trades = rows
+    .filter(r => r[0])
+    .map(row => ({
+      id: String(row[0]), requester: String(row[1]),
+      requesterCardId: Number(row[2]), requesterCardName: String(row[3]),
+      target: String(row[4]),
+      targetCardId: Number(row[5]), targetCardName: String(row[6]),
+      status: String(row[7]), createdAt: String(row[8]), resolvedAt: String(row[9])
+    }));
+  trades.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return { ok: true, trades };
+}
+
+// ── 자동 백업 ─────────────────────────────────────
+const BACKUP_FOLDER_NAME = 'BeyondUs_Backup';
+const BACKUP_KEEP_COUNT  = 7; // 최근 N개만 유지
+
+function backupSpreadsheet() {
+  try {
+    // 백업 폴더 찾기 (없으면 생성)
+    let folder;
+    const folders = DriveApp.getFoldersByName(BACKUP_FOLDER_NAME);
+    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(BACKUP_FOLDER_NAME);
+
+    const dateStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd_HHmm');
+
+    // PROD 백업
+    DriveApp.getFileById(SPREADSHEET_ID)
+      .makeCopy('BeyondUs_PROD_' + dateStr, folder);
+    _cleanOldBackups(folder, 'BeyondUs_PROD_');
+
+    // DEV 백업
+    DriveApp.getFileById(DEV_SPREADSHEET_ID)
+      .makeCopy('BeyondUs_DEV_' + dateStr, folder);
+    _cleanOldBackups(folder, 'BeyondUs_DEV_');
+
+    Logger.log('백업 완료: ' + dateStr);
+    return { ok: true, backed_up: dateStr };
+  } catch(e) {
+    Logger.log('백업 오류: ' + e);
+    return { error: String(e) };
+  }
+}
+
+function _cleanOldBackups(folder, prefix) {
+  const files = [];
+  const iter = folder.getFiles();
+  while (iter.hasNext()) {
+    const f = iter.next();
+    if (f.getName().startsWith(prefix)) files.push(f);
+  }
+  files.sort((a, b) => a.getName() < b.getName() ? -1 : 1);
+  while (files.length > BACKUP_KEEP_COUNT) {
+    files.shift().setTrashed(true);
+  }
 }
 
 // ── 공통 ─────────────────────────────────────────

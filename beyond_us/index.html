@@ -1773,7 +1773,7 @@
         <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission">미션</li>
         <li class="drawer-item" data-section="prayer">Hold &amp; Pray</li>
-        <li class="drawer-item" data-section="collection">컬렉션</li>
+        <li class="drawer-item" data-section="collection">컬렉션 <span id="drawerTradeDot" style="display:none;background:#e8854a;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span></li>
         <li class="drawer-item" data-section="secret">비밀친구</li>
         <li class="drawer-item" data-section="chat">💬 단톡방</li>
         <li class="drawer-item" data-section="inquiry">개발자 문의</li>
@@ -1890,14 +1890,64 @@
       <div id="sectionCollection" class="section hidden">
         <div class="wrap">
           <section class="card" style="margin-top:20px;">
-            <h2 class="card-title">내 컬렉션</h2>
-            <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
-            <div class="collection-grid" id="collectionGrid"></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+              <h2 class="card-title" style="margin:0;">내 컬렉션</h2>
+              <div style="display:flex; gap:6px;">
+                <button id="collTabGrid" onclick="switchCollTab('grid')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:none;cursor:pointer;background:#7c3aed;color:#fff;">컬렉션</button>
+                <button id="collTabTrades" onclick="switchCollTab('trades')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:1.5px solid #7c3aed;cursor:pointer;background:transparent;color:#a78bfa;">교환현황 <span id="collTradeBadge" style="display:none;background:#e8854a;color:#fff;border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span></button>
+              </div>
+            </div>
+            <!-- 내 컬렉션 패널 -->
+            <div id="collPanelGrid">
+              <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
+              <div class="collection-grid" id="collectionGrid"></div>
+            </div>
+            <!-- 교환 현황 패널 -->
+            <div id="collPanelTrades" style="display:none;">
+              <div id="tradesList"><p class="card-sub">교환 내역이 없어요.</p></div>
+            </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
-              <button class="btn btn-secondary" style="flex:1;" onclick="switchSection('mission')">← 홈으로 돌아가기</button>
-              <button class="btn btn-primary" style="flex:1;" onclick="switchSection('prayer')">중보기도 하러가기</button>
+              <button class="btn btn-secondary" style="flex:1;" onclick="switchSection('mission')">← 홈으로</button>
+              <button class="btn btn-primary" style="flex:1;" onclick="switchSection('prayer')">중보기도 →</button>
             </div>
           </section>
+        </div>
+      </div>
+
+      <!-- 교환 신청 모달 -->
+      <div id="tradeOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,8,28,0.92);z-index:500;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div style="max-width:380px;margin:32px auto 60px;padding:24px 20px;background:#1e1e3a;border-radius:20px;position:relative;">
+          <button onclick="closeTradeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--sub);font-size:24px;cursor:pointer;line-height:1;">×</button>
+          <h3 id="tradeModalTitle" style="margin:0 0 4px;font-size:16px;font-weight:700;color:var(--text);">카드 교환 신청</h3>
+          <div id="tradeStepIndicator" style="font-size:11px;color:var(--sub);margin-bottom:16px;"></div>
+          <!-- Step 1: 닉네임 검색 -->
+          <div id="tradeStep1">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">교환할 상대방 닉네임을 입력해주세요.</p>
+            <div style="display:flex;gap:8px;">
+              <input id="tradeTargetInput" class="input" placeholder="닉네임" style="flex:1;font-size:14px;" onkeydown="if(event.key==='Enter')tradeSearchUser()" />
+              <button class="btn btn-primary" style="flex:none;font-size:13px;padding:0 14px;" onclick="tradeSearchUser()">검색</button>
+            </div>
+            <div id="tradeSearchResult" style="margin-top:10px;font-size:13px;min-height:24px;"></div>
+          </div>
+          <!-- Step 2: 내 카드 선택 -->
+          <div id="tradeStep2" style="display:none;">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">내가 <strong>줄</strong> 카드를 선택해주세요.</p>
+            <div id="tradeMyCards" class="collection-grid" style="gap:8px;"></div>
+          </div>
+          <!-- Step 3: 상대 카드 선택 -->
+          <div id="tradeStep3" style="display:none;">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 12px;"><strong id="tradeTargetName"></strong>님에게서 <strong>받을</strong> 카드를 선택해주세요.</p>
+            <div id="tradeTheirCards" class="collection-grid" style="gap:8px;"></div>
+          </div>
+          <!-- Step 4: 확인 -->
+          <div id="tradeStep4" style="display:none;">
+            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:rgba(124,58,237,0.1);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
+            <div id="tradeSubmitStatus" style="font-size:13px;color:var(--danger);margin-bottom:8px;min-height:18px;"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" style="flex:1;" onclick="tradeGoBack()">← 다시 선택</button>
+              <button class="btn btn-primary" style="flex:1;" id="tradeSubmitBtn" onclick="submitTradeRequest()">신청 보내기</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2634,18 +2684,279 @@
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
         const unlockedContent = `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
+        const tradeBtn = !locked
+          ? `<button onclick="event.stopPropagation();openTradeModal(${card.id})" style="display:block;width:100%;margin-top:4px;font-size:10px;padding:2px 0;background:rgba(232,133,74,0.18);color:#e8854a;border:1px solid rgba(232,133,74,0.4);border-radius:6px;cursor:pointer;font-weight:600;">교환</button>`
+          : '';
         return `
-          <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
+          <div class="mini-card-wrap" style="${!locked ? 'cursor:pointer;' : ''}">
             ${ghosts}
-            <div class="mini-card ${locked ? 'mini-card-locked' : 'mini-card-img'}">
+            <div class="mini-card ${locked ? 'mini-card-locked' : 'mini-card-img'}" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})"` : ''}>
               ${locked
                 ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
                 : unlockedContent
               }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
+            ${tradeBtn}
           </div>`;
       }).join('');
+    }
+
+    /* ════ 교환 시스템 ════ */
+    let _tradeTargetNickname = '';
+    let _tradeTargetColl = {};
+    let _tradeMyCardId = null;
+    let _tradeTheirCardId = null;
+    let _tradeStep = 1;
+    let _cachedTrades = null;
+
+    function switchCollTab(tab) {
+      const isGrid = tab === 'grid';
+      document.getElementById('collPanelGrid').style.display   = isGrid ? '' : 'none';
+      document.getElementById('collPanelTrades').style.display = isGrid ? 'none' : '';
+      document.getElementById('collTabGrid').style.background    = isGrid ? '#7c3aed' : 'transparent';
+      document.getElementById('collTabGrid').style.color         = isGrid ? '#fff' : '#a78bfa';
+      document.getElementById('collTabTrades').style.background  = isGrid ? 'transparent' : '#7c3aed';
+      document.getElementById('collTabTrades').style.color       = isGrid ? '#a78bfa' : '#fff';
+      if (!isGrid) loadTrades();
+    }
+
+    function openTradeModal(preCardId) {
+      _tradeTargetNickname = ''; _tradeTargetColl = {};
+      _tradeMyCardId = preCardId || null; _tradeTheirCardId = null;
+      _tradeStep = 1;
+      document.getElementById('tradeTargetInput').value = '';
+      document.getElementById('tradeSearchResult').innerHTML = '';
+      document.getElementById('tradeOverlay').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      _tradeShowStep(1);
+    }
+
+    function closeTradeModal() {
+      document.getElementById('tradeOverlay').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function _tradeShowStep(n) {
+      _tradeStep = n;
+      [1,2,3,4].forEach(i => {
+        document.getElementById('tradeStep' + i).style.display = i === n ? '' : 'none';
+      });
+      const labels = ['상대방 검색', '내 카드 선택', '상대 카드 선택', '확인'];
+      document.getElementById('tradeStepIndicator').textContent = `Step ${n}/4 — ${labels[n-1]}`;
+    }
+
+    async function tradeSearchUser() {
+      const nick = document.getElementById('tradeTargetInput').value.trim();
+      const el = document.getElementById('tradeSearchResult');
+      if (!nick) { el.textContent = '닉네임을 입력해주세요.'; return; }
+      if (nick === currentNickname) { el.textContent = '자기 자신과는 교환할 수 없어요.'; return; }
+      el.textContent = '검색 중...';
+      try {
+        const res = await fetch(`${API_BASE}?action=getPublicCollection&userId=${encodeURIComponent(nick)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        if (!res.ok) { el.textContent = '찾을 수 없는 닉네임이에요.'; return; }
+        const hasCards = Object.values(res.collection || {}).some(v => v > 0);
+        if (!hasCards) { el.textContent = `${nick}님은 보유 카드가 없어요.`; return; }
+        _tradeTargetNickname = nick;
+        _tradeTargetColl = res.collection || {};
+        el.innerHTML = `<span style="color:#4ade80;font-weight:700;">✓ ${nick}님을 찾았어요!</span>`;
+        setTimeout(() => {
+          if (_tradeMyCardId) _tradeShowStep(3), _renderTheirCards();
+          else _tradeShowStep(2), _renderMyCards();
+        }, 600);
+      } catch(e) { el.textContent = '검색 실패. 다시 시도해주세요.'; }
+    }
+
+    function _renderMyCards() {
+      const counts = {};
+      (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
+      const container = document.getElementById('tradeMyCards');
+      container.innerHTML = SPIRIT_CARDS.map(card => {
+        const cnt = counts[card.id] || 0;
+        if (cnt === 0) return '';
+        const sel = _tradeMyCardId === card.id ? 'outline:2.5px solid #e8854a;' : '';
+        return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectMyCard(${card.id})">
+          <div class="mini-card mini-card-img" style="${sel}">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+          </div>
+          <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name}</div>
+        </div>`;
+      }).join('');
+      if (!container.innerHTML.trim()) container.innerHTML = '<p style="color:var(--sub);font-size:13px;">보유 카드가 없어요.</p>';
+    }
+
+    function tradeSelectMyCard(cardId) {
+      _tradeMyCardId = cardId;
+      _renderMyCards();
+      setTimeout(() => { _tradeShowStep(3); _renderTheirCards(); }, 300);
+    }
+
+    function _renderTheirCards() {
+      document.getElementById('tradeTargetName').textContent = _tradeTargetNickname;
+      const container = document.getElementById('tradeTheirCards');
+      container.innerHTML = SPIRIT_CARDS.map(card => {
+        const cnt = _tradeTargetColl[card.id] || 0;
+        if (cnt === 0) return '';
+        const sel = _tradeTheirCardId === card.id ? 'outline:2.5px solid #7c3aed;' : '';
+        return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectTheirCard(${card.id})">
+          <div class="mini-card mini-card-img" style="${sel}">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+          </div>
+          <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name}</div>
+        </div>`;
+      }).join('');
+      if (!container.innerHTML.trim()) container.innerHTML = '<p style="color:var(--sub);font-size:13px;">상대방이 보유한 카드가 없어요.</p>';
+    }
+
+    function tradeSelectTheirCard(cardId) {
+      _tradeTheirCardId = cardId;
+      _renderTheirCards();
+      const myCard = SPIRIT_CARDS.find(c => c.id === _tradeMyCardId);
+      const theirCard = SPIRIT_CARDS.find(c => c.id === _tradeTheirCardId);
+      document.getElementById('tradeConfirmText').innerHTML =
+        `내 <strong style="color:#e8854a;">${myCard.name}</strong> 카드를 주고<br>${_tradeTargetNickname}님의 <strong style="color:#a78bfa;">${theirCard.name}</strong> 카드를 받습니다.`;
+      document.getElementById('tradeSubmitStatus').textContent = '';
+      document.getElementById('tradeSubmitBtn').disabled = false;
+      setTimeout(() => _tradeShowStep(4), 300);
+    }
+
+    function tradeGoBack() {
+      if (_tradeStep === 4) { _tradeShowStep(3); _renderTheirCards(); }
+      else if (_tradeStep === 3) { _tradeShowStep(2); _renderMyCards(); }
+      else if (_tradeStep === 2) { _tradeShowStep(1); }
+    }
+
+    async function submitTradeRequest() {
+      const btn = document.getElementById('tradeSubmitBtn');
+      const statusEl = document.getElementById('tradeSubmitStatus');
+      btn.disabled = true;
+      statusEl.textContent = '전송 중...';
+      try {
+        const res = await post({
+          action: 'requestTrade',
+          nickname: currentNickname,
+          requesterCardId: _tradeMyCardId,
+          targetNickname: _tradeTargetNickname,
+          targetCardId: _tradeTheirCardId
+        });
+        if (res.ok) {
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = '✓ 교환 신청이 전송됐어요!';
+          setTimeout(() => { closeTradeModal(); loadTrades(); }, 1200);
+        } else {
+          statusEl.style.color = 'var(--danger)';
+          statusEl.textContent = res.error || '오류가 발생했어요.';
+          btn.disabled = false;
+        }
+      } catch(e) { statusEl.textContent = '연결 오류'; btn.disabled = false; }
+    }
+
+    async function loadTrades() {
+      if (!currentNickname) return;
+      try {
+        const res = await fetch(`${API_BASE}?action=getTrades&userId=${encodeURIComponent(currentNickname)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        if (!res.ok) return;
+        _cachedTrades = res;
+        const pendingIn = (res.incoming || []).filter(t => t.status === 'pending').length;
+        const dot = document.getElementById('drawerTradeDot');
+        const badge = document.getElementById('collTradeBadge');
+        if (pendingIn > 0) {
+          dot.style.display = ''; dot.textContent = pendingIn;
+          badge.style.display = ''; badge.textContent = pendingIn;
+        } else {
+          dot.style.display = 'none';
+          badge.style.display = 'none';
+        }
+        renderTrades(res);
+      } catch(e) {}
+    }
+
+    function renderTrades(data) {
+      const el = document.getElementById('tradesList');
+      if (!el) return;
+      const incoming = data.incoming || [];
+      const outgoing = data.outgoing || [];
+      if (!incoming.length && !outgoing.length) {
+        el.innerHTML = '<p class="card-sub">교환 내역이 없어요.</p>'; return;
+      }
+      const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨' };
+      const statusColor = { pending:'#f59e0b', accepted:'#4ade80', rejected:'#f87171', cancelled:'#6b7280' };
+
+      const renderItem = (t, isMine) => {
+        const myCard = isMine ? t.requesterCardName : t.targetCardName;
+        const theirCard = isMine ? t.targetCardName : t.requesterCardName;
+        const otherNick = isMine ? t.target : t.requester;
+        const col = statusColor[t.status] || '#888';
+        const label = statusLabel[t.status] || t.status;
+        const actions = t.status === 'pending'
+          ? (isMine
+            ? `<button onclick="doTradeCancelTrade('${t.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #6b7280;background:transparent;color:#9ca3af;cursor:pointer;">취소</button>`
+            : `<div style="display:flex;gap:6px;">
+                <button onclick="doTradeAccept('${t.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:none;background:#4ade80;color:#000;cursor:pointer;font-weight:700;">수락</button>
+                <button onclick="doTradeReject('${t.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer;">거절</button>
+              </div>`)
+          : '';
+        return `<div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:12px;font-weight:700;color:${col};">${label}</span>
+            <span style="font-size:11px;color:var(--sub);">${isMine ? '→ ' + otherNick : otherNick + ' →'}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text);">
+            <span style="color:#e8854a;font-weight:600;">${myCard}</span>
+            <span style="color:var(--sub);"> ↔ </span>
+            <span style="color:#a78bfa;font-weight:600;">${theirCard}</span>
+          </div>
+          ${actions ? `<div style="margin-top:8px;">${actions}</div>` : ''}
+        </div>`;
+      };
+
+      let html = '';
+      const pendingIn = incoming.filter(t => t.status === 'pending');
+      if (pendingIn.length) {
+        html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:0 0 6px;">받은 요청</p>`;
+        html += pendingIn.map(t => renderItem(t, false)).join('');
+      }
+      const pendingOut = outgoing.filter(t => t.status === 'pending');
+      if (pendingOut.length) {
+        html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:${pendingIn.length ? '12px' : '0'} 0 6px;">보낸 요청</p>`;
+        html += pendingOut.map(t => renderItem(t, true)).join('');
+      }
+      const resolved = [...incoming, ...outgoing]
+        .filter(t => t.status !== 'pending')
+        .sort((a,b) => b.resolvedAt.localeCompare(a.resolvedAt))
+        .slice(0, 20);
+      if (resolved.length) {
+        html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:12px 0 6px;">완료된 교환</p>`;
+        html += resolved.map(t => renderItem(t, t.requester === currentNickname)).join('');
+      }
+      el.innerHTML = html || '<p class="card-sub">교환 내역이 없어요.</p>';
+    }
+
+    async function doTradeAccept(tradeId) {
+      if (!confirm('교환을 수락할까요?')) return;
+      try {
+        const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
+        if (res.ok) { await loadUserStatus(); await loadTrades(); alert('교환이 완료됐어요! 🎉'); }
+        else alert(res.error || '수락 실패');
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    async function doTradeReject(tradeId) {
+      if (!confirm('교환을 거절할까요?')) return;
+      try {
+        const res = await post({ action: 'rejectTrade', tradeId, nickname: currentNickname });
+        if (res.ok) loadTrades();
+        else alert(res.error || '거절 실패');
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    async function doTradeCancelTrade(tradeId) {
+      if (!confirm('교환 신청을 취소할까요?')) return;
+      try {
+        const res = await post({ action: 'cancelTrade', tradeId, nickname: currentNickname });
+        if (res.ok) loadTrades();
+        else alert(res.error || '취소 실패');
+      } catch(e) { alert('연결 오류'); }
     }
 
     /* ════ userStatus API ════ */
@@ -2675,6 +2986,7 @@
       renderCollection();
       updateScoreProgress();
       if (lastConfigData) renderConfig(lastConfigData);
+      loadTrades();
     }
 
     function ensureRevealSparks() {

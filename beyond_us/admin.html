@@ -157,6 +157,7 @@
         <button class="tab-btn" data-tab="users">👥 유저</button>
         <button class="tab-btn" data-tab="notice">📢 공지</button>
         <button class="tab-btn" data-tab="inquiry">💬 문의</button>
+        <button class="tab-btn" data-tab="trades">🔄 교환</button>
         <button class="tab-btn" data-tab="settings">⚙️ 설정</button>
       </div>
 
@@ -293,6 +294,17 @@
             <button class="btn btn-ghost btn-sm" id="refreshInquiryAdminBtn">새로고침</button>
           </div>
           <div id="inquiryAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- ⑤ 교환 로그 -->
+      <div id="tab-trades" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">교환 로그</h2>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="loadAdminTrades()">새로고침</button>
+          </div>
+          <div id="tradesLogBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -445,6 +457,7 @@
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'cards')   loadCardStats();
         if (btn.dataset.tab === 'inquiry') loadAdminInquiries();
+        if (btn.dataset.tab === 'trades')  loadAdminTrades();
       });
     });
 
@@ -600,6 +613,9 @@
     });
 
     /* ── API 헬퍼 ── */
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
     function get(params) {
       const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
       return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
@@ -995,6 +1011,43 @@
     document.getElementById('refreshNoticeBtn').addEventListener('click', loadAdminNotices);
 
     /* ── 개발자 문의 ── */
+    async function loadAdminTrades() {
+      const el = document.getElementById('tradesLogBody');
+      el.innerHTML = '<p style="color:var(--sub);font-size:13px;">불러오는 중...</p>';
+      try {
+        const res = await get({ action: 'getAdminTrades', adminPw });
+        if (!res.ok) { el.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
+        const trades = res.trades || [];
+        if (!trades.length) { el.innerHTML = '<p style="color:var(--sub);font-size:13px;">교환 내역이 없어요.</p>'; return; }
+        const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨' };
+        const statusColor = { pending:'#f59e0b', accepted:'#4ade80', rejected:'#f87171', cancelled:'#6b7280' };
+        el.innerHTML = `<div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">상태</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">신청자</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">주는 카드</th>
+              <th style="padding:8px 6px;text-align:center;font-weight:600;">↔</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">상대방</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">받는 카드</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">일시</th>
+            </tr></thead>
+            <tbody>${trades.map(t => `
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:8px 6px;color:${statusColor[t.status]||'#888'};font-weight:700;">${statusLabel[t.status]||t.status}</td>
+                <td style="padding:8px 6px;">${escHtml(t.requester)}</td>
+                <td style="padding:8px 6px;color:#e8854a;">${escHtml(t.requesterCardName)}</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--sub);">↔</td>
+                <td style="padding:8px 6px;">${escHtml(t.target)}</td>
+                <td style="padding:8px 6px;color:#a78bfa;">${escHtml(t.targetCardName)}</td>
+                <td style="padding:8px 6px;color:var(--sub);font-size:11px;">${t.createdAt ? t.createdAt.slice(0,16).replace('T',' ') : '-'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      } catch(e) { el.innerHTML = '<p style="color:var(--danger);">오류 발생</p>'; }
+    }
+
     async function loadAdminInquiries() {
       const listEl = document.getElementById('inquiryAdminList');
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
