@@ -409,8 +409,8 @@ function drawCard(userId, weekKey, testMode) {
   const config = getConfig();
   const ss     = getSpreadsheet();
 
-  if (!testMode) {
-    // 이월 포함 pendingDraws 계산
+  // DEV 환경은 뽑기권 검증 스킵 (테스트 자유롭게)
+  if (!_devMode) {
     let allRows = [];
     try {
       const raw  = ss.getSheetByName(RAW_SHEET_NAME);
@@ -446,12 +446,10 @@ function drawCard(userId, weekKey, testMode) {
   }
 
   const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
-  if (!testMode) {
-    // 테스트 모드가 아닐 때만 시트에 기록
-    const draws = getOrCreateDrawSheet();
-    draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
-    updateCollectionSheet(userId, card.id, 1);
-  }
+  // 항상 시트에 기록 (DEV → DEV 시트, PROD → PROD 시트)
+  const draws = getOrCreateDrawSheet();
+  draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
+  updateCollectionSheet(userId, card.id, 1);
   return { ok: true, card };
 }
 
