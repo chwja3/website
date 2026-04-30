@@ -13,11 +13,10 @@
 
 ## 🔴 즉시 (오늘·내일)
 
-- [ ] **GAS 재배포** ← 지금 안 하면 아래가 전부 안 됨
+- [x] **GAS 재배포** — 완료
   - 공지사항 이미지 첨부 (Drive URL 저장)
   - dev/prod 시트 분리 (`devMode` 라우팅)
   - Users 함수 `getSpreadsheet()` 수정 반영
-  - 방법: GAS 에디터 → 배포 관리 → 기존 배포 새 버전으로 업데이트
 
 - [ ] **Firestore 보안 규칙 강화** — **5/24 만료** 전에 반드시 처리
   - 현재: 테스트 모드 (`allow read, write: if request.time < 2026-05-24`)

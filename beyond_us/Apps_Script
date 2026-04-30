@@ -597,7 +597,7 @@ function uploadNoticeToDrive(imageBase64, imageMime) {
     const blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), imageMime, filename);
     const file = DriveApp.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return 'https://lh3.googleusercontent.com/d/' + file.getId();
+    return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1200';
   } catch(e) {
     Logger.log('Drive upload error: ' + e);
     return '';

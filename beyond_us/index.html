@@ -3581,7 +3581,7 @@
       function driveImgSrc(url) {
         if (!url) return '';
         const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        return m ? 'https://lh3.googleusercontent.com/d/' + m[1] : url;
+        return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200' : url;
       }
       list.innerHTML = notices.map(n => {
         const isNew = !seen.includes(n.id);
