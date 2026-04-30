@@ -1297,7 +1297,7 @@ function getOrCreateBBBSheet() {
   let sheet = ss.getSheetByName('BBB');
   if (!sheet) {
     sheet = ss.insertSheet('BBB');
-    sheet.appendRow(['userId', 'careBuddyId', 'careBuddyName', 'secretRevealed']);
+    sheet.appendRow(['userId', 'careBuddyId', 'careBuddyName', 'secretRevealed', 'secretBuddyId', 'secretBuddyName']);
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -1345,16 +1345,18 @@ function setupBBBMatching() {
   const bbbSheet = getOrCreateBBBSheet();
   // 기존 데이터 초기화 (헤더 제외)
   if (bbbSheet.getLastRow() > 1) {
-    bbbSheet.getRange(2, 1, bbbSheet.getLastRow() - 1, 4).clearContent();
+    bbbSheet.getRange(2, 1, bbbSheet.getLastRow() - 1, 6).clearContent();
   }
 
+  // i의 케어버디 = (i+1)%n, i의 시크릿버디 = (i-1+n)%n
   const rows = staff.map((person, i) => {
-    const buddy = staff[(i + 1) % n];
-    return [person.nickname, buddy.nickname, buddy.name, false];
+    const careBuddy   = staff[(i + 1) % n];
+    const secretBuddy = staff[(i - 1 + n) % n];
+    return [person.nickname, careBuddy.nickname, careBuddy.name, false, secretBuddy.nickname, secretBuddy.name];
   });
-  bbbSheet.getRange(2, 1, rows.length, 4).setValues(rows);
+  bbbSheet.getRange(2, 1, rows.length, 6).setValues(rows);
 
-  Logger.log('BBB 매칭 완료: ' + rows.map(r => r[0] + ' → ' + r[2]).join(', '));
+  Logger.log('BBB 매칭 완료: ' + rows.map(r => r[0] + ' → 케어:' + r[2] + ' / 시크릿:' + r[5]).join(', '));
   return { ok: true, matched: rows.length, pairs: rows.map(r => ({ from: r[0], careBuddy: r[2] })) };
 }
 
@@ -1499,9 +1501,14 @@ function adminGetBBB() {
 
   const lastB = bbbSheet.getLastRow();
   const matches = lastB < 2 ? [] :
-    bbbSheet.getRange(2, 1, lastB - 1, 4).getValues()
+    bbbSheet.getRange(2, 1, lastB - 1, 6).getValues()
       .filter(r => r[0])
-      .map(r => ({ userId: String(r[0]), careBuddyId: String(r[1]), careBuddyName: String(r[2]), secretRevealed: r[3] === true }));
+      .map(r => ({
+        userId: String(r[0]),
+        careBuddyId: String(r[1]), careBuddyName: String(r[2]),
+        secretRevealed: r[3] === true,
+        secretBuddyId: String(r[4]), secretBuddyName: String(r[5])
+      }));
 
   const lastM = msgSheet.getLastRow();
   const messages = lastM < 2 ? [] :

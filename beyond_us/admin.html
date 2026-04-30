@@ -1118,16 +1118,16 @@
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
               <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
                 <th style="padding:8px 6px;text-align:left;font-weight:600;">닉네임</th>
-                <th style="padding:8px 6px;text-align:center;font-weight:600;">→</th>
-                <th style="padding:8px 6px;text-align:left;font-weight:600;">케어버디</th>
-                <th style="padding:8px 6px;text-align:left;font-weight:600;">시크릿버디 맞춤</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">케어버디 (내가 챙기는)</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">시크릿버디 (나를 챙기는)</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">맞춤</th>
               </tr></thead>
               <tbody>${matches.map(m => `
                 <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <td style="padding:8px 6px;">${escHtml(m.userId)}</td>
-                  <td style="padding:8px 6px;text-align:center;color:var(--sub);">→</td>
-                  <td style="padding:8px 6px;color:#a78bfa;font-weight:600;">${escHtml(m.careBuddyName)} <span style="color:var(--sub);font-weight:400;">(${escHtml(m.careBuddyId)})</span></td>
-                  <td style="padding:8px 6px;">${m.secretRevealed ? '✅ 맞춤' : '—'}</td>
+                  <td style="padding:8px 6px;font-weight:600;">${escHtml(m.userId)}</td>
+                  <td style="padding:8px 6px;color:#a78bfa;">${escHtml(m.careBuddyName)} <span style="color:var(--sub);font-size:11px;">(${escHtml(m.careBuddyId)})</span></td>
+                  <td style="padding:8px 6px;color:#fb923c;">${escHtml(m.secretBuddyName)} <span style="color:var(--sub);font-size:11px;">(${escHtml(m.secretBuddyId)})</span></td>
+                  <td style="padding:8px 6px;">${m.secretRevealed ? '✅' : '—'}</td>
                 </tr>`).join('')}
               </tbody>
             </table>
