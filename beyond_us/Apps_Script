@@ -1,7 +1,10 @@
-const SPREADSHEET_ID = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q';
+const SPREADSHEET_ID     = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q'; // PROD
+const DEV_SPREADSHEET_ID = '19-2XZ3egh8-K3XnE9QmuYVCnz6pkkgo-vf66BPKFS-o'; // DEV
 const ADMIN_PASSWORD = 'zmsdmsgP';
 const RAW_SHEET_NAME = 'raw_checkins';
 const CONFIG_SHEET_NAME = 'config';
+
+let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
 
 const SPIRIT_CARDS = [
   {id:1, name:'사랑'},
@@ -17,6 +20,7 @@ const SPIRIT_CARDS = [
 
 // ── GET ──────────────────────────────────────────
 function doGet(e) {
+  _devMode = (e && e.parameter && e.parameter.devMode === 'true');
   const action = (e && e.parameter && e.parameter.action) || 'dashboard';
 
   if (action === 'dashboard') return jsonOutput(getDashboardData());
@@ -57,6 +61,7 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body   = JSON.parse(e.postData.contents || '{}');
+    _devMode = (body.devMode === true);
     const action = body.action;
 
     if (action === 'submit') {
@@ -135,7 +140,7 @@ function doPost(e) {
 // startRow+1~6: A=항목 텍스트, B=점수, C=카테고리
 
 function getSpreadsheet() {
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
+  return SpreadsheetApp.openById(_devMode ? DEV_SPREADSHEET_ID : SPREADSHEET_ID);
 }
 
 function getConfig() {
@@ -408,9 +413,12 @@ function drawCard(userId, weekKey, testMode) {
     }
   }
 
-  const draws = getOrCreateDrawSheet();
-  const card  = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
-  draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
+  const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+  if (!testMode) {
+    // 테스트 모드가 아닐 때만 시트에 기록
+    const draws = getOrCreateDrawSheet();
+    draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
+  }
   return { ok: true, card };
 }
 

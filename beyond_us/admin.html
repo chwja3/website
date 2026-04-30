@@ -121,12 +121,20 @@
 </head>
 <body>
 
+  <!-- DEV 환경 배너 (dev URL에서만 표시) -->
+  <div id="devBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:9999;
+    background:#f59e0b; color:#000; font-size:13px; font-weight:700;
+    text-align:center; padding:6px; letter-spacing:0.05em;">
+    🚧 DEV 환경 — 여기서 한 작업은 실제 데이터에 영향을 줍니다
+  </div>
+  <div id="devBannerSpacer" style="display:none; height:34px;"></div>
+
   <!-- ── 로그인 게이트 ── -->
   <div id="authGate">
     <div class="gate-box">
       <div class="gate-emoji">🔐</div>
       <h2 class="gate-title">어드민</h2>
-      <p class="gate-desc">Beyond Us 관리자 페이지</p>
+      <p id="gate-desc-env" class="gate-desc">Beyond Us 관리자 페이지</p>
       <input type="password" id="adminPwInput" class="input" placeholder="비밀번호" />
       <div class="status" id="gateStatus"></div>
       <button class="btn btn-primary" id="gateBtn" style="margin-top:8px;">입장</button>
@@ -364,6 +372,31 @@
     const API_BASE  = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
     let adminPw = '';
     let targetNickname = '';
+
+    /* ── DEV 환경 감지 ── */
+    const IS_DEV_ENV = location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (IS_DEV_ENV) {
+      document.getElementById('devBanner').style.display = 'block';
+      document.getElementById('devBannerSpacer').style.display = 'block';
+      document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 시트 사용 중</span>';
+
+      // Dev 모드 fetch 인터셉터 — API_BASE 요청에 devMode 자동 추가
+      const _origFetch = window.fetch.bind(window);
+      window.fetch = function(url, opts) {
+        if (typeof url === 'string' && url.startsWith(API_BASE)) {
+          if (opts && opts.method === 'POST' && opts.body) {
+            try {
+              const b = JSON.parse(opts.body);
+              b.devMode = true;
+              opts = Object.assign({}, opts, { body: JSON.stringify(b) });
+            } catch(e) {}
+          } else if (!url.includes('devMode')) {
+            url = url + (url.includes('?') ? '&' : '?') + 'devMode=true';
+          }
+        }
+        return _origFetch(url, opts);
+      };
+    }
 
     /* ── 로그인 ── */
     async function doAdminLogin() {
