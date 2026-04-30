@@ -1366,19 +1366,28 @@ function getBBB(userId) {
   const last = bbbSheet.getLastRow();
   if (last < 2) return { ok: false, error: '매칭 정보가 없어요.' };
 
-  const rows = bbbSheet.getRange(2, 1, last - 1, 4).getValues();
+  const rows = bbbSheet.getRange(2, 1, last - 1, 6).getValues();
 
-  // 내 케어버디 row 찾기
+  // 내 row 찾기 (E=secretBuddyId, F=secretBuddyName 포함)
   let myRow = null, myRowIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) === userId) { myRow = rows[i]; myRowIdx = i; break; }
   }
   if (!myRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
-  // 나를 케어버디로 갖는 사람 = 내 시크릿버디
-  let secretBuddy = null;
+  const revealed        = myRow[3] === true;
+  const secretBuddyId   = String(myRow[4] || '');
+  const secretBuddyName = String(myRow[5] || '');
+
+  // 내 케어버디가 나를 시크릿버디로 맞혔는지 (= 내가 들켰는지)
+  // 케어버디 row에서 secretBuddyId === userId 이고 secretRevealed === true 인지 확인
+  const careBuddyId = String(myRow[1]);
+  let caughtByBuddy = false;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][1]) === userId) { secretBuddy = rows[i]; break; }
+    if (String(rows[i][0]) === careBuddyId) {
+      caughtByBuddy = rows[i][3] === true;
+      break;
+    }
   }
 
   // BBB 메시지 오픈 여부
@@ -1388,13 +1397,15 @@ function getBBB(userId) {
   return {
     ok: true,
     careBuddy: {
-      nickname: String(myRow[1]),
+      nickname: careBuddyId,
       name:     String(myRow[2])
     },
-    secretBuddy: secretBuddy ? {
-      hint:     String(secretBuddy[0]).length, // 닉네임 글자 수만 힌트로 제공
-      revealed: myRow[3] === true
+    secretBuddy: secretBuddyId ? {
+      revealed,
+      name:     revealed ? secretBuddyName : null,
+      nickname: revealed ? secretBuddyId   : null
     } : null,
+    caughtByBuddy,
     messageOpen: msgOpen
   };
 }
