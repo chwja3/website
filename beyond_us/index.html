@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="images/pabicon_192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="images/pabicon_180.png" />
-  <link rel="manifest" href="manifest.json" />
+  <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
   <style>
@@ -2008,6 +2008,11 @@
     /* ── 테스트 모드: ?test=1 또는 dev URL이면 자동 활성 ── */
     const IS_DEV_ENV = location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const TEST_MODE  = IS_DEV_ENV || new URLSearchParams(window.location.search).get('test') === '1';
+
+    /* ── DEV PWA 매니페스트 교체 ── */
+    if (IS_DEV_ENV) {
+      document.getElementById('pwaManifest').href = 'manifest-dev.json';
+    }
 
     /* ── Dev 모드 fetch 인터셉터 ──
        IS_DEV_ENV일 때 API_BASE로 가는 모든 요청에 자동으로 devMode 추가.
