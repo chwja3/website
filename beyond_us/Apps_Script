@@ -581,20 +581,6 @@ function getOrCreateNoticeSheet() {
   return sheet;
 }
 
-// 이미지 base64 → Google Drive 업로드 후 공개 URL 반환
-function uploadNoticeToDrive(imageBase64, imageMime) {
-  try {
-    const ext = imageMime === 'image/png' ? 'png' : imageMime === 'image/gif' ? 'gif' : 'jpg';
-    const filename = 'notice_' + new Date().getTime() + '.' + ext;
-    const blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), imageMime, filename);
-    const file = DriveApp.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return 'https://drive.google.com/uc?export=view&id=' + file.getId();
-  } catch(e) {
-    return '';
-  }
-}
-
 function getNotices() {
   const sheet = getOrCreateNoticeSheet();
   const last = sheet.getLastRow();
@@ -615,15 +601,10 @@ function getNotices() {
 }
 
 function postNotice(body) {
-  const title   = String(body.title   || '').trim();
-  const content = String(body.content || '').trim();
+  const title    = String(body.title    || '').trim();
+  const content  = String(body.content  || '').trim();
+  const imageUrl = String(body.imageUrl || '').trim();
   if (!title || !content) return { error: 'missing_fields' };
-
-  let imageUrl = '';
-  if (body.imageBase64 && body.imageMime) {
-    imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
-  }
-
   const sheet = getOrCreateNoticeSheet();
   sheet.appendRow([new Date().getTime(), title, content, new Date().toISOString(), imageUrl]);
   return { ok: true };
@@ -638,21 +619,16 @@ function deleteNotice(body) {
 
 function editNotice(body) {
   const rowIndex = Number(body.rowIndex);
-  const title   = String(body.title   || '').trim();
-  const content = String(body.content || '').trim();
+  const title    = String(body.title    || '').trim();
+  const content  = String(body.content  || '').trim();
   if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
   if (!title || !content) return { error: 'missing_fields' };
   const sheet = getOrCreateNoticeSheet();
   sheet.getRange(rowIndex, 2).setValue(title);
   sheet.getRange(rowIndex, 3).setValue(content);
-
-  if (body.imageBase64 && body.imageMime) {
-    const imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
-    if (imageUrl) sheet.getRange(rowIndex, 5).setValue(imageUrl);
-  } else if (body.clearImage) {
-    sheet.getRange(rowIndex, 5).setValue('');
+  if (body.imageUrl !== undefined) {
+    sheet.getRange(rowIndex, 5).setValue(String(body.imageUrl || '').trim());
   }
-
   return { ok: true };
 }
 
