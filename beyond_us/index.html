@@ -2929,8 +2929,9 @@
         html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:${pendingIn.length ? '12px' : '0'} 0 6px;">보낸 요청</p>`;
         html += pendingOut.map(t => renderItem(t, true)).join('');
       }
+      // 수락된 교환만 히스토리에 표시 (취소/거절은 자동 숨김)
       const resolved = [...incoming, ...outgoing]
-        .filter(t => t.status !== 'pending')
+        .filter(t => t.status === 'accepted')
         .sort((a,b) => b.resolvedAt.localeCompare(a.resolvedAt))
         .slice(0, 20);
       if (resolved.length) {
