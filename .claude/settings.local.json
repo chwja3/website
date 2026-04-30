@@ -23,7 +23,9 @@
       "Bash(git fetch *)",
       "Bash(git stash *)",
       "WebFetch(domain:dev.website-78h.pages.dev)",
-      "WebFetch(domain:support.claude.com)"
+      "WebFetch(domain:support.claude.com)",
+      "Bash(python3 -m http.server 8080)",
+      "Bash(echo \"PID: $!\")"
     ]
   }
 }
