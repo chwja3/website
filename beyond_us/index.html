@@ -3548,10 +3548,16 @@
         list.innerHTML = '<p class="notice-empty">검색 결과가 없어요.</p>';
         return;
       }
+      function driveImgSrc(url) {
+        if (!url) return '';
+        const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        return m ? 'https://lh3.googleusercontent.com/d/' + m[1] : url;
+      }
       list.innerHTML = notices.map(n => {
         const isNew = !seen.includes(n.id);
-        const imgHtml = n.imageUrl
-          ? `<img src="${n.imageUrl}" loading="lazy" style="width:100%; max-height:320px; object-fit:contain; border-radius:8px; margin-top:10px; display:block;">`
+        const imgSrc = driveImgSrc(n.imageUrl);
+        const imgHtml = imgSrc
+          ? `<img src="${imgSrc}" loading="lazy" style="width:100%; max-height:320px; object-fit:contain; border-radius:8px; margin-top:10px; display:block;">`
           : '';
         return `
         <div class="notice-item">

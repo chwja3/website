@@ -838,13 +838,12 @@
       } catch(e) { alert('연결 오류'); }
     }
 
-    // Drive 공유 URL → 직접 이미지 URL 변환
+    // Drive 공유 URL → img 태그에서 바로 뜨는 URL로 변환
     function normalizeDriveUrl(url) {
       if (!url) return '';
-      // https://drive.google.com/file/d/FILE_ID/view... → uc?export=view
-      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
-      // 이미 uc 형식이거나 다른 URL이면 그대로
+      // /d/FILE_ID 패턴 추출 (공유링크, uc 링크 모두 커버)
+      const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) return 'https://lh3.googleusercontent.com/d/' + m[1];
       return url;
     }
 
