@@ -70,7 +70,7 @@
 
 - **APP_VERSION ↔ version.txt**: 배포 시 반드시 동기화 (안 맞으면 무한 reload)
 - **DEV 환경**: `dev.website-78h.pages.dev` → 자동 TEST_MODE + DEV 시트 사용
-- **테스트 모드 카드 뽑기**: GAS 호출 없음 → 통계에 기록 안 됨 (의도된 동작)
+- **DEV 카드 뽑기**: GAS 호출 → DEV 시트에 기록 (fetch interceptor로 devMode=true 자동 추가)
 
 ---
 

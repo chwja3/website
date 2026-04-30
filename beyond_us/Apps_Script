@@ -1003,6 +1003,10 @@ function updateCollectionSheet(userId, cardId, delta) {
 
 // CardDraws → Collection 마이그레이션 (admin에서 1회 실행)
 function migrateCardDrawsToCollection() {
+  // 데이터 없어도 시트는 항상 생성
+  getOrCreateCollectionSheet();
+  getOrCreateTradesSheet();
+
   const draws = getOrCreateDrawSheet();
   const last = draws.getLastRow();
   if (last < 2) return { ok: true, migrated: 0 };
