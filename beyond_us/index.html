@@ -2015,6 +2015,14 @@
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
+    function post(body) {
+      return fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      }).then(r => r.json());
+    }
+
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
     const APP_VERSION = '20260430b';
     (function checkVersion() {
