@@ -1774,7 +1774,7 @@
         <li class="drawer-item active" data-section="mission">미션</li>
         <li class="drawer-item" data-section="prayer">Hold &amp; Pray</li>
         <li class="drawer-item" data-section="collection">컬렉션 <span id="drawerTradeDot" style="display:none;background:#e8854a;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span></li>
-        <li class="drawer-item" data-section="secret">비밀친구</li>
+        <li class="drawer-item" data-section="secret">🤝 B.B.B.</li>
         <li class="drawer-item" data-section="chat">💬 단톡방</li>
         <li class="drawer-item" data-section="inquiry">개발자 문의</li>
       </ul>
@@ -1995,13 +1995,65 @@
         </div>
       </div>
 
-      <!-- ④ 비밀친구 -->
+      <!-- ④ B.B.B. -->
       <div id="sectionSecret" class="section hidden">
-        <div class="wrap">
+        <div class="wrap" style="padding-bottom:40px;">
+
+          <!-- 케어버디 카드 -->
           <section class="card" style="margin-top:16px;">
-            <h2 class="card-title">💌 비밀친구</h2>
-            <p class="card-sub">곧 오픈 예정이에요.</p>
+            <h2 class="card-title">🤝 B.B.B.</h2>
+            <p class="card-sub" style="margin-bottom:16px;">Be a Better Buddy</p>
+            <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:20px 0;">불러오는 중...</div>
+
+            <div id="bbbContent" style="display:none;">
+              <!-- 케어버디 -->
+              <div style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+                <p style="font-size:11px;font-weight:700;color:#a78bfa;letter-spacing:0.08em;margin:0 0 8px;">MY CARE BUDDY</p>
+                <p style="font-size:22px;font-weight:800;color:var(--text);margin:0;" id="bbbCareBuddyName">—</p>
+                <p style="font-size:13px;color:var(--sub);margin:4px 0 0;">내가 몰래 챙겨야 할 사람이에요 🤫</p>
+              </div>
+
+              <!-- 시크릿버디 맞추기 -->
+              <div id="bbbSecretWrap" style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+                <p style="font-size:11px;font-weight:700;color:#f59e0b;letter-spacing:0.08em;margin:0 0 8px;">MY SECRET BUDDY</p>
+                <div id="bbbSecretRevealed" style="display:none;">
+                  <p style="font-size:18px;font-weight:700;color:#4ade80;margin:0;" id="bbbSecretName">—</p>
+                  <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">✅ 맞혔어요! 이 분이 나를 몰래 챙겨주고 있어요.</p>
+                </div>
+                <div id="bbbSecretGuess">
+                  <p style="font-size:13px;color:var(--sub);margin:0 0 10px;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요. 누구일까요?</p>
+                  <div style="display:flex;gap:8px;">
+                    <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름 입력" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;" />
+                    <button onclick="submitBBBGuess()" style="padding:9px 14px;border-radius:8px;border:none;background:#f59e0b;color:#000;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                  </div>
+                  <p id="bbbGuessMsg" style="font-size:12px;margin:8px 0 0;min-height:16px;"></p>
+                </div>
+              </div>
+
+              <!-- 익명 메시지 보내기 -->
+              <div id="bbbMsgSendWrap" style="display:none;background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+                <p style="font-size:11px;font-weight:700;color:#4ade80;letter-spacing:0.08em;margin:0 0 8px;">ANONYMOUS MESSAGE</p>
+                <p style="font-size:13px;color:var(--sub);margin:0 0 10px;">케어버디에게 익명으로 메시지를 보내요.</p>
+                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디를 전해보세요 (최대 300자)" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;resize:none;height:90px;outline:none;font-family:inherit;"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                  <button onclick="sendBBBMsg()" style="padding:8px 18px;border-radius:8px;border:none;background:#4ade80;color:#000;font-weight:700;font-size:13px;cursor:pointer;">보내기</button>
+                </div>
+                <p id="bbbMsgSendResult" style="font-size:12px;margin:6px 0 0;min-height:16px;"></p>
+              </div>
+
+              <!-- 받은 메시지 -->
+              <div style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;">
+                <p style="font-size:11px;font-weight:700;color:#60a5fa;letter-spacing:0.08em;margin:0 0 10px;">받은 메시지</p>
+                <div id="bbbMsgList"><p style="font-size:13px;color:var(--sub);">아직 받은 메시지가 없어요.</p></div>
+              </div>
+            </div>
+
+            <div id="bbbNoMatch" style="display:none;text-align:center;padding:24px 0;">
+              <p style="font-size:14px;color:var(--sub);">아직 매칭 정보가 없어요.<br>조금만 기다려주세요!</p>
+            </div>
           </section>
+
         </div>
       </div>
 
@@ -3857,6 +3909,7 @@
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
       if (name === 'prayer') loadHoldPray();
+      if (name === 'secret') loadBBB();
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
       _currentSection = name;
@@ -4131,6 +4184,115 @@
     });
 
     document.getElementById('refreshInquiryBtn').addEventListener('click', loadInquiries);
+
+    /* ════ B.B.B. ════ */
+    let _bbbData = null;
+
+    async function loadBBB() {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      if (!nickname) return;
+
+      document.getElementById('bbbLoading').style.display = '';
+      document.getElementById('bbbContent').style.display = 'none';
+      document.getElementById('bbbNoMatch').style.display = 'none';
+
+      try {
+        const [bbbRes, msgRes] = await Promise.all([
+          fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}`).then(r => r.json()),
+          fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}`).then(r => r.json())
+        ]);
+
+        document.getElementById('bbbLoading').style.display = 'none';
+
+        if (!bbbRes.ok) {
+          document.getElementById('bbbNoMatch').style.display = '';
+          return;
+        }
+
+        _bbbData = bbbRes;
+        document.getElementById('bbbContent').style.display = '';
+
+        // 케어버디
+        document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name;
+
+        // 시크릿버디
+        if (bbbRes.secretBuddy) {
+          document.getElementById('bbbSecretWrap').style.display = '';
+          if (bbbRes.secretBuddy.revealed) {
+            document.getElementById('bbbSecretRevealed').style.display = '';
+            document.getElementById('bbbSecretGuess').style.display = 'none';
+          } else {
+            document.getElementById('bbbSecretRevealed').style.display = 'none';
+            document.getElementById('bbbSecretGuess').style.display = '';
+            document.getElementById('bbbSecretHint').textContent =
+              `나를 몰래 챙겨주는 사람의 닉네임은 ${bbbRes.secretBuddy.hint}글자예요. 누구일까요?`;
+          }
+        } else {
+          document.getElementById('bbbSecretWrap').style.display = 'none';
+        }
+
+        // 메시지 보내기 창
+        document.getElementById('bbbMsgSendWrap').style.display = bbbRes.messageOpen ? '' : 'none';
+
+        // 받은 메시지
+        _renderBBBMessages(msgRes.messages || []);
+
+      } catch(e) {
+        document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
+      }
+    }
+
+    function _renderBBBMessages(messages) {
+      const el = document.getElementById('bbbMsgList');
+      if (!messages.length) {
+        el.innerHTML = '<p style="font-size:13px;color:var(--sub);">아직 받은 메시지가 없어요.</p>';
+        return;
+      }
+      el.innerHTML = messages.map(m => `
+        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+          <p style="font-size:14px;color:var(--text);margin:0 0 6px;line-height:1.5;">${escHtml(m.message)}</p>
+          <p style="font-size:11px;color:var(--sub);margin:0;">— 익명 · ${m.createdAt ? m.createdAt.slice(0,10) : ''}</p>
+        </div>`).join('');
+    }
+
+    async function submitBBBGuess() {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      const guess = document.getElementById('bbbGuessInput').value.trim();
+      const msgEl = document.getElementById('bbbGuessMsg');
+      if (!guess) { msgEl.style.color = '#f87171'; msgEl.textContent = '닉네임 또는 이름을 입력해주세요.'; return; }
+
+      try {
+        const res = await post({ action: 'guessBBBSecret', userId: nickname, guess });
+        if (res.error) { msgEl.style.color = '#f87171'; msgEl.textContent = res.error; return; }
+        if (res.correct) {
+          msgEl.style.color = '#4ade80';
+          msgEl.textContent = '정답이에요! 🎉';
+          document.getElementById('bbbSecretName').textContent = res.secretName || res.secretNickname;
+          document.getElementById('bbbSecretRevealed').style.display = '';
+          document.getElementById('bbbSecretGuess').style.display = 'none';
+        } else {
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = '아니에요. 다시 생각해봐요!';
+          document.getElementById('bbbGuessInput').value = '';
+        }
+      } catch(e) { msgEl.style.color = '#f87171'; msgEl.textContent = '연결 오류'; }
+    }
+
+    async function sendBBBMsg() {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      const message  = document.getElementById('bbbMsgInput').value.trim();
+      const resultEl = document.getElementById('bbbMsgSendResult');
+      if (!message) { resultEl.style.color = '#f87171'; resultEl.textContent = '메시지를 입력해주세요.'; return; }
+
+      try {
+        const res = await post({ action: 'sendBBBMessage', userId: nickname, message });
+        if (res.error) { resultEl.style.color = '#f87171'; resultEl.textContent = res.error; return; }
+        resultEl.style.color = '#4ade80';
+        resultEl.textContent = '메시지를 보냈어요! 💌';
+        document.getElementById('bbbMsgInput').value = '';
+        setTimeout(() => { resultEl.textContent = ''; }, 3000);
+      } catch(e) { resultEl.style.color = '#f87171'; resultEl.textContent = '연결 오류'; }
+    }
 
     /* ════ Hold & Pray ════ */
     let _hpData = null;

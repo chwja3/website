@@ -1288,7 +1288,7 @@ function _cleanOldBackups(folder, prefix) {
 }
 
 // ── B.B.B. (케어버디 / 시크릿버디) ──────────────────
-// config 시트 B5: bbb_message_open (TRUE/FALSE)
+// config 시트 C1: bbb_message_open (TRUE/FALSE)
 // BBB 시트: userId | careBuddyId | careBuddyName | secretRevealed
 // BBBMessages 시트: msgId | fromUserId | toUserId | message | createdAt
 
@@ -1381,7 +1381,7 @@ function getBBB(userId) {
 
   // BBB 메시지 오픈 여부
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const msgOpen = configSheet.getRange('B5').getValue() === true;
+  const msgOpen = configSheet.getRange('C1').getValue() === true;
 
   return {
     ok: true,
@@ -1458,7 +1458,7 @@ function sendBBBMessage(body) {
 
   // 메시지 오픈 여부 확인
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (configSheet.getRange('B5').getValue() !== true)
+  if (configSheet.getRange('C1').getValue() !== true)
     return { error: '지금은 메시지를 보낼 수 없어요. 관리자가 오픈할 때 다시 시도해주세요.' };
 
   // 케어버디 찾기
@@ -1510,7 +1510,7 @@ function adminGetBBB() {
       .map(r => ({ id: String(r[0]), from: String(r[1]), to: String(r[2]), message: String(r[3]), createdAt: String(r[4]) }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  const messageOpen = configSheet.getRange('B5').getValue() === true;
+  const messageOpen = configSheet.getRange('C1').getValue() === true;
   return { ok: true, matches, messages, messageOpen };
 }
 
@@ -1519,7 +1519,7 @@ function adminSetBBBMessageOpen(body) {
   if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const open = body.open === true;
-  configSheet.getRange('B5').setValue(open);
+  configSheet.getRange('C1').setValue(open);
   return { ok: true, messageOpen: open };
 }
 
