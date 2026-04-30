@@ -917,6 +917,54 @@ function replyInquiry(body) {
   return { error: 'not_found' };
 }
 
+// ── 자동 백업 ─────────────────────────────────────
+const BACKUP_FOLDER_NAME = 'BeyondUs_Backup';
+const BACKUP_KEEP_COUNT  = 7; // 최근 N개만 유지
+
+function backupSpreadsheet() {
+  try {
+    // 백업 폴더 찾기 (없으면 생성)
+    let folder;
+    const folders = DriveApp.getFoldersByName(BACKUP_FOLDER_NAME);
+    if (folders.hasNext()) {
+      folder = folders.next();
+    } else {
+      folder = DriveApp.createFolder(BACKUP_FOLDER_NAME);
+    }
+
+    // PROD 스프레드시트 백업
+    const prodFile = DriveApp.getFileById(SPREADSHEET_ID);
+    const dateStr  = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd_HHmm');
+    prodFile.makeCopy('BeyondUs_PROD_' + dateStr, folder);
+
+    // 오래된 백업 정리 (PROD)
+    _cleanOldBackups(folder, 'BeyondUs_PROD_');
+
+    Logger.log('백업 완료: BeyondUs_PROD_' + dateStr);
+    return { ok: true, backed_up: 'BeyondUs_PROD_' + dateStr };
+  } catch(e) {
+    Logger.log('백업 오류: ' + e);
+    return { error: String(e) };
+  }
+}
+
+function _cleanOldBackups(folder, prefix) {
+  const files = [];
+  const iter  = folder.getFilesByName !== undefined
+    ? folder.getFiles()
+    : null;
+  if (!iter) return;
+  while (iter.hasNext()) {
+    const f = iter.next();
+    if (f.getName().startsWith(prefix)) files.push(f);
+  }
+  // 이름 기준 오래된 순 정렬 (날짜 포함 파일명이라 이름 정렬 = 날짜 정렬)
+  files.sort((a, b) => a.getName() < b.getName() ? -1 : 1);
+  while (files.length > BACKUP_KEEP_COUNT) {
+    files.shift().setTrashed(true);
+  }
+}
+
 // ── 공통 ─────────────────────────────────────────
 function jsonOutput(data) {
   return ContentService
