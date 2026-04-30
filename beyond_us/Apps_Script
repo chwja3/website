@@ -484,7 +484,7 @@ function getAppOpenDate() {
 
 // ── 유저 인증 ─────────────────────────────────────
 function registerUser(body) {
-  const sheet    = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const sheet    = getSpreadsheet().getSheetByName('Users');
   const nickname = String(body.nickname || '').trim();
   const password = String(body.password || '').trim();
   const name     = String(body.name     || '').trim();
@@ -505,7 +505,7 @@ function registerUser(body) {
 }
 
 function loginUser(body) {
-  const sheet    = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const sheet    = getSpreadsheet().getSheetByName('Users');
   const nickname = String(body.nickname || '').trim();
   const password = String(body.password || '').trim();
 
@@ -527,7 +527,7 @@ function loginUser(body) {
 }
 
 function resetPassword(body) {
-  const sheet       = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const sheet       = getSpreadsheet().getSheetByName('Users');
   const nickname    = String(body.nickname    || '').trim();
   const name        = String(body.name        || '').trim();
   const parish      = String(body.parish      || '').trim();
@@ -550,7 +550,7 @@ function resetPassword(body) {
 }
 
 function getUsers() {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const sheet = getSpreadsheet().getSheetByName('Users');
   const data  = sheet.getDataRange().getValues();
   const users = [];
   for (let i = 1; i < data.length; i++) {
@@ -561,7 +561,7 @@ function getUsers() {
 }
 
 function adminResetPassword(body) {
-  const sheet       = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const sheet       = getSpreadsheet().getSheetByName('Users');
   const nickname    = String(body.nickname    || '').trim();
   const newPassword = String(body.newPassword || '').trim();
   if (!nickname || !newPassword) return { error: 'missing_fields' };
@@ -815,7 +815,7 @@ function getOrCreateInquirySheet() {
 }
 
 function verifyUserPassword(nickname, password) {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Users');
+  const sheet = getSpreadsheet().getSheetByName('Users');
   const data  = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === nickname && String(data[i][1]).trim() === password) return true;
