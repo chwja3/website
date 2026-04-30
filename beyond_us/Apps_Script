@@ -1081,6 +1081,7 @@ function acceptTrade(body) {
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
 
+  _expireOldTrades(sheet);
   const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) !== tradeId) continue;
@@ -1092,10 +1093,16 @@ function acceptTrade(body) {
     const targetCardId    = Number(rows[i][5]);
 
     // 카드 보유 재확인
-    if (!(getUserCollection(requester)[requesterCardId] > 0))
+    if (!(getUserCollection(requester)[requesterCardId] > 0)) {
+      sheet.getRange(i + 2, 8).setValue('실패 (카드 없음)');
+      sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
       return { error: '상대방이 더 이상 해당 카드를 보유하지 않아요.' };
-    if (!(getUserCollection(nickname)[targetCardId] > 0))
+    }
+    if (!(getUserCollection(nickname)[targetCardId] > 0)) {
+      sheet.getRange(i + 2, 8).setValue('실패 (카드 없음)');
+      sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
       return { error: '내가 더 이상 해당 카드를 보유하지 않아요.' };
+    }
 
     // 양쪽 컬렉션 업데이트
     updateCollectionSheet(requester, requesterCardId, -1);
@@ -1119,12 +1126,13 @@ function rejectTrade(body) {
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
 
+  _expireOldTrades(sheet);
   const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) !== tradeId) continue;
     if (String(rows[i][4]) !== nickname) return { error: 'unauthorized' };
     if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
-    sheet.getRange(i + 2, 8).setValue('rejected');
+    sheet.getRange(i + 2, 8).setValue('실패 (거절됨)');
     sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
     return { ok: true };
   }
@@ -1140,16 +1148,33 @@ function cancelTrade(body) {
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
 
+  _expireOldTrades(sheet);
   const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) !== tradeId) continue;
     if (String(rows[i][1]) !== nickname) return { error: 'unauthorized' };
     if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
-    sheet.getRange(i + 2, 8).setValue('cancelled');
+    sheet.getRange(i + 2, 8).setValue('실패 (취소됨)');
     sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
     return { ok: true };
   }
   return { error: 'not_found' };
+}
+
+// pending 상태에서 5분(300초) 초과 시 자동 만료
+function _expireOldTrades(sheet) {
+  const last = sheet.getLastRow();
+  if (last < 2) return;
+  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const now  = Date.now();
+  const TIMEOUT_MS = 5 * 60 * 1000; // 5분
+  rows.forEach((row, i) => {
+    if (String(row[7]) !== 'pending') return;
+    const createdAt = new Date(String(row[8])).getTime();
+    if (isNaN(createdAt) || now - createdAt < TIMEOUT_MS) return;
+    sheet.getRange(i + 2, 8).setValue('실패 (시간 초과)');
+    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+  });
 }
 
 function getTrades(userId) {
@@ -1157,6 +1182,7 @@ function getTrades(userId) {
   const last  = sheet.getLastRow();
   if (last < 2) return { ok: true, incoming: [], outgoing: [] };
 
+  _expireOldTrades(sheet);
   const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
   const incoming = [], outgoing = [];
   rows.forEach(row => {
@@ -1181,6 +1207,7 @@ function getAdminTrades() {
   const last  = sheet.getLastRow();
   if (last < 2) return { ok: true, trades: [] };
 
+  _expireOldTrades(sheet);
   const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
   const trades = rows
     .filter(r => r[0])

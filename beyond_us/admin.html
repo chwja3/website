@@ -1019,8 +1019,10 @@
         if (!res.ok) { el.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
         const trades = res.trades || [];
         if (!trades.length) { el.innerHTML = '<p style="color:var(--sub);font-size:13px;">교환 내역이 없어요.</p>'; return; }
-        const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨' };
-        const statusColor = { pending:'#f59e0b', accepted:'#4ade80', rejected:'#f87171', cancelled:'#6b7280' };
+        const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨',
+          '실패 (거절됨)':'❌ 거절됨', '실패 (취소됨)':'🚫 취소됨', '실패 (카드 없음)':'⚠️ 카드 없음', '실패 (시간 초과)':'⏱️ 시간 초과' };
+        const statusColor = { pending:'#f59e0b', accepted:'#4ade80', rejected:'#f87171', cancelled:'#6b7280',
+          '실패 (거절됨)':'#f87171', '실패 (취소됨)':'#6b7280', '실패 (카드 없음)':'#fb923c', '실패 (시간 초과)':'#6b7280' };
         el.innerHTML = `<div style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:13px;">
             <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
