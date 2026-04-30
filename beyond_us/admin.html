@@ -245,9 +245,20 @@
           <h2 class="card-title">공지사항 작성</h2>
           <input type="text" id="noticeTitle" class="input" placeholder="제목" />
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
-          <!-- 이미지 URL -->
-          <label style="display:block; margin-top:8px; font-size:13px; color:var(--sub); margin-bottom:4px;">🖼️ 이미지 URL (선택) — Drive 공유 링크 또는 직접 URL</label>
-          <input type="url" id="noticeImageUrl" class="input" placeholder="https://drive.google.com/file/d/..." style="font-size:13px;" />
+          <!-- 이미지 첨부 -->
+          <label style="display:block; margin-top:12px; font-size:13px; color:var(--sub); margin-bottom:6px;">🖼️ 이미지 첨부 (선택)</label>
+          <!-- 탭: 파일 업로드 / URL 직접 입력 -->
+          <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <button type="button" id="imgTabFile" class="btn btn-sm btn-primary" style="font-size:12px;">📁 파일 선택</button>
+            <button type="button" id="imgTabUrl" class="btn btn-sm btn-ghost" style="font-size:12px;">🔗 URL 입력</button>
+          </div>
+          <div id="imgPanelFile">
+            <input type="file" id="noticeImageFile" accept="image/*" style="font-size:13px; width:100%;" />
+            <p style="font-size:11px; color:var(--sub); margin:4px 0 0;">* 5MB 이하 권장. 로컬 컴퓨터/휴대폰에서 선택 가능.</p>
+          </div>
+          <div id="imgPanelUrl" style="display:none;">
+            <input type="url" id="noticeImageUrl" class="input" placeholder="https://drive.google.com/file/d/..." style="font-size:13px;" />
+          </div>
           <div id="noticeImagePreview" style="display:none; margin-top:8px;">
             <img id="noticePreviewImg" src="" style="max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--border); display:block;" />
             <button type="button" id="noticeClearImage" style="margin-top:4px; font-size:12px; color:var(--sub); background:none; border:none; cursor:pointer;">✕ 이미지 제거</button>
@@ -838,58 +849,105 @@
       } catch(e) { alert('연결 오류'); }
     }
 
-    // Drive 공유 URL → img 태그에서 바로 뜨는 URL로 변환
+    // Drive 공유 URL → img 태그 직링크 변환
     function normalizeDriveUrl(url) {
       if (!url) return '';
-      // /d/FILE_ID 패턴 추출 (공유링크, uc 링크 모두 커버)
       const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
       if (m) return 'https://lh3.googleusercontent.com/d/' + m[1];
       return url;
     }
 
-    // 이미지 URL 입력 → 미리보기
-    document.getElementById('noticeImageUrl').addEventListener('input', function() {
-      const raw = this.value.trim();
-      if (!raw) {
-        document.getElementById('noticeImagePreview').style.display = 'none';
-        document.getElementById('noticePreviewImg').src = '';
-        return;
-      }
-      const normalized = normalizeDriveUrl(raw);
-      document.getElementById('noticePreviewImg').src = normalized;
-      document.getElementById('noticePreviewImg').onerror = function() {
-        document.getElementById('noticeImagePreview').style.display = 'none';
-      };
-      document.getElementById('noticePreviewImg').onload = function() {
-        document.getElementById('noticeImagePreview').style.display = 'block';
-      };
-    });
-    document.getElementById('noticeClearImage').addEventListener('click', function() {
+    function showImgPreview(src) {
+      const img = document.getElementById('noticePreviewImg');
+      img.src = src;
+      img.onerror = () => { document.getElementById('noticeImagePreview').style.display = 'none'; };
+      img.onload  = () => { document.getElementById('noticeImagePreview').style.display = 'block'; };
+    }
+    function clearImgState() {
+      _pendingImageBase64 = ''; _pendingImageMime = '';
+      document.getElementById('noticeImageFile').value = '';
       document.getElementById('noticeImageUrl').value = '';
       document.getElementById('noticeImagePreview').style.display = 'none';
       document.getElementById('noticePreviewImg').src = '';
+    }
+
+    // 탭 전환
+    let _pendingImageBase64 = '', _pendingImageMime = '';
+    document.getElementById('imgTabFile').addEventListener('click', function() {
+      document.getElementById('imgPanelFile').style.display = 'block';
+      document.getElementById('imgPanelUrl').style.display = 'none';
+      this.className = 'btn btn-sm btn-primary';
+      document.getElementById('imgTabUrl').className = 'btn btn-sm btn-ghost';
+      clearImgState();
+    });
+    document.getElementById('imgTabUrl').addEventListener('click', function() {
+      document.getElementById('imgPanelFile').style.display = 'none';
+      document.getElementById('imgPanelUrl').style.display = 'block';
+      this.className = 'btn btn-sm btn-primary';
+      document.getElementById('imgTabFile').className = 'btn btn-sm btn-ghost';
+      clearImgState();
     });
 
+    // 파일 선택 → base64 변환 + 미리보기
+    document.getElementById('noticeImageFile').addEventListener('change', function() {
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        alert('8MB 이하 파일만 첨부 가능합니다.');
+        this.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        const comma = dataUrl.indexOf(',');
+        _pendingImageBase64 = dataUrl.slice(comma + 1);
+        _pendingImageMime   = file.type || 'image/jpeg';
+        showImgPreview(dataUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // URL 입력 → 미리보기
+    document.getElementById('noticeImageUrl').addEventListener('input', function() {
+      const normalized = normalizeDriveUrl(this.value.trim());
+      if (!normalized) { document.getElementById('noticeImagePreview').style.display = 'none'; return; }
+      showImgPreview(normalized);
+    });
+
+    // 이미지 제거
+    document.getElementById('noticeClearImage').addEventListener('click', clearImgState);
+
     document.getElementById('noticePostBtn').addEventListener('click', async () => {
-      const title    = document.getElementById('noticeTitle').value.trim();
-      const content  = document.getElementById('noticeContent').value.trim();
-      const imageUrl = normalizeDriveUrl(document.getElementById('noticeImageUrl').value.trim());
+      const title   = document.getElementById('noticeTitle').value.trim();
+      const content = document.getElementById('noticeContent').value.trim();
       const statusEl = document.getElementById('noticePostStatus');
       if (!title || !content) { statusEl.textContent = '제목과 내용을 모두 입력해주세요.'; return; }
+
       const btn = document.getElementById('noticePostBtn');
       btn.disabled = true;
-      statusEl.textContent = '등록 중...';
       statusEl.className = 'status';
+
+      // 이미지: 파일 업로드 vs URL 입력
+      const payload = { action: 'postNotice', adminPw, title, content };
+      if (_pendingImageBase64) {
+        statusEl.textContent = 'Drive에 이미지 업로드 중...';
+        payload.imageBase64 = _pendingImageBase64;
+        payload.imageMime   = _pendingImageMime;
+      } else {
+        const urlVal = normalizeDriveUrl(document.getElementById('noticeImageUrl').value.trim());
+        if (urlVal) payload.imageUrl = urlVal;
+        statusEl.textContent = '등록 중...';
+      }
+
       try {
-        const res = await post({ action: 'postNotice', adminPw, title, content, imageUrl });
+        const res = await post(payload);
         if (res.ok) {
           statusEl.className = 'status ok';
-          statusEl.textContent = '등록되었어요!';
+          statusEl.textContent = _pendingImageBase64 ? '이미지 업로드 + 등록 완료!' : '등록되었어요!';
           document.getElementById('noticeTitle').value = '';
           document.getElementById('noticeContent').value = '';
-          document.getElementById('noticeImageUrl').value = '';
-          document.getElementById('noticeImagePreview').style.display = 'none';
-          document.getElementById('noticePreviewImg').src = '';
+          clearImgState();
           loadAdminNotices();
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
