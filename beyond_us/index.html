@@ -2098,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501x';
+    const APP_VERSION = '20260501y';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2967,7 +2967,7 @@
     }
 
     async function markPrayed(tradeId, btn) {
-      if (btn) { btn.disabled = true; btn.textContent = '기도했어요!'; const dot = btn.parentElement.querySelector('.pray-dot'); if (dot) dot.remove(); }
+      if (btn) { btn.disabled = true; }
       try {
         const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
         if (res.ok) loadTrades();
@@ -2998,7 +2998,7 @@
           const prayBtnHtml = hasPrayer
             ? (myPrayed
                 ? `<span class="prayed-label">기도완료 ✓</span>`
-                : `<div style="position:relative;display:inline-flex;"><button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button><span class="pray-dot"></span></div>`)
+                : `<button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button>`)
             : '';
           const theirPrayHtml = hasPrayer && theirPrayed
             ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님도 기도했어요 ✓</p>`
