@@ -7,14 +7,8 @@
   "theme_color": "#2c2417",
   "icons": [
     {
-      "src": "images/pabicon_192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "images/pabicon_512.png",
-      "sizes": "512x512",
+      "src": "images/pabicon.png",
+      "sizes": "132x110",
       "type": "image/png",
       "purpose": "any"
     }
