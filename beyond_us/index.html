@@ -1225,7 +1225,7 @@
     .hp-inline-input {
       flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
       color: var(--text); font-size: 18px; padding: 2px 4px; outline: none; max-width: 120px;
-      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
+      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; text-align: center;
     }
     .hp-inline-input:focus { border-bottom-color: var(--accent); }
     .hp-inline-btn {
@@ -2081,7 +2081,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501c';
+    const APP_VERSION = '20260501d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4373,7 +4373,9 @@
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
         _hpData = data;
-        _hpGuessCorrect = false;
+        const _savedName = localStorage.getItem('beyondus_hp_correct_' + data.weekKey);
+        if (_savedName) { _hpGuessCorrect = true; _hpCorrectName = _savedName; }
+        else { _hpGuessCorrect = false; _hpCorrectName = ''; }
         renderHoldPrayCard(data);
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
@@ -4449,11 +4451,12 @@
         if (data.correct) {
           _hpGuessCorrect = true;
           _hpCorrectName  = guess;
+          localStorage.setItem('beyondus_hp_correct_' + _hpData.weekKey, guess);
           const wrap = document.getElementById('hpInlineGuess');
           if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(guess)}</span>`;
-          if (result) { result.textContent = '정답이에요! 함께 기도해줘서 감사해요 ☺️'; result.className = 'hp-result-inline correct'; }
+          if (result) { result.textContent = '🎉 정답이에요! 함께 기도해줘서 감사해요!'; result.className = 'hp-result-inline correct'; result.style.display = ''; }
         } else {
-          if (result) { result.textContent = '아직 아니에요. 다시 생각해봐요!'; result.className = 'hp-result-inline wrong'; }
+          if (result) { result.textContent = '아직 아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
           btn.disabled = false;
           input.value = '';
           input.focus();
