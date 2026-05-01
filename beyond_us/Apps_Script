@@ -1329,14 +1329,14 @@ function setupBBBMatching() {
   const userSheet = getSpreadsheet().getSheetByName('Users');
   const data      = userSheet.getDataRange().getValues();
 
-  // isStaff=TRUE 인 유저 추출 (A=nickname, C=name, F=isStaff)
+  // isTFRetreat=TRUE 인 유저 추출 (A=nickname, C=name, G=isTFRetreat)
   const staff = [];
   for (let i = 1; i < data.length; i++) {
-    if (data[i][5] === true && data[i][0]) {
+    if (data[i][6] === true && data[i][0]) {
       staff.push({ nickname: String(data[i][0]).trim(), name: String(data[i][2]).trim() });
     }
   }
-  if (staff.length < 2) return { error: 'TF 인원이 2명 이상이어야 합니다.' };
+  if (staff.length < 2) return { error: 'isTFRetreat=TRUE 인원이 2명 이상이어야 합니다.' };
 
   // 원형 순환 매칭: 셔플 후 i → (i+1)%n 방식 → 자기 자신 배정 불가
   _shuffle(staff);
