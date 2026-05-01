@@ -259,13 +259,15 @@
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
           <!-- 이미지 첨부 -->
           <input type="file" id="noticeImageFile" accept="image/*" multiple style="display:none;" />
-          <div id="imgDropZone" onclick="document.getElementById('noticeImageFile').click()" style="margin-top:14px; border:2px dashed var(--line); border-radius:14px; padding:28px 16px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; background:var(--primary-soft);">
-            <div style="font-size:28px; margin-bottom:6px;">🖼️</div>
-            <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px;">클릭하거나 이미지를 드래그하세요</div>
-            <div style="font-size:12px; color:var(--sub);">JPG · PNG · GIF · 10MB 이하 · 여러 장 가능</div>
+          <div id="imgDropZone" onclick="document.getElementById('noticeImageFile').click()" style="margin-top:14px; border:2px dashed var(--line); border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:border-color .15s, background .15s; background:var(--primary-soft);">
+            <span style="font-size:20px;">🖼️</span>
+            <div>
+              <div style="font-size:13px; font-weight:700; color:var(--text);">클릭하거나 이미지를 드래그하세요</div>
+              <div style="font-size:11px; color:var(--sub); margin-top:2px;">JPG · PNG · GIF · 10MB 이하 · 여러 장 가능</div>
+            </div>
           </div>
           <div id="noticeImagePreview" style="display:none; margin-top:10px;">
-            <div id="imgPreviewGrid" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+            <div id="imgPreviewGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:8px;"></div>
           </div>
           <div class="status" id="noticePostStatus"></div>
           <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
@@ -959,9 +961,10 @@
       if (!_pendingFiles.length) { wrap.style.display = 'none'; grid.innerHTML = ''; return; }
       wrap.style.display = 'block';
       grid.innerHTML = _pendingFiles.map((f, i) => `
-        <div style="position:relative; width:90px; height:90px; flex-shrink:0;">
-          <img src="${f.dataUrl}" style="width:90px; height:90px; object-fit:cover; border-radius:10px; border:1px solid var(--line); display:block;" />
-          <button type="button" onclick="removeImg(${i})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:999px; width:22px; height:22px; font-size:12px; cursor:pointer; line-height:1;">✕</button>
+        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line); background:#f0ebe0;">
+          <img src="${f.dataUrl}" style="width:100%; aspect-ratio:4/3; object-fit:contain; display:block; background:#f0ebe0;" />
+          <button type="button" onclick="removeImg(${i})" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:999px; width:22px; height:22px; font-size:12px; cursor:pointer; line-height:1;">✕</button>
+          <div style="font-size:10px; color:var(--sub); padding:3px 6px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f.name || '이미지 ' + (i+1)}</div>
         </div>`).join('');
     }
 
@@ -985,7 +988,7 @@
         const reader = new FileReader();
         reader.onload = e => {
           const dataUrl = e.target.result;
-          _pendingFiles.push({ base64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: file.type || 'image/jpeg', dataUrl });
+          _pendingFiles.push({ base64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: file.type || 'image/jpeg', dataUrl, name: file.name });
           renderImgPreviews();
         };
         reader.readAsDataURL(file);
