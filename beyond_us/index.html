@@ -1788,7 +1788,7 @@
       <div class="menu-btn-wrap">
         <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
         <span id="noticeDot" class="notice-dot"></span>
-        <span id="tradeMenuDot" class="notice-dot" style="background:#e05a5a;right:2px;top:2px;"></span>
+        <span id="tradeMenuDot" class="notice-dot" style="background:#e05a5a;right:2px;bottom:2px;top:auto;"></span>
       </div>
       <img src="images/hc_logo_png1.png" alt="홈" onclick="switchSection('mission')" style="height:30px; width:auto; margin-left:-6px; cursor:pointer;" />
       <span style="flex:1;"></span>
@@ -2125,7 +2125,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502n';
+    const APP_VERSION = '20260502q';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2679,7 +2679,17 @@
       const remaining = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
       const nb = document.getElementById('collNewCardBadge');
       if (nb) nb.style.display = remaining > 0 ? 'inline-block' : 'none';
+      // 교환현황 탭·햄버거 badge 즉시 갱신
+      const badge   = document.getElementById('collTradeBadge');
+      const menuDot = document.getElementById('tradeMenuDot');
+      const dot     = document.getElementById('drawerTradeDot');
+      if (badge) badge.style.display = remaining > 0 ? 'inline-block' : 'none';
+      const noTradeAlerts = remaining === 0 && !document.querySelector('.pray-btn');
+      if (noTradeAlerts && menuDot) menuDot.classList.remove('visible');
+      if (noTradeAlerts && dot) dot.style.display = 'none';
+      localStorage.setItem('beyondus_trade_dot', remaining > 0 ? '1' : '0');
       renderCollection();
+      if (_cachedTrades) renderTrades(_cachedTrades);
 
       const wrap = document.getElementById('cardDetailWrap');
       const cntEl = document.getElementById('cardDetailCnt');
@@ -3003,6 +3013,10 @@
           return theirPrayed && !localStorage.getItem('beyondus_seen_pray_' + t.id);
         }).length;
         // 교환 완료로 새로 받은 카드 추적 (이전 목록과 비교해 진짜 신규만)
+        if (!localStorage.getItem('beyondus_nc_migrated')) {
+          Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => localStorage.removeItem(k));
+          localStorage.setItem('beyondus_nc_migrated', '1');
+        }
         const knownRaw = localStorage.getItem('beyondus_known_accepts');
         const knownAccepts = new Set(JSON.parse(knownRaw || '[]'));
         const currentAccepts = all.filter(t => t.status === 'accepted').map(t => t.id);
@@ -3015,9 +3029,11 @@
               localStorage.setItem('beyondus_new_card_' + id, String(isMine ? t.targetCardId : t.requesterCardId));
             }
           });
+          // 고아 항목 제거 (거절/취소된 교환 잔재)
+          Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && !currentAccepts.includes(k.replace('beyondus_new_card_', ''))).forEach(k => localStorage.removeItem(k));
         }
         localStorage.setItem('beyondus_known_accepts', JSON.stringify(currentAccepts));
-        const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
+        const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).filter(k => currentAccepts.includes(k.replace('beyondus_new_card_', ''))).length;
         const tradeTotal = pendingIn + unprayed + unseenPray;
         const grandTotal = tradeTotal + newCardCount;
         const dot      = document.getElementById('drawerTradeDot');
@@ -3026,7 +3042,7 @@
         localStorage.setItem('beyondus_trade_dot', grandTotal > 0 ? '1' : '0');
         const collNewBadge = document.getElementById('collNewCardBadge');
         dot.style.display   = grandTotal > 0 ? 'inline-block' : 'none';
-        badge.style.display = tradeTotal > 0 ? 'inline-block' : 'none';
+        badge.style.display = (tradeTotal + newCardCount) > 0 ? 'inline-block' : 'none';
         collNewBadge.style.display = newCardCount > 0 ? 'inline-block' : 'none';
         if (grandTotal > 0) menuDot.classList.add('visible');
         else menuDot.classList.remove('visible');
@@ -3068,6 +3084,8 @@
           const myPrayed    = isMine ? t.requesterPrayed : t.targetPrayed;
           const theirPrayed = isMine ? t.targetPrayed    : t.requesterPrayed;
           const hasPrayer   = !!t.otherPrayer;
+          const theirCardId = isMine ? t.targetCardId : t.requesterCardId;
+          const isNewCard   = !!localStorage.getItem('beyondus_new_card_' + t.id);
 
           const prayBtnHtml = hasPrayer
             ? (myPrayed
@@ -3081,6 +3099,7 @@
           const prayerHtml = hasPrayer
             ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>${theirPrayHtml ? `<div>${theirPrayHtml}</div>` : ''}`
             : (theirPrayHtml ? `<div>${theirPrayHtml}</div>` : '');
+          const newDot = isNewCard ? `<span style="display:inline-block;width:7px;height:7px;background:#e05a5a;border-radius:50%;flex-shrink:0;margin-left:4px;vertical-align:middle;"></span>` : '';
 
           return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;position:relative;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
@@ -3093,7 +3112,7 @@
             <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
               <span style="font-weight:600;color:var(--text);">${escHtml(myCard)}</span>
               <span style="color:var(--line);">↔</span>
-              <span style="font-weight:600;color:var(--text);">${escHtml(theirCard)}</span>
+              <span style="font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onclick="openCardDetail(${theirCardId},1)">${escHtml(theirCard)}${newDot}</span>
             </div>
             ${prayerHtml}
           </div>`;
@@ -3149,14 +3168,17 @@
         html += resolved.map(t => renderItem(t, t.requester === currentNickname)).join('');
       }
       el.innerHTML = html || '<p class="card-sub">교환 내역이 없어요.</p>';
-      // 교환현황 탭 열면 상대 기도 알림 "봤음" 처리
-      const allT = [...(data.incoming || []), ...(data.outgoing || [])];
-      allT.forEach(t => {
-        if (t.status !== 'accepted') return;
-        const isMine = t.requester === currentNickname;
-        const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
-        if (theirPrayed) localStorage.setItem('beyondus_seen_pray_' + t.id, '1');
-      });
+      // 교환현황 탭이 실제로 열려있을 때만 상대 기도 알림 "봤음" 처리
+      const tradesVisible = document.getElementById('collPanelTrades') && document.getElementById('collPanelTrades').style.display !== 'none';
+      if (tradesVisible) {
+        const allT = [...(data.incoming || []), ...(data.outgoing || [])];
+        allT.forEach(t => {
+          if (t.status !== 'accepted') return;
+          const isMine = t.requester === currentNickname;
+          const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
+          if (theirPrayed) localStorage.setItem('beyondus_seen_pray_' + t.id, '1');
+        });
+      }
     }
 
     async function doTradeAccept(tradeId) {
