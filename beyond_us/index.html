@@ -2128,7 +2128,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502h';
+    const APP_VERSION = '20260502i';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3098,7 +3098,8 @@
           </div>`;
         }
 
-        const labelMap = { pending: isMine ? '대기중' : '교환 요청', rejected: '거절됨', cancelled: '취소됨' };
+        const isIncomingPending = isPending && !isMine;
+        const labelMap = { pending: isMine ? '대기중' : `${escHtml(otherNick)}님의 교환요청`, rejected: '거절됨', cancelled: '취소됨' };
         const label = labelMap[t.status] || t.status;
         const labelColor = isPending ? 'var(--text)' : 'var(--sub)';
         const actions = isPending
@@ -3111,8 +3112,11 @@
           : '';
         return `<div style="background:var(--primary-soft);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span style="font-size:12px;font-weight:700;color:${labelColor};">${label}</span>
-            <span style="font-size:11px;color:var(--sub);">${escHtml(otherNick)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;font-weight:700;color:${labelColor};">${label}</span>
+              ${isIncomingPending ? `<span style="display:inline-block;width:7px;height:7px;background:#e05a5a;border-radius:50%;flex-shrink:0;"></span>` : ''}
+            </div>
+            ${!isIncomingPending ? `<span style="font-size:11px;color:var(--sub);">${escHtml(otherNick)}</span>` : ''}
           </div>
           <div style="font-size:13px;color:var(--text);">
             <span style="font-weight:600;">${escHtml(myCard)}</span>
