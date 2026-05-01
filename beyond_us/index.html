@@ -2098,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501z';
+    const APP_VERSION = '20260502a';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3000,12 +3000,12 @@
                 ? `<span class="prayed-label">기도완료 ✓</span>`
                 : `<button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button>`)
             : '';
-          const theirPrayHtml = hasPrayer && theirPrayed
-            ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님도 기도했어요 ✓</p>`
+          const theirPrayHtml = theirPrayed
+            ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님이 기도했어요 ✓</p>`
             : '';
           const prayerHtml = hasPrayer
             ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>${theirPrayHtml}`
-            : '';
+            : theirPrayHtml;
 
           return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;position:relative;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
