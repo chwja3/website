@@ -2082,7 +2082,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501n';
+    const APP_VERSION = '20260501o';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2947,17 +2947,34 @@
       if (!incoming.length && !outgoing.length) {
         el.innerHTML = '<p class="card-sub">교환 내역이 없어요.</p>'; return;
       }
-      const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨' };
-      const statusColor = { pending:'#f59e0b', accepted:'#4ade80', rejected:'#f87171', cancelled:'#6b7280' };
-
       const renderItem = (t, isMine) => {
         const myCard = isMine ? t.requesterCardName : t.targetCardName;
         const theirCard = isMine ? t.targetCardName : t.requesterCardName;
         const otherNick = isMine ? t.target : t.requester;
-        const label = statusLabel[t.status] || t.status;
         const isAccepted = t.status === 'accepted';
         const isPending  = t.status === 'pending';
-        const labelColor = isAccepted ? '#5a9e6f' : isPending ? '#b58a3a' : 'var(--sub)';
+
+        if (isAccepted) {
+          const prayerHtml = t.otherPrayer
+            ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>`
+            : '';
+          return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;">
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px;">
+              <span style="font-size:14px;font-weight:700;color:var(--text);">${escHtml(otherNick)}</span>
+              <span style="font-size:12px;color:var(--sub);">과 교환 완료</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
+              <span style="font-weight:600;color:var(--text);">${escHtml(myCard)}</span>
+              <span style="color:var(--line);">↔</span>
+              <span style="font-weight:600;color:var(--text);">${escHtml(theirCard)}</span>
+            </div>
+            ${prayerHtml}
+          </div>`;
+        }
+
+        const labelMap = { pending: isMine ? '대기중' : '교환 요청', rejected: '거절됨', cancelled: '취소됨' };
+        const label = labelMap[t.status] || t.status;
+        const labelColor = isPending ? 'var(--text)' : 'var(--sub)';
         const actions = isPending
           ? (isMine
             ? `<button onclick="doTradeCancelTrade('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">취소</button>`
@@ -2966,21 +2983,17 @@
                 <button onclick="doTradeReject('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">거절</button>
               </div>`)
           : '';
-        const prayerHtml = isAccepted && t.otherPrayer
-          ? `<div style="margin-top:8px;padding:10px 12px;background:var(--primary-soft);border-radius:10px;font-size:12px;color:var(--text);line-height:1.7;">🙏 <em>${escHtml(t.otherPrayer)}</em></div>`
-          : '';
-        return `<div style="background:var(--primary-soft);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+        return `<div style="background:var(--primary-soft);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <span style="font-size:12px;font-weight:700;color:${labelColor};">${label}</span>
-            <span style="font-size:11px;color:var(--sub);">${isMine ? '→ ' + otherNick : otherNick + ' →'}</span>
+            <span style="font-size:11px;color:var(--sub);">${escHtml(otherNick)}</span>
           </div>
           <div style="font-size:13px;color:var(--text);">
-            <span style="font-weight:600;">${myCard}</span>
-            <span style="color:var(--sub);"> ↔ </span>
-            <span style="font-weight:600;">${theirCard}</span>
+            <span style="font-weight:600;">${escHtml(myCard)}</span>
+            <span style="color:var(--sub);padding:0 6px;">↔</span>
+            <span style="font-weight:600;">${escHtml(theirCard)}</span>
           </div>
-          ${prayerHtml}
-          ${actions ? `<div style="margin-top:8px;">${actions}</div>` : ''}
+          ${actions ? `<div style="margin-top:10px;">${actions}</div>` : ''}
         </div>`;
       };
 
