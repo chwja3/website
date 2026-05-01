@@ -2098,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501y';
+    const APP_VERSION = '20260501z';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2971,8 +2971,8 @@
       try {
         const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
         if (res.ok) loadTrades();
-        else alert(res.error || '오류가 발생했어요.');
-      } catch(e) { alert('연결 오류'); }
+        else alert(res.error || res.message || '오류가 발생했어요.');
+      } catch(e) { alert('연결 오류: ' + e.message); }
     }
 
     function renderTrades(data) {
