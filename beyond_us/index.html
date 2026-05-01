@@ -2085,7 +2085,7 @@
 
               <!-- 시크릿버디 -->
               <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #86efac;">
-                <span style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:0.12em;">SECRET BUDDY</span>
+                <span style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;">SECRET BUDDY</span>
                 <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
                   <p style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 4px;letter-spacing:-.01em;" id="bbbSecretName">—</p>
                   <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있어요.</p>
@@ -2094,7 +2094,7 @@
                   <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
                   <div style="display:flex;gap:8px;">
                     <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
-                    <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:#4ade80;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                    <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
                   </div>
                   <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
                 </div>
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502ar';
+    const APP_VERSION = '20260502as';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
