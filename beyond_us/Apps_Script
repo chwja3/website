@@ -1264,14 +1264,24 @@ function getTrades(userId) {
   incoming.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   outgoing.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  // 완료된 교환에 상대방 H&P 기도제목 첨부 (nick 필드로 직접 조회)
-  [...incoming, ...outgoing].forEach(function(t) {
-    if (t.status === 'accepted') {
-      const otherNick = (t.target === userId) ? t.requester : t.target;
-      const entry = HOLD_PRAY_ENTRIES.find(function(e) { return e.nick === otherNick; });
-      t.otherPrayer = entry ? entry.c : '';
+  // 완료된 교환에 상대방 H&P 기도제목 첨부
+  // Users 시트에서 닉네임→실명 실시간 조회 → 기도제목 매칭
+  const hasAccepted = [...incoming, ...outgoing].some(function(t) { return t.status === 'accepted'; });
+  if (hasAccepted) {
+    const usersData = getSpreadsheet().getSheetByName('Users').getDataRange().getValues();
+    const nickToName = {};
+    for (var i = 1; i < usersData.length; i++) {
+      if (usersData[i][0]) nickToName[String(usersData[i][0])] = String(usersData[i][2]);
     }
-  });
+    [...incoming, ...outgoing].forEach(function(t) {
+      if (t.status === 'accepted') {
+        const otherNick = (t.target === userId) ? t.requester : t.target;
+        const realName = nickToName[otherNick] || '';
+        const entry = realName ? HOLD_PRAY_ENTRIES.find(function(e) { return e.n === realName; }) : null;
+        t.otherPrayer = entry ? entry.c : '';
+      }
+    });
+  }
 
   return { ok: true, incoming, outgoing };
 }
