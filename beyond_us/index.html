@@ -882,7 +882,7 @@
        컬렉션 그리드
     ════════════════════════════ */
     .pray-dot { position:absolute; top:0px; right:0px; width:9px; height:9px; border-radius:50%; background:#e05a5a; flex-shrink:0; }
-    .pray-btn { font-size:12px; font-weight:700; padding:6px 14px; border-radius:999px; border:none; background:var(--primary); color:var(--bg); cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(44,36,23,0.18); }
+    .pray-btn { font-size:12px; font-weight:700; padding:6px 14px; border-radius:8px; border:none; background:linear-gradient(135deg,#e8854a,#e05a5a); color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(224,90,90,0.30); }
     .pray-btn:active { opacity:.8; }
     .pray-btn:disabled { background:var(--line); color:var(--sub); box-shadow:none; cursor:default; }
     .prayed-label { font-size:11px; color:var(--sub); }
@@ -2098,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501u';
+    const APP_VERSION = '20260501v';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2962,7 +2962,7 @@
     }
 
     async function markPrayed(tradeId, btn) {
-      if (btn) { btn.disabled = true; btn.textContent = '기도완료'; const dot = btn.parentElement.querySelector('.pray-dot'); if (dot) dot.remove(); }
+      if (btn) { btn.disabled = true; btn.textContent = '기도했어요!'; const dot = btn.parentElement.querySelector('.pray-dot'); if (dot) dot.remove(); }
       try {
         const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
         if (res.ok) loadTrades();
@@ -2993,7 +2993,7 @@
           const prayBtnHtml = hasPrayer
             ? (myPrayed
                 ? `<span class="prayed-label">기도완료 ✓</span>`
-                : `<div style="position:relative;display:inline-flex;"><button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도완료</button><span class="pray-dot"></span></div>`)
+                : `<div style="position:relative;display:inline-flex;"><button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button><span class="pray-dot"></span></div>`)
             : '';
           const theirPrayHtml = hasPrayer && theirPrayed
             ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님도 기도했어요 ✓</p>`
