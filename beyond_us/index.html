@@ -2115,7 +2115,7 @@
               <!-- 받은 메시지 -->
               <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
-                <div id="bbbMsgList" style="margin-top:6px;">
+                <div id="bbbMsgList" style="margin-top:4px;">
                   <p style="font-size:13px;color:var(--sub);margin:0;text-align:center;padding:8px 0;">아직 받은 메시지가 없어요.</p>
                 </div>
               </div>
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502af';
+    const APP_VERSION = '20260502ag';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4556,10 +4556,12 @@
         return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
       }
       el.innerHTML = messages.map((m, i) => `
-        <div style="padding:7px 0;">
-          <p style="font-size:14px;color:var(--text);margin:0 0 3px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
-          <p style="font-size:11px;color:var(--sub);margin:0 0 7px;">${_fmtBBBDate(m.createdAt)}</p>
-          ${i < messages.length - 1 ? '<div style="height:1px;background:var(--primary);opacity:0.15;"></div>' : ''}
+        <div style="padding:6px 0 ${i < messages.length - 1 ? '0' : '2px'};">
+          <p style="font-size:14px;color:var(--text);margin:0 0 5px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:${i < messages.length - 1 ? '6px' : '0'};">
+            <div style="flex:1;height:0.5px;background:var(--primary);opacity:0.2;"></div>
+            <span style="font-size:10px;color:var(--sub);white-space:nowrap;flex-shrink:0;">${_fmtBBBDate(m.createdAt)}</span>
+          </div>
         </div>`).join('');
     }
 
