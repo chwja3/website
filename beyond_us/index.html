@@ -886,6 +886,11 @@
     .pray-btn:active { opacity:.8; }
     .pray-btn:disabled { background:var(--line); color:var(--sub); box-shadow:none; cursor:default; }
     .prayed-label { font-size:11px; color:var(--sub); }
+    @keyframes prayFadeOut {
+      0%, 70% { opacity:1; }
+      100% { opacity:0; }
+    }
+    .pray-notify { animation: prayFadeOut 5s ease forwards; }
     .coll-tabs { display: flex; gap: 4px; margin-top: 20px; }
     .coll-tab {
       padding: 8px 18px; font-size: 13px; font-weight: 700;
@@ -2098,7 +2103,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502b';
+    const APP_VERSION = '20260502c';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3007,7 +3012,7 @@
                 : `<button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button>`)
             : '';
           const theirPrayHtml = theirPrayed
-            ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님이 기도했어요 ✓</p>`
+            ? `<p class="pray-notify" style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님이 ${escHtml(currentNickname)}님을 위해 기도했어요.</p>`
             : '';
           const prayerHtml = hasPrayer
             ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>${theirPrayHtml}`
