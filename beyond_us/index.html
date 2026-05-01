@@ -1001,6 +1001,8 @@
       border-radius: 12px; margin: 2px 8px;
       transition: background .15s;
     }
+    .drawer-item::before { content: "•"; flex-shrink: 0; }
+    .drawer-label { display: block; text-align: justify; text-align-last: justify; text-justify: inter-character; white-space: nowrap; }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
     .drawer-notice-dot {
@@ -1770,13 +1772,13 @@
         <span class="drawer-header-title">Beyond Us</span>
       </div>
       <ul class="drawer-nav">
-        <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
-        <li class="drawer-item active" data-section="mission">미션</li>
-        <li class="drawer-item" data-section="prayer">Hold &amp; Pray</li>
-        <li class="drawer-item" data-section="collection">컬렉션 <span id="drawerTradeDot" style="display:none;background:#e8854a;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span></li>
-        <li class="drawer-item" data-section="secret">🤝 B.B.B.</li>
-        <li class="drawer-item" data-section="chat">💬 단톡방</li>
-        <li class="drawer-item" data-section="inquiry">개발자 문의</li>
+        <li class="drawer-item" data-section="notice"><span class="drawer-label">공지사항</span><span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
+        <li class="drawer-item active" data-section="mission"><span class="drawer-label">사전미션</span></li>
+        <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span></li>
+        <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;background:#e8854a;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span></li>
+        <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
+        <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
+        <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
       </ul>
       <div class="drawer-logout">
         <button class="drawer-logout-btn" id="logoutBtn">로그아웃</button>
@@ -3865,6 +3867,15 @@
     });
 
     /* ════ 드로어 ════ */
+    function syncDrawerLabelWidth() {
+      const labels = document.querySelectorAll('.drawer-label');
+      labels.forEach(l => { l.style.width = 'max-content'; });
+      let maxW = 0;
+      labels.forEach(l => { maxW = Math.max(maxW, l.scrollWidth); });
+      labels.forEach(l => { l.style.width = maxW + 'px'; });
+    }
+    document.fonts.ready.then(syncDrawerLabelWidth);
+
     function openDrawer() {
       document.getElementById('navDrawer').classList.add('open');
       document.getElementById('drawerOverlay').classList.remove('hidden');
@@ -3951,16 +3962,16 @@
         list.innerHTML = '<p class="notice-empty">검색 결과가 없어요.</p>';
         return;
       }
-      function driveImgSrc(url) {
-        if (!url) return '';
-        const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200' : url;
+      function parseNoticeImgs(imageUrl) {
+        if (!imageUrl) return [];
+        try { const p = JSON.parse(imageUrl); if (Array.isArray(p)) return p; } catch(e) {}
+        return [imageUrl];
       }
       list.innerHTML = notices.map(n => {
         const isNew = !seen.includes(n.id);
-        const imgSrc = driveImgSrc(n.imageUrl);
-        const imgHtml = imgSrc
-          ? `<img src="${imgSrc}" loading="lazy" style="width:100%; max-height:320px; object-fit:contain; border-radius:8px; margin-top:10px; display:block;">`
+        const imgs = parseNoticeImgs(n.imageUrl);
+        const imgHtml = imgs.length
+          ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${imgs.map(u => `<img src="${u}" loading="lazy" style="max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;flex:1 1 auto;">`).join('')}</div>`
           : '';
         return `
         <div class="notice-item">

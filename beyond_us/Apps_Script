@@ -659,13 +659,17 @@ function testDriveAuth() {
 }
 
 // 이미지 base64 → BeyondUs_Notices 폴더에 업로드 후 공개 URL 반환
-// 실패 시 throw → postNotice/editNotice에서 응답에 포함
 function uploadNoticeToDrive(imageBase64, imageMime) {
   const ext = imageMime === 'image/png' ? 'png' : imageMime === 'image/gif' ? 'gif' : 'jpg';
   const filename = 'notice_' + new Date().getTime() + '.' + ext;
   const blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), imageMime, filename);
   const file = getNoticeFolder().createFile(blob);
   return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1200';
+}
+
+// 여러 이미지 업로드 → URL 배열 반환
+function uploadMultipleImages(imageFiles) {
+  return imageFiles.map(f => uploadNoticeToDrive(f.base64, f.mime));
 }
 
 function getNotices() {
@@ -693,9 +697,10 @@ function postNotice(body) {
   if (!title || !content) return { error: 'missing_fields' };
 
   let imageUrl = String(body.imageUrl || '').trim();
-  if (!imageUrl && body.imageBase64 && body.imageMime) {
+  if (!imageUrl && body.imageFiles && body.imageFiles.length) {
     try {
-      imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
+      const urls = uploadMultipleImages(body.imageFiles);
+      imageUrl = JSON.stringify(urls);
     } catch(e) {
       Logger.log('Drive upload error: ' + e);
       return { error: 'drive_upload_failed', detail: String(e) };
@@ -725,9 +730,10 @@ function editNotice(body) {
   sheet.getRange(rowIndex, 3).setValue(content);
 
   let imageUrl = body.imageUrl !== undefined ? String(body.imageUrl || '').trim() : null;
-  if (!imageUrl && body.imageBase64 && body.imageMime) {
+  if (!imageUrl && body.imageFiles && body.imageFiles.length) {
     try {
-      imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
+      const urls = uploadMultipleImages(body.imageFiles);
+      imageUrl = JSON.stringify(urls);
     } catch(e) {
       Logger.log('Drive upload error: ' + e);
       return { error: 'drive_upload_failed', detail: String(e) };
