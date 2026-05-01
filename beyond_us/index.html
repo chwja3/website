@@ -2125,7 +2125,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502m';
+    const APP_VERSION = '20260502n';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2675,10 +2675,7 @@
       const card = SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
       // 새 카드 dot 제거
-      Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(cardId)).forEach(k => {
-        localStorage.setItem('beyondus_seen_accept_' + k.replace('beyondus_new_card_', ''), '1');
-        localStorage.removeItem(k);
-      });
+      Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(cardId)).forEach(k => localStorage.removeItem(k));
       const remaining = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
       const nb = document.getElementById('collNewCardBadge');
       if (nb) nb.style.display = remaining > 0 ? 'inline-block' : 'none';
@@ -3005,15 +3002,21 @@
           const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
           return theirPrayed && !localStorage.getItem('beyondus_seen_pray_' + t.id);
         }).length;
-        // 교환 완료로 새로 받은 카드 추적
-        all.filter(t => t.status === 'accepted').forEach(t => {
-          const seenKey = 'beyondus_seen_accept_' + t.id;
-          if (!localStorage.getItem(seenKey)) {
-            const isMine = t.requester === currentNickname;
-            const receivedCardId = isMine ? t.targetCardId : t.requesterCardId;
-            localStorage.setItem('beyondus_new_card_' + t.id, String(receivedCardId));
-          }
-        });
+        // 교환 완료로 새로 받은 카드 추적 (이전 목록과 비교해 진짜 신규만)
+        const knownRaw = localStorage.getItem('beyondus_known_accepts');
+        const knownAccepts = new Set(JSON.parse(knownRaw || '[]'));
+        const currentAccepts = all.filter(t => t.status === 'accepted').map(t => t.id);
+        if (knownRaw !== null) {
+          currentAccepts.forEach(id => {
+            if (!knownAccepts.has(id)) {
+              const t = all.find(tr => tr.id === id);
+              if (!t) return;
+              const isMine = t.requester === currentNickname;
+              localStorage.setItem('beyondus_new_card_' + id, String(isMine ? t.targetCardId : t.requesterCardId));
+            }
+          });
+        }
+        localStorage.setItem('beyondus_known_accepts', JSON.stringify(currentAccepts));
         const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
         const tradeTotal = pendingIn + unprayed + unseenPray;
         const grandTotal = tradeTotal + newCardCount;
@@ -3160,7 +3163,12 @@
       if (!confirm('교환을 수락할까요?')) return;
       try {
         const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
-        if (res.ok) { localStorage.setItem('beyondus_seen_accept_' + tradeId, '1'); alert('교환이 완료됐어요! 🎉'); Promise.all([loadUserStatus(), loadTrades()]); }
+        if (res.ok) {
+          // 수락한 사람은 새 카드 알림 불필요 — known에 미리 추가
+          const ka = JSON.parse(localStorage.getItem('beyondus_known_accepts') || '[]');
+          if (!ka.includes(tradeId)) { ka.push(tradeId); localStorage.setItem('beyondus_known_accepts', JSON.stringify(ka)); }
+          alert('교환이 완료됐어요! 🎉'); Promise.all([loadUserStatus(), loadTrades()]);
+        }
         else alert(res.error || '수락 실패');
       } catch(e) { alert('연결 오류'); }
     }
