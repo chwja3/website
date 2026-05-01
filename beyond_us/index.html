@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502aw';
+    const APP_VERSION = '20260502ax';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4470,7 +4470,7 @@
         document.getElementById('bbbContent').style.display = 'flex';
 
         // 케어버디
-        document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name;
+        document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name + ' 🗣️👂🏻';
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
