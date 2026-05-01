@@ -2113,10 +2113,10 @@
               </div>
 
               <!-- 받은 메시지 -->
-              <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
+              <div style="padding:4px 2px;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
                 <div id="bbbMsgList" style="margin-top:4px;">
-                  <p style="font-size:13px;color:var(--sub);margin:0;text-align:center;padding:8px 0;">아직 받은 메시지가 없어요.</p>
+                  <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
                 </div>
               </div>
 
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502am';
+    const APP_VERSION = '20260502an';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
