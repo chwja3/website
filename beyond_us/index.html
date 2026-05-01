@@ -881,6 +881,10 @@
     /* ════════════════════════════
        컬렉션 그리드
     ════════════════════════════ */
+    .pray-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#e05a5a; margin-left:4px; vertical-align:middle; flex-shrink:0; }
+    .pray-btn { font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; border:1.5px solid var(--primary); background:transparent; color:var(--primary); cursor:pointer; white-space:nowrap; }
+    .pray-btn:active { opacity:.7; }
+    .prayed-label { font-size:11px; color:var(--sub); }
     .coll-tabs { display: flex; gap: 4px; margin-top: 20px; }
     .coll-tab {
       padding: 8px 18px; font-size: 13px; font-weight: 700;
@@ -2092,7 +2096,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501p';
+    const APP_VERSION = '20260501q';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2931,18 +2935,33 @@
         const res = await fetch(`${API_BASE}?action=getTrades&userId=${encodeURIComponent(currentNickname)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
         if (!res.ok) return;
         _cachedTrades = res;
+        const all = [...(res.incoming || []), ...(res.outgoing || [])];
         const pendingIn = (res.incoming || []).filter(t => t.status === 'pending').length;
-        const dot = document.getElementById('drawerTradeDot');
+        const unprayed  = all.filter(t => {
+          if (t.status !== 'accepted' || !t.otherPrayer) return false;
+          const isMine = t.requester === currentNickname;
+          return isMine ? !t.requesterPrayed : !t.targetPrayed;
+        }).length;
+        const total = pendingIn + unprayed;
+        const dot   = document.getElementById('drawerTradeDot');
         const badge = document.getElementById('collTradeBadge');
-        if (pendingIn > 0) {
-          dot.style.display = ''; dot.textContent = pendingIn;
-          badge.style.display = ''; badge.textContent = pendingIn;
+        if (total > 0) {
+          dot.style.display = ''; dot.textContent = total;
+          badge.style.display = ''; badge.textContent = total;
         } else {
           dot.style.display = 'none';
           badge.style.display = 'none';
         }
         renderTrades(res);
       } catch(e) {}
+    }
+
+    async function markPrayed(tradeId) {
+      try {
+        const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
+        if (res.ok) loadTrades();
+        else alert(res.error || '오류가 발생했어요.');
+      } catch(e) { alert('연결 오류'); }
     }
 
     function renderTrades(data) {
@@ -2961,13 +2980,29 @@
         const isPending  = t.status === 'pending';
 
         if (isAccepted) {
-          const prayerHtml = t.otherPrayer
-            ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>`
+          const myPrayed    = isMine ? t.requesterPrayed : t.targetPrayed;
+          const theirPrayed = isMine ? t.targetPrayed    : t.requesterPrayed;
+          const hasPrayer   = !!t.otherPrayer;
+
+          const prayBtnHtml = hasPrayer
+            ? (myPrayed
+                ? `<span class="prayed-label">기도했어요 ✓</span>`
+                : `<button class="pray-btn" onclick="markPrayed('${t.id}')">기도했어요!</button><span class="pray-dot"></span>`)
             : '';
-          return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;">
-            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:8px;">
-              <span style="font-size:14px;font-weight:700;color:var(--text);">${escHtml(otherNick)}</span>
-              <span style="font-size:12px;color:var(--sub);">과 교환 완료</span>
+          const theirPrayHtml = hasPrayer && theirPrayed
+            ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님도 기도했어요 ✓</p>`
+            : '';
+          const prayerHtml = hasPrayer
+            ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>${theirPrayHtml}`
+            : '';
+
+          return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;position:relative;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <div style="display:flex;align-items:baseline;gap:6px;">
+                <span style="font-size:14px;font-weight:700;color:var(--text);">${escHtml(otherNick)}</span>
+                <span style="font-size:12px;color:var(--sub);">과 교환 완료</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">${prayBtnHtml}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
               <span style="font-weight:600;color:var(--text);">${escHtml(myCard)}</span>

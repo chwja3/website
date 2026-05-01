@@ -158,6 +158,7 @@ function doPost(e) {
     if (action === 'acceptTrade')  return jsonOutput(acceptTrade(body));
     if (action === 'rejectTrade')  return jsonOutput(rejectTrade(body));
     if (action === 'cancelTrade')  return jsonOutput(cancelTrade(body));
+    if (action === 'prayForTrade') return jsonOutput(prayForTrade(body));
     if (action === 'guessBBBSecret')        return jsonOutput(guessBBBSecret(body));
     if (action === 'sendBBBMessage')        return jsonOutput(sendBBBMessage(body));
     if (action === 'adminSetBBBMessageOpen') return jsonOutput(adminSetBBBMessageOpen(body));
@@ -1247,7 +1248,7 @@ function getTrades(userId) {
   if (last < 2) return { ok: true, incoming: [], outgoing: [] };
 
   _expireOldTrades(sheet);
-  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const rows = sheet.getRange(2, 1, last - 1, 12).getValues();
   const incoming = [], outgoing = [];
   rows.forEach(row => {
     if (!row[0]) return;
@@ -1256,7 +1257,8 @@ function getTrades(userId) {
       requesterCardId: Number(row[2]), requesterCardName: String(row[3]),
       target: String(row[4]),
       targetCardId: Number(row[5]), targetCardName: String(row[6]),
-      status: String(row[7]), createdAt: String(row[8]), resolvedAt: String(row[9])
+      status: String(row[7]), createdAt: String(row[8]), resolvedAt: String(row[9]),
+      requesterPrayed: !!row[10], targetPrayed: !!row[11]
     };
     if (t.target   === userId) incoming.push(t);
     if (t.requester === userId) outgoing.push(t);
@@ -1284,6 +1286,33 @@ function getTrades(userId) {
   }
 
   return { ok: true, incoming, outgoing };
+}
+
+function prayForTrade(body) {
+  const tradeId  = String(body.tradeId  || '');
+  const nickname = String(body.nickname || '').trim();
+  if (!tradeId || !nickname) return { error: 'missing params' };
+
+  const sheet = getOrCreateTradesSheet();
+  const last  = sheet.getLastRow();
+  if (last < 2) return { error: 'not_found' };
+
+  const rows = sheet.getRange(2, 1, last - 1, 5).getValues();
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) !== tradeId) continue;
+    const requester = String(rows[i][1]);
+    const target    = String(rows[i][4]);
+    if (nickname === requester) {
+      sheet.getRange(i + 2, 11).setValue(new Date().toISOString());
+      return { ok: true };
+    }
+    if (nickname === target) {
+      sheet.getRange(i + 2, 12).setValue(new Date().toISOString());
+      return { ok: true };
+    }
+    return { error: 'unauthorized' };
+  }
+  return { error: 'not_found' };
 }
 
 function getAdminTrades() {
