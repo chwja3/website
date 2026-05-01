@@ -1909,8 +1909,8 @@
               <div id="tradesList"><p class="card-sub">교환 내역이 없어요.</p></div>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
-              <button class="btn btn-secondary" style="flex:1;" onclick="switchSection('mission')">← 홈으로</button>
-              <button class="btn btn-primary" style="flex:1;" onclick="switchSection('prayer')">중보기도 →</button>
+              <button class="btn btn-secondary" style="flex:1; font-size:clamp(11px,3vw,15px); white-space:nowrap;" onclick="switchSection('mission')">← 홈으로 가기</button>
+              <button class="btn btn-primary" style="flex:1; font-size:clamp(11px,3vw,15px); white-space:nowrap;" onclick="switchSection('prayer')">중보기도하러 가기 →</button>
             </div>
           </section>
         </div>
@@ -2081,7 +2081,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501e';
+    const APP_VERSION = '20260501f';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
