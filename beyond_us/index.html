@@ -2125,7 +2125,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502q';
+    const APP_VERSION = '20260502r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2807,6 +2807,13 @@
 
       const newCardIds = new Set();
       Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => newCardIds.add(Number(localStorage.getItem(k))));
+      // 컬렉션에 없는 카드를 가리키는 유령 키 제거
+      newCardIds.forEach(id => {
+        if (!(counts[id] > 0)) {
+          Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(id)).forEach(k => localStorage.removeItem(k));
+          newCardIds.delete(id);
+        }
+      });
 
       sub.textContent = `${currentNickname}님의 컬렉션 · ${unique}/9종 보유`;
       grid.innerHTML = SPIRIT_CARDS.map(card => {
@@ -3033,7 +3040,8 @@
           Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && !currentAccepts.includes(k.replace('beyondus_new_card_', ''))).forEach(k => localStorage.removeItem(k));
         }
         localStorage.setItem('beyondus_known_accepts', JSON.stringify(currentAccepts));
-        const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).filter(k => currentAccepts.includes(k.replace('beyondus_new_card_', ''))).length;
+        const ownedIds = new Set((userStatus?.collection || []).map(c => c.id));
+        const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).filter(k => currentAccepts.includes(k.replace('beyondus_new_card_', ''))).filter(k => ownedIds.has(Number(localStorage.getItem(k)))).length;
         const tradeTotal = pendingIn + unprayed + unseenPray;
         const grandTotal = tradeTotal + newCardCount;
         const dot      = document.getElementById('drawerTradeDot');
