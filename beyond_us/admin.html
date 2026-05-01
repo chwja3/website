@@ -258,12 +258,15 @@
           <input type="text" id="noticeTitle" class="input" placeholder="제목" />
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
           <!-- 이미지 첨부 -->
-          <label style="display:block; margin-top:12px; font-size:13px; color:var(--sub); margin-bottom:6px;">🖼️ 이미지 첨부 (선택)</label>
-          <input type="file" id="noticeImageFile" accept="image/*" style="font-size:13px; width:100%;" />
-          <p style="font-size:11px; color:var(--sub); margin:4px 0 0;">* 10MB 이하.</p>
-          <div id="noticeImagePreview" style="display:none; margin-top:8px;">
-            <img id="noticePreviewImg" src="" style="max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--border); display:block;" />
-            <button type="button" id="noticeClearImage" style="margin-top:4px; font-size:12px; color:var(--sub); background:none; border:none; cursor:pointer;">✕ 이미지 제거</button>
+          <input type="file" id="noticeImageFile" accept="image/*" style="display:none;" />
+          <div id="imgDropZone" onclick="document.getElementById('noticeImageFile').click()" style="margin-top:14px; border:2px dashed var(--line); border-radius:14px; padding:28px 16px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; background:var(--primary-soft);">
+            <div style="font-size:28px; margin-bottom:6px;">🖼️</div>
+            <div style="font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px;">클릭하거나 이미지를 드래그하세요</div>
+            <div style="font-size:12px; color:var(--sub);">JPG · PNG · GIF · 10MB 이하</div>
+          </div>
+          <div id="noticeImagePreview" style="display:none; margin-top:10px; position:relative;">
+            <img id="noticePreviewImg" src="" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; border:1px solid var(--line); display:block;" />
+            <button type="button" id="noticeClearImage" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; border:none; border-radius:999px; width:28px; height:28px; font-size:14px; cursor:pointer; line-height:1;">✕</button>
           </div>
           <div class="status" id="noticePostStatus"></div>
           <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
@@ -957,23 +960,31 @@
     let _pendingImageBase64 = '', _pendingImageMime = '';
 
     // 파일 선택 → base64 변환 + 미리보기
-    document.getElementById('noticeImageFile').addEventListener('change', function() {
-      const file = this.files[0];
+    function handleImageFile(file) {
       if (!file) return;
-      if (file.size > 10 * 1024 * 1024) {
-        alert('10MB 이하 파일만 첨부 가능합니다.');
-        this.value = '';
-        return;
-      }
+      if (file.size > 10 * 1024 * 1024) { alert('10MB 이하 파일만 첨부 가능합니다.'); return; }
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = e => {
         const dataUrl = e.target.result;
-        const comma = dataUrl.indexOf(',');
-        _pendingImageBase64 = dataUrl.slice(comma + 1);
+        _pendingImageBase64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
         _pendingImageMime   = file.type || 'image/jpeg';
         showImgPreview(dataUrl);
       };
       reader.readAsDataURL(file);
+    }
+
+    document.getElementById('noticeImageFile').addEventListener('change', function() {
+      handleImageFile(this.files[0]);
+    });
+
+    // 드래그앤드롭
+    const dropZone = document.getElementById('imgDropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = '#e8e0d0'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--line)'; dropZone.style.background = 'var(--primary-soft)'; });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--line)'; dropZone.style.background = 'var(--primary-soft)';
+      handleImageFile(e.dataTransfer.files[0]);
     });
 
     // 이미지 제거
