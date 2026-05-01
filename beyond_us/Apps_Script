@@ -715,8 +715,23 @@ function postNotice(body) {
 function deleteNotice(body) {
   const rowIndex = Number(body.rowIndex);
   if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
-  getOrCreateNoticeSheet().deleteRow(rowIndex);
+  const sheet = getOrCreateNoticeSheet();
+  const imageUrl = String(sheet.getRange(rowIndex, 5).getValue() || '');
+  sheet.deleteRow(rowIndex);
+  deleteDriveImages(imageUrl);
   return { ok: true };
+}
+
+function deleteDriveImages(imageUrl) {
+  if (!imageUrl) return;
+  let urls = [];
+  try { const p = JSON.parse(imageUrl); if (Array.isArray(p)) urls = p; } catch(e) {}
+  if (!urls.length && imageUrl) urls = [imageUrl];
+  urls.forEach(url => {
+    const m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/) || url.match(/thumbnail\?id=([a-zA-Z0-9_-]+)/);
+    if (!m) return;
+    try { DriveApp.getFileById(m[1]).setTrashed(true); } catch(e) { Logger.log('Drive delete error: ' + e); }
+  });
 }
 
 function editNotice(body) {
