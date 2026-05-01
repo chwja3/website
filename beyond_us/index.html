@@ -2103,7 +2103,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502c';
+    const APP_VERSION = '20260502d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3095,7 +3095,7 @@
       if (!confirm('교환을 수락할까요?')) return;
       try {
         const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
-        if (res.ok) { await loadUserStatus(); await loadTrades(); alert('교환이 완료됐어요! 🎉'); }
+        if (res.ok) { alert('교환이 완료됐어요! 🎉'); Promise.all([loadUserStatus(), loadTrades()]); }
         else alert(res.error || '수락 실패');
       } catch(e) { alert('연결 오류'); }
     }
