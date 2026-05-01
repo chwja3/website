@@ -886,11 +886,22 @@
     .pray-btn:active { opacity:.8; }
     .pray-btn:disabled { background:var(--line); color:var(--sub); box-shadow:none; cursor:default; }
     .prayed-label { font-size:11px; color:var(--sub); }
-    @keyframes prayFadeOut {
-      0%, 70% { opacity:1; }
-      100% { opacity:0; }
+    @keyframes stampIn {
+      0%   { transform: rotate(-18deg) scale(0); opacity:0; }
+      65%  { transform: rotate(-18deg) scale(1.12); opacity:1; }
+      100% { transform: rotate(-18deg) scale(1); opacity:1; }
     }
-    .pray-notify { animation: prayFadeOut 5s ease forwards; }
+    .pray-stamp {
+      position:absolute; top:-14px; right:10px;
+      width:58px; height:58px; border-radius:50%;
+      border:2px dashed #c8860a;
+      background:rgba(245,169,74,0.10);
+      color:#b8760a; font-size:9px; font-weight:900;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; line-height:1.55; pointer-events:none; letter-spacing:0.2px;
+      animation: stampIn 0.45s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    .pray-stamp.seen { animation:none; transform:rotate(-18deg); }
     .coll-tabs { display: flex; gap: 4px; margin-top: 20px; }
     .coll-tab {
       padding: 8px 18px; font-size: 13px; font-weight: 700;
@@ -2103,7 +2114,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502e';
+    const APP_VERSION = '20260502f';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3016,8 +3027,9 @@
                 ? `<span class="prayed-label">기도완료 ✓</span>`
                 : `<button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button>`)
             : '';
+          const stampSeen = localStorage.getItem('beyondus_seen_pray_' + t.id);
           const theirPrayHtml = theirPrayed
-            ? `<p class="pray-notify" style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님이 ${escHtml(currentNickname)}님을 위해 기도했어요.</p>`
+            ? `<div class="pray-stamp${stampSeen ? ' seen' : ''}">🙏<br>기도<br>했어요</div>`
             : '';
           const prayerHtml = hasPrayer
             ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>${theirPrayHtml}`
