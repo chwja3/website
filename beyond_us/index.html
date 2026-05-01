@@ -2045,85 +2045,85 @@
       <div id="sectionSecret" class="section hidden">
         <div class="wrap" style="padding-bottom:40px;">
 
-          <section class="card" style="margin-top:16px;padding:0;overflow:hidden;">
+          <section class="card" style="margin-top:16px;">
 
             <!-- 헤더 -->
-            <div style="padding:20px 20px 16px;border-bottom:1px solid var(--line);">
-              <p style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 4px;">B.B.B.</p>
-              <h2 style="font-size:18px;font-weight:800;color:var(--text);margin:0;">Buddy Beyond Buddy</h2>
-            </div>
+            <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;">B.B.B. <span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span></h2>
 
-            <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:32px 0;">불러오는 중...</div>
+            <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:20px 0 12px;">불러오는 중...</div>
 
-            <div id="bbbContent" style="display:none;">
+            <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
               <!-- 케어버디 -->
-              <div style="padding:18px 20px;border-bottom:1px solid var(--line);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                  <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0;">CARE BUDDY</p>
+              <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
                   <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
                 </div>
-                <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 2px;" id="bbbCareBuddyName">—</p>
+                <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbCareBuddyName">—</p>
                 <p style="font-size:12px;color:var(--sub);margin:0;">내가 몰래 챙겨야 할 사람</p>
               </div>
 
               <!-- 사진 미션 -->
-              <div style="padding:18px 20px;border-bottom:1px solid var(--line);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                  <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0;">MISSION</p>
-                  <span style="font-size:10px;color:var(--sub);font-weight:600;">뽑기권 +1 (최초 1회)</span>
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+                <div style="display:flex;align-items:flex-start;gap:14px;">
+                  <div style="flex:1;min-width:0;">
+                    <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 1</span>
+                    <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">케어버디와 사진 찍기</p>
+                    <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
+                    <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
+                  </div>
+                  <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:2px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                    <input type="file" id="bbbPhotoInput" accept="image/*" capture="environment" style="display:none;" />
+                    <img id="bbbPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
+                    <span id="bbbPhotoPlaceholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
+                    <span id="bbbPhotoPlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
+                  </label>
                 </div>
-                <p style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 12px;">케어버디와 사진 찍기</p>
-                <div id="bbbPhotoPreview" style="display:none;margin-bottom:12px;">
-                  <img id="bbbPhotoImg" src="" alt="" style="width:100%;border-radius:10px;display:block;" />
-                  <p style="font-size:11px;color:var(--sub);margin:6px 0 0;">나만 볼 수 있어요</p>
-                </div>
-                <label id="bbbPhotoLabel" style="display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);font-size:13px;font-weight:700;padding:9px 18px;border-radius:10px;cursor:pointer;">
-                  <input type="file" id="bbbPhotoInput" accept="image/*" capture="environment" style="display:none;" />
-                  사진 올리기
-                </label>
-                <p id="bbbPhotoStatus" style="font-size:12px;color:var(--sub);margin:8px 0 0;min-height:16px;"></p>
               </div>
 
               <!-- 시크릿버디 -->
-              <div id="bbbSecretWrap" style="padding:18px 20px;border-bottom:1px solid var(--line);">
-                <p style="font-size:10px;font-weight:700;color:#f59e0b;letter-spacing:0.1em;margin:0 0 10px;">SECRET BUDDY</p>
-                <div id="bbbSecretRevealed" style="display:none;">
-                  <p style="font-size:15px;font-weight:700;color:#4ade80;margin:0 0 2px;" id="bbbSecretName">—</p>
+              <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #86efac;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
+                <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
+                  <p style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 4px;letter-spacing:-.01em;" id="bbbSecretName">—</p>
                   <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있어요.</p>
                 </div>
-                <div id="bbbSecretGuess">
-                  <p style="font-size:13px;color:var(--sub);margin:0 0 10px;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요. 누구일까요?</p>
+                <div id="bbbSecretGuess" style="margin-top:10px;">
+                  <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
                   <div style="display:flex;gap:8px;">
-                    <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;" />
-                    <button onclick="submitBBBGuess()" style="padding:9px 16px;border-radius:8px;border:none;background:#f59e0b;color:#000;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                    <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
+                    <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
                   </div>
-                  <p id="bbbGuessMsg" style="font-size:12px;margin:8px 0 0;min-height:16px;"></p>
+                  <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
                 </div>
               </div>
 
               <!-- 익명 메시지 보내기 -->
-              <div id="bbbMsgSendWrap" style="display:none;padding:18px 20px;border-bottom:1px solid var(--line);">
-                <p style="font-size:10px;font-weight:700;color:#60a5fa;letter-spacing:0.1em;margin:0 0 4px;">ANONYMOUS MESSAGE</p>
-                <p style="font-size:12px;color:var(--sub);margin:0 0 12px;">케어버디에게 익명으로 메시지를 보내요.</p>
+              <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">To. CARE BUDDY..</span>
+                <p style="font-size:12px;color:var(--sub);margin:6px 0 10px;line-height:1.6;">오늘 케어버디에게 따뜻한 위로와 칭찬을 전해봐요.<br><span style="font-size:11px;color:var(--line);">(케어버디에게는 익명으로 전달됩니다)</span></p>
                 <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
-                  style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;resize:none;height:88px;outline:none;font-family:inherit;"></textarea>
-                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-                  <button onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:8px;border:none;background:#60a5fa;color:#000;font-weight:700;font-size:13px;cursor:pointer;">보내기</button>
+                  style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;resize:none;height:72px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                  <button onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">보내기</button>
                 </div>
-                <p id="bbbMsgSendResult" style="font-size:12px;margin:6px 0 0;min-height:16px;"></p>
+                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:4px 0 0;"></p>
               </div>
 
               <!-- 받은 메시지 -->
-              <div style="padding:18px 20px;">
-                <p style="font-size:10px;font-weight:700;color:#60a5fa;letter-spacing:0.1em;margin:0 0 12px;">INBOX</p>
-                <div id="bbbMsgList"><p style="font-size:13px;color:var(--sub);margin:0;">아직 받은 메시지가 없어요.</p></div>
+              <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
+                <div id="bbbMsgList" style="margin-top:4px;">
+                  <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
+                </div>
               </div>
 
             </div>
 
-            <div id="bbbNoMatch" style="display:none;text-align:center;padding:36px 0;">
-              <p style="font-size:14px;color:var(--sub);margin:0;">아직 매칭 정보가 없어요.<br>조금만 기다려주세요.</p>
+            <div id="bbbNoMatch" style="display:none;text-align:center;padding:24px 0 8px;">
+              <p style="font-size:14px;color:var(--sub);margin:0;line-height:1.7;">아직 매칭 정보가 없어요.<br>조금만 기다려주세요.</p>
             </div>
 
           </section>
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502v';
+    const APP_VERSION = '20260502aw';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4467,26 +4467,29 @@
         }
 
         _bbbData = bbbRes;
-        document.getElementById('bbbContent').style.display = '';
+        document.getElementById('bbbContent').style.display = 'flex';
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name;
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
-        if (bbbRes.myPhoto) {
-          document.getElementById('bbbPhotoImg').src = bbbRes.myPhoto;
-          document.getElementById('bbbPhotoPreview').style.display = '';
-          document.getElementById('bbbPhotoLabel').textContent = '📷 사진 다시 올리기';
+        function _bbbShowPhoto(src) {
+          const img = document.getElementById('bbbPhotoImg');
+          img.src = src;
+          img.style.display = 'block';
+          document.getElementById('bbbPhotoPlaceholder').style.display = 'none';
+          document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
         }
+        if (bbbRes.myPhoto) _bbbShowPhoto(bbbRes.myPhoto);
+
         document.getElementById('bbbPhotoInput').addEventListener('change', async function() {
           const file = this.files[0];
           if (!file) return;
           const statusEl = document.getElementById('bbbPhotoStatus');
-          statusEl.textContent = '압축 중...';
+          statusEl.textContent = '업로드 중...';
           try {
             const base64 = await _compressImage(file, 400, 0.55);
-            statusEl.textContent = '업로드 중...';
             const REDIRECT = await fetch(API_BASE, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain' },
@@ -4495,15 +4498,13 @@
             });
             const res = await REDIRECT.json();
             if (res.ok) {
-              document.getElementById('bbbPhotoImg').src = base64;
-              document.getElementById('bbbPhotoPreview').style.display = '';
-              document.getElementById('bbbPhotoLabel').textContent = '📷 사진 다시 올리기';
-              statusEl.textContent = res.rewarded ? '✅ 업로드 완료! 뽑기권 1개 지급됐어요 🎫' : '✅ 사진 업데이트 완료!';
+              _bbbShowPhoto(base64);
+              statusEl.textContent = res.rewarded ? '뽑기권 1개 지급됐어요' : '사진 업데이트 완료';
             } else {
-              statusEl.textContent = '❌ ' + (res.error || '업로드 실패');
+              statusEl.textContent = res.error || '업로드 실패';
             }
           } catch(e) {
-            statusEl.textContent = '❌ 오류: ' + e.message;
+            statusEl.textContent = '오류: ' + e.message;
           }
         });
 
@@ -4539,13 +4540,26 @@
     function _renderBBBMessages(messages) {
       const el = document.getElementById('bbbMsgList');
       if (!messages.length) {
-        el.innerHTML = '<p style="font-size:13px;color:var(--sub);">아직 받은 메시지가 없어요.</p>';
+        el.innerHTML = '<p style="font-size:13px;color:var(--sub);text-align:center;padding:8px 0;">아직 받은 메시지가 없어요.</p>';
         return;
       }
-      el.innerHTML = messages.map(m => `
-        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-          <p style="font-size:14px;color:var(--text);margin:0 0 6px;line-height:1.5;">${escHtml(m.message)}</p>
-          <p style="font-size:11px;color:var(--sub);margin:0;">— 익명 · ${m.createdAt ? m.createdAt.slice(0,10) : ''}</p>
+      function _fmtBBBDate(s) {
+        if (!s) return '';
+        const d = new Date(s.replace(' ', 'T'));
+        if (isNaN(d)) return s.slice(0, 16).replace('T', ' ');
+        const yy = String(d.getFullYear()).slice(2);
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hh < 12 ? 'AM' : 'PM';
+        const h12 = hh % 12 || 12;
+        return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
+      }
+      el.innerHTML = messages.map((m, i) => `
+        <div style="padding:6px 0 ${i < messages.length - 1 ? '6px' : '2px'};">
+          <p style="font-size:14px;color:var(--text);margin:0 0 5px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <div style="height:0.5px;background:var(--primary);opacity:0.2;margin-bottom:3px;"></div>
+          <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
         </div>`).join('');
     }
 
