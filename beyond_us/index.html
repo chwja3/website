@@ -1033,7 +1033,7 @@
       transition: background .15s;
     }
     .drawer-item::before { content: "•"; flex-shrink: 0; }
-    .drawer-label { display: block; text-align: justify; text-align-last: justify; text-justify: inter-character; white-space: nowrap; }
+    .drawer-label { display: block; white-space: nowrap; }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
     .drawer-notice-dot {
@@ -2125,7 +2125,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502s';
+    const APP_VERSION = '20260502t';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
