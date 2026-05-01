@@ -881,7 +881,7 @@
     /* ════════════════════════════
        컬렉션 그리드
     ════════════════════════════ */
-    .pray-dot { position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:#e05a5a; flex-shrink:0; }
+    .pray-dot { position:absolute; top:0px; right:-6px; width:9px; height:9px; border-radius:50%; background:#e05a5a; flex-shrink:0; }
     .pray-btn { font-size:12px; font-weight:700; padding:6px 14px; border-radius:999px; border:none; background:var(--primary); color:var(--bg); cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(44,36,23,0.18); }
     .pray-btn:active { opacity:.8; }
     .pray-btn:disabled { background:var(--line); color:var(--sub); box-shadow:none; cursor:default; }
@@ -2097,7 +2097,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501r';
+    const APP_VERSION = '20260501s';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
