@@ -2098,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502a';
+    const APP_VERSION = '20260502b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2948,7 +2948,13 @@
           const isMine = t.requester === currentNickname;
           return isMine ? !t.requesterPrayed : !t.targetPrayed;
         }).length;
-        const total = pendingIn + unprayed;
+        const unseenPray = all.filter(t => {
+          if (t.status !== 'accepted') return false;
+          const isMine = t.requester === currentNickname;
+          const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
+          return theirPrayed && !localStorage.getItem('beyondus_seen_pray_' + t.id);
+        }).length;
+        const total = pendingIn + unprayed + unseenPray;
         const dot      = document.getElementById('drawerTradeDot');
         const badge    = document.getElementById('collTradeBadge');
         const menuDot  = document.getElementById('tradeMenuDot');
@@ -3070,6 +3076,14 @@
         html += resolved.map(t => renderItem(t, t.requester === currentNickname)).join('');
       }
       el.innerHTML = html || '<p class="card-sub">교환 내역이 없어요.</p>';
+      // 교환현황 탭 열면 상대 기도 알림 "봤음" 처리
+      const allT = [...(data.incoming || []), ...(data.outgoing || [])];
+      allT.forEach(t => {
+        if (t.status !== 'accepted') return;
+        const isMine = t.requester === currentNickname;
+        const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
+        if (theirPrayed) localStorage.setItem('beyondus_seen_pray_' + t.id, '1');
+      });
     }
 
     async function doTradeAccept(tradeId) {
