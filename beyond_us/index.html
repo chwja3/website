@@ -2098,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501v';
+    const APP_VERSION = '20260501w';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2418,6 +2418,10 @@
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       updateInquiryLoginUI();
+      if (localStorage.getItem('beyondus_trade_dot') === '1') {
+        document.getElementById('tradeMenuDot').classList.add('visible');
+        document.getElementById('drawerTradeDot').style.display = 'inline-block';
+      }
     }
 
     /* ════ Auth 패인 전환 ════ */
@@ -2948,6 +2952,7 @@
         const dot      = document.getElementById('drawerTradeDot');
         const badge    = document.getElementById('collTradeBadge');
         const menuDot  = document.getElementById('tradeMenuDot');
+        localStorage.setItem('beyondus_trade_dot', total > 0 ? '1' : '0');
         if (total > 0) {
           dot.style.display = 'inline-block';
           badge.style.display = 'inline-block';
