@@ -2056,7 +2056,7 @@
             <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
               <!-- 케어버디 -->
-              <div style="background:#f2f2f2;border-radius:14px;padding:18px 20px;">
+              <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                   <span style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;">CARE BUDDY</span>
                   <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502aj';
+    const APP_VERSION = '20260502ak';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
