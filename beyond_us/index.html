@@ -2128,7 +2128,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502g';
+    const APP_VERSION = '20260502h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2677,6 +2677,12 @@
     function openCardDetail(cardId, cnt) {
       const card = SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
+      // 새 카드 dot 제거
+      Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(cardId)).forEach(k => {
+        localStorage.setItem('beyondus_seen_accept_' + k.replace('beyondus_new_card_', ''), '1');
+        localStorage.removeItem(k);
+      });
+      renderCollection();
 
       const wrap = document.getElementById('cardDetailWrap');
       const cntEl = document.getElementById('cardDetailCnt');
@@ -2792,10 +2798,14 @@
       (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
       const unique = Object.keys(counts).length;
 
+      const newCardIds = new Set();
+      Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => newCardIds.add(Number(localStorage.getItem(k))));
+
       sub.textContent = `${currentNickname}님의 컬렉션 · ${unique}/9종 보유`;
       grid.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = counts[card.id] || 0;
         const locked = cnt === 0;
+        const isNew = !locked && newCardIds.has(card.id);
         const gStyle = locked ? '' : `background:linear-gradient(135deg,${card.g1},${card.g2})`;
         const ghosts = !locked && cnt >= 2
           ? (cnt >= 3
@@ -2814,6 +2824,7 @@
               }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
+            ${isNew ? `<div style="position:absolute;top:2px;right:2px;width:9px;height:9px;background:#e05a5a;border-radius:50%;z-index:5;border:1.5px solid var(--card);pointer-events:none;"></div>` : ''}
           </div>`;
       }).join('');
     }
@@ -2994,7 +3005,17 @@
           const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
           return theirPrayed && !localStorage.getItem('beyondus_seen_pray_' + t.id);
         }).length;
-        const total = pendingIn + unprayed + unseenPray;
+        // 교환 완료로 새로 받은 카드 추적
+        all.filter(t => t.status === 'accepted').forEach(t => {
+          const seenKey = 'beyondus_seen_accept_' + t.id;
+          if (!localStorage.getItem(seenKey)) {
+            const isMine = t.requester === currentNickname;
+            const receivedCardId = isMine ? t.targetCardId : t.requesterCardId;
+            localStorage.setItem('beyondus_new_card_' + t.id, String(receivedCardId));
+          }
+        });
+        const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
+        const total = pendingIn + unprayed + unseenPray + newCardCount;
         const dot      = document.getElementById('drawerTradeDot');
         const badge    = document.getElementById('collTradeBadge');
         const menuDot  = document.getElementById('tradeMenuDot');
@@ -3009,6 +3030,7 @@
           menuDot.classList.remove('visible');
         }
         renderTrades(res);
+        if (newCardCount > 0) renderCollection();
       } catch(e) {}
     }
 
@@ -3136,7 +3158,7 @@
       if (!confirm('교환을 수락할까요?')) return;
       try {
         const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
-        if (res.ok) { alert('교환이 완료됐어요! 🎉'); Promise.all([loadUserStatus(), loadTrades()]); }
+        if (res.ok) { localStorage.setItem('beyondus_seen_accept_' + tradeId, '1'); alert('교환이 완료됐어요! 🎉'); Promise.all([loadUserStatus(), loadTrades()]); }
         else alert(res.error || '수락 실패');
       } catch(e) { alert('연결 오류'); }
     }
