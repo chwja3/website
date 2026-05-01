@@ -2103,7 +2103,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502d';
+    const APP_VERSION = '20260502e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2978,7 +2978,12 @@
     }
 
     async function markPrayed(tradeId, btn) {
-      if (btn) { btn.disabled = true; }
+      if (btn) {
+        const label = document.createElement('span');
+        label.className = 'prayed-label';
+        label.textContent = '기도완료 ✓';
+        btn.parentElement.replaceChild(label, btn);
+      }
       try {
         const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
         if (res.ok) loadTrades();
