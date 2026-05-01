@@ -2045,20 +2045,18 @@
       <div id="sectionSecret" class="section hidden">
         <div class="wrap" style="padding-bottom:40px;">
 
-          <section class="card" style="margin-top:16px;padding:0;overflow:hidden;">
+          <section class="card" style="margin-top:16px;">
 
             <!-- 헤더 -->
-            <div style="padding:20px 20px 16px;border-bottom:1px solid var(--line);">
-              <p style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 4px;">B.B.B.</p>
-              <h2 style="font-size:18px;font-weight:800;color:var(--text);margin:0;">Buddy Beyond Buddy</h2>
-            </div>
+            <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 4px;">B.B.B.</p>
+            <h2 style="font-size:18px;font-weight:800;color:var(--text);margin:0 0 20px;">Buddy Beyond Buddy</h2>
 
-            <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:32px 0;">불러오는 중...</div>
+            <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:16px 0 8px;">불러오는 중...</div>
 
-            <div id="bbbContent" style="display:none;">
+            <div id="bbbContent" style="display:none;flex-direction:column;gap:10px;">
 
               <!-- 케어버디 -->
-              <div style="padding:18px 20px;border-bottom:1px solid var(--line);">
+              <div style="background:var(--primary-soft);border-radius:12px;padding:16px 18px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                   <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0;">CARE BUDDY</p>
                   <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
@@ -2068,7 +2066,7 @@
               </div>
 
               <!-- 사진 미션 -->
-              <div style="padding:18px 20px;border-bottom:1px solid var(--line);">
+              <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 18px;">
                 <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 12px;">MISSION 1</p>
                 <div style="display:flex;align-items:center;gap:14px;">
                   <div style="flex:1;">
@@ -2076,33 +2074,33 @@
                     <p style="font-size:11px;color:var(--sub);margin:0;">뽑기권 +1 (최초 1회)</p>
                     <p id="bbbPhotoStatus" style="font-size:11px;color:var(--primary);margin:6px 0 0;min-height:14px;"></p>
                   </div>
-                  <label id="bbbPhotoLabel" style="flex-shrink:0;width:88px;height:88px;border-radius:12px;border:1.5px dashed var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+                  <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:10px;border:1.5px dashed rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;">
                     <input type="file" id="bbbPhotoInput" accept="image/*" capture="environment" style="display:none;" />
-                    <img id="bbbPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:10px;" />
-                    <span id="bbbPhotoPlaceholder" style="font-size:22px;color:#ccc;">+</span>
+                    <img id="bbbPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
+                    <span id="bbbPhotoPlaceholder" style="font-size:24px;color:rgba(255,255,255,0.25);">+</span>
                   </label>
                 </div>
               </div>
 
               <!-- 시크릿버디 -->
-              <div id="bbbSecretWrap" style="padding:18px 20px;border-bottom:1px solid var(--line);">
+              <div id="bbbSecretWrap" style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 18px;">
                 <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 10px;">SECRET BUDDY</p>
                 <div id="bbbSecretRevealed" style="display:none;">
-                  <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 2px;" id="bbbSecretName">—</p>
+                  <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 3px;" id="bbbSecretName">—</p>
                   <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있어요.</p>
                 </div>
                 <div id="bbbSecretGuess">
-                  <p style="font-size:13px;color:var(--sub);margin:0 0 12px;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요. 누구일까요?</p>
+                  <p style="font-size:13px;color:var(--sub);margin:0 0 10px;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요. 누구일까요?</p>
                   <div style="display:flex;gap:8px;">
                     <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;" />
                     <button onclick="submitBBBGuess()" style="padding:9px 16px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
                   </div>
-                  <p id="bbbGuessMsg" style="font-size:12px;margin:8px 0 0;min-height:16px;"></p>
+                  <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:8px 0 0;min-height:16px;"></p>
                 </div>
               </div>
 
               <!-- 익명 메시지 보내기 -->
-              <div id="bbbMsgSendWrap" style="display:none;padding:18px 20px;border-bottom:1px solid var(--line);">
+              <div id="bbbMsgSendWrap" style="display:none;background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 18px;">
                 <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 4px;">MESSAGE</p>
                 <p style="font-size:12px;color:var(--sub);margin:0 0 12px;">케어버디에게 익명으로 메시지를 보내요.</p>
                 <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
@@ -2110,18 +2108,18 @@
                 <div style="display:flex;justify-content:flex-end;margin-top:8px;">
                   <button onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">보내기</button>
                 </div>
-                <p id="bbbMsgSendResult" style="font-size:12px;margin:6px 0 0;min-height:16px;"></p>
+                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:6px 0 0;min-height:16px;"></p>
               </div>
 
               <!-- 받은 메시지 -->
-              <div style="padding:18px 20px;">
+              <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:16px 18px;">
                 <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 12px;">INBOX</p>
                 <div id="bbbMsgList"><p style="font-size:13px;color:var(--sub);margin:0;">아직 받은 메시지가 없어요.</p></div>
               </div>
 
             </div>
 
-            <div id="bbbNoMatch" style="display:none;text-align:center;padding:36px 0;">
+            <div id="bbbNoMatch" style="display:none;text-align:center;padding:20px 0 8px;">
               <p style="font-size:14px;color:var(--sub);margin:0;">아직 매칭 정보가 없어요.<br>조금만 기다려주세요.</p>
             </div>
 
@@ -2149,7 +2147,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502x';
+    const APP_VERSION = '20260502y';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4466,7 +4464,7 @@
         }
 
         _bbbData = bbbRes;
-        document.getElementById('bbbContent').style.display = '';
+        document.getElementById('bbbContent').style.display = 'flex';
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name;
