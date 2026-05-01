@@ -2103,7 +2103,7 @@
               <!-- 익명 메시지 보내기 -->
               <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MESSAGE</span>
-                <p style="font-size:12px;color:var(--sub);margin:8px 0 14px;line-height:1.5;">케어버디에게 익명으로 메시지를 보내요.</p>
+                <p style="font-size:12px;color:var(--sub);margin:8px 0 14px;line-height:1.5;">케어버디에게 따뜻한 메시지를 보내요.</p>
                 <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
                   style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;color:var(--text);font-size:14px;resize:none;height:88px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
                 <div style="display:flex;justify-content:flex-end;margin-top:8px;">
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502ac';
+    const APP_VERSION = '20260502ad';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4540,13 +4540,23 @@
     function _renderBBBMessages(messages) {
       const el = document.getElementById('bbbMsgList');
       if (!messages.length) {
-        el.innerHTML = '<p style="font-size:13px;color:var(--sub);">아직 받은 메시지가 없어요.</p>';
+        el.innerHTML = '<p style="font-size:13px;color:var(--sub);text-align:center;padding:8px 0;">아직 받은 메시지가 없어요.</p>';
         return;
       }
-      el.innerHTML = messages.map(m => `
-        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-          <p style="font-size:14px;color:var(--text);margin:0 0 6px;line-height:1.5;">${escHtml(m.message)}</p>
-          <p style="font-size:11px;color:var(--sub);margin:0;">— 익명 · ${m.createdAt ? m.createdAt.slice(0,10) : ''}</p>
+      function _fmtBBBDate(s) {
+        if (!s) return '';
+        const d = new Date(s.replace(' ', 'T'));
+        if (isNaN(d)) return s.slice(0, 16).replace('T', ' ');
+        const mo = d.getMonth() + 1, dd = d.getDate();
+        const hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hh < 12 ? '오전' : '오후';
+        const h12 = hh % 12 || 12;
+        return `${mo}/${dd} ${ampm} ${h12}:${mm}`;
+      }
+      el.innerHTML = messages.map((m, i) => `
+        <div style="padding:12px 0;${i < messages.length - 1 ? 'border-bottom:1px solid var(--line);' : ''}">
+          <p style="font-size:14px;color:var(--text);margin:0 0 6px;line-height:1.6;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <p style="font-size:11px;color:var(--sub);margin:0;">${_fmtBBBDate(m.createdAt)}</p>
         </div>`).join('');
     }
 
