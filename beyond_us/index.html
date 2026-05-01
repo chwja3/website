@@ -881,9 +881,10 @@
     /* ════════════════════════════
        컬렉션 그리드
     ════════════════════════════ */
-    .pray-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:#e05a5a; margin-left:4px; vertical-align:middle; flex-shrink:0; }
-    .pray-btn { font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; border:1.5px solid var(--primary); background:transparent; color:var(--primary); cursor:pointer; white-space:nowrap; }
-    .pray-btn:active { opacity:.7; }
+    .pray-dot { position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%; background:#e05a5a; flex-shrink:0; }
+    .pray-btn { font-size:12px; font-weight:700; padding:6px 14px; border-radius:999px; border:none; background:var(--primary); color:var(--bg); cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(44,36,23,0.18); }
+    .pray-btn:active { opacity:.8; }
+    .pray-btn:disabled { background:var(--line); color:var(--sub); box-shadow:none; cursor:default; }
     .prayed-label { font-size:11px; color:var(--sub); }
     .coll-tabs { display: flex; gap: 4px; margin-top: 20px; }
     .coll-tab {
@@ -1911,7 +1912,7 @@
         <div class="wrap">
           <div class="coll-tabs">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션</button>
-            <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;background:var(--primary);color:var(--bg);border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span></button>
+            <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2096,7 +2097,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501q';
+    const APP_VERSION = '20260501r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2946,8 +2947,8 @@
         const dot   = document.getElementById('drawerTradeDot');
         const badge = document.getElementById('collTradeBadge');
         if (total > 0) {
-          dot.style.display = ''; dot.textContent = total;
-          badge.style.display = ''; badge.textContent = total;
+          dot.style.display = 'inline-block';
+          badge.style.display = 'inline-block';
         } else {
           dot.style.display = 'none';
           badge.style.display = 'none';
@@ -2956,7 +2957,8 @@
       } catch(e) {}
     }
 
-    async function markPrayed(tradeId) {
+    async function markPrayed(tradeId, btn) {
+      if (btn) { btn.disabled = true; btn.textContent = '기도완료'; const dot = btn.parentElement.querySelector('.pray-dot'); if (dot) dot.remove(); }
       try {
         const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
         if (res.ok) loadTrades();
@@ -2986,8 +2988,8 @@
 
           const prayBtnHtml = hasPrayer
             ? (myPrayed
-                ? `<span class="prayed-label">기도했어요 ✓</span>`
-                : `<button class="pray-btn" onclick="markPrayed('${t.id}')">기도했어요!</button><span class="pray-dot"></span>`)
+                ? `<span class="prayed-label">기도완료 ✓</span>`
+                : `<div style="position:relative;display:inline-flex;"><button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도완료</button><span class="pray-dot"></span></div>`)
             : '';
           const theirPrayHtml = hasPrayer && theirPrayed
             ? `<p style="margin:6px 0 0;font-size:11px;color:var(--sub);">${escHtml(otherNick)}님도 기도했어요 ✓</p>`
@@ -2997,7 +2999,7 @@
             : '';
 
           return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;position:relative;">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
               <div style="display:flex;align-items:baseline;gap:6px;">
                 <span style="font-size:14px;font-weight:700;color:var(--text);">${escHtml(otherNick)}</span>
                 <span style="font-size:12px;color:var(--sub);">과 교환 완료</span>
