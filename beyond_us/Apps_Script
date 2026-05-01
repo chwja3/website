@@ -160,11 +160,16 @@ function doPost(e) {
     if (action === 'cancelTrade')  return jsonOutput(cancelTrade(body));
     if (action === 'prayForTrade') return jsonOutput(prayForTrade(body));
     if (action === 'guessBBBSecret')        return jsonOutput(guessBBBSecret(body));
+    if (action === 'uploadBBBPhoto')        return jsonOutput(uploadBBBPhoto(body));
     if (action === 'sendBBBMessage')        return jsonOutput(sendBBBMessage(body));
     if (action === 'adminSetBBBMessageOpen') return jsonOutput(adminSetBBBMessageOpen(body));
     if (action === 'adminSetupBBBMatching') {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupBBBMatching());
+    }
+    if (action === 'adminWriteBBBRows') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminWriteBBBRows(body.rows));
     }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
@@ -304,6 +309,26 @@ function getDashboardData() {
   };
 }
 
+// ── 보너스 뽑기권 시트 ──────────────────────────────
+function getOrCreateBonusDrawsSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('BonusDraws');
+  if (!sheet) {
+    sheet = ss.insertSheet('BonusDraws');
+    sheet.appendRow(['userId', 'source', 'awardedAt']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getBonusDrawCount(userId) {
+  const sheet = getOrCreateBonusDrawsSheet();
+  const last = sheet.getLastRow();
+  if (last < 2) return 0;
+  return sheet.getRange(2, 1, last - 1, 1).getValues()
+    .filter(r => String(r[0]) === userId).length;
+}
+
 // ── 카드 시스템 ───────────────────────────────────
 function getOrCreateDrawSheet() {
   const ss = getSpreadsheet();
@@ -407,7 +432,8 @@ function getUserStatus(userId, weekKey) {
         .reduce((s, r) => s + (Number(r[6]) || 0), 0);
       if (wScore >= wThreshold) qualifiedWeeks++;
     }
-    pendingDraws = Math.max(0, qualifiedWeeks - totalDraws);
+    const bonusDraws = getBonusDrawCount(userId);
+    pendingDraws = Math.max(0, qualifiedWeeks + bonusDraws - totalDraws);
   } catch(e) {}
 
   return {
@@ -461,7 +487,8 @@ function drawCard(userId, weekKey, testMode) {
         .reduce((s, r) => s + (Number(r[6]) || 0), 0);
       if (wScore >= wThreshold) qualifiedWeeks++;
     }
-    const pendingDraws = Math.max(0, qualifiedWeeks - totalDraws);
+    const bonusDraws = getBonusDrawCount(userId);
+    const pendingDraws = Math.max(0, qualifiedWeeks + bonusDraws - totalDraws);
     if (pendingDraws <= 0) {
       return { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
     }
@@ -1415,6 +1442,63 @@ function _shuffle(arr) {
   return arr;
 }
 
+/// ─ BBB 사진 시트
+function getOrCreateBBBPhotosSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('BBBPhotos');
+  if (!sheet) {
+    sheet = ss.insertSheet('BBBPhotos');
+    sheet.appendRow(['userId', 'photoBase64', 'uploadedAt']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+// ─ BBB 사진 업로드 (최초 1회만 뽑기권 지급)
+function uploadBBBPhoto(body) {
+  const userId = String(body.userId || '').trim();
+  const photo  = String(body.photo  || '').trim();
+  if (!userId || !photo) return { error: '필수 항목 누락.' };
+
+  const photoSheet = getOrCreateBBBPhotosSheet();
+  const last = photoSheet.getLastRow();
+  let existingRow = -1;
+  if (last >= 2) {
+    const rows = photoSheet.getRange(2, 1, last - 1, 1).getValues();
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === userId) { existingRow = i + 2; break; }
+    }
+  }
+
+  const now = new Date().toISOString();
+  const isFirstUpload = existingRow === -1;
+
+  if (existingRow === -1) {
+    photoSheet.appendRow([userId, photo, now]);
+  } else {
+    photoSheet.getRange(existingRow, 2, 1, 2).setValues([[photo, now]]);
+  }
+
+  // 최초 업로드 시에만 뽑기권 1개 지급
+  if (isFirstUpload) {
+    getOrCreateBonusDrawsSheet().appendRow([userId, 'bbb_photo', now]);
+  }
+
+  return { ok: true, rewarded: isFirstUpload };
+}
+
+// ─ 어드민: 매칭 데이터 직접 입력
+function adminWriteBBBRows(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return { error: 'rows가 비어있어요.' };
+  const bbbSheet = getOrCreateBBBSheet();
+  if (bbbSheet.getLastRow() > 1) {
+    bbbSheet.getRange(2, 1, bbbSheet.getLastRow() - 1, 6).clearContent();
+  }
+  const values = rows.map(r => [r[0], r[1], r[2], false, r[3], r[4]]);
+  bbbSheet.getRange(2, 1, values.length, 6).setValues(values);
+  return { ok: true, written: values.length };
+}
+
 // ─ TF(isStaff=TRUE) 원형 순환 매칭 후 BBB 시트에 기록
 // GAS 에디터에서 한 번만 실행
 function setupBBBMatching() {
@@ -1486,8 +1570,21 @@ function getBBB(userId) {
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const msgOpen = configSheet.getRange('C1').getValue() === true;
 
+  // 내 사진
+  let myPhoto = null;
+  try {
+    const photoSheet = getOrCreateBBBPhotosSheet();
+    const pLast = photoSheet.getLastRow();
+    if (pLast >= 2) {
+      const pRows = photoSheet.getRange(2, 1, pLast - 1, 2).getValues();
+      const pRow = pRows.find(r => String(r[0]) === userId);
+      if (pRow) myPhoto = String(pRow[1]);
+    }
+  } catch(e) {}
+
   return {
     ok: true,
+    myPhoto,
     careBuddy: {
       nickname: careBuddyId,
       name:     String(myRow[2])
