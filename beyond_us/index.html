@@ -2081,7 +2081,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501';
+    const APP_VERSION = '20260501b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3867,12 +3867,15 @@
     });
 
     /* ════ 드로어 ════ */
+    let _drawerSynced = false;
     function syncDrawerLabelWidth() {
       const labels = document.querySelectorAll('.drawer-label');
-      labels.forEach(l => { l.style.width = 'max-content'; });
+      // inline으로 측정해야 숨겨진 상태에서도 텍스트 실제 너비 반환
+      labels.forEach(l => { l.style.cssText += ';display:inline;width:auto;'; });
       let maxW = 0;
-      labels.forEach(l => { maxW = Math.max(maxW, l.scrollWidth); });
-      labels.forEach(l => { l.style.width = maxW + 'px'; });
+      labels.forEach(l => { maxW = Math.max(maxW, l.getBoundingClientRect().width); });
+      labels.forEach(l => { l.style.display = 'block'; l.style.width = maxW + 'px'; });
+      if (maxW > 0) _drawerSynced = true;
     }
     document.fonts.ready.then(syncDrawerLabelWidth);
 
@@ -3880,6 +3883,7 @@
       document.getElementById('navDrawer').classList.add('open');
       document.getElementById('drawerOverlay').classList.remove('hidden');
       document.body.style.overflow = 'hidden';
+      if (!_drawerSynced) requestAnimationFrame(syncDrawerLabelWidth);
     }
     function closeDrawer() {
       document.getElementById('navDrawer').classList.remove('open');
