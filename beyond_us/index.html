@@ -2125,7 +2125,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502k';
+    const APP_VERSION = '20260502l';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3012,20 +3012,16 @@
           }
         });
         const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
-        const total = pendingIn + unprayed + unseenPray + newCardCount;
+        const tradeTotal = pendingIn + unprayed + unseenPray;
+        const grandTotal = tradeTotal + newCardCount;
         const dot      = document.getElementById('drawerTradeDot');
         const badge    = document.getElementById('collTradeBadge');
         const menuDot  = document.getElementById('tradeMenuDot');
-        localStorage.setItem('beyondus_trade_dot', total > 0 ? '1' : '0');
-        if (total > 0) {
-          dot.style.display = 'inline-block';
-          badge.style.display = 'inline-block';
-          menuDot.classList.add('visible');
-        } else {
-          dot.style.display = 'none';
-          badge.style.display = 'none';
-          menuDot.classList.remove('visible');
-        }
+        localStorage.setItem('beyondus_trade_dot', grandTotal > 0 ? '1' : '0');
+        dot.style.display   = grandTotal > 0 ? 'inline-block' : 'none';
+        badge.style.display = tradeTotal > 0 ? 'inline-block' : 'none';
+        if (grandTotal > 0) menuDot.classList.add('visible');
+        else menuDot.classList.remove('visible');
         renderTrades(res);
         if (newCardCount > 0) renderCollection();
       } catch(e) {}
