@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="images/pabicon.png" />
-  <link rel="apple-touch-icon" href="images/pabicon.png" />
+  <link rel="icon" type="image/png" href="images/pabicon_192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="images/pabicon_180.png" />
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
@@ -881,6 +881,37 @@
     /* ════════════════════════════
        컬렉션 그리드
     ════════════════════════════ */
+    .pray-dot { position:absolute; top:-4px; right:-4px; width:9px; height:9px; border-radius:50%; background:#e05a5a; flex-shrink:0; }
+    .pray-btn { font-size:12px; font-weight:700; padding:6px 14px; border-radius:8px; border:none; background:linear-gradient(135deg,#e8854a,#e05a5a); color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(224,90,90,0.30); }
+    .pray-btn:active { opacity:.8; }
+    .pray-btn:disabled { background:var(--line); color:var(--sub); box-shadow:none; cursor:default; }
+    .prayed-label { font-size:11px; color:var(--sub); }
+    @keyframes tagSlideIn {
+      0%   { transform:translateX(-8px); opacity:0; }
+      100% { transform:translateX(0);    opacity:1; }
+    }
+    .pray-stamp {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:5px 12px; border-radius:999px;
+      background:linear-gradient(135deg,#f5a94a,#e8854a);
+      color:#fff; font-size:11px; font-weight:700;
+      margin-top:8px; pointer-events:none; white-space:nowrap;
+      animation: tagSlideIn 0.35s ease forwards;
+    }
+    .pray-stamp.seen { animation:none; }
+    .coll-tabs { display: flex; gap: 4px; margin-top: 20px; }
+    .coll-tab {
+      padding: 8px 18px; font-size: 13px; font-weight: 700;
+      border: 1px solid var(--line); border-bottom: none;
+      border-radius: 10px 10px 0 0; cursor: pointer;
+      background: var(--bg); color: var(--sub);
+      position: relative; z-index: 1; line-height: 1;
+    }
+    .coll-tab.active {
+      background: var(--card); color: var(--text);
+      margin-bottom: -1px; padding-bottom: 9px; z-index: 2;
+    }
+    .coll-card { border-radius: 0 12px 12px 12px !important; margin-top: 0 !important; }
     .collection-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1001,6 +1032,8 @@
       border-radius: 12px; margin: 2px 8px;
       transition: background .15s;
     }
+    .drawer-item::before { content: "•"; flex-shrink: 0; }
+    .drawer-label { display: block; text-align: justify; text-align-last: justify; text-justify: inter-character; white-space: nowrap; }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
     .drawer-notice-dot {
@@ -1216,14 +1249,14 @@
       padding: 12px 0; letter-spacing: 0.03em;
     }
     .hp-guess-label { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
-    .hp-divider { width: 48px; height: 1px; background: #c9bfb0; margin: 20px auto 16px; }
+    .hp-divider { width: 120px; height: 1px; background: #c9bfb0; margin: 20px auto 16px; }
     .hp-guess-prompt { font-size: 12px; color: var(--sub); margin-top: 0; margin-bottom: 6px; text-align: center; }
     .hp-inline-guess { display: flex; align-items: center; gap: 6px; justify-content: center; }
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
       flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
       color: var(--text); font-size: 18px; padding: 2px 4px; outline: none; max-width: 120px;
-      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive;
+      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; text-align: center;
     }
     .hp-inline-input:focus { border-bottom-color: var(--accent); }
     .hp-inline-btn {
@@ -1232,7 +1265,7 @@
       border: 1px solid var(--accent); line-height: 1.4; white-space: nowrap;
     }
     .hp-inline-name { font-size: 20px; font-weight: 400; color: var(--text); font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; }
-    .hp-result-inline { font-size: 12px; margin-top: 6px; display: block; }
+    .hp-result-inline { font-size: 12px; margin-top: 6px; display: block; text-align: center; }
     .hp-result-inline.correct { color: #81c784; }
     .hp-result-inline.wrong { color: #ef9a9a; }
     .hp-verse-card { text-align: center; }
@@ -1248,7 +1281,7 @@
     .hp-lobby-text { font-size: 13px; color: var(--sub); line-height: 1.7; text-align: center; }
     .hp-home-btn {
       display: block; width: fit-content; margin: 16px auto 8px;
-      font-size: 12px; padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; padding: 5px 12px; border-radius: 20px; min-width: unset; height: auto;
     }
     .hp-guess-wrap {
       display: flex; gap: 8px; margin-top: 8px;
@@ -1743,6 +1776,7 @@
     <div class="draw-stage" onclick="event.stopPropagation()">
       <div id="cardDetailWrap" style="width:200px;"></div>
       <p id="cardDetailCnt" style="color:rgba(255,246,239,0.7); font-size:13px; font-weight:600;"></p>
+      <div id="cardDetailActions" style="margin-top:16px;"></div>
     </div>
   </div>
 
@@ -1754,6 +1788,7 @@
       <div class="menu-btn-wrap">
         <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
         <span id="noticeDot" class="notice-dot"></span>
+        <span id="tradeMenuDot" class="notice-dot" style="background:#e05a5a;right:2px;top:2px;"></span>
       </div>
       <img src="images/hc_logo_png1.png" alt="홈" onclick="switchSection('mission')" style="height:30px; width:auto; margin-left:-6px; cursor:pointer;" />
       <span style="flex:1;"></span>
@@ -1770,13 +1805,13 @@
         <span class="drawer-header-title">Beyond Us</span>
       </div>
       <ul class="drawer-nav">
-        <li class="drawer-item" data-section="notice">공지사항 <span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
-        <li class="drawer-item active" data-section="mission">미션</li>
-        <li class="drawer-item" data-section="prayer">Hold &amp; Pray</li>
-        <li class="drawer-item" data-section="collection">컬렉션</li>
-        <li class="drawer-item" data-section="secret">비밀친구</li>
-        <li class="drawer-item" data-section="chat">💬 단톡방</li>
-        <li class="drawer-item" data-section="inquiry">개발자 문의</li>
+        <li class="drawer-item" data-section="notice"><span class="drawer-label">공지사항</span><span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
+        <li class="drawer-item active" data-section="mission"><span class="drawer-label">사전미션</span></li>
+        <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span></li>
+        <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
+        <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
+        <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
+        <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
       </ul>
       <div class="drawer-logout">
         <button class="drawer-logout-btn" id="logoutBtn">로그아웃</button>
@@ -1889,15 +1924,76 @@
       <!-- ② 컬렉션 -->
       <div id="sectionCollection" class="section hidden">
         <div class="wrap">
-          <section class="card" style="margin-top:20px;">
-            <h2 class="card-title">내 컬렉션</h2>
-            <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
-            <div class="collection-grid" id="collectionGrid"></div>
+          <div class="coll-tabs">
+            <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
+            <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
+          </div>
+          <section class="card coll-card">
+            <!-- 내 컬렉션 패널 -->
+            <div id="collPanelGrid">
+              <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
+              <div class="collection-grid" id="collectionGrid"></div>
+            </div>
+            <!-- 교환 현황 패널 -->
+            <div id="collPanelTrades" style="display:none;">
+              <div id="tradesList"><p class="card-sub">교환 내역이 없어요.</p></div>
+            </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
-              <button class="btn btn-secondary" style="flex:1;" onclick="switchSection('mission')">← 홈으로 돌아가기</button>
-              <button class="btn btn-primary" style="flex:1;" onclick="switchSection('prayer')">중보기도 하러가기</button>
+              <button class="btn btn-secondary" style="flex:1; font-size:clamp(11px,3vw,15px); white-space:nowrap;" onclick="switchSection('mission')">← 홈으로 가기</button>
+              <button class="btn btn-primary" style="flex:1; font-size:clamp(11px,3vw,15px); white-space:nowrap;" onclick="switchSection('prayer')">중보기도하러 가기 →</button>
             </div>
           </section>
+        </div>
+      </div>
+
+      <!-- 교환 신청 모달 -->
+      <div id="tradeOverlay" style="display:none;position:fixed;inset:0;background:rgba(44,36,23,0.7);z-index:500;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div style="max-width:380px;margin:32px auto 60px;padding:24px 20px;background:var(--card);border-radius:20px;position:relative;border:1px solid var(--line);">
+          <button onclick="closeTradeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--sub);font-size:24px;cursor:pointer;line-height:1;">×</button>
+          <h3 id="tradeModalTitle" style="margin:0 0 4px;font-size:16px;font-weight:700;color:var(--text);">카드 교환 신청</h3>
+          <div id="tradeStepIndicator" style="font-size:11px;color:var(--sub);margin-bottom:16px;"></div>
+          <!-- Step 1: 닉네임 검색 -->
+          <div id="tradeStep1">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">교환할 상대방 닉네임을 입력해주세요.</p>
+            <div style="display:flex;gap:8px;">
+              <input id="tradeTargetInput" class="input" placeholder="닉네임" style="flex:1;font-size:14px;" onkeydown="if(event.key==='Enter')tradeSearchUser()" />
+              <button class="btn btn-primary" style="flex:none;font-size:13px;padding:0 14px;" onclick="tradeSearchUser()">검색</button>
+            </div>
+            <div id="tradeSearchResult" style="margin-top:10px;font-size:13px;min-height:24px;"></div>
+          </div>
+          <!-- Step 2: 내 카드 선택 -->
+          <div id="tradeStep2" style="display:none;">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">내가 <strong>줄</strong> 카드를 선택해주세요.</p>
+            <div id="tradeMyCards" class="collection-grid" style="gap:8px;"></div>
+          </div>
+          <!-- Step 3: 상대 카드 선택 -->
+          <div id="tradeStep3" style="display:none;">
+            <!-- 미리보기 -->
+            <div style="display:flex;align-items:center;gap:10px;background:var(--primary-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:10px;font-weight:700;color:var(--sub);margin-bottom:6px;">내가 줄 카드</div>
+                <div id="tradePreviewMine" style="width:56px;height:80px;margin:0 auto;border-radius:8px;overflow:hidden;background:var(--line);display:flex;align-items:center;justify-content:center;"></div>
+              </div>
+              <div style="font-size:20px;color:var(--sub);flex-shrink:0;">↔</div>
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:10px;font-weight:700;color:var(--sub);margin-bottom:6px;">받을 카드</div>
+                <div id="tradePreviewTheirs" style="width:56px;height:80px;margin:0 auto;border-radius:8px;overflow:hidden;background:var(--line);display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:18px;color:var(--sub);">?</span>
+                </div>
+              </div>
+            </div>
+            <p style="font-size:13px;color:var(--sub);margin:0 0 10px;"><strong id="tradeTargetName"></strong>님의 카드를 선택해주세요.</p>
+            <div id="tradeTheirCards" class="collection-grid" style="gap:8px;"></div>
+          </div>
+          <!-- Step 4: 확인 -->
+          <div id="tradeStep4" style="display:none;">
+            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:var(--primary-soft);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
+            <div id="tradeSubmitStatus" style="font-size:13px;color:var(--danger);margin-bottom:8px;min-height:18px;"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" style="flex:1;" onclick="tradeGoBack()">← 다시 선택</button>
+              <button class="btn btn-primary" style="flex:1;" id="tradeSubmitBtn" onclick="submitTradeRequest()">신청 보내기</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1945,13 +2041,68 @@
         </div>
       </div>
 
-      <!-- ④ 비밀친구 -->
+      <!-- ④ B.B.B. -->
       <div id="sectionSecret" class="section hidden">
-        <div class="wrap">
+        <div class="wrap" style="padding-bottom:40px;">
+
+          <!-- 케어버디 카드 -->
           <section class="card" style="margin-top:16px;">
-            <h2 class="card-title">💌 비밀친구</h2>
-            <p class="card-sub">곧 오픈 예정이에요.</p>
+            <h2 class="card-title">🤝 B.B.B.</h2>
+            <p class="card-sub" style="margin-bottom:16px;">Buddy Beyond Buddy</p>
+            <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:20px 0;">불러오는 중...</div>
+
+            <div id="bbbContent" style="display:none;">
+              <!-- 케어버디 -->
+              <div style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <p style="font-size:11px;font-weight:700;color:#a78bfa;letter-spacing:0.08em;margin:0;">MY CARE BUDDY</p>
+                  <span id="bbbCaughtBadge" style="display:none;font-size:11px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 8px;border-radius:20px;">🔍 들켰어요!</span>
+                </div>
+                <p style="font-size:22px;font-weight:800;color:var(--text);margin:0;" id="bbbCareBuddyName">—</p>
+                <p style="font-size:13px;color:var(--sub);margin:4px 0 0;">내가 몰래 챙겨야 할 사람이에요 🤫</p>
+              </div>
+
+              <!-- 시크릿버디 맞추기 -->
+              <div id="bbbSecretWrap" style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+                <p style="font-size:11px;font-weight:700;color:#f59e0b;letter-spacing:0.08em;margin:0 0 8px;">MY SECRET BUDDY</p>
+                <div id="bbbSecretRevealed" style="display:none;">
+                  <p style="font-size:18px;font-weight:700;color:#4ade80;margin:0;" id="bbbSecretName">—</p>
+                  <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">✅ 맞혔어요! 이 분이 나를 몰래 챙겨주고 있어요.</p>
+                </div>
+                <div id="bbbSecretGuess">
+                  <p style="font-size:13px;color:var(--sub);margin:0 0 10px;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요. 누구일까요?</p>
+                  <div style="display:flex;gap:8px;">
+                    <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름 입력" style="flex:1;background:rgba(255,255,255,0.08);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--text);font-size:14px;outline:none;" />
+                    <button onclick="submitBBBGuess()" style="padding:9px 14px;border-radius:8px;border:none;background:#f59e0b;color:#000;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                  </div>
+                  <p id="bbbGuessMsg" style="font-size:12px;margin:8px 0 0;min-height:16px;"></p>
+                </div>
+              </div>
+
+              <!-- 익명 메시지 보내기 -->
+              <div id="bbbMsgSendWrap" style="display:none;background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;margin-bottom:16px;">
+                <p style="font-size:11px;font-weight:700;color:#4ade80;letter-spacing:0.08em;margin:0 0 8px;">ANONYMOUS MESSAGE</p>
+                <p style="font-size:13px;color:var(--sub);margin:0 0 10px;">케어버디에게 익명으로 메시지를 보내요.</p>
+                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디를 전해보세요 (최대 300자)" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid var(--line);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;resize:none;height:90px;outline:none;font-family:inherit;"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                  <button onclick="sendBBBMsg()" style="padding:8px 18px;border-radius:8px;border:none;background:#4ade80;color:#000;font-weight:700;font-size:13px;cursor:pointer;">보내기</button>
+                </div>
+                <p id="bbbMsgSendResult" style="font-size:12px;margin:6px 0 0;min-height:16px;"></p>
+              </div>
+
+              <!-- 받은 메시지 -->
+              <div style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px 18px;">
+                <p style="font-size:11px;font-weight:700;color:#60a5fa;letter-spacing:0.08em;margin:0 0 10px;">받은 메시지</p>
+                <div id="bbbMsgList"><p style="font-size:13px;color:var(--sub);">아직 받은 메시지가 없어요.</p></div>
+              </div>
+            </div>
+
+            <div id="bbbNoMatch" style="display:none;text-align:center;padding:24px 0;">
+              <p style="font-size:14px;color:var(--sub);">아직 매칭 정보가 없어요.<br>조금만 기다려주세요!</p>
+            </div>
           </section>
+
         </div>
       </div>
 
@@ -1965,8 +2116,16 @@
   <script>
     const API_BASE = 'https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec';
 
+    function post(body) {
+      return fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(body)
+      }).then(r => r.json());
+    }
+
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501';
+    const APP_VERSION = '20260502r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2286,6 +2445,10 @@
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       updateInquiryLoginUI();
+      if (localStorage.getItem('beyondus_trade_dot') === '1') {
+        document.getElementById('tradeMenuDot').classList.add('visible');
+        document.getElementById('drawerTradeDot').style.display = 'inline-block';
+      }
     }
 
     /* ════ Auth 패인 전환 ════ */
@@ -2511,6 +2674,22 @@
     function openCardDetail(cardId, cnt) {
       const card = SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
+      // 새 카드 dot 제거
+      Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(cardId)).forEach(k => localStorage.removeItem(k));
+      const remaining = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).length;
+      const nb = document.getElementById('collNewCardBadge');
+      if (nb) nb.style.display = remaining > 0 ? 'inline-block' : 'none';
+      // 교환현황 탭·햄버거 badge 즉시 갱신
+      const badge   = document.getElementById('collTradeBadge');
+      const menuDot = document.getElementById('tradeMenuDot');
+      const dot     = document.getElementById('drawerTradeDot');
+      if (badge) badge.style.display = remaining > 0 ? 'inline-block' : 'none';
+      const noTradeAlerts = remaining === 0 && !document.querySelector('.pray-btn');
+      if (noTradeAlerts && menuDot) menuDot.classList.remove('visible');
+      if (noTradeAlerts && dot) dot.style.display = 'none';
+      localStorage.setItem('beyondus_trade_dot', remaining > 0 ? '1' : '0');
+      renderCollection();
+      if (_cachedTrades) renderTrades(_cachedTrades);
 
       const wrap = document.getElementById('cardDetailWrap');
       const cntEl = document.getElementById('cardDetailCnt');
@@ -2553,6 +2732,10 @@
         cntEl.textContent = `${cnt}장 보유`;
       }
 
+      const actionsEl = document.getElementById('cardDetailActions');
+      if (actionsEl) {
+        actionsEl.innerHTML = `<button onclick="closeCardDetail();openTradeModal(${cardId})" style="background:rgba(255,246,239,0.15);border:1px solid rgba(255,246,239,0.35);color:rgba(255,246,239,0.9);font-size:13px;font-weight:600;padding:8px 24px;border-radius:999px;cursor:pointer;">교환 신청하기</button>`;
+      }
       document.getElementById('cardDetailOverlay').classList.remove('hidden');
     }
     function closeCardDetail() {
@@ -2622,10 +2805,21 @@
       (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
       const unique = Object.keys(counts).length;
 
+      const newCardIds = new Set();
+      Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => newCardIds.add(Number(localStorage.getItem(k))));
+      // 컬렉션에 없는 카드를 가리키는 유령 키 제거
+      newCardIds.forEach(id => {
+        if (!(counts[id] > 0)) {
+          Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(id)).forEach(k => localStorage.removeItem(k));
+          newCardIds.delete(id);
+        }
+      });
+
       sub.textContent = `${currentNickname}님의 컬렉션 · ${unique}/9종 보유`;
       grid.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = counts[card.id] || 0;
         const locked = cnt === 0;
+        const isNew = !locked && newCardIds.has(card.id);
         const gStyle = locked ? '' : `background:linear-gradient(135deg,${card.g1},${card.g2})`;
         const ghosts = !locked && cnt >= 2
           ? (cnt >= 3
@@ -2635,17 +2829,396 @@
           : '';
         const unlockedContent = `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
         return `
-          <div class="mini-card-wrap" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})" style="cursor:pointer;"` : ''}>
+          <div class="mini-card-wrap" style="${!locked ? 'cursor:pointer;' : ''}">
             ${ghosts}
-            <div class="mini-card ${locked ? 'mini-card-locked' : 'mini-card-img'}">
+            <div class="mini-card ${locked ? 'mini-card-locked' : 'mini-card-img'}" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})"` : ''}>
               ${locked
                 ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
                 : unlockedContent
               }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
+            ${isNew ? `<div style="position:absolute;top:2px;right:2px;width:9px;height:9px;background:#e05a5a;border-radius:50%;z-index:5;border:1.5px solid var(--card);pointer-events:none;"></div>` : ''}
           </div>`;
       }).join('');
+    }
+
+    /* ════ 교환 시스템 ════ */
+    let _tradeTargetNickname = '';
+    let _tradeTargetColl = {};
+    let _tradeMyCardId = null;
+    let _tradeTheirCardId = null;
+    let _tradeStep = 1;
+    let _cachedTrades = null;
+
+    function switchCollTab(tab) {
+      const isGrid = tab === 'grid';
+      document.getElementById('collPanelGrid').style.display   = isGrid ? '' : 'none';
+      document.getElementById('collPanelTrades').style.display = isGrid ? 'none' : '';
+      document.getElementById('collTabGrid').classList.toggle('active', isGrid);
+      document.getElementById('collTabTrades').classList.toggle('active', !isGrid);
+      if (!isGrid) loadTrades();
+    }
+
+    function openTradeModal(preCardId) {
+      _tradeTargetNickname = ''; _tradeTargetColl = {};
+      _tradeMyCardId = preCardId || null; _tradeTheirCardId = null;
+      _tradeStep = 1;
+      document.getElementById('tradeTargetInput').value = '';
+      document.getElementById('tradeSearchResult').innerHTML = '';
+      document.getElementById('tradeOverlay').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      _tradeShowStep(1);
+    }
+
+    function closeTradeModal() {
+      document.getElementById('tradeOverlay').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    function _tradeShowStep(n) {
+      _tradeStep = n;
+      [1,2,3,4].forEach(i => {
+        document.getElementById('tradeStep' + i).style.display = i === n ? '' : 'none';
+      });
+      const labels = ['상대방 검색', '내 카드 선택', '상대 카드 선택', '확인'];
+      document.getElementById('tradeStepIndicator').textContent = `Step ${n}/4 — ${labels[n-1]}`;
+    }
+
+    async function tradeSearchUser() {
+      const nick = document.getElementById('tradeTargetInput').value.trim();
+      const el = document.getElementById('tradeSearchResult');
+      if (!nick) { el.textContent = '닉네임을 입력해주세요.'; return; }
+      if (nick === currentNickname) { el.textContent = '자기 자신과는 교환할 수 없어요.'; return; }
+      el.textContent = '검색 중...';
+      try {
+        const res = await fetch(`${API_BASE}?action=getPublicCollection&userId=${encodeURIComponent(nick)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        if (!res.ok) { el.textContent = '찾을 수 없는 닉네임이에요.'; return; }
+        const hasCards = Object.values(res.collection || {}).some(v => v > 0);
+        if (!hasCards) { el.textContent = `${nick}님은 보유 카드가 없어요.`; return; }
+        _tradeTargetNickname = nick;
+        _tradeTargetColl = res.collection || {};
+        el.innerHTML = `<span style="color:#4ade80;font-weight:700;">✓ ${nick}님을 찾았어요!</span>`;
+        setTimeout(() => {
+          if (_tradeMyCardId) _tradeShowStep(3), _renderTheirCards();
+          else _tradeShowStep(2), _renderMyCards();
+        }, 600);
+      } catch(e) { el.textContent = '검색 실패. 다시 시도해주세요.'; }
+    }
+
+    function _renderMyCards() {
+      const counts = {};
+      (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
+      const container = document.getElementById('tradeMyCards');
+      container.innerHTML = SPIRIT_CARDS.map(card => {
+        const cnt = counts[card.id] || 0;
+        if (cnt === 0) return '';
+        const sel = _tradeMyCardId === card.id ? 'outline:2.5px solid #e8854a;' : '';
+        return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectMyCard(${card.id})">
+          <div class="mini-card mini-card-img" style="${sel}">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+          </div>
+          <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name}</div>
+        </div>`;
+      }).join('');
+      if (!container.innerHTML.trim()) container.innerHTML = '<p style="color:var(--sub);font-size:13px;">보유 카드가 없어요.</p>';
+    }
+
+    function tradeSelectMyCard(cardId) {
+      _tradeMyCardId = cardId;
+      _renderMyCards();
+      setTimeout(() => { _tradeShowStep(3); _renderTheirCards(); }, 300);
+    }
+
+    function _renderTheirCards() {
+      document.getElementById('tradeTargetName').textContent = _tradeTargetNickname;
+      const myCard = SPIRIT_CARDS.find(c => c.id === _tradeMyCardId);
+      if (myCard) document.getElementById('tradePreviewMine').innerHTML = `<img src="${myCard.img}" style="width:100%;height:100%;object-fit:contain;">`;
+      if (_tradeTheirCardId) {
+        const tc = SPIRIT_CARDS.find(c => c.id === _tradeTheirCardId);
+        if (tc) document.getElementById('tradePreviewTheirs').innerHTML = `<img src="${tc.img}" style="width:100%;height:100%;object-fit:contain;">`;
+      } else {
+        document.getElementById('tradePreviewTheirs').innerHTML = `<span style="font-size:18px;color:var(--sub);">?</span>`;
+      }
+      const container = document.getElementById('tradeTheirCards');
+      container.innerHTML = SPIRIT_CARDS.map(card => {
+        const cnt = _tradeTargetColl[card.id] || 0;
+        if (cnt === 0) return '';
+        const sel = _tradeTheirCardId === card.id ? 'outline:2.5px solid #7c3aed;' : '';
+        return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectTheirCard(${card.id})">
+          <div class="mini-card mini-card-img" style="${sel}">
+            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+          </div>
+          <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name}</div>
+        </div>`;
+      }).join('');
+      if (!container.innerHTML.trim()) container.innerHTML = '<p style="color:var(--sub);font-size:13px;">상대방이 보유한 카드가 없어요.</p>';
+    }
+
+    function tradeSelectTheirCard(cardId) {
+      _tradeTheirCardId = cardId;
+      const tc = SPIRIT_CARDS.find(c => c.id === cardId);
+      if (tc) document.getElementById('tradePreviewTheirs').innerHTML = `<img src="${tc.img}" style="width:100%;height:100%;object-fit:contain;">`;
+      _renderTheirCards();
+      const myCard = SPIRIT_CARDS.find(c => c.id === _tradeMyCardId);
+      const theirCard = SPIRIT_CARDS.find(c => c.id === _tradeTheirCardId);
+      document.getElementById('tradeConfirmText').innerHTML =
+        `내 <strong style="color:#e8854a;">${myCard.name}</strong> 카드를 주고<br>${_tradeTargetNickname}님의 <strong style="color:#a78bfa;">${theirCard.name}</strong> 카드를 받습니다.`;
+      document.getElementById('tradeSubmitStatus').textContent = '';
+      document.getElementById('tradeSubmitBtn').disabled = false;
+      setTimeout(() => _tradeShowStep(4), 300);
+    }
+
+    function tradeGoBack() {
+      if (_tradeStep === 4) { _tradeShowStep(3); _renderTheirCards(); }
+      else if (_tradeStep === 3) { _tradeShowStep(2); _renderMyCards(); }
+      else if (_tradeStep === 2) { _tradeShowStep(1); }
+    }
+
+    async function submitTradeRequest() {
+      const btn = document.getElementById('tradeSubmitBtn');
+      const statusEl = document.getElementById('tradeSubmitStatus');
+      btn.disabled = true;
+      statusEl.textContent = '전송 중...';
+      try {
+        const res = await post({
+          action: 'requestTrade',
+          nickname: currentNickname,
+          requesterCardId: _tradeMyCardId,
+          targetNickname: _tradeTargetNickname,
+          targetCardId: _tradeTheirCardId
+        });
+        if (res.ok) {
+          statusEl.style.color = '#4ade80';
+          statusEl.textContent = '✓ 교환 신청이 전송됐어요!';
+          setTimeout(() => { closeTradeModal(); loadTrades(); }, 1200);
+        } else {
+          statusEl.style.color = 'var(--danger)';
+          statusEl.textContent = res.error || '오류가 발생했어요.';
+          btn.disabled = false;
+        }
+      } catch(e) { statusEl.textContent = '연결 오류'; btn.disabled = false; }
+    }
+
+    async function loadTrades() {
+      if (!currentNickname) return;
+      try {
+        const res = await fetch(`${API_BASE}?action=getTrades&userId=${encodeURIComponent(currentNickname)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        if (!res.ok) return;
+        _cachedTrades = res;
+        const all = [...(res.incoming || []), ...(res.outgoing || [])];
+        const pendingIn = (res.incoming || []).filter(t => t.status === 'pending').length;
+        const unprayed  = all.filter(t => {
+          if (t.status !== 'accepted' || !t.otherPrayer) return false;
+          const isMine = t.requester === currentNickname;
+          return isMine ? !t.requesterPrayed : !t.targetPrayed;
+        }).length;
+        const unseenPray = all.filter(t => {
+          if (t.status !== 'accepted') return false;
+          const isMine = t.requester === currentNickname;
+          const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
+          return theirPrayed && !localStorage.getItem('beyondus_seen_pray_' + t.id);
+        }).length;
+        // 교환 완료로 새로 받은 카드 추적 (이전 목록과 비교해 진짜 신규만)
+        if (!localStorage.getItem('beyondus_nc_migrated')) {
+          Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => localStorage.removeItem(k));
+          localStorage.setItem('beyondus_nc_migrated', '1');
+        }
+        const knownRaw = localStorage.getItem('beyondus_known_accepts');
+        const knownAccepts = new Set(JSON.parse(knownRaw || '[]'));
+        const currentAccepts = all.filter(t => t.status === 'accepted').map(t => t.id);
+        if (knownRaw !== null) {
+          currentAccepts.forEach(id => {
+            if (!knownAccepts.has(id)) {
+              const t = all.find(tr => tr.id === id);
+              if (!t) return;
+              const isMine = t.requester === currentNickname;
+              localStorage.setItem('beyondus_new_card_' + id, String(isMine ? t.targetCardId : t.requesterCardId));
+            }
+          });
+          // 고아 항목 제거 (거절/취소된 교환 잔재)
+          Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && !currentAccepts.includes(k.replace('beyondus_new_card_', ''))).forEach(k => localStorage.removeItem(k));
+        }
+        localStorage.setItem('beyondus_known_accepts', JSON.stringify(currentAccepts));
+        const ownedIds = new Set((userStatus?.collection || []).map(c => c.id));
+        const newCardCount = Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).filter(k => currentAccepts.includes(k.replace('beyondus_new_card_', ''))).filter(k => ownedIds.has(Number(localStorage.getItem(k)))).length;
+        const tradeTotal = pendingIn + unprayed + unseenPray;
+        const grandTotal = tradeTotal + newCardCount;
+        const dot      = document.getElementById('drawerTradeDot');
+        const badge    = document.getElementById('collTradeBadge');
+        const menuDot  = document.getElementById('tradeMenuDot');
+        localStorage.setItem('beyondus_trade_dot', grandTotal > 0 ? '1' : '0');
+        const collNewBadge = document.getElementById('collNewCardBadge');
+        dot.style.display   = grandTotal > 0 ? 'inline-block' : 'none';
+        badge.style.display = (tradeTotal + newCardCount) > 0 ? 'inline-block' : 'none';
+        collNewBadge.style.display = newCardCount > 0 ? 'inline-block' : 'none';
+        if (grandTotal > 0) menuDot.classList.add('visible');
+        else menuDot.classList.remove('visible');
+        renderTrades(res);
+        if (newCardCount > 0) renderCollection();
+      } catch(e) {}
+    }
+
+    async function markPrayed(tradeId, btn) {
+      if (btn) {
+        const label = document.createElement('span');
+        label.className = 'prayed-label';
+        label.textContent = '기도완료 ✓';
+        btn.parentElement.replaceChild(label, btn);
+      }
+      try {
+        const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
+        if (res.ok) loadTrades();
+        else alert(res.error || res.message || '오류가 발생했어요.');
+      } catch(e) { alert('연결 오류: ' + e.message); }
+    }
+
+    function renderTrades(data) {
+      const el = document.getElementById('tradesList');
+      if (!el) return;
+      const incoming = data.incoming || [];
+      const outgoing = data.outgoing || [];
+      if (!incoming.length && !outgoing.length) {
+        el.innerHTML = '<p class="card-sub">교환 내역이 없어요.</p>'; return;
+      }
+      const renderItem = (t, isMine) => {
+        const myCard = isMine ? t.requesterCardName : t.targetCardName;
+        const theirCard = isMine ? t.targetCardName : t.requesterCardName;
+        const otherNick = isMine ? t.target : t.requester;
+        const isAccepted = t.status === 'accepted';
+        const isPending  = t.status === 'pending';
+
+        if (isAccepted) {
+          const myPrayed    = isMine ? t.requesterPrayed : t.targetPrayed;
+          const theirPrayed = isMine ? t.targetPrayed    : t.requesterPrayed;
+          const hasPrayer   = !!t.otherPrayer;
+          const theirCardId = isMine ? t.targetCardId : t.requesterCardId;
+          const isNewCard   = !!localStorage.getItem('beyondus_new_card_' + t.id);
+
+          const prayBtnHtml = hasPrayer
+            ? (myPrayed
+                ? `<span class="prayed-label">기도완료 ✓</span>`
+                : `<button class="pray-btn" onclick="markPrayed('${t.id}',this)">기도했어요!</button>`)
+            : '';
+          const stampSeen = localStorage.getItem('beyondus_seen_pray_' + t.id);
+          const theirPrayHtml = theirPrayed
+            ? `<div class="pray-stamp${stampSeen ? ' seen' : ''}">${escHtml(otherNick)}님이 나를 위해 기도했어요.</div>`
+            : '';
+          const prayerHtml = hasPrayer
+            ? `<p style="margin:10px 0 0;font-size:12px;color:var(--sub);line-height:1.75;font-style:italic;">"${escHtml(t.otherPrayer)}"</p>${theirPrayHtml ? `<div>${theirPrayHtml}</div>` : ''}`
+            : (theirPrayHtml ? `<div>${theirPrayHtml}</div>` : '');
+          const newDot = isNewCard ? `<span style="display:inline-block;width:7px;height:7px;background:#e05a5a;border-radius:50%;flex-shrink:0;margin-left:4px;vertical-align:middle;"></span>` : '';
+
+          return `<div style="border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:8px;position:relative;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <div style="display:flex;align-items:baseline;gap:6px;">
+                <span style="font-size:14px;font-weight:700;color:var(--text);">${escHtml(otherNick)}</span>
+                <span style="font-size:12px;color:var(--sub);">과 교환 완료</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">${prayBtnHtml}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
+              <span style="font-weight:600;color:var(--text);">${escHtml(myCard)}</span>
+              <span style="color:var(--line);">↔</span>
+              <span style="font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onclick="openCardDetail(${theirCardId},1)">${escHtml(theirCard)}${newDot}</span>
+            </div>
+            ${prayerHtml}
+          </div>`;
+        }
+
+        const isIncomingPending = isPending && !isMine;
+        const labelMap = { pending: isMine ? '대기중' : `${escHtml(otherNick)}님의 교환요청`, rejected: '거절됨', cancelled: '취소됨' };
+        const label = labelMap[t.status] || t.status;
+        const labelColor = isPending ? 'var(--text)' : 'var(--sub)';
+        const actions = isPending
+          ? (isMine
+            ? `<button onclick="doTradeCancelTrade('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">취소</button>`
+            : `<div style="display:flex;gap:6px;">
+                <button onclick="doTradeAccept('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:none;background:var(--primary);color:var(--bg);cursor:pointer;font-weight:700;">수락</button>
+                <button onclick="doTradeReject('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">거절</button>
+              </div>`)
+          : '';
+        return `<div style="background:var(--primary-soft);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12px;font-weight:700;color:${labelColor};">${label}</span>
+              ${isIncomingPending ? `<span style="display:inline-block;width:7px;height:7px;background:#e05a5a;border-radius:50%;flex-shrink:0;"></span>` : ''}
+            </div>
+            ${!isIncomingPending ? `<span style="font-size:11px;color:var(--sub);">${escHtml(otherNick)}</span>` : ''}
+          </div>
+          <div style="font-size:13px;color:var(--text);">
+            <span style="font-weight:600;">${escHtml(myCard)}</span>
+            <span style="color:var(--sub);padding:0 6px;">↔</span>
+            <span style="font-weight:600;">${escHtml(theirCard)}</span>
+          </div>
+          ${actions ? `<div style="margin-top:10px;">${actions}</div>` : ''}
+        </div>`;
+      };
+
+      let html = '';
+      const pendingIn = incoming.filter(t => t.status === 'pending');
+      if (pendingIn.length) {
+        html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:0 0 6px;">받은 요청</p>`;
+        html += pendingIn.map(t => renderItem(t, false)).join('');
+      }
+      const pendingOut = outgoing.filter(t => t.status === 'pending');
+      if (pendingOut.length) {
+        html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:${pendingIn.length ? '12px' : '0'} 0 6px;">보낸 요청</p>`;
+        html += pendingOut.map(t => renderItem(t, true)).join('');
+      }
+      // 수락된 교환만 히스토리에 표시 (취소/거절은 자동 숨김)
+      const resolved = [...incoming, ...outgoing]
+        .filter(t => t.status === 'accepted')
+        .sort((a,b) => b.resolvedAt.localeCompare(a.resolvedAt))
+        .slice(0, 20);
+      if (resolved.length) {
+        html += `<p style="font-size:12px;font-weight:700;color:var(--sub);margin:12px 0 6px;">완료된 교환</p>`;
+        html += resolved.map(t => renderItem(t, t.requester === currentNickname)).join('');
+      }
+      el.innerHTML = html || '<p class="card-sub">교환 내역이 없어요.</p>';
+      // 교환현황 탭이 실제로 열려있을 때만 상대 기도 알림 "봤음" 처리
+      const tradesVisible = document.getElementById('collPanelTrades') && document.getElementById('collPanelTrades').style.display !== 'none';
+      if (tradesVisible) {
+        const allT = [...(data.incoming || []), ...(data.outgoing || [])];
+        allT.forEach(t => {
+          if (t.status !== 'accepted') return;
+          const isMine = t.requester === currentNickname;
+          const theirPrayed = isMine ? t.targetPrayed : t.requesterPrayed;
+          if (theirPrayed) localStorage.setItem('beyondus_seen_pray_' + t.id, '1');
+        });
+      }
+    }
+
+    async function doTradeAccept(tradeId) {
+      if (!confirm('교환을 수락할까요?')) return;
+      try {
+        const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
+        if (res.ok) {
+          // 수락한 사람은 새 카드 알림 불필요 — known에 미리 추가
+          const ka = JSON.parse(localStorage.getItem('beyondus_known_accepts') || '[]');
+          if (!ka.includes(tradeId)) { ka.push(tradeId); localStorage.setItem('beyondus_known_accepts', JSON.stringify(ka)); }
+          alert('교환이 완료됐어요! 🎉'); Promise.all([loadUserStatus(), loadTrades()]);
+        }
+        else alert(res.error || '수락 실패');
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    async function doTradeReject(tradeId) {
+      if (!confirm('교환을 거절할까요?')) return;
+      try {
+        const res = await post({ action: 'rejectTrade', tradeId, nickname: currentNickname });
+        if (res.ok) loadTrades();
+        else alert(res.error || '거절 실패');
+      } catch(e) { alert('연결 오류'); }
+    }
+
+    async function doTradeCancelTrade(tradeId) {
+      if (!confirm('교환 신청을 취소할까요?')) return;
+      try {
+        const res = await post({ action: 'cancelTrade', tradeId, nickname: currentNickname });
+        if (res.ok) loadTrades();
+        else alert(res.error || '취소 실패');
+      } catch(e) { alert('연결 오류'); }
     }
 
     /* ════ userStatus API ════ */
@@ -2675,6 +3248,7 @@
       renderCollection();
       updateScoreProgress();
       if (lastConfigData) renderConfig(lastConfigData);
+      loadTrades();
     }
 
     function ensureRevealSparks() {
@@ -2955,19 +3529,15 @@
         drawState = 'tearing_pack';
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
-        var cardPromise;
-        if (TEST_MODE) {
-          // 테스트 모드: GAS 호출 없이 로컬에서 랜덤 카드 선택 (실제 데이터에 기록 안 됨)
-          cardPromise = Promise.resolve({ card: SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)] });
-        } else {
-          cardPromise = fetch(API_BASE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey() })
-          })
-          .then(function(r) { return r.json(); })
-          .catch(function() { return null; });
-        }
+        // DEV 환경: fetch interceptor가 devMode=true 자동 추가 → DEV 시트에 기록
+        // GAS 항상 호출 (DEV/PROD 시트 분리로 통계 오염 없음)
+        var cardPromise = fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey() })
+        })
+        .then(function(r) { return r.json(); })
+        .catch(function() { return null; });
         cardPromise.then(function(result) {
           if (result && !result.error && result.card) {
             pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
@@ -3493,10 +4063,23 @@
     });
 
     /* ════ 드로어 ════ */
+    let _drawerSynced = false;
+    function syncDrawerLabelWidth() {
+      const labels = document.querySelectorAll('.drawer-label');
+      // inline으로 측정해야 숨겨진 상태에서도 텍스트 실제 너비 반환
+      labels.forEach(l => { l.style.cssText += ';display:inline;width:auto;'; });
+      let maxW = 0;
+      labels.forEach(l => { maxW = Math.max(maxW, l.getBoundingClientRect().width); });
+      labels.forEach(l => { l.style.display = 'block'; l.style.width = maxW + 'px'; });
+      if (maxW > 0) _drawerSynced = true;
+    }
+    requestAnimationFrame(syncDrawerLabelWidth);
+
     function openDrawer() {
       document.getElementById('navDrawer').classList.add('open');
       document.getElementById('drawerOverlay').classList.remove('hidden');
       document.body.style.overflow = 'hidden';
+      if (!_drawerSynced) requestAnimationFrame(syncDrawerLabelWidth);
     }
     function closeDrawer() {
       document.getElementById('navDrawer').classList.remove('open');
@@ -3540,6 +4123,7 @@
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
       if (name === 'prayer') loadHoldPray();
+      if (name === 'secret') loadBBB();
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
       _currentSection = name;
@@ -3578,16 +4162,16 @@
         list.innerHTML = '<p class="notice-empty">검색 결과가 없어요.</p>';
         return;
       }
-      function driveImgSrc(url) {
-        if (!url) return '';
-        const m = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200' : url;
+      function parseNoticeImgs(imageUrl) {
+        if (!imageUrl) return [];
+        try { const p = JSON.parse(imageUrl); if (Array.isArray(p)) return p; } catch(e) {}
+        return [imageUrl];
       }
       list.innerHTML = notices.map(n => {
         const isNew = !seen.includes(n.id);
-        const imgSrc = driveImgSrc(n.imageUrl);
-        const imgHtml = imgSrc
-          ? `<img src="${imgSrc}" loading="lazy" style="width:100%; max-height:320px; object-fit:contain; border-radius:8px; margin-top:10px; display:block;">`
+        const imgs = parseNoticeImgs(n.imageUrl);
+        const imgHtml = imgs.length
+          ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${imgs.map(u => `<img src="${u}" loading="lazy" style="max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;flex:1 1 auto;">`).join('')}</div>`
           : '';
         return `
         <div class="notice-item">
@@ -3815,6 +4399,118 @@
 
     document.getElementById('refreshInquiryBtn').addEventListener('click', loadInquiries);
 
+    /* ════ B.B.B. ════ */
+    let _bbbData = null;
+
+    async function loadBBB() {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      if (!nickname) return;
+
+      document.getElementById('bbbLoading').style.display = '';
+      document.getElementById('bbbContent').style.display = 'none';
+      document.getElementById('bbbNoMatch').style.display = 'none';
+
+      try {
+        const [bbbRes, msgRes] = await Promise.all([
+          fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}`).then(r => r.json()),
+          fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}`).then(r => r.json())
+        ]);
+
+        document.getElementById('bbbLoading').style.display = 'none';
+
+        if (!bbbRes.ok) {
+          document.getElementById('bbbNoMatch').style.display = '';
+          return;
+        }
+
+        _bbbData = bbbRes;
+        document.getElementById('bbbContent').style.display = '';
+
+        // 케어버디
+        document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name;
+        document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
+
+        // 시크릿버디
+        if (bbbRes.secretBuddy) {
+          document.getElementById('bbbSecretWrap').style.display = '';
+          if (bbbRes.secretBuddy.revealed) {
+            document.getElementById('bbbSecretRevealed').style.display = '';
+            document.getElementById('bbbSecretGuess').style.display = 'none';
+            document.getElementById('bbbSecretName').textContent =
+              bbbRes.secretBuddy.name || bbbRes.secretBuddy.nickname || '—';
+          } else {
+            document.getElementById('bbbSecretRevealed').style.display = 'none';
+            document.getElementById('bbbSecretGuess').style.display = '';
+            document.getElementById('bbbSecretHint').textContent =
+              '나를 몰래 챙겨주는 사람이 있어요. 누구일까요?';
+          }
+        } else {
+          document.getElementById('bbbSecretWrap').style.display = 'none';
+        }
+
+        // 메시지 보내기 창
+        document.getElementById('bbbMsgSendWrap').style.display = bbbRes.messageOpen ? '' : 'none';
+
+        // 받은 메시지
+        _renderBBBMessages(msgRes.messages || []);
+
+      } catch(e) {
+        document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
+      }
+    }
+
+    function _renderBBBMessages(messages) {
+      const el = document.getElementById('bbbMsgList');
+      if (!messages.length) {
+        el.innerHTML = '<p style="font-size:13px;color:var(--sub);">아직 받은 메시지가 없어요.</p>';
+        return;
+      }
+      el.innerHTML = messages.map(m => `
+        <div style="background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+          <p style="font-size:14px;color:var(--text);margin:0 0 6px;line-height:1.5;">${escHtml(m.message)}</p>
+          <p style="font-size:11px;color:var(--sub);margin:0;">— 익명 · ${m.createdAt ? m.createdAt.slice(0,10) : ''}</p>
+        </div>`).join('');
+    }
+
+    async function submitBBBGuess() {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      const guess = document.getElementById('bbbGuessInput').value.trim();
+      const msgEl = document.getElementById('bbbGuessMsg');
+      if (!guess) { msgEl.style.color = '#f87171'; msgEl.textContent = '닉네임 또는 이름을 입력해주세요.'; return; }
+
+      try {
+        const res = await post({ action: 'guessBBBSecret', userId: nickname, guess });
+        if (res.error) { msgEl.style.color = '#f87171'; msgEl.textContent = res.error; return; }
+        if (res.correct) {
+          msgEl.style.color = '#4ade80';
+          msgEl.textContent = '정답이에요! 🎉';
+          document.getElementById('bbbSecretName').textContent = res.secretName || res.secretNickname;
+          document.getElementById('bbbSecretRevealed').style.display = '';
+          document.getElementById('bbbSecretGuess').style.display = 'none';
+        } else {
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = '아니에요. 다시 생각해봐요!';
+          document.getElementById('bbbGuessInput').value = '';
+        }
+      } catch(e) { msgEl.style.color = '#f87171'; msgEl.textContent = '연결 오류'; }
+    }
+
+    async function sendBBBMsg() {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      const message  = document.getElementById('bbbMsgInput').value.trim();
+      const resultEl = document.getElementById('bbbMsgSendResult');
+      if (!message) { resultEl.style.color = '#f87171'; resultEl.textContent = '메시지를 입력해주세요.'; return; }
+
+      try {
+        const res = await post({ action: 'sendBBBMessage', userId: nickname, message });
+        if (res.error) { resultEl.style.color = '#f87171'; resultEl.textContent = res.error; return; }
+        resultEl.style.color = '#4ade80';
+        resultEl.textContent = '메시지를 보냈어요! 💌';
+        document.getElementById('bbbMsgInput').value = '';
+        setTimeout(() => { resultEl.textContent = ''; }, 3000);
+      } catch(e) { resultEl.style.color = '#f87171'; resultEl.textContent = '연결 오류'; }
+    }
+
     /* ════ Hold & Pray ════ */
     let _hpData = null;
     let _hpGuessCorrect = false;
@@ -3873,7 +4569,9 @@
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
         _hpData = data;
-        _hpGuessCorrect = false;
+        const _savedName = localStorage.getItem('beyondus_hp_correct_' + data.weekKey);
+        if (_savedName) { _hpGuessCorrect = true; _hpCorrectName = _savedName; }
+        else { _hpGuessCorrect = false; _hpCorrectName = ''; }
         renderHoldPrayCard(data);
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
@@ -3949,11 +4647,12 @@
         if (data.correct) {
           _hpGuessCorrect = true;
           _hpCorrectName  = guess;
+          localStorage.setItem('beyondus_hp_correct_' + _hpData.weekKey, guess);
           const wrap = document.getElementById('hpInlineGuess');
           if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(guess)}</span>`;
-          if (result) { result.textContent = '정답이에요! 함께 기도해줘서 감사해요 ☺️'; result.className = 'hp-result-inline correct'; }
+          if (result) { result.textContent = '🎉 정답이에요! 함께 기도해줘서 감사해요!'; result.className = 'hp-result-inline correct'; result.style.display = ''; }
         } else {
-          if (result) { result.textContent = '아직 아니에요. 다시 생각해봐요!'; result.className = 'hp-result-inline wrong'; }
+          if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
           btn.disabled = false;
           input.value = '';
           input.focus();

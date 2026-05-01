@@ -45,11 +45,13 @@
     .admin-wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
 
     /* ── 탭 ── */
-    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--line); }
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--line); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
     .tab-btn {
       padding: 10px 18px; font-size: 14px; font-weight: 700;
       border: 0; background: none; color: var(--sub); cursor: pointer;
       border-bottom: 2px solid transparent; margin-bottom: -2px;
+      white-space: nowrap; flex-shrink: 0;
     }
     .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
     .tab-panel { display: none; }
@@ -157,6 +159,8 @@
         <button class="tab-btn" data-tab="users">👥 유저</button>
         <button class="tab-btn" data-tab="notice">📢 공지</button>
         <button class="tab-btn" data-tab="inquiry">💬 문의</button>
+        <button class="tab-btn" data-tab="trades">🔄 교환</button>
+        <button class="tab-btn" data-tab="bbb">🤝 B.B.B.</button>
         <button class="tab-btn" data-tab="settings">⚙️ 설정</button>
       </div>
 
@@ -254,22 +258,16 @@
           <input type="text" id="noticeTitle" class="input" placeholder="제목" />
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
           <!-- 이미지 첨부 -->
-          <label style="display:block; margin-top:12px; font-size:13px; color:var(--sub); margin-bottom:6px;">🖼️ 이미지 첨부 (선택)</label>
-          <!-- 탭: 파일 업로드 / URL 직접 입력 -->
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <button type="button" id="imgTabFile" class="btn btn-sm btn-primary" style="font-size:12px;">📁 파일 선택</button>
-            <button type="button" id="imgTabUrl" class="btn btn-sm btn-ghost" style="font-size:12px;">🔗 URL 입력</button>
+          <input type="file" id="noticeImageFile" accept="image/*" multiple style="display:none;" />
+          <div id="imgDropZone" onclick="document.getElementById('noticeImageFile').click()" style="margin-top:14px; border:2px dashed var(--line); border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:border-color .15s, background .15s; background:var(--primary-soft);">
+            <span style="font-size:20px;">🖼️</span>
+            <div>
+              <div style="font-size:13px; font-weight:700; color:var(--text);">클릭하거나 이미지를 드래그하세요</div>
+              <div style="font-size:11px; color:var(--sub); margin-top:2px;">JPG · PNG · GIF · 10MB 이하 · 여러 장 가능</div>
+            </div>
           </div>
-          <div id="imgPanelFile">
-            <input type="file" id="noticeImageFile" accept="image/*" style="font-size:13px; width:100%;" />
-            <p style="font-size:11px; color:var(--sub); margin:4px 0 0;">* 5MB 이하 권장. 로컬 컴퓨터/휴대폰에서 선택 가능.</p>
-          </div>
-          <div id="imgPanelUrl" style="display:none;">
-            <input type="url" id="noticeImageUrl" class="input" placeholder="https://drive.google.com/file/d/..." style="font-size:13px;" />
-          </div>
-          <div id="noticeImagePreview" style="display:none; margin-top:8px;">
-            <img id="noticePreviewImg" src="" style="max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--border); display:block;" />
-            <button type="button" id="noticeClearImage" style="margin-top:4px; font-size:12px; color:var(--sub); background:none; border:none; cursor:pointer;">✕ 이미지 제거</button>
+          <div id="noticeImagePreview" style="display:none; margin-top:10px;">
+            <div id="imgPreviewGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:8px;"></div>
           </div>
           <div class="status" id="noticePostStatus"></div>
           <button class="btn btn-primary" id="noticePostBtn" style="margin-top:4px;">등록</button>
@@ -294,6 +292,57 @@
           </div>
           <div id="inquiryAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
+      </div>
+
+      <!-- ⑤ 교환 로그 -->
+      <div id="tab-trades" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">교환 로그</h2>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="loadAdminTrades()">새로고침</button>
+          </div>
+          <div id="tradesLogBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- B.B.B. 탭 -->
+      <div id="tab-bbb" class="tab-panel">
+
+        <!-- 매칭 관리 -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">B.B.B. 매칭</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">TF(isStaff=TRUE) 인원을 랜덤 원형 순환 매칭합니다.</p>
+            </div>
+            <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="runBBBMatching()">🎲 매칭 실행</button>
+          </div>
+          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 실행 후 결과가 표시됩니다.</p></div>
+        </div>
+
+        <!-- 메시지 오픈 토글 -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <h2 class="card-title" style="margin:0;">익명 메시지 창</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">열리면 유저가 케어버디에게 메시지를 보낼 수 있어요.</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span id="bbbMsgOpenLabel" style="font-size:13px;font-weight:700;color:var(--sub);">-</span>
+              <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="toggleBBBMessageOpen()">전환</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 메시지 로그 -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">메시지 로그</h2>
+            <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="loadAdminBBB()">새로고침</button>
+          </div>
+          <div id="bbbMsgBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
+        </div>
+
       </div>
 
       <!-- ④ 탭 설정 -->
@@ -445,6 +494,8 @@
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'cards')   loadCardStats();
         if (btn.dataset.tab === 'inquiry') loadAdminInquiries();
+        if (btn.dataset.tab === 'trades')  loadAdminTrades();
+        if (btn.dataset.tab === 'bbb')     loadAdminBBB();
       });
     });
 
@@ -600,6 +651,9 @@
     });
 
     /* ── API 헬퍼 ── */
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
     function get(params) {
       const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
       return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
@@ -766,12 +820,21 @@
     /* ── 공지사항 ── */
     let cachedAdminNotices = [];
 
+    function parseImageUrls(imageUrl) {
+      if (!imageUrl) return [];
+      try { const p = JSON.parse(imageUrl); if (Array.isArray(p)) return p; } catch(e) {}
+      return [imageUrl];
+    }
+
     function noticeViewHTML(n) {
+      const imgs = parseImageUrls(n.imageUrl);
+      const imgHtml = imgs.length ? `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">${imgs.map(u => `<img src="${u}" style="height:100px; max-width:100%; object-fit:cover; border-radius:8px; border:1px solid var(--line);" />`).join('')}</div>` : '';
       return `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-          <div>
+          <div style="flex:1; min-width:0;">
             <div style="font-size:15px; font-weight:800; margin-bottom:4px;">${esc(n.title)}</div>
             <div style="font-size:13px; color:var(--sub); white-space:pre-wrap;">${esc(n.content)}</div>
+            ${imgHtml}
             <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
@@ -890,66 +953,61 @@
       return url;
     }
 
-    function showImgPreview(src) {
-      const img = document.getElementById('noticePreviewImg');
-      img.src = src;
-      img.onerror = () => { document.getElementById('noticeImagePreview').style.display = 'none'; };
-      img.onload  = () => { document.getElementById('noticeImagePreview').style.display = 'block'; };
+    let _pendingFiles = []; // [{base64, mime, dataUrl}]
+
+    function renderImgPreviews() {
+      const grid = document.getElementById('imgPreviewGrid');
+      const wrap = document.getElementById('noticeImagePreview');
+      if (!_pendingFiles.length) { wrap.style.display = 'none'; grid.innerHTML = ''; return; }
+      wrap.style.display = 'block';
+      grid.innerHTML = _pendingFiles.map((f, i) => `
+        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--line); background:#f0ebe0;">
+          <img src="${f.dataUrl}" style="width:100%; aspect-ratio:4/3; object-fit:contain; display:block; background:#f0ebe0;" />
+          <button type="button" onclick="removeImg(${i})" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:999px; width:22px; height:22px; font-size:12px; cursor:pointer; line-height:1;">✕</button>
+          <div style="font-size:10px; color:var(--sub); padding:3px 6px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${f.name || '이미지 ' + (i+1)}</div>
+        </div>`).join('');
     }
+
+    function removeImg(i) {
+      _pendingFiles.splice(i, 1);
+      renderImgPreviews();
+    }
+
     function clearImgState() {
-      _pendingImageBase64 = ''; _pendingImageMime = '';
+      _pendingFiles = [];
       document.getElementById('noticeImageFile').value = '';
-      document.getElementById('noticeImageUrl').value = '';
-      document.getElementById('noticeImagePreview').style.display = 'none';
-      document.getElementById('noticePreviewImg').src = '';
+      renderImgPreviews();
     }
 
-    // 탭 전환
-    let _pendingImageBase64 = '', _pendingImageMime = '';
-    document.getElementById('imgTabFile').addEventListener('click', function() {
-      document.getElementById('imgPanelFile').style.display = 'block';
-      document.getElementById('imgPanelUrl').style.display = 'none';
-      this.className = 'btn btn-sm btn-primary';
-      document.getElementById('imgTabUrl').className = 'btn btn-sm btn-ghost';
-      clearImgState();
-    });
-    document.getElementById('imgTabUrl').addEventListener('click', function() {
-      document.getElementById('imgPanelFile').style.display = 'none';
-      document.getElementById('imgPanelUrl').style.display = 'block';
-      this.className = 'btn btn-sm btn-primary';
-      document.getElementById('imgTabFile').className = 'btn btn-sm btn-ghost';
-      clearImgState();
-    });
+    function handleImageFiles(files) {
+      const toRead = Array.from(files).filter(f => {
+        if (f.size > 10 * 1024 * 1024) { alert(`${f.name}: 10MB 이하만 가능합니다.`); return false; }
+        return true;
+      });
+      toRead.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const dataUrl = e.target.result;
+          _pendingFiles.push({ base64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: file.type || 'image/jpeg', dataUrl, name: file.name });
+          renderImgPreviews();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
 
-    // 파일 선택 → base64 변환 + 미리보기
     document.getElementById('noticeImageFile').addEventListener('change', function() {
-      const file = this.files[0];
-      if (!file) return;
-      if (file.size > 8 * 1024 * 1024) {
-        alert('8MB 이하 파일만 첨부 가능합니다.');
-        this.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const dataUrl = e.target.result;
-        const comma = dataUrl.indexOf(',');
-        _pendingImageBase64 = dataUrl.slice(comma + 1);
-        _pendingImageMime   = file.type || 'image/jpeg';
-        showImgPreview(dataUrl);
-      };
-      reader.readAsDataURL(file);
+      handleImageFiles(this.files);
     });
 
-    // URL 입력 → 미리보기
-    document.getElementById('noticeImageUrl').addEventListener('input', function() {
-      const normalized = normalizeDriveUrl(this.value.trim());
-      if (!normalized) { document.getElementById('noticeImagePreview').style.display = 'none'; return; }
-      showImgPreview(normalized);
+    // 드래그앤드롭
+    const dropZone = document.getElementById('imgDropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; dropZone.style.background = '#e8e0d0'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--line)'; dropZone.style.background = 'var(--primary-soft)'; });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--line)'; dropZone.style.background = 'var(--primary-soft)';
+      handleImageFiles(e.dataTransfer.files);
     });
-
-    // 이미지 제거
-    document.getElementById('noticeClearImage').addEventListener('click', clearImgState);
 
     document.getElementById('noticePostBtn').addEventListener('click', async () => {
       const title   = document.getElementById('noticeTitle').value.trim();
@@ -961,15 +1019,11 @@
       btn.disabled = true;
       statusEl.className = 'status';
 
-      // 이미지: 파일 업로드 vs URL 입력
       const payload = { action: 'postNotice', adminPw, title, content };
-      if (_pendingImageBase64) {
-        statusEl.textContent = 'Drive에 이미지 업로드 중...';
-        payload.imageBase64 = _pendingImageBase64;
-        payload.imageMime   = _pendingImageMime;
+      if (_pendingFiles.length) {
+        statusEl.textContent = `Drive에 이미지 ${_pendingFiles.length}장 업로드 중...`;
+        payload.imageFiles = _pendingFiles.map(f => ({ base64: f.base64, mime: f.mime }));
       } else {
-        const urlVal = normalizeDriveUrl(document.getElementById('noticeImageUrl').value.trim());
-        if (urlVal) payload.imageUrl = urlVal;
         statusEl.textContent = '등록 중...';
       }
 
@@ -977,12 +1031,16 @@
         const res = await post(payload);
         if (res.ok) {
           statusEl.className = 'status ok';
-          statusEl.textContent = _pendingImageBase64 ? '이미지 업로드 + 등록 완료!' : '등록되었어요!';
+          statusEl.textContent = _pendingFiles.length ? `이미지 ${_pendingFiles.length}장 업로드 + 등록 완료!` : '등록되었어요!';
           document.getElementById('noticeTitle').value = '';
           document.getElementById('noticeContent').value = '';
           clearImgState();
           loadAdminNotices();
+        } else if (res.error === 'drive_upload_failed') {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'Drive 업로드 실패: ' + (res.detail || 'GAS DriveApp 권한 미승인');
         } else {
+          statusEl.className = 'status error';
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
@@ -995,6 +1053,142 @@
     document.getElementById('refreshNoticeBtn').addEventListener('click', loadAdminNotices);
 
     /* ── 개발자 문의 ── */
+    async function loadAdminTrades() {
+      const el = document.getElementById('tradesLogBody');
+      el.innerHTML = '<p style="color:var(--sub);font-size:13px;">불러오는 중...</p>';
+      try {
+        const res = await get({ action: 'getAdminTrades', adminPw });
+        if (!res.ok) { el.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
+        const trades = res.trades || [];
+        if (!trades.length) { el.innerHTML = '<p style="color:var(--sub);font-size:13px;">교환 내역이 없어요.</p>'; return; }
+        const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨',
+          '실패 (거절됨)':'❌ 거절됨', '실패 (취소됨)':'🚫 취소됨', '실패 (카드 없음)':'⚠️ 카드 없음', '실패 (시간 초과)':'⏱️ 시간 초과' };
+        const statusColor = { pending:'#f59e0b', accepted:'#4ade80', rejected:'#f87171', cancelled:'#6b7280',
+          '실패 (거절됨)':'#f87171', '실패 (취소됨)':'#6b7280', '실패 (카드 없음)':'#fb923c', '실패 (시간 초과)':'#6b7280' };
+        el.innerHTML = `<div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">상태</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">신청자</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">주는 카드</th>
+              <th style="padding:8px 6px;text-align:center;font-weight:600;">↔</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">상대방</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">받는 카드</th>
+              <th style="padding:8px 6px;text-align:left;font-weight:600;">일시</th>
+            </tr></thead>
+            <tbody>${trades.map(t => `
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                <td style="padding:8px 6px;color:${statusColor[t.status]||'#888'};font-weight:700;">${statusLabel[t.status]||t.status}</td>
+                <td style="padding:8px 6px;">${escHtml(t.requester)}</td>
+                <td style="padding:8px 6px;color:#e8854a;">${escHtml(t.requesterCardName)}</td>
+                <td style="padding:8px 6px;text-align:center;color:var(--sub);">↔</td>
+                <td style="padding:8px 6px;">${escHtml(t.target)}</td>
+                <td style="padding:8px 6px;color:#a78bfa;">${escHtml(t.targetCardName)}</td>
+                <td style="padding:8px 6px;color:var(--sub);font-size:11px;">${t.createdAt ? t.createdAt.slice(0,16).replace('T',' ') : '-'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      } catch(e) { el.innerHTML = '<p style="color:var(--danger);">오류 발생</p>'; }
+    }
+
+    /* ── B.B.B. ── */
+    let _bbbMessageOpen = false;
+
+    async function loadAdminBBB() {
+      const matchEl = document.getElementById('bbbMatchBody');
+      const msgEl   = document.getElementById('bbbMsgBody');
+      const label   = document.getElementById('bbbMsgOpenLabel');
+      try {
+        const res = await get({ action: 'adminGetBBB', adminPw });
+        if (!res.ok) { matchEl.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
+
+        _bbbMessageOpen = res.messageOpen;
+        label.textContent   = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
+        label.style.color   = _bbbMessageOpen ? '#4ade80' : '#f87171';
+
+        // 매칭 테이블
+        const matches = res.matches || [];
+        if (!matches.length) {
+          matchEl.innerHTML = '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 매칭 실행 버튼을 눌러주세요.</p>';
+        } else {
+          matchEl.innerHTML = `<div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">닉네임</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">케어버디 (내가 챙기는)</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">시크릿버디 (나를 챙기는)</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">맞춤</th>
+              </tr></thead>
+              <tbody>${matches.map(m => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <td style="padding:8px 6px;font-weight:600;">${escHtml(m.userId)}</td>
+                  <td style="padding:8px 6px;color:#a78bfa;">${escHtml(m.careBuddyName)} <span style="color:var(--sub);font-size:11px;">(${escHtml(m.careBuddyId)})</span></td>
+                  <td style="padding:8px 6px;color:#fb923c;">${escHtml(m.secretBuddyName)} <span style="color:var(--sub);font-size:11px;">(${escHtml(m.secretBuddyId)})</span></td>
+                  <td style="padding:8px 6px;">${m.secretRevealed ? '✅' : '—'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+        }
+
+        // 메시지 로그
+        const messages = res.messages || [];
+        if (!messages.length) {
+          msgEl.innerHTML = '<p style="color:var(--sub);font-size:13px;">메시지 내역이 없어요.</p>';
+        } else {
+          msgEl.innerHTML = `<div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">보낸 사람</th>
+                <th style="padding:8px 6px;text-align:center;font-weight:600;">→</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">받는 사람</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">메시지</th>
+                <th style="padding:8px 6px;text-align:left;font-weight:600;">일시</th>
+              </tr></thead>
+              <tbody>${messages.map(m => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <td style="padding:8px 6px;">${escHtml(m.from)}</td>
+                  <td style="padding:8px 6px;text-align:center;color:var(--sub);">→</td>
+                  <td style="padding:8px 6px;color:#a78bfa;">${escHtml(m.to)}</td>
+                  <td style="padding:8px 6px;max-width:240px;word-break:break-all;">${escHtml(m.message)}</td>
+                  <td style="padding:8px 6px;color:var(--sub);font-size:11px;">${m.createdAt ? m.createdAt.slice(0,16).replace('T',' ') : '-'}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+        }
+      } catch(e) { matchEl.innerHTML = '<p style="color:var(--danger);">오류 발생</p>'; }
+    }
+
+    async function runBBBMatching() {
+      if (!confirm('TF(isStaff=TRUE) 인원을 랜덤 매칭합니다.\n기존 매칭이 있으면 초기화됩니다. 진행할까요?')) return;
+      const btn = document.querySelector('[onclick="runBBBMatching()"]');
+      btn.disabled = true; btn.textContent = '매칭 중...';
+      try {
+        const res = await post({ action: 'adminSetupBBBMatching', adminPw });
+        if (!res.ok) { alert('매칭 실패: ' + (res.error || '알 수 없는 오류')); return; }
+        alert(`✅ 매칭 완료! ${res.matched}명 매칭됨\n\n` +
+          res.pairs.map(p => `${p.from} → ${p.careBuddy}`).join('\n'));
+        loadAdminBBB();
+      } catch(e) { alert('연결 오류'); }
+      finally { btn.disabled = false; btn.textContent = '🎲 매칭 실행'; }
+    }
+
+    async function toggleBBBMessageOpen() {
+      const next = !_bbbMessageOpen;
+      const label = next ? '열기' : '닫기';
+      if (!confirm(`익명 메시지 창을 ${label}할까요?`)) return;
+      try {
+        const res = await post({ action: 'adminSetBBBMessageOpen', adminPw, open: next });
+        if (!res.ok) { alert('오류: ' + (res.error || '')); return; }
+        _bbbMessageOpen = res.messageOpen;
+        const el = document.getElementById('bbbMsgOpenLabel');
+        el.textContent = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
+        el.style.color = _bbbMessageOpen ? '#4ade80' : '#f87171';
+      } catch(e) { alert('연결 오류'); }
+    }
+
     async function loadAdminInquiries() {
       const listEl = document.getElementById('inquiryAdminList');
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
