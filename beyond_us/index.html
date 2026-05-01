@@ -2056,9 +2056,9 @@
             <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
               <!-- 케어버디 -->
-              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid var(--primary);">
+              <div style="background:linear-gradient(135deg,#fff5f7 0%,#fce7f3 100%);border-radius:14px;padding:18px 20px;border-left:3px solid #f472b6;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                  <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
+                  <span style="font-size:10px;font-weight:700;color:#db2777;letter-spacing:0.12em;">CARE BUDDY</span>
                   <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
                 </div>
                 <p style="font-size:22px;font-weight:800;color:var(--text);margin:0 0 4px;letter-spacing:-.01em;" id="bbbCareBuddyName">—</p>
@@ -2084,7 +2084,7 @@
               </div>
 
               <!-- 시크릿버디 -->
-              <div id="bbbSecretWrap" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
+              <div id="bbbSecretWrap" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px 14px;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
                 <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
                   <p style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 4px;letter-spacing:-.01em;" id="bbbSecretName">—</p>
@@ -2096,7 +2096,7 @@
                     <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
                     <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
                   </div>
-                  <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;min-height:14px;"></p>
+                  <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
                 </div>
               </div>
 
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502aa';
+    const APP_VERSION = '20260502ab';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
