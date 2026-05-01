@@ -1234,7 +1234,7 @@
       border: 1px solid var(--accent); line-height: 1.4; white-space: nowrap;
     }
     .hp-inline-name { font-size: 20px; font-weight: 400; color: var(--text); font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; }
-    .hp-result-inline { font-size: 12px; margin-top: 6px; display: block; }
+    .hp-result-inline { font-size: 12px; margin-top: 6px; display: block; text-align: center; }
     .hp-result-inline.correct { color: #81c784; }
     .hp-result-inline.wrong { color: #ef9a9a; }
     .hp-verse-card { text-align: center; }
@@ -2081,7 +2081,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501d';
+    const APP_VERSION = '20260501e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4456,7 +4456,7 @@
           if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(guess)}</span>`;
           if (result) { result.textContent = '🎉 정답이에요! 함께 기도해줘서 감사해요!'; result.className = 'hp-result-inline correct'; result.style.display = ''; }
         } else {
-          if (result) { result.textContent = '아직 아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
+          if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
           btn.disabled = false;
           input.value = '';
           input.focus();
