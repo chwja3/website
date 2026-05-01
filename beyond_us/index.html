@@ -2069,10 +2069,10 @@
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
                 <div style="display:flex;align-items:flex-start;gap:14px;">
                   <div style="flex:1;min-width:0;">
-                    <span style="font-size:10px;font-weight:700;color:#4ade80;letter-spacing:0.12em;">MISSION 1</span>
+                    <span style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;">MISSION 1</span>
                     <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">케어버디와 사진 찍기</p>
                     <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
-                    <p id="bbbPhotoStatus" style="font-size:12px;color:#4ade80;margin:0;min-height:16px;font-weight:600;"></p>
+                    <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                   </div>
                   <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:2px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
                     <input type="file" id="bbbPhotoInput" accept="image/*" capture="environment" style="display:none;" />
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502at';
+    const APP_VERSION = '20260502au';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
