@@ -881,6 +881,19 @@
     /* ════════════════════════════
        컬렉션 그리드
     ════════════════════════════ */
+    .coll-tabs { display: flex; gap: 4px; margin-top: 20px; }
+    .coll-tab {
+      padding: 8px 18px; font-size: 13px; font-weight: 700;
+      border: 1px solid var(--line); border-bottom: none;
+      border-radius: 10px 10px 0 0; cursor: pointer;
+      background: var(--bg); color: var(--sub);
+      position: relative; z-index: 1; line-height: 1;
+    }
+    .coll-tab.active {
+      background: var(--card); color: var(--text);
+      margin-bottom: -1px; padding-bottom: 9px; z-index: 2;
+    }
+    .coll-card { border-radius: 0 12px 12px 12px !important; margin-top: 0 !important; }
     .collection-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1892,14 +1905,11 @@
       <!-- ② 컬렉션 -->
       <div id="sectionCollection" class="section hidden">
         <div class="wrap">
-          <section class="card" style="margin-top:20px;">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-              <h2 class="card-title" style="margin:0;">내 컬렉션</h2>
-              <div style="display:flex; gap:6px;">
-                <button id="collTabGrid" onclick="switchCollTab('grid')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:none;cursor:pointer;background:var(--primary);color:var(--bg);">컬렉션</button>
-                <button id="collTabTrades" onclick="switchCollTab('trades')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:1.5px solid var(--line);cursor:pointer;background:transparent;color:var(--sub);">교환현황 <span id="collTradeBadge" style="display:none;background:var(--primary);color:var(--bg);border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span></button>
-              </div>
-            </div>
+          <div class="coll-tabs">
+            <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션</button>
+            <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;background:var(--primary);color:var(--bg);border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span></button>
+          </div>
+          <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
             <div id="collPanelGrid">
               <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
@@ -2082,7 +2092,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501o';
+    const APP_VERSION = '20260501p';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2780,12 +2790,8 @@
       const isGrid = tab === 'grid';
       document.getElementById('collPanelGrid').style.display   = isGrid ? '' : 'none';
       document.getElementById('collPanelTrades').style.display = isGrid ? 'none' : '';
-      document.getElementById('collTabGrid').style.background    = isGrid ? 'var(--primary)' : 'transparent';
-      document.getElementById('collTabGrid').style.color         = isGrid ? 'var(--bg)' : 'var(--sub)';
-      document.getElementById('collTabGrid').style.border        = isGrid ? 'none' : '1.5px solid var(--line)';
-      document.getElementById('collTabTrades').style.background  = isGrid ? 'transparent' : 'var(--primary)';
-      document.getElementById('collTabTrades').style.color       = isGrid ? 'var(--sub)' : 'var(--bg)';
-      document.getElementById('collTabTrades').style.border      = isGrid ? '1.5px solid var(--line)' : 'none';
+      document.getElementById('collTabGrid').classList.toggle('active', isGrid);
+      document.getElementById('collTabTrades').classList.toggle('active', !isGrid);
       if (!isGrid) loadTrades();
     }
 
