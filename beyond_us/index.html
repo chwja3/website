@@ -1250,7 +1250,7 @@
     .hp-lobby-text { font-size: 13px; color: var(--sub); line-height: 1.7; text-align: center; }
     .hp-home-btn {
       display: block; width: fit-content; margin: 16px auto 8px;
-      font-size: 12px; padding: 6px 16px; border-radius: 20px;
+      font-size: 12px; padding: 5px 12px; border-radius: 20px; min-width: unset;
     }
     .hp-guess-wrap {
       display: flex; gap: 8px; margin-top: 8px;
@@ -2081,7 +2081,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501g';
+    const APP_VERSION = '20260501h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4412,7 +4412,7 @@
           ${nameLineHtml}
         </div>
 
-        <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
+        <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">홈으로 가기</button>`;
 
       if (_hpGuessCorrect && !data.anon) {
         const wrap = document.getElementById('hpInlineGuess');
