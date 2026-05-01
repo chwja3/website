@@ -2115,7 +2115,7 @@
               <!-- 받은 메시지 -->
               <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
-                <div id="bbbMsgList" style="margin-top:12px;">
+                <div id="bbbMsgList" style="margin-top:8px;">
                   <p style="font-size:13px;color:var(--sub);margin:0;text-align:center;padding:8px 0;">아직 받은 메시지가 없어요.</p>
                 </div>
               </div>
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502ad';
+    const APP_VERSION = '20260502ae';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4547,16 +4547,19 @@
         if (!s) return '';
         const d = new Date(s.replace(' ', 'T'));
         if (isNaN(d)) return s.slice(0, 16).replace('T', ' ');
-        const mo = d.getMonth() + 1, dd = d.getDate();
+        const yy = String(d.getFullYear()).slice(2);
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
         const hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
-        const ampm = hh < 12 ? '오전' : '오후';
+        const ampm = hh < 12 ? 'AM' : 'PM';
         const h12 = hh % 12 || 12;
-        return `${mo}/${dd} ${ampm} ${h12}:${mm}`;
+        return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
       }
       el.innerHTML = messages.map((m, i) => `
-        <div style="padding:12px 0;${i < messages.length - 1 ? 'border-bottom:1px solid var(--line);' : ''}">
-          <p style="font-size:14px;color:var(--text);margin:0 0 6px;line-height:1.6;white-space:pre-wrap;">${escHtml(m.message)}</p>
-          <p style="font-size:11px;color:var(--sub);margin:0;">${_fmtBBBDate(m.createdAt)}</p>
+        <div style="padding:10px 0;">
+          <p style="font-size:14px;color:var(--text);margin:0 0 5px;line-height:1.6;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <p style="font-size:11px;color:var(--sub);margin:0 0 10px;">${_fmtBBBDate(m.createdAt)}</p>
+          ${i < messages.length - 1 ? '<div style="height:1px;background:var(--primary);opacity:0.15;margin:0 -2px;"></div>' : ''}
         </div>`).join('');
     }
 
