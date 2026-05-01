@@ -259,18 +259,8 @@
           <textarea id="noticeContent" class="input" rows="5" placeholder="내용" style="resize:vertical; font-family:inherit; line-height:1.6;"></textarea>
           <!-- 이미지 첨부 -->
           <label style="display:block; margin-top:12px; font-size:13px; color:var(--sub); margin-bottom:6px;">🖼️ 이미지 첨부 (선택)</label>
-          <!-- 탭: 파일 업로드 / URL 직접 입력 -->
-          <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <button type="button" id="imgTabFile" class="btn btn-sm btn-primary" style="font-size:12px;">📁 파일 선택</button>
-            <button type="button" id="imgTabUrl" class="btn btn-sm btn-ghost" style="font-size:12px;">🔗 URL 입력</button>
-          </div>
-          <div id="imgPanelFile">
-            <input type="file" id="noticeImageFile" accept="image/*" style="font-size:13px; width:100%;" />
-            <p style="font-size:11px; color:var(--sub); margin:4px 0 0;">* 5MB 이하 권장. 로컬 컴퓨터/휴대폰에서 선택 가능.</p>
-          </div>
-          <div id="imgPanelUrl" style="display:none;">
-            <input type="url" id="noticeImageUrl" class="input" placeholder="https://drive.google.com/file/d/..." style="font-size:13px;" />
-          </div>
+          <input type="file" id="noticeImageFile" accept="image/*" style="font-size:13px; width:100%;" />
+          <p style="font-size:11px; color:var(--sub); margin:4px 0 0;">* 5MB 이하 권장.</p>
           <div id="noticeImagePreview" style="display:none; margin-top:8px;">
             <img id="noticePreviewImg" src="" style="max-width:100%; max-height:200px; border-radius:8px; border:1px solid var(--border); display:block;" />
             <button type="button" id="noticeClearImage" style="margin-top:4px; font-size:12px; color:var(--sub); background:none; border:none; cursor:pointer;">✕ 이미지 제거</button>
@@ -959,27 +949,11 @@
     function clearImgState() {
       _pendingImageBase64 = ''; _pendingImageMime = '';
       document.getElementById('noticeImageFile').value = '';
-      document.getElementById('noticeImageUrl').value = '';
       document.getElementById('noticeImagePreview').style.display = 'none';
       document.getElementById('noticePreviewImg').src = '';
     }
 
-    // 탭 전환
     let _pendingImageBase64 = '', _pendingImageMime = '';
-    document.getElementById('imgTabFile').addEventListener('click', function() {
-      document.getElementById('imgPanelFile').style.display = 'block';
-      document.getElementById('imgPanelUrl').style.display = 'none';
-      this.className = 'btn btn-sm btn-primary';
-      document.getElementById('imgTabUrl').className = 'btn btn-sm btn-ghost';
-      clearImgState();
-    });
-    document.getElementById('imgTabUrl').addEventListener('click', function() {
-      document.getElementById('imgPanelFile').style.display = 'none';
-      document.getElementById('imgPanelUrl').style.display = 'block';
-      this.className = 'btn btn-sm btn-primary';
-      document.getElementById('imgTabFile').className = 'btn btn-sm btn-ghost';
-      clearImgState();
-    });
 
     // 파일 선택 → base64 변환 + 미리보기
     document.getElementById('noticeImageFile').addEventListener('change', function() {
@@ -1001,13 +975,6 @@
       reader.readAsDataURL(file);
     });
 
-    // URL 입력 → 미리보기
-    document.getElementById('noticeImageUrl').addEventListener('input', function() {
-      const normalized = normalizeDriveUrl(this.value.trim());
-      if (!normalized) { document.getElementById('noticeImagePreview').style.display = 'none'; return; }
-      showImgPreview(normalized);
-    });
-
     // 이미지 제거
     document.getElementById('noticeClearImage').addEventListener('click', clearImgState);
 
@@ -1021,15 +988,12 @@
       btn.disabled = true;
       statusEl.className = 'status';
 
-      // 이미지: 파일 업로드 vs URL 입력
       const payload = { action: 'postNotice', adminPw, title, content };
       if (_pendingImageBase64) {
         statusEl.textContent = 'Drive에 이미지 업로드 중...';
         payload.imageBase64 = _pendingImageBase64;
         payload.imageMime   = _pendingImageMime;
       } else {
-        const urlVal = normalizeDriveUrl(document.getElementById('noticeImageUrl').value.trim());
-        if (urlVal) payload.imageUrl = urlVal;
         statusEl.textContent = '등록 중...';
       }
 
@@ -1042,7 +1006,11 @@
           document.getElementById('noticeContent').value = '';
           clearImgState();
           loadAdminNotices();
+        } else if (res.error === 'drive_upload_failed') {
+          statusEl.className = 'status error';
+          statusEl.textContent = 'Drive 업로드 실패: ' + (res.detail || 'GAS DriveApp 권한 미승인');
         } else {
+          statusEl.className = 'status error';
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {

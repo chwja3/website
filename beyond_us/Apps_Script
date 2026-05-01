@@ -641,19 +641,31 @@ function getOrCreateNoticeSheet() {
   return sheet;
 }
 
-// 이미지 base64 → Google Drive 업로드 후 공개 URL 반환
+const NOTICE_FOLDER_NAME = 'BeyondUs_Notices';
+
+// BeyondUs_Notices 폴더만 접근 — 없으면 생성 후 공개 설정
+function getNoticeFolder() {
+  const iter = DriveApp.getFoldersByName(NOTICE_FOLDER_NAME);
+  if (iter.hasNext()) return iter.next();
+  const folder = DriveApp.createFolder(NOTICE_FOLDER_NAME);
+  folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return folder;
+}
+
+// DriveApp 권한 승인 확인용 (GAS 에디터에서 직접 실행)
+function testDriveAuth() {
+  const folder = getNoticeFolder();
+  Logger.log('Drive OK — 폴더: ' + folder.getName() + ' / ID: ' + folder.getId());
+}
+
+// 이미지 base64 → BeyondUs_Notices 폴더에 업로드 후 공개 URL 반환
+// 실패 시 throw → postNotice/editNotice에서 응답에 포함
 function uploadNoticeToDrive(imageBase64, imageMime) {
-  try {
-    const ext = imageMime === 'image/png' ? 'png' : imageMime === 'image/gif' ? 'gif' : 'jpg';
-    const filename = 'notice_' + new Date().getTime() + '.' + ext;
-    const blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), imageMime, filename);
-    const file = DriveApp.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1200';
-  } catch(e) {
-    Logger.log('Drive upload error: ' + e);
-    return '';
-  }
+  const ext = imageMime === 'image/png' ? 'png' : imageMime === 'image/gif' ? 'gif' : 'jpg';
+  const filename = 'notice_' + new Date().getTime() + '.' + ext;
+  const blob = Utilities.newBlob(Utilities.base64Decode(imageBase64), imageMime, filename);
+  const file = getNoticeFolder().createFile(blob);
+  return 'https://drive.google.com/thumbnail?id=' + file.getId() + '&sz=w1200';
 }
 
 function getNotices() {
@@ -682,7 +694,12 @@ function postNotice(body) {
 
   let imageUrl = String(body.imageUrl || '').trim();
   if (!imageUrl && body.imageBase64 && body.imageMime) {
-    imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
+    try {
+      imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
+    } catch(e) {
+      Logger.log('Drive upload error: ' + e);
+      return { error: 'drive_upload_failed', detail: String(e) };
+    }
   }
 
   const sheet = getOrCreateNoticeSheet();
@@ -709,7 +726,12 @@ function editNotice(body) {
 
   let imageUrl = body.imageUrl !== undefined ? String(body.imageUrl || '').trim() : null;
   if (!imageUrl && body.imageBase64 && body.imageMime) {
-    imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
+    try {
+      imageUrl = uploadNoticeToDrive(body.imageBase64, body.imageMime);
+    } catch(e) {
+      Logger.log('Drive upload error: ' + e);
+      return { error: 'drive_upload_failed', detail: String(e) };
+    }
   }
   if (imageUrl !== null) sheet.getRange(rowIndex, 5).setValue(imageUrl);
 

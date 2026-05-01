@@ -250,9 +250,10 @@ git commit -m "feat: 작업 내용"
 git fetch origin main
 git rebase origin/main
 
-# 5. 브랜치 푸시 → PR 생성 → main에 머지
+# 5. 브랜치 푸시
 git push origin feature/작업-이름
-gh pr create --title "작업 제목" --body "변경 내용"
+# PR은 GitHub 웹에서 직접 생성 (gh CLI 미설치)
+# https://github.com/chwja3/website/pull/new/feature/작업-이름
 ```
 
 ---
