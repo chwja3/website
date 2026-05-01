@@ -2069,20 +2069,19 @@
 
               <!-- 사진 미션 -->
               <div style="padding:18px 20px;border-bottom:1px solid var(--line);">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                  <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0;">MISSION</p>
-                  <span style="font-size:10px;color:var(--sub);font-weight:600;">뽑기권 +1 (최초 1회)</span>
+                <p style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.1em;margin:0 0 12px;">MISSION 1</p>
+                <div style="display:flex;align-items:center;gap:14px;">
+                  <div style="flex:1;">
+                    <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 4px;">케어버디와 사진 찍기</p>
+                    <p style="font-size:11px;color:var(--sub);margin:0;">뽑기권 +1 (최초 1회)</p>
+                    <p id="bbbPhotoStatus" style="font-size:11px;color:var(--primary);margin:6px 0 0;min-height:14px;"></p>
+                  </div>
+                  <label id="bbbPhotoLabel" style="flex-shrink:0;width:88px;height:88px;border-radius:12px;border:1.5px dashed var(--line);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;">
+                    <input type="file" id="bbbPhotoInput" accept="image/*" capture="environment" style="display:none;" />
+                    <img id="bbbPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:10px;" />
+                    <span id="bbbPhotoPlaceholder" style="font-size:22px;color:#ccc;">+</span>
+                  </label>
                 </div>
-                <p style="font-size:13px;font-weight:700;color:var(--text);margin:0 0 12px;">케어버디와 사진 찍기</p>
-                <div id="bbbPhotoPreview" style="display:none;margin-bottom:12px;">
-                  <img id="bbbPhotoImg" src="" alt="" style="width:100%;border-radius:10px;display:block;" />
-                  <p style="font-size:11px;color:var(--sub);margin:6px 0 0;">나만 볼 수 있어요</p>
-                </div>
-                <label id="bbbPhotoLabel" style="display:inline-flex;align-items:center;gap:6px;background:var(--primary-soft);color:var(--primary);font-size:13px;font-weight:700;padding:9px 18px;border-radius:10px;cursor:pointer;">
-                  <input type="file" id="bbbPhotoInput" accept="image/*" capture="environment" style="display:none;" />
-                  사진 올리기
-                </label>
-                <p id="bbbPhotoStatus" style="font-size:12px;color:var(--sub);margin:8px 0 0;min-height:16px;"></p>
               </div>
 
               <!-- 시크릿버디 -->
@@ -2150,7 +2149,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502w';
+    const APP_VERSION = '20260502x';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4474,19 +4473,22 @@
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
-        if (bbbRes.myPhoto) {
-          document.getElementById('bbbPhotoImg').src = bbbRes.myPhoto;
-          document.getElementById('bbbPhotoPreview').style.display = '';
-          document.getElementById('bbbPhotoLabel').textContent = '📷 사진 다시 올리기';
+        function _bbbShowPhoto(src) {
+          const img = document.getElementById('bbbPhotoImg');
+          const placeholder = document.getElementById('bbbPhotoPlaceholder');
+          img.src = src;
+          img.style.display = 'block';
+          placeholder.style.display = 'none';
         }
+        if (bbbRes.myPhoto) _bbbShowPhoto(bbbRes.myPhoto);
+
         document.getElementById('bbbPhotoInput').addEventListener('change', async function() {
           const file = this.files[0];
           if (!file) return;
           const statusEl = document.getElementById('bbbPhotoStatus');
-          statusEl.textContent = '압축 중...';
+          statusEl.textContent = '업로드 중...';
           try {
             const base64 = await _compressImage(file, 400, 0.55);
-            statusEl.textContent = '업로드 중...';
             const REDIRECT = await fetch(API_BASE, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain' },
@@ -4495,15 +4497,13 @@
             });
             const res = await REDIRECT.json();
             if (res.ok) {
-              document.getElementById('bbbPhotoImg').src = base64;
-              document.getElementById('bbbPhotoPreview').style.display = '';
-              document.getElementById('bbbPhotoLabel').textContent = '📷 사진 다시 올리기';
-              statusEl.textContent = res.rewarded ? '✅ 업로드 완료! 뽑기권 1개 지급됐어요 🎫' : '✅ 사진 업데이트 완료!';
+              _bbbShowPhoto(base64);
+              statusEl.textContent = res.rewarded ? '뽑기권 1개 지급됐어요' : '사진 업데이트 완료';
             } else {
-              statusEl.textContent = '❌ ' + (res.error || '업로드 실패');
+              statusEl.textContent = res.error || '업로드 실패';
             }
           } catch(e) {
-            statusEl.textContent = '❌ 오류: ' + e.message;
+            statusEl.textContent = '오류: ' + e.message;
           }
         });
 
