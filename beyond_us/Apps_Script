@@ -1263,6 +1263,18 @@ function getTrades(userId) {
   });
   incoming.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   outgoing.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // 완료된 교환에 상대방 H&P 기도제목 첨부
+  const currentWeek = 'w' + getConfig().currentWeek;
+  [...incoming, ...outgoing].forEach(function(t) {
+    if (t.status === 'accepted') {
+      try {
+        const otherNick = (t.target === userId) ? t.requester : t.target;
+        t.otherPrayer = getHoldPray(currentWeek, otherNick).content || '';
+      } catch(e) { t.otherPrayer = ''; }
+    }
+  });
+
   return { ok: true, incoming, outgoing };
 }
 

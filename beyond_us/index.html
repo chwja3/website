@@ -1745,6 +1745,7 @@
     <div class="draw-stage" onclick="event.stopPropagation()">
       <div id="cardDetailWrap" style="width:200px;"></div>
       <p id="cardDetailCnt" style="color:rgba(255,246,239,0.7); font-size:13px; font-weight:600;"></p>
+      <div id="cardDetailActions" style="margin-top:16px;"></div>
     </div>
   </div>
 
@@ -1895,8 +1896,8 @@
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
               <h2 class="card-title" style="margin:0;">내 컬렉션</h2>
               <div style="display:flex; gap:6px;">
-                <button id="collTabGrid" onclick="switchCollTab('grid')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:none;cursor:pointer;background:#7c3aed;color:#fff;">컬렉션</button>
-                <button id="collTabTrades" onclick="switchCollTab('trades')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:1.5px solid #7c3aed;cursor:pointer;background:transparent;color:#a78bfa;">교환현황 <span id="collTradeBadge" style="display:none;background:#e8854a;color:#fff;border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span></button>
+                <button id="collTabGrid" onclick="switchCollTab('grid')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:none;cursor:pointer;background:var(--primary);color:var(--bg);">컬렉션</button>
+                <button id="collTabTrades" onclick="switchCollTab('trades')" style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;border:1.5px solid var(--line);cursor:pointer;background:transparent;color:var(--sub);">교환현황 <span id="collTradeBadge" style="display:none;background:var(--primary);color:var(--bg);border-radius:999px;padding:0 5px;font-size:10px;margin-left:2px;"></span></button>
               </div>
             </div>
             <!-- 내 컬렉션 패널 -->
@@ -1917,8 +1918,8 @@
       </div>
 
       <!-- 교환 신청 모달 -->
-      <div id="tradeOverlay" style="display:none;position:fixed;inset:0;background:rgba(10,8,28,0.92);z-index:500;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-        <div style="max-width:380px;margin:32px auto 60px;padding:24px 20px;background:#1e1e3a;border-radius:20px;position:relative;">
+      <div id="tradeOverlay" style="display:none;position:fixed;inset:0;background:rgba(44,36,23,0.7);z-index:500;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div style="max-width:380px;margin:32px auto 60px;padding:24px 20px;background:var(--card);border-radius:20px;position:relative;border:1px solid var(--line);">
           <button onclick="closeTradeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--sub);font-size:24px;cursor:pointer;line-height:1;">×</button>
           <h3 id="tradeModalTitle" style="margin:0 0 4px;font-size:16px;font-weight:700;color:var(--text);">카드 교환 신청</h3>
           <div id="tradeStepIndicator" style="font-size:11px;color:var(--sub);margin-bottom:16px;"></div>
@@ -1943,7 +1944,7 @@
           </div>
           <!-- Step 4: 확인 -->
           <div id="tradeStep4" style="display:none;">
-            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:rgba(124,58,237,0.1);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
+            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:var(--primary-soft);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
             <div id="tradeSubmitStatus" style="font-size:13px;color:var(--danger);margin-bottom:8px;min-height:18px;"></div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-ghost" style="flex:1;" onclick="tradeGoBack()">← 다시 선택</button>
@@ -2081,7 +2082,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501m';
+    const APP_VERSION = '20260501n';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2668,6 +2669,10 @@
         cntEl.textContent = `${cnt}장 보유`;
       }
 
+      const actionsEl = document.getElementById('cardDetailActions');
+      if (actionsEl) {
+        actionsEl.innerHTML = `<button onclick="closeCardDetail();openTradeModal(${cardId})" style="background:rgba(255,246,239,0.15);border:1px solid rgba(255,246,239,0.35);color:rgba(255,246,239,0.9);font-size:13px;font-weight:600;padding:8px 24px;border-radius:999px;cursor:pointer;">교환 신청하기</button>`;
+      }
       document.getElementById('cardDetailOverlay').classList.remove('hidden');
     }
     function closeCardDetail() {
@@ -2749,9 +2754,6 @@
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
         const unlockedContent = `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
-        const tradeBtn = !locked
-          ? `<button onclick="event.stopPropagation();openTradeModal(${card.id})" style="display:block;width:100%;margin-top:4px;font-size:10px;padding:2px 0;background:rgba(232,133,74,0.18);color:#e8854a;border:1px solid rgba(232,133,74,0.4);border-radius:6px;cursor:pointer;font-weight:600;">교환</button>`
-          : '';
         return `
           <div class="mini-card-wrap" style="${!locked ? 'cursor:pointer;' : ''}">
             ${ghosts}
@@ -2762,7 +2764,6 @@
               }
             </div>
             ${cnt > 1 ? `<div class="mini-card-badge">×${cnt}</div>` : ''}
-            ${tradeBtn}
           </div>`;
       }).join('');
     }
@@ -2779,10 +2780,12 @@
       const isGrid = tab === 'grid';
       document.getElementById('collPanelGrid').style.display   = isGrid ? '' : 'none';
       document.getElementById('collPanelTrades').style.display = isGrid ? 'none' : '';
-      document.getElementById('collTabGrid').style.background    = isGrid ? '#7c3aed' : 'transparent';
-      document.getElementById('collTabGrid').style.color         = isGrid ? '#fff' : '#a78bfa';
-      document.getElementById('collTabTrades').style.background  = isGrid ? 'transparent' : '#7c3aed';
-      document.getElementById('collTabTrades').style.color       = isGrid ? '#a78bfa' : '#fff';
+      document.getElementById('collTabGrid').style.background    = isGrid ? 'var(--primary)' : 'transparent';
+      document.getElementById('collTabGrid').style.color         = isGrid ? 'var(--bg)' : 'var(--sub)';
+      document.getElementById('collTabGrid').style.border        = isGrid ? 'none' : '1.5px solid var(--line)';
+      document.getElementById('collTabTrades').style.background  = isGrid ? 'transparent' : 'var(--primary)';
+      document.getElementById('collTabTrades').style.color       = isGrid ? 'var(--sub)' : 'var(--bg)';
+      document.getElementById('collTabTrades').style.border      = isGrid ? '1.5px solid var(--line)' : 'none';
       if (!isGrid) loadTrades();
     }
 
@@ -2951,26 +2954,32 @@
         const myCard = isMine ? t.requesterCardName : t.targetCardName;
         const theirCard = isMine ? t.targetCardName : t.requesterCardName;
         const otherNick = isMine ? t.target : t.requester;
-        const col = statusColor[t.status] || '#888';
         const label = statusLabel[t.status] || t.status;
-        const actions = t.status === 'pending'
+        const isAccepted = t.status === 'accepted';
+        const isPending  = t.status === 'pending';
+        const labelColor = isAccepted ? '#5a9e6f' : isPending ? '#b58a3a' : 'var(--sub)';
+        const actions = isPending
           ? (isMine
-            ? `<button onclick="doTradeCancelTrade('${t.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #6b7280;background:transparent;color:#9ca3af;cursor:pointer;">취소</button>`
+            ? `<button onclick="doTradeCancelTrade('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">취소</button>`
             : `<div style="display:flex;gap:6px;">
-                <button onclick="doTradeAccept('${t.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:none;background:#4ade80;color:#000;cursor:pointer;font-weight:700;">수락</button>
-                <button onclick="doTradeReject('${t.id}')" style="font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #f87171;background:transparent;color:#f87171;cursor:pointer;">거절</button>
+                <button onclick="doTradeAccept('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:none;background:var(--primary);color:var(--bg);cursor:pointer;font-weight:700;">수락</button>
+                <button onclick="doTradeReject('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">거절</button>
               </div>`)
           : '';
-        return `<div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+        const prayerHtml = isAccepted && t.otherPrayer
+          ? `<div style="margin-top:8px;padding:10px 12px;background:var(--primary-soft);border-radius:10px;font-size:12px;color:var(--text);line-height:1.7;">🙏 <em>${escHtml(t.otherPrayer)}</em></div>`
+          : '';
+        return `<div style="background:var(--primary-soft);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <span style="font-size:12px;font-weight:700;color:${col};">${label}</span>
+            <span style="font-size:12px;font-weight:700;color:${labelColor};">${label}</span>
             <span style="font-size:11px;color:var(--sub);">${isMine ? '→ ' + otherNick : otherNick + ' →'}</span>
           </div>
           <div style="font-size:13px;color:var(--text);">
-            <span style="color:#e8854a;font-weight:600;">${myCard}</span>
+            <span style="font-weight:600;">${myCard}</span>
             <span style="color:var(--sub);"> ↔ </span>
-            <span style="color:#a78bfa;font-weight:600;">${theirCard}</span>
+            <span style="font-weight:600;">${theirCard}</span>
           </div>
+          ${prayerHtml}
           ${actions ? `<div style="margin-top:8px;">${actions}</div>` : ''}
         </div>`;
       };
