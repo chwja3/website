@@ -1775,6 +1775,7 @@
       <div class="menu-btn-wrap">
         <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
         <span id="noticeDot" class="notice-dot"></span>
+        <span id="tradeMenuDot" class="notice-dot" style="background:#e05a5a;right:2px;top:2px;"></span>
       </div>
       <img src="images/hc_logo_png1.png" alt="홈" onclick="switchSection('mission')" style="height:30px; width:auto; margin-left:-6px; cursor:pointer;" />
       <span style="flex:1;"></span>
@@ -1794,7 +1795,7 @@
         <li class="drawer-item" data-section="notice"><span class="drawer-label">공지사항</span><span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission"><span class="drawer-label">사전미션</span></li>
         <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span></li>
-        <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;background:#e8854a;color:#fff;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;margin-left:4px;vertical-align:middle;"></span></li>
+        <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
         <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
         <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
@@ -2097,7 +2098,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260501t';
+    const APP_VERSION = '20260501u';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2944,14 +2945,17 @@
           return isMine ? !t.requesterPrayed : !t.targetPrayed;
         }).length;
         const total = pendingIn + unprayed;
-        const dot   = document.getElementById('drawerTradeDot');
-        const badge = document.getElementById('collTradeBadge');
+        const dot      = document.getElementById('drawerTradeDot');
+        const badge    = document.getElementById('collTradeBadge');
+        const menuDot  = document.getElementById('tradeMenuDot');
         if (total > 0) {
           dot.style.display = 'inline-block';
           badge.style.display = 'inline-block';
+          menuDot.classList.add('visible');
         } else {
           dot.style.display = 'none';
           badge.style.display = 'none';
+          menuDot.classList.remove('visible');
         }
         renderTrades(res);
       } catch(e) {}
