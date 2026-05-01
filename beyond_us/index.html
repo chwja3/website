@@ -2058,7 +2058,7 @@
                   <p style="font-size:11px;font-weight:700;color:#a78bfa;letter-spacing:0.08em;margin:0;">MY CARE BUDDY</p>
                   <span id="bbbCaughtBadge" style="display:none;font-size:11px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 8px;border-radius:20px;">🔍 들켰어요!</span>
                 </div>
-                <p style="font-size:22px;font-weight:800;color:var(--text);margin:0;" id="bbbCareBuddyName">—</p>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:0;" id="bbbCareBuddyName">—</p>
                 <p style="font-size:13px;color:var(--sub);margin:4px 0 0;">내가 몰래 챙겨야 할 사람이에요 🤫</p>
               </div>
 
@@ -2125,7 +2125,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502r';
+    const APP_VERSION = '20260502s';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
