@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502bc';
+    const APP_VERSION = '20260502bd';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3145,7 +3145,7 @@
             <div style="display:flex;align-items:center;gap:8px;font-size:13px;">
               <span style="font-weight:600;color:var(--text);">${escHtml(myCard)}</span>
               <span style="color:var(--line);">↔</span>
-              <span style="font-weight:600;color:var(--text);cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onclick="openCardDetail(${theirCardId},1)">${escHtml(theirCard)}${newDot}</span>
+              <span style="font-weight:600;color:var(--text);">${escHtml(theirCard)}${newDot}</span>
             </div>
             ${prayerHtml}
           </div>`;
