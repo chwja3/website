@@ -1675,6 +1675,17 @@ function sendBBBMessage(body) {
   if (!careBuddyId) return { error: '매칭 정보가 없어요.' };
 
   const msgSheet = getOrCreateBBBMessagesSheet();
+  const last = msgSheet.getLastRow();
+  if (last >= 2) {
+    const recent = msgSheet.getRange(Math.max(2, last - 9), 1, Math.min(last - 1, 10), 5).getValues();
+    const now = Date.now();
+    for (const r of recent) {
+      if (String(r[1]) === userId && String(r[3]) === message) {
+        const sent = new Date(String(r[4])).getTime();
+        if (!isNaN(sent) && now - sent < 15000) return { ok: true };
+      }
+    }
+  }
   const msgId = 'bm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   msgSheet.appendRow([msgId, userId, careBuddyId, message, new Date().toISOString()]);
   return { ok: true };
