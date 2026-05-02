@@ -2074,7 +2074,7 @@
                     <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
                     <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                   </div>
-                  <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:2px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                  <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
                     <input type="file" id="bbbPhotoInput" accept="image/*" style="display:none;" />
                     <img id="bbbPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
                     <span id="bbbPhotoPlaceholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260502bb';
+    const APP_VERSION = '20260502bc';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4480,7 +4480,7 @@
           img.style.display = 'block';
           document.getElementById('bbbPhotoPlaceholder').style.display = 'none';
           document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
-          document.getElementById('bbbPhotoLabel').style.border = '2px solid var(--primary)';
+          document.getElementById('bbbPhotoLabel').style.border = '1.5px solid var(--primary)';
         }
         if (bbbRes.myPhoto) _bbbShowPhoto(bbbRes.myPhoto);
 
