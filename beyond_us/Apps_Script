@@ -1675,9 +1675,9 @@ function sendBBBMessage(body) {
   if (!careBuddyId) return { error: '매칭 정보가 없어요.' };
 
   const msgSheet = getOrCreateBBBMessagesSheet();
-  const last = msgSheet.getLastRow();
-  if (last >= 2) {
-    const recent = msgSheet.getRange(Math.max(2, last - 9), 1, Math.min(last - 1, 10), 5).getValues();
+  const msgLast = msgSheet.getLastRow();
+  if (msgLast >= 2) {
+    const recent = msgSheet.getRange(Math.max(2, msgLast - 9), 1, Math.min(msgLast - 1, 10), 5).getValues();
     const now = Date.now();
     for (const r of recent) {
       if (String(r[1]) === userId && String(r[3]) === message) {
