@@ -364,6 +364,34 @@
         </div>
 
         <div class="card" style="margin-top:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">raw_checkins 헤더 설정</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
+                A1이 'timestamp'가 아니면 1행에 헤더를 삽입합니다.<br>
+                <strong>최초 1회만 실행.</strong>
+              </p>
+            </div>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;white-space:nowrap;" id="setupRawHeaderBtn" onclick="runSetupRawHeader()">📋 헤더 설정</button>
+          </div>
+          <div id="setupRawHeaderStatus" class="status"></div>
+        </div>
+
+        <div class="card" style="margin-top:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">raw_checkins I·J열 소급 재계산</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
+                기존 행의 weekCumScore(I) · ticketEarned(J) 값을 재계산합니다.<br>
+                헤더 설정 후 실행.
+              </p>
+            </div>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;white-space:nowrap;" id="backfillRawBtn" onclick="runBackfillRawCols()">🔢 I·J 재계산</button>
+          </div>
+          <div id="backfillRawStatus" class="status"></div>
+        </div>
+
+        <div class="card" style="margin-top:0;">
           <p style="font-size:13px;color:var(--sub);line-height:1.7;">
             <strong style="color:var(--text);">컬럼 구조 (14열)</strong><br>
             userId · 누적뽑기권 · 실제뽑은개수 · 남은개수 ·
@@ -1242,6 +1270,54 @@
         statusEl.className = 'status';
       } finally {
         btn.disabled = false; btn.textContent = '🔄 전체 재계산';
+      }
+    }
+
+    /* ── raw_checkins 헤더 설정 ── */
+    async function runSetupRawHeader() {
+      if (!confirm('raw_checkins 시트에 헤더 행을 추가합니다.\nA1이 이미 "timestamp"이면 스킵됩니다. 진행할까요?')) return;
+      const btn = document.getElementById('setupRawHeaderBtn');
+      const statusEl = document.getElementById('setupRawHeaderStatus');
+      btn.disabled = true; btn.textContent = '처리 중...';
+      statusEl.textContent = ''; statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminSetupRawHeader', adminPw });
+        if (res.ok) {
+          statusEl.textContent = '✅ ' + (res.message || '완료');
+          statusEl.className = 'status ok';
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+          statusEl.className = 'status';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false; btn.textContent = '📋 헤더 설정';
+      }
+    }
+
+    /* ── raw_checkins I·J열 소급 재계산 ── */
+    async function runBackfillRawCols() {
+      if (!confirm('raw_checkins의 I열(weekCumScore)·J열(ticketEarned)을 전체 소급 재계산합니다.\n진행할까요?')) return;
+      const btn = document.getElementById('backfillRawBtn');
+      const statusEl = document.getElementById('backfillRawStatus');
+      btn.disabled = true; btn.textContent = '재계산 중...';
+      statusEl.textContent = ''; statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminBackfillRawCols', adminPw });
+        if (res.ok) {
+          statusEl.textContent = '✅ ' + (res.message || '완료');
+          statusEl.className = 'status ok';
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+          statusEl.className = 'status';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false; btn.textContent = '🔢 I·J 재계산';
       }
     }
 

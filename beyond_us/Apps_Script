@@ -175,6 +175,14 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(rebuildCollectionSheet());
     }
+    if (action === 'adminSetupRawHeader') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(setupRawCheckinsHeader());
+    }
+    if (action === 'adminBackfillRawCols') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(backfillRawCheckinsCols());
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -266,8 +274,99 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   // 인덱스 저장: 텍스트 변경 시에도 제출 이력 유지
   const newIndices = newItems.map(item => config.items.indexOf(item));
 
-  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices)]);
+  // I열: 해당 주차 누적 점수 (기존 rows 재사용)
+  const existingRows = (lastRow >= 2)
+    ? rawSheet.getRange(2, 1, lastRow - 1, 7).getValues()
+    : [];
+  const prevWeekScore = existingRows
+    .filter(r => String(r[3]) === userId && String(r[1]) === config.weekTitle)
+    .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+  const weekCumScore = prevWeekScore + newScore;
+
+  // J열: 이 제출로 처음 threshold 달성하면 1, 아니면 0
+  const ticketEarned = (prevWeekScore < config.drawThreshold && weekCumScore >= config.drawThreshold) ? 1 : 0;
+
+  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
   try { updateTicketCols(userId); } catch(e) {}
+}
+
+// ── raw_checkins 헤더 설정 ────────────────────────────────────────────────────
+function setupRawCheckinsHeader() {
+  const ss        = getSpreadsheet();
+  const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
+  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
+
+  const headers = ['timestamp', 'weekTitle', 'items_json', 'userId', 'weekKey', 'dateKey', 'score', 'indices_json', 'weekCumScore', 'ticketEarned'];
+
+  // A1이 이미 헤더면 스킵, 아니면 1행 삽입 후 헤더 작성
+  const a1 = String(rawSheet.getRange(1, 1).getValue()).trim();
+  if (a1 !== 'timestamp') {
+    rawSheet.insertRowBefore(1);
+  }
+  rawSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  return { ok: true, message: '헤더 설정 완료' };
+}
+
+// ── raw_checkins I·J열 소급 재계산 ───────────────────────────────────────────
+function backfillRawCheckinsCols() {
+  const ss        = getSpreadsheet();
+  const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
+  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
+
+  const lastRow = rawSheet.getLastRow();
+  if (lastRow < 2) return { ok: true, message: '데이터 없음' };
+
+  // 헤더 확인 (A1 = 'timestamp' 이면 데이터는 2행부터, 아니면 1행부터)
+  const a1 = String(rawSheet.getRange(1, 1).getValue()).trim();
+  const dataStart = (a1 === 'timestamp') ? 2 : 1;
+  const dataCount = lastRow - dataStart + 1;
+  if (dataCount <= 0) return { ok: true, message: '데이터 없음' };
+
+  // 전체 읽기 (10열)
+  const allData = rawSheet.getRange(dataStart, 1, dataCount, 10).getValues();
+
+  // threshold 맵: weekTitle → threshold
+  const configSheet  = ss.getSheetByName(CONFIG_SHEET_NAME);
+  const thresholdMap = {};
+  for (let w = 1; w <= 6; w++) {
+    const startRow = (w - 1) * 8 + 5;
+    const title    = String(configSheet.getRange(startRow, 2).getValue()).trim();
+    const thr      = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
+    if (title) thresholdMap[title] = thr;
+  }
+
+  // userId + weekTitle 별 누적 점수 추적
+  const cumMap = {}; // key: "userId__weekTitle" → 누적 점수
+
+  const updates = []; // { rowIndex (0-based in allData), weekCumScore, ticketEarned }
+
+  for (let i = 0; i < allData.length; i++) {
+    const row       = allData[i];
+    const userId    = String(row[3]).trim();
+    const weekTitle = String(row[1]).trim();
+    const rowScore  = Number(row[6]) || 0;
+
+    if (!userId || !weekTitle) continue;
+
+    const key       = userId + '__' + weekTitle;
+    const prevCum   = cumMap[key] || 0;
+    const newCum    = prevCum + rowScore;
+    cumMap[key]     = newCum;
+
+    const threshold   = thresholdMap[weekTitle] || 6;
+    const earned      = (prevCum < threshold && newCum >= threshold) ? 1 : 0;
+
+    updates.push({ i, weekCumScore: newCum, ticketEarned: earned });
+  }
+
+  // I·J열 일괄 쓰기
+  for (const u of updates) {
+    const sheetRow = dataStart + u.i;
+    rawSheet.getRange(sheetRow, 9).setValue(u.weekCumScore);
+    rawSheet.getRange(sheetRow, 10).setValue(u.ticketEarned);
+  }
+
+  return { ok: true, message: `${updates.length}행 재계산 완료` };
 }
 
 function getDashboardData() {
