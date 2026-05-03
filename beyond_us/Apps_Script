@@ -171,6 +171,10 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminWriteBBBRows(body.rows));
     }
+    if (action === 'adminRebuildCollection') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(rebuildCollectionSheet());
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -263,6 +267,7 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   const newIndices = newItems.map(item => config.items.indexOf(item));
 
   rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices)]);
+  try { updateTicketCols(userId); } catch(e) {}
 }
 
 function getDashboardData() {
@@ -499,6 +504,7 @@ function drawCard(userId, weekKey, testMode) {
   const draws = getOrCreateDrawSheet();
   draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
   updateCollectionSheet(userId, card.id, 1);
+  try { updateTicketCols(userId); } catch(e) {}
   return { ok: true, card };
 }
 
@@ -1041,27 +1047,31 @@ function replyInquiry(body) {
 }
 
 // ── Collection 시트 ───────────────────────────────
+// 컬럼 구조 (14열):
+// 1:userId  2:누적뽑기권  3:실제뽑은개수  4:남은개수
+// 5:사랑  6:희락  7:화평  8:오래참음  9:자비  10:양선  11:충성  12:온유  13:절제  14:총카드수
 function getOrCreateCollectionSheet() {
   const ss = getSpreadsheet();
   let sheet = ss.getSheetByName('Collection');
   if (!sheet) {
     sheet = ss.insertSheet('Collection');
-    sheet.appendRow(['userId','card1','card2','card3','card4','card5','card6','card7','card8','card9']);
+    sheet.appendRow(['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수']);
+    sheet.setFrozenRows(1);
   }
   return sheet;
 }
 
-// { cardId: count } 형태로 반환
+// { cardId: count } 형태로 반환 (카드는 col 5~13 = idx 4~12)
 function getUserCollection(userId) {
   const sheet = getOrCreateCollectionSheet();
   const last = sheet.getLastRow();
   if (last < 2) return {};
-  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const rows = sheet.getRange(2, 1, last - 1, 14).getValues();
   for (const row of rows) {
     if (String(row[0]) !== userId) continue;
     const counts = {};
     for (let i = 1; i <= 9; i++) {
-      const cnt = Number(row[i]) || 0;
+      const cnt = Number(row[i + 3]) || 0; // cardId i → idx i+3
       if (cnt > 0) counts[i] = cnt;
     }
     return counts;
@@ -1069,7 +1079,7 @@ function getUserCollection(userId) {
   return {};
 }
 
-// delta: +1 추가, -1 제거
+// delta: +1 추가, -1 제거 (카드 col = cardId+4, 총카드수 = col14)
 function updateCollectionSheet(userId, cardId, delta) {
   const sheet = getOrCreateCollectionSheet();
   const last = sheet.getLastRow();
@@ -1081,17 +1091,163 @@ function updateCollectionSheet(userId, cardId, delta) {
     }
   }
   if (rowIndex === -1) {
-    const newRow = [userId, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    if (delta > 0) newRow[cardId] = delta; // cardId 1~9 → index 1~9
+    const newRow = new Array(14).fill(0);
+    newRow[0] = userId;
+    if (delta > 0) {
+      newRow[cardId + 3] = delta; // cardId 1~9 → idx 4~12
+      newRow[13] = delta;         // 총카드수
+    }
     sheet.appendRow(newRow);
   } else {
-    const col = cardId + 1; // userId=col1, card1=col2, ..., card9=col10
-    const cell = sheet.getRange(rowIndex, col);
-    cell.setValue(Math.max(0, (Number(cell.getValue()) || 0) + delta));
+    const cardCol = cardId + 4; // cardId 1~9 → col 5~13
+    const cardCell = sheet.getRange(rowIndex, cardCol);
+    cardCell.setValue(Math.max(0, (Number(cardCell.getValue()) || 0) + delta));
+    const totalCell = sheet.getRange(rowIndex, 14);
+    totalCell.setValue(Math.max(0, (Number(totalCell.getValue()) || 0) + delta));
   }
 }
 
-// CardDraws → Collection 마이그레이션 (admin에서 1회 실행)
+// 뽑기권 관련 컬럼(2~4) 재계산 후 업데이트
+function updateTicketCols(userId) {
+  try {
+    const ss = getSpreadsheet();
+    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+    const currentWeek = Number(configSheet.getRange('B1').getValue()) || 1;
+
+    // 자격 주 수 계산
+    let qualifiedWeeks = 0;
+    const raw = ss.getSheetByName(RAW_SHEET_NAME);
+    const rawLast = raw ? raw.getLastRow() : 0;
+    const allRaw = rawLast >= 2 ? raw.getRange(2, 1, rawLast - 1, 8).getValues() : [];
+    for (let w = 1; w <= currentWeek; w++) {
+      const wTitle     = w + '주차';
+      const startRow   = (w - 1) * 8 + 5;
+      const wThreshold = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
+      const wScore     = allRaw
+        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
+        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+      if (wScore >= wThreshold) qualifiedWeeks++;
+    }
+
+    const bonusCount  = getBonusDrawCount(userId);
+    const totalEarned = qualifiedWeeks + bonusCount;
+
+    // 실제 뽑은 횟수
+    let totalDraws = 0;
+    const drawSheet = getOrCreateDrawSheet();
+    const drawLast  = drawSheet.getLastRow();
+    if (drawLast >= 2) {
+      totalDraws = drawSheet.getRange(2, 1, drawLast - 1, 1).getValues()
+        .filter(r => String(r[0]) === userId).length;
+    }
+
+    const remaining = Math.max(0, totalEarned - totalDraws);
+
+    // Collection 시트 해당 row 업데이트 (없으면 생성)
+    const collSheet = getOrCreateCollectionSheet();
+    const collLast  = collSheet.getLastRow();
+    let rowIndex = -1;
+    if (collLast >= 2) {
+      const ids = collSheet.getRange(2, 1, collLast - 1, 1).getValues();
+      for (let i = 0; i < ids.length; i++) {
+        if (String(ids[i][0]) === userId) { rowIndex = i + 2; break; }
+      }
+    }
+    if (rowIndex === -1) {
+      const newRow = new Array(14).fill(0);
+      newRow[0] = userId;
+      newRow[1] = totalEarned;
+      newRow[2] = totalDraws;
+      newRow[3] = remaining;
+      collSheet.appendRow(newRow);
+    } else {
+      collSheet.getRange(rowIndex, 2, 1, 3).setValues([[totalEarned, totalDraws, remaining]]);
+    }
+  } catch(e) {
+    Logger.log('updateTicketCols error: ' + e);
+  }
+}
+
+// 전체 Collection 시트 재계산 (백필 / 비상 재정합용)
+function rebuildCollectionSheet() {
+  const ss = getSpreadsheet();
+
+  // 시트 헤더 재설정 + 데이터 클리어
+  const collSheet = getOrCreateCollectionSheet();
+  collSheet.getRange(1, 1, 1, 14).setValues([['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수']]);
+  const collLast = collSheet.getLastRow();
+  if (collLast >= 2) collSheet.getRange(2, 1, collLast - 1, 14).clearContent();
+
+  // 등록된 전체 유저
+  const usersSheet = ss.getSheetByName('Users');
+  const userData   = usersSheet ? usersSheet.getDataRange().getValues() : [];
+  const userIds    = [];
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0]) userIds.push(String(userData[i][0]).trim());
+  }
+  if (!userIds.length) return { ok: true, rebuilt: 0 };
+
+  // 원천 데이터 일괄 로드
+  const drawSheet  = getOrCreateDrawSheet();
+  const drawLast   = drawSheet.getLastRow();
+  const allDraws   = drawLast >= 2 ? drawSheet.getRange(2, 1, drawLast - 1, 5).getValues() : [];
+
+  const bonusSheet = getOrCreateBonusDrawsSheet();
+  const bonusLast  = bonusSheet.getLastRow();
+  const allBonus   = bonusLast >= 2 ? bonusSheet.getRange(2, 1, bonusLast - 1, 1).getValues() : [];
+
+  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
+  const rawLast  = rawSheet ? rawSheet.getLastRow() : 0;
+  const allRaw   = rawLast >= 2 ? rawSheet.getRange(2, 1, rawLast - 1, 8).getValues() : [];
+
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  const currentWeek = Number(configSheet.getRange('B1').getValue()) || 1;
+  const thresholds  = [];
+  for (let w = 1; w <= 6; w++) {
+    thresholds.push(Number(configSheet.getRange((w - 1) * 8 + 5, 3).getValue()) || 6);
+  }
+
+  // 유저별 행 계산
+  const rows = [];
+  for (const userId of userIds) {
+    let qualifiedWeeks = 0;
+    for (let w = 1; w <= currentWeek; w++) {
+      const wTitle     = w + '주차';
+      const wThreshold = thresholds[w - 1];
+      const wScore     = allRaw
+        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
+        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+      if (wScore >= wThreshold) qualifiedWeeks++;
+    }
+
+    const bonusCount  = allBonus.filter(r => String(r[0]) === userId).length;
+    const totalEarned = qualifiedWeeks + bonusCount;
+
+    const userDraws = allDraws.filter(r => String(r[0]) === userId);
+    const totalDraws = userDraws.length;
+    const remaining  = Math.max(0, totalEarned - totalDraws);
+
+    const cardCounts = new Array(9).fill(0);
+    for (const d of userDraws) {
+      const cid = Number(d[2]);
+      if (cid >= 1 && cid <= 9) cardCounts[cid - 1]++;
+    }
+    const totalCards = cardCounts.reduce((s, n) => s + n, 0);
+
+    rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards]);
+  }
+
+  if (rows.length) collSheet.getRange(2, 1, rows.length, 14).setValues(rows);
+  return { ok: true, rebuilt: rows.length };
+}
+
+// 어드민 래퍼 (adminPw 체크)
+function adminRebuildCollection(body) {
+  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  return rebuildCollectionSheet();
+}
+
+// CardDraws → Collection 마이그레이션 (rebuildCollectionSheet로 대체됨 — 하위 호환용 유지)
 function migrateCardDrawsToCollection() {
   // 데이터 없어도 시트는 항상 생성
   getOrCreateCollectionSheet();
@@ -1113,11 +1269,15 @@ function migrateCardDrawsToCollection() {
 
   const collSheet = getOrCreateCollectionSheet();
   if (collSheet.getLastRow() > 1) {
-    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 10).clearContent();
+    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 14).clearContent();
   }
   for (const [uid, cards] of Object.entries(userCounts)) {
-    const row = [uid, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    for (let i = 1; i <= 9; i++) row[i] = cards[i] || 0;
+    const row = new Array(14).fill(0);
+    row[0] = uid;
+    for (let i = 1; i <= 9; i++) {
+      row[i + 3] = cards[i] || 0; // cardId i → col i+4 → idx i+3
+    }
+    row[13] = Object.values(cards).reduce((s, n) => s + n, 0); // 총카드수
     collSheet.appendRow(row);
   }
   return { ok: true, migrated: Object.keys(userCounts).length };
@@ -1482,6 +1642,7 @@ function uploadBBBPhoto(body) {
   // 최초 업로드 시에만 뽑기권 1개 지급
   if (isFirstUpload) {
     getOrCreateBonusDrawsSheet().appendRow([userId, 'bbb_photo', now]);
+    try { updateTicketCols(userId); } catch(e) {}
   }
 
   return { ok: true, rewarded: isFirstUpload };

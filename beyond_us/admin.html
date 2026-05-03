@@ -161,6 +161,7 @@
         <button class="tab-btn" data-tab="inquiry">💬 문의</button>
         <button class="tab-btn" data-tab="trades">🔄 교환</button>
         <button class="tab-btn" data-tab="bbb">🤝 B.B.B.</button>
+        <button class="tab-btn" data-tab="collection">📊 Collection</button>
         <button class="tab-btn" data-tab="settings">⚙️ 설정</button>
       </div>
 
@@ -341,6 +342,37 @@
             <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="loadAdminBBB()">새로고침</button>
           </div>
           <div id="bbbMsgBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
+        </div>
+
+      </div>
+
+      <!-- Collection 집계 탭 -->
+      <div id="tab-collection" class="tab-panel">
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">Collection 집계 시트</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
+                스프레드시트 Collection 탭을 전체 재계산합니다.<br>
+                최초 백필 또는 데이터 불일치 발생 시 1회 실행.
+              </p>
+            </div>
+            <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;white-space:nowrap;" id="rebuildCollectionBtn" onclick="runRebuildCollection()">🔄 전체 재계산</button>
+          </div>
+          <div id="rebuildCollectionStatus" class="status"></div>
+        </div>
+
+        <div class="card" style="margin-top:0;">
+          <p style="font-size:13px;color:var(--sub);line-height:1.7;">
+            <strong style="color:var(--text);">컬럼 구조 (14열)</strong><br>
+            userId · 누적뽑기권 · 실제뽑은개수 · 남은개수 ·
+            사랑 · 희락 · 화평 · 오래참음 · 자비 · 양선 · 충성 · 온유 · 절제 · 총카드수
+          </p>
+          <p style="font-size:13px;color:var(--sub);margin-top:10px;line-height:1.7;">
+            <strong style="color:var(--text);">실시간 업데이트 시점</strong><br>
+            미션 제출 / 카드 뽑기 / BBB 사진 최초 업로드
+          </p>
         </div>
 
       </div>
@@ -1187,6 +1219,30 @@
         el.textContent = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
         el.style.color = _bbbMessageOpen ? '#4ade80' : '#f87171';
       } catch(e) { alert('연결 오류'); }
+    }
+
+    /* ── Collection 재계산 ── */
+    async function runRebuildCollection() {
+      if (!confirm('Collection 시트를 전체 재계산합니다.\n기존 데이터가 덮어씌워집니다. 진행할까요?')) return;
+      const btn = document.getElementById('rebuildCollectionBtn');
+      const statusEl = document.getElementById('rebuildCollectionStatus');
+      btn.disabled = true; btn.textContent = '재계산 중...';
+      statusEl.textContent = ''; statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminRebuildCollection', adminPw });
+        if (res.ok) {
+          statusEl.textContent = `✅ 완료! ${res.rebuilt}명 데이터 재계산됨`;
+          statusEl.className = 'status ok';
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+          statusEl.className = 'status';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false; btn.textContent = '🔄 전체 재계산';
+      }
     }
 
     async function loadAdminInquiries() {
