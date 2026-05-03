@@ -410,10 +410,9 @@
 
         <div class="card">
           <h2 class="card-title">현재 주차 설정</h2>
-          <p style="font-size:13px; color:var(--sub); margin-bottom:16px;">선택한 주차의 미션이 앱에 표시됩니다. <strong>🔄 자동</strong>으로 두면 날짜 기준으로 자동 전환돼요.</p>
+          <p style="font-size:13px; color:var(--sub); margin-bottom:16px;">선택한 주차의 미션이 앱에 표시됩니다.</p>
           <div style="font-size:14px; color:var(--sub); margin-bottom:14px;">현재: <strong id="currentWeekLabel" style="color:var(--text);">불러오는 중...</strong></div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
-            <button class="btn btn-primary week-sel-btn" data-week="0" style="font-size:12px;">🔄 자동</button>
             <button class="btn btn-secondary week-sel-btn" data-week="1">1주차</button>
             <button class="btn btn-secondary week-sel-btn" data-week="2">2주차</button>
             <button class="btn btn-secondary week-sel-btn" data-week="3">3주차</button>
@@ -743,7 +742,7 @@
     }
 
     function updateWeekUI(week) {
-      document.getElementById('currentWeekLabel').textContent = week === 0 ? '🔄 자동 (날짜 기준)' : `${week}주차`;
+      document.getElementById('currentWeekLabel').textContent = `${week}주차`;
       document.querySelectorAll('.week-sel-btn').forEach(btn => {
         btn.className = 'btn ' + (Number(btn.dataset.week) === week ? 'btn-primary' : 'btn-secondary') + ' week-sel-btn';
       });
@@ -761,7 +760,7 @@
           const res = await post({ action: 'setCurrentWeek', adminPw, week });
           if (res.ok) {
             updateWeekUI(week);
-            statusEl.textContent = week === 0 ? '🔄 자동 모드로 변경됐어요!' : `${week}주차로 변경됐어요!`;
+            statusEl.textContent = `${week}주차로 변경됐어요!`;
             statusEl.className = 'status ok';
           }
         } catch(e) {
