@@ -4,6 +4,26 @@ const ADMIN_PASSWORD = 'zmsdmsgP';
 const RAW_SHEET_NAME = 'raw_checkins';
 const CONFIG_SHEET_NAME = 'config';
 
+// ── 주차 경계 (KST 기준) ─────────────────────────────────────────────────────
+// 1주차: 5/10(일)~5/17(일) — 오픈일 포함 8일
+// 2주차~: 월~일 7일 단위
+const WEEK_BOUNDARIES = [
+  [1, '2026-05-10', '2026-05-17'],
+  [2, '2026-05-18', '2026-05-24'],
+  [3, '2026-05-25', '2026-05-31'],
+  [4, '2026-06-01', '2026-06-07'],
+  [5, '2026-06-08', '2026-06-14'],
+  [6, '2026-06-15', '2026-06-21'],
+];
+
+function getCurrentWeekFromDate() {
+  const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+  for (const [w, start, end] of WEEK_BOUNDARIES) {
+    if (today >= start && today <= end) return w;
+  }
+  return today < '2026-05-10' ? 1 : 6; // 오픈 전 → 1주차 미리보기, 종료 후 → 6주차
+}
+
 let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
 
 const SPIRIT_CARDS = [
@@ -208,8 +228,10 @@ function getConfig() {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
 
-  const currentWeek   = Number(sheet.getRange('B1').getValue()) || 1;
-  const startRow      = (currentWeek - 1) * 8 + 5;
+  // B1이 1~6이면 수동 override, 0 또는 비어있으면 날짜 자동 계산
+  const manualWeek  = Number(sheet.getRange('B1').getValue());
+  const currentWeek = (manualWeek >= 1 && manualWeek <= 6) ? manualWeek : getCurrentWeekFromDate();
+  const startRow    = (currentWeek - 1) * 8 + 5;
   const weekTitle     = sheet.getRange(startRow, 2).getValue();
   const drawThreshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
 
