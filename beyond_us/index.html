@@ -2150,7 +2150,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260503b';
+    const APP_VERSION = '20260503';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2178,24 +2178,15 @@
     /* ── 카드 이미지 프리로드 ── */
     SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
 
-    /* ── 주차 키 (날짜 경계 기반, KST) ── */
-    // 1주차: 5/10(일)~5/17(일), 2주차~: 월~일
-    const _WEEK_BOUNDARIES = [
-      ['2026-05-10', '2026-05-17', 'w1'],
-      ['2026-05-18', '2026-05-24', 'w2'],
-      ['2026-05-25', '2026-05-31', 'w3'],
-      ['2026-06-01', '2026-06-07', 'w4'],
-      ['2026-06-08', '2026-06-14', 'w5'],
-      ['2026-06-15', '2026-06-21', 'w6'],
-    ];
+    /* ── 주차 키 (ISO week) ── */
     function getWeekKey() {
       const now = new Date();
-      const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const today = kst.toISOString().slice(0, 10);
-      for (const [start, end, key] of _WEEK_BOUNDARIES) {
-        if (today >= start && today <= end) return key;
-      }
-      return today < '2026-05-10' ? 'w1' : 'w6';
+      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const day = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const wk = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`;
     }
 
     /* ── 테스트 모드: ?test=1 또는 dev URL이면 자동 활성 ── */
