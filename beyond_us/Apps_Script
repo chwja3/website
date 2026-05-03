@@ -1551,7 +1551,7 @@ function getBBB(userId) {
   }
   if (!myRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
-  const revealed        = myRow[3] === true;
+  const revealed        = true; // 임시 전체 공개
   const secretBuddyId   = String(myRow[4] || '');
   const secretBuddyName = String(myRow[5] || '');
 
