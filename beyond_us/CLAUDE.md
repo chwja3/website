@@ -73,7 +73,7 @@ website/
 
 - **SPREADSHEET_ID**: `1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q`
 - **시트**: `raw_checkins`, `config`, `CardDraws`, `Users`, `Notices`, `Inquiries`, `HoldPray`
-- **API**: `https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec`
+- **API**: `https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec`
   - GAS 재배포 시 URL이 바뀌면 `index.html` + `admin.html` 양쪽 `API_BASE` 동시 갱신 필수.
 
 | action | 메서드 | 설명 |
