@@ -530,22 +530,10 @@ function getUserStatus(userId, weekKey) {
     });
   } catch(e) {}
 
-  // 이월 뽑기권 계산: 1~currentWeek 중 자격 얻은 주 수 - 실제 뽑은 수
+  // 뽑기권 현황: Collection 시트 D열(남은개수) 직접 읽기
   let pendingDraws = 0;
   try {
-    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    let qualifiedWeeks = 0;
-    for (let w = 1; w <= config.currentWeek; w++) {
-      const wTitle     = `${w}주차`;
-      const startRow   = (w - 1) * 8 + 5;
-      const wThreshold = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
-      const wScore     = allRows
-        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
-        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
-      if (wScore >= wThreshold) qualifiedWeeks++;
-    }
-    const bonusDraws = getBonusDrawCount(userId);
-    pendingDraws = Math.max(0, qualifiedWeeks + bonusDraws - totalDraws);
+    pendingDraws = getCollectionTickets(userId).remaining;
   } catch(e) {}
 
   return {
@@ -572,36 +560,7 @@ function drawCard(userId, weekKey, testMode) {
 
   // DEV 환경은 뽑기권 검증 스킵 (테스트 자유롭게)
   if (!_devMode) {
-    let allRows = [];
-    try {
-      const raw  = ss.getSheetByName(RAW_SHEET_NAME);
-      const last = raw.getLastRow();
-      if (last >= 2) allRows = raw.getRange(2, 1, last - 1, 7).getValues();
-    } catch(e) {}
-
-    let totalDraws = 0;
-    try {
-      const draws = getOrCreateDrawSheet();
-      const last  = draws.getLastRow();
-      if (last >= 2) {
-        totalDraws = draws.getRange(2, 1, last - 1, 2).getValues()
-          .filter(r => String(r[0]) === userId).length;
-      }
-    } catch(e) {}
-
-    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    let qualifiedWeeks = 0;
-    for (let w = 1; w <= config.currentWeek; w++) {
-      const wTitle     = `${w}주차`;
-      const startRow   = (w - 1) * 8 + 5;
-      const wThreshold = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
-      const wScore     = allRows
-        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
-        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
-      if (wScore >= wThreshold) qualifiedWeeks++;
-    }
-    const bonusDraws = getBonusDrawCount(userId);
-    const pendingDraws = Math.max(0, qualifiedWeeks + bonusDraws - totalDraws);
+    const pendingDraws = getCollectionTickets(userId).remaining;
     if (pendingDraws <= 0) {
       return { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
     }
@@ -1199,6 +1158,24 @@ function getUserCollection(userId) {
     return counts;
   }
   return {};
+}
+
+// Collection 시트에서 뽑기권 현황 읽기 (B=누적, C=뽑은, D=남은)
+function getCollectionTickets(userId) {
+  const sheet = getOrCreateCollectionSheet();
+  const last = sheet.getLastRow();
+  if (last < 2) return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
+  const rows = sheet.getRange(2, 1, last - 1, 4).getValues();
+  for (const row of rows) {
+    if (String(row[0]) === userId) {
+      return {
+        totalEarned: Number(row[1]) || 0,
+        totalDrawn:  Number(row[2]) || 0,
+        remaining:   Number(row[3]) || 0
+      };
+    }
+  }
+  return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
 }
 
 // delta: +1 추가, -1 제거 (카드 col = cardId+4, 총카드수 = col14)
