@@ -2082,7 +2082,7 @@
 
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>점수가 쌓이면 EN카드 뽑기권이 생겨요.</span></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>주간 목표 점수를 달성하면 앤 카드 뽑기권이 생겨요.</span></span></h2>
             <div id="scoreProgressWrap" style="display:none; margin-bottom:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:13px; font-weight:700; color:var(--text);">이번 주 누적 점수</span>
@@ -2535,7 +2535,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505i';
+    const APP_VERSION = '20260505j';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
