@@ -1236,6 +1236,59 @@
     }
     .notice-dot.visible { display: block; }
 
+    /* 도움말 툴팁 */
+    .help-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--line); color: var(--sub);
+      font-size: 11px; font-weight: 800; border: none; cursor: pointer;
+      flex-shrink: 0; line-height: 1; padding: 0;
+      vertical-align: middle; margin-left: 6px;
+    }
+    .help-btn:active { background: var(--primary-soft); }
+    .help-wrap { position: relative; display: inline-block; }
+    .help-tooltip {
+      display: none; position: absolute; z-index: 200;
+      top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      background: #2c2c2e; color: #fff;
+      font-size: 12.5px; font-weight: 400; line-height: 1.65;
+      padding: 10px 13px; border-radius: 10px;
+      width: 220px; white-space: pre-line;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+      pointer-events: none;
+    }
+    .help-tooltip::before {
+      content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+      border: 6px solid transparent; border-bottom-color: #2c2c2e;
+    }
+    .help-tooltip.show { display: block; }
+
+    /* QnA FAQ 아코디언 */
+    .faq-item { border-bottom: 1px solid var(--line); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      width: 100%; background: none; border: none; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; text-align: left;
+      font-size: 14px; font-weight: 700; color: var(--text); gap: 8px;
+    }
+    .faq-q-icon {
+      font-size: 11px; color: var(--sub); flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+    .faq-item.open .faq-q-icon { transform: rotate(180deg); }
+    .faq-a {
+      display: none; font-size: 13.5px; color: var(--sub);
+      line-height: 1.7; padding-bottom: 14px; white-space: pre-line;
+    }
+    .faq-item.open .faq-a { display: block; }
+    .faq-category {
+      font-size: 11px; font-weight: 700; color: var(--primary);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      margin: 20px 0 8px;
+    }
+    .faq-category:first-child { margin-top: 4px; }
+
     /* ════════════════════════════
        앱 콘텐츠 / 섹션
     ════════════════════════════ */
@@ -1991,6 +2044,7 @@
         <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
         <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
+        <li class="drawer-item" data-section="faq"><span class="drawer-label">QnA</span></li>
         <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
       </ul>
       <div class="drawer-logout">
@@ -2024,7 +2078,7 @@
 
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
-            <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
+            <h2 class="card-title" style="display:flex;align-items:center;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip">매일 실천한 항목에 체크하고 제출하면 돼요.\n하루에 여러 항목 체크가 가능하고,\n한 번 제출하면 수정이 어려우니\n오늘 한 것만 신중하게 체크해주세요!\n\n점수가 쌓이면 EN카드 뽑기권이 생겨요.</span></span></h2>
             <div id="scoreProgressWrap" style="display:none; margin-bottom:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:13px; font-weight:700; color:var(--text);">이번 주 누적 점수</span>
@@ -2053,7 +2107,7 @@
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card" id="drawSection">
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종) <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip">사전미션 점수를 쌓으면 EN카드 뽑기권이 생겨요!\n이번 주 목표 점수를 달성하면 뽑기권 1장이 지급돼요.\n\n뽑기권은 다음 주로 이월되니\n놓쳐도 괜찮아요. 총 10종을 모아보세요!</span></span> <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button></span></h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -2104,9 +2158,10 @@
       <!-- ② 컬렉션 -->
       <div id="sectionCollection" class="section hidden">
         <div class="wrap">
-          <div class="coll-tabs">
+          <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip" style="left:auto;right:0;transform:none;">사전미션 점수로 뽑은 EN카드를\n여기서 모아볼 수 있어요.\n\n총 10종(온라인 9종 + 히든 1종)이 있고\n현장 카드는 수련회 당일 지급돼요.\n\n교환현황 탭에서 카드 교환 내역도\n확인할 수 있어요.</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2181,13 +2236,138 @@
       <div id="sectionPrayer" class="section hidden">
         <div class="wrap">
           <div class="hp-header-area">
-            <p class="hp-header-title">🕊️ Hold &amp; Pray 🕊️</p>
+            <p class="hp-header-title" style="display:flex;align-items:center;justify-content:center;gap:6px;">🕊️ Hold &amp; Pray 🕊️<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip" style="left:auto;right:0;transform:none;">매주 공동체 안의 한 분의 기도제목이\n카드로 주어져요.\n\n이름 빈칸을 채우고 그분을 위해\n한 주간 중보기도해 주세요.\n\n매주 새로운 기도제목이 업데이트돼요.</span></span></p>
             <p class="hp-header-sub">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
           </div>
           <div id="hpContent">
             <div class="hp-loading">불러오는 중...</div>
           </div>
           <p class="footer-note">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"<br>— 요한복음 13:34–35</p>
+        </div>
+      </div>
+
+      <!-- QnA -->
+      <div id="sectionFaq" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">❓ QnA</h2>
+            <p class="card-sub" style="margin-bottom:8px;">자주 묻는 질문을 모아뒀어요.</p>
+
+            <div class="faq-category">앱 기본 사용법</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>앱은 어떻게 설치하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">Safari(iOS) 또는 Chrome(Android)으로 앱에 접속한 뒤, 공유 버튼 → "홈 화면에 추가"를 눌러주세요. 앱처럼 바탕화면에 아이콘이 생겨요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>닉네임을 잊어버렸어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">로그인 화면에서 "닉네임 찾기"를 눌러 가입 시 등록한 이름과 교구를 입력하면 닉네임을 확인할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>비밀번호를 잊어버렸어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">로그인 화면에서 "비밀번호 재설정"을 눌러주세요. 닉네임과 이름을 입력하면 비밀번호를 새로 설정할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>여러 기기에서 써도 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">네, 같은 닉네임/비밀번호로 어느 기기에서든 로그인할 수 있어요. 미션 제출 내역은 서버에 저장되니 기기가 바뀌어도 이어서 사용할 수 있어요.</div>
+            </div>
+
+            <div class="faq-category">사전미션</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>미션은 언제까지 제출해야 하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">미션은 매일 그날그날 실천한 것만 제출할 수 있어요. 하루가 지나면 해당 날짜의 체크는 더 이상 제출할 수 없으니 당일에 꼭 체크해주세요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>오늘 실수로 잘못 체크했어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">한 번 제출된 항목은 수정이 어려워요. 실수가 있다면 개발자 문의 탭을 통해 알려주세요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>EN카드 뽑기권은 어떻게 얻나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">이번 주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요. 이번 주에 뽑지 않아도 다음 주로 자동 이월돼요.</div>
+            </div>
+
+            <div class="faq-category">EN카드 &amp; 컬렉션</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>카드 종류가 어떻게 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">온라인 뽑기 카드 9종(성령의 열매), 수련회 현장 지급 카드, 히든 카드 1종이 있어요. 총 10종 이상을 모을 수 있어요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>같은 카드가 또 나왔어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">중복 카드가 나올 수도 있어요. 중복 보유 장수는 컬렉션에서 확인할 수 있고, 카드 교환 기능을 통해 다른 분과 교환할 수 있어요.</div>
+            </div>
+
+            <div class="faq-category">Hold &amp; Pray</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>Hold &amp; Pray가 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">매주 공동체 안의 한 분의 기도제목이 카드로 주어져요. 그 분의 이름을 맞추고 한 주간 중보기도하는 미션이에요. "Hold"는 손에 들고 기도한다는 의미예요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>이름 정답을 맞추면 어떻게 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">정답을 맞추면 해당 분의 이름이 카드에 고정돼요. 앞으로도 그분의 이름을 기억하며 기도해주세요!</div>
+            </div>
+
+            <div class="faq-category">B.B.B. (현장미션)</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>B.B.B.가 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">Buddy Beyond Buddy의 약자예요. 수련회 현장에서 진행되는 미션으로, 배정된 케어버디를 몰래 챙겨주는 게임이에요. 누가 나의 버디인지는 맞춰봐야 알 수 있어요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>케어버디 이름이 아직 안 보여요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">B.B.B. 배정은 수련회 당일 공개될 예정이에요. 조금만 기다려주세요!</div>
+            </div>
+
+          </section>
         </div>
       </div>
 
@@ -2208,7 +2388,7 @@
       <!-- ⑥ 단톡방 -->
       <div id="sectionChat" class="section hidden">
         <div class="chat-wrap">
-          <div class="chat-header">💬 단톡방</div>
+          <div class="chat-header" style="display:flex;align-items:center;justify-content:center;gap:6px;position:relative;">💬 단톡방<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="background:rgba(255,255,255,0.2);color:#fff;">?</button><span class="help-tooltip" style="top:calc(100% + 8px);left:auto;right:8px;transform:none;">로그인하면 청년교구 공동체와\n실시간으로 대화할 수 있어요.\n\n내 메시지는 오른쪽,\n다른 분의 메시지는 왼쪽에 표시돼요.\n교구 뱃지도 함께 보여요.</span></span></div>
           <div class="chat-messages" id="chatMessages">
             <div class="chat-notice" id="chatNotice">
               <span>불러오는 중...</span>
@@ -2229,7 +2409,7 @@
 
             <!-- 헤더 -->
             <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
-            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;">B.B.B. <span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span></h2>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;gap:6px;">B.B.B. <span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip">수련회 현장에서 진행되는 미션이에요.\n\n배정된 케어버디를 몰래 챙겨주고,\n반대로 누가 나를 챙겨주고 있는지\n맞춰보는 게임이에요!\n\n수련회 당일 공개될 예정이에요.</span></span></h2>
 
             <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:20px 0 12px;">불러오는 중...</div>
 
@@ -2330,7 +2510,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504p';
+    const APP_VERSION = '20260505a';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4452,6 +4632,7 @@
       secret:     'sectionSecret',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
+      faq:        'sectionFaq',
     };
     let _currentSection = 'mission';
     function switchSection(name) {
@@ -4476,6 +4657,27 @@
     document.querySelectorAll('.drawer-item').forEach(el => {
       el.addEventListener('click', () => switchSection(el.dataset.section));
     });
+
+    /* ════ 도움말 툴팁 ════ */
+    function toggleHelpTip(btn) {
+      const tip = btn.nextElementSibling;
+      const isOpen = tip.classList.contains('show');
+      document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
+      if (!isOpen) tip.classList.add('show');
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.help-wrap')) {
+        document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
+      }
+    });
+
+    /* ════ QnA FAQ ════ */
+    function toggleFaq(btn) {
+      const item = btn.closest('.faq-item');
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    }
 
     /* ════ 공지사항 ════ */
     let cachedNotices = [];

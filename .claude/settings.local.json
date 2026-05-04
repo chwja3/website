@@ -30,7 +30,13 @@
       "Bash(sips *)",
       "Bash(python3 *)",
       "Bash(gh pr create --title 'fix: PWA 아이콘 크기 복원 및 maskable 제거' --body ' *)",
-      "Bash(git cherry-pick *)"
+      "Bash(sort -u grep -oE 'class=\"[^\"]*\"' /Users/dev/Desktop/workspace/beyond_us/index.html)",
+      "Bash(pkill -f \"python.*http\")",
+      "Bash(pkill -f \"live-server\")",
+      "Bash(pkill -f \"npx serve\")",
+      "Bash(curl -sL \"https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec?action=getUsers&adminPw=zmsdmsgP\" -o /tmp/users.json)",
+      "mcp__claude_ai_Google_Drive__read_file_content",
+      "Bash(curl *)"
     ]
   }
 }
