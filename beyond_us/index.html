@@ -2311,7 +2311,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504l';
+    const APP_VERSION = '20260504m';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3883,7 +3883,7 @@
                 // ↓ 스핀 속도 조절: duration 낮을수록 빠름 (0.4=빠름 / 1.0=느림)
                 gsap.to('#cardTrigger', {
                   rotateY: 360,
-                  duration: 0.2,
+                  duration: 0.4,
                   ease: 'none',
                   repeat: -1
                 });
