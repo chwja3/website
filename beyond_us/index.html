@@ -2375,6 +2375,14 @@
 
             <div class="faq-item">
               <button class="faq-q" onclick="toggleFaq(this)">
+                <span>EN카드는 어떻게 뽑나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">미션을 제출하면 뽑기권 1장이 지급돼요. 카드 뽑기 섹션으로 이동 후 팩 열기 버튼을 클릭하고, 뒷면 카드를 탭해서 앞면을 공개해보세요! 컬렉션 메뉴에서 내가 모은 카드를 확인할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
                 <span>카드 종류가 어떻게 되나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
@@ -2568,7 +2576,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505r';
+    const APP_VERSION = '20260505s';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
