@@ -2287,7 +2287,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504g';
+    const APP_VERSION = '20260504h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3851,8 +3851,15 @@
             var tlB = gsap.timeline({
               onComplete: function() {
                 drawState = 'card_back_wait';
-                startLoadingDots();
-                gsap.to('#cardLoadingHint', { opacity: 1, duration: 0.4, ease: 'power2.out' });
+                // 로딩 텍스트 대신 카드 스핀으로 기대감 연출
+                gsap.set('#cardLoadingHint', { opacity: 0 });
+                // Y축 연속 회전 (앞뒷면 번갈아 보임)
+                gsap.to('#cardInner', {
+                  rotateY: 360,
+                  duration: 2.2,
+                  ease: 'none',
+                  repeat: -1
+                });
                 enableRevealClick();
               }
             });
@@ -3964,7 +3971,7 @@
       gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.15 });
 
       gsap.set('#cardTrigger', { y: -8, rotateZ: 0 });
-      gsap.set('#cardInner', { rotateX: 0 });
+      gsap.set('#cardInner', { rotateY: 0, rotateX: 0 }); // 스핀 위치 초기화 후 플립 시작
 
       document.getElementById('cardTrigger').classList.remove('clickable');
       gsap.to('#flipHint', { opacity: 0, y: -6, duration: 0.14 });
