@@ -1408,7 +1408,7 @@
       #sectionPrayer .hp-card { max-height: calc(100vh - 180px); width: auto; margin: 0 auto; display: flex; justify-content: center; }
       #sectionPrayer .hp-card-img { height: calc(100vh - 180px); width: auto; max-width: 100%; border-radius: 16px; }
     }
-    .hp-header-area { text-align: center; padding: 20px 0 4px; position: relative; }
+    .hp-header-area { text-align: center; padding: 20px 0 4px; position: relative; z-index: 10; }
     .hp-header-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; margin-bottom: 10px; }
     .hp-header-sub { font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
     .hp-bottom-area { margin-top: 20px; }
@@ -1524,16 +1524,21 @@
       font-size: 11px; background: rgba(var(--accent-rgb,255,183,110),0.18);
       color: var(--accent); border-radius: 8px; padding: 2px 8px; font-weight: 600;
     }
-    .hp-carousel-wrap { position: relative; }
+    .hp-carousel-wrap { position: relative; cursor: grab; }
+    .hp-carousel-wrap:active { cursor: grabbing; }
     .hp-slide-counter { text-align: center; font-size: 11px; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.03em; }
-    .hp-nav-row { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 10px; }
+    .hp-card-frame { position: relative; }
     .hp-nav-btn {
-      background: none; border: 1.5px solid var(--border); color: var(--text);
-      font-size: 22px; width: 38px; height: 38px; border-radius: 50%;
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+      background: rgba(0,0,0,0.28); backdrop-filter: blur(2px);
+      border: none; color: #fff;
+      font-size: 26px; width: 34px; height: 52px; border-radius: 8px;
       cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
     }
-    .hp-nav-btn:disabled { opacity: 0.25; cursor: default; }
-    .hp-dots { display: flex; gap: 6px; align-items: center; }
+    #hpNavPrev { left: 6px; }
+    #hpNavNext { right: 6px; }
+    .hp-nav-btn:disabled { opacity: 0.15; cursor: default; }
+    .hp-dots { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 10px; }
     .hp-dot {
       width: 7px; height: 7px; border-radius: 50%;
       background: var(--border); cursor: pointer;
@@ -2563,7 +2568,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505m';
+    const APP_VERSION = '20260505n';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5339,12 +5344,8 @@
         <div class="hp-carousel-wrap" id="hpCarouselWrap">
           <div class="hp-slide-counter" id="hpSlideCounter">${_hpCurrentIdx + 1} / ${total}</div>
           <div id="hpCardSlot"></div>
-          <div class="hp-nav-row">
-            <button class="hp-nav-btn" id="hpNavPrev" onclick="hpGoTo(_hpCurrentIdx - 1)" disabled>&#8249;</button>
-            <div class="hp-dots" id="hpDots">
-              ${_hpCards.map((_, i) => `<span class="hp-dot${i === _hpCurrentIdx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}
-            </div>
-            <button class="hp-nav-btn" id="hpNavNext" onclick="hpGoTo(_hpCurrentIdx + 1)">&#8250;</button>
+          <div class="hp-dots" id="hpDots">
+            ${_hpCards.map((_, i) => `<span class="hp-dot${i === _hpCurrentIdx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}
           </div>
         </div>
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
@@ -5359,6 +5360,16 @@
           const dx = e.changedTouches[0].clientX - touchStartX;
           if (Math.abs(dx) > 40) dx < 0 ? hpGoTo(_hpCurrentIdx + 1) : hpGoTo(_hpCurrentIdx - 1);
         });
+        let mouseStartX = 0, mouseDragging = false;
+        wrap.addEventListener('mousedown', e => { mouseDragging = true; mouseStartX = e.clientX; });
+        wrap.addEventListener('mousemove', e => { if (mouseDragging) e.preventDefault(); }, { passive: false });
+        wrap.addEventListener('mouseup', e => {
+          if (!mouseDragging) return;
+          mouseDragging = false;
+          const dx = e.clientX - mouseStartX;
+          if (Math.abs(dx) > 40) dx < 0 ? hpGoTo(_hpCurrentIdx + 1) : hpGoTo(_hpCurrentIdx - 1);
+        });
+        wrap.addEventListener('mouseleave', () => { mouseDragging = false; });
       }
     }
 
@@ -5392,11 +5403,15 @@
       }
 
       slot.innerHTML = `
-        <div class="hp-card" style="margin-top:8px;">
-          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
-          <div class="hp-overlay">
-            <p class="hp-overlay-text">${escHtml(card.content)}</p>
+        <div class="hp-card-frame">
+          <button class="hp-nav-btn" id="hpNavPrev" onclick="hpGoTo(${idx - 1})" ${idx === 0 ? 'disabled' : ''}>&#8249;</button>
+          <div class="hp-card" style="margin-top:8px;">
+            <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+            <div class="hp-overlay">
+              <p class="hp-overlay-text">${escHtml(card.content)}</p>
+            </div>
           </div>
+          <button class="hp-nav-btn" id="hpNavNext" onclick="hpGoTo(${idx + 1})" ${idx === _hpCards.length - 1 ? 'disabled' : ''}>&#8250;</button>
         </div>
         <div class="hp-bottom-area" style="margin-top:14px;">
           <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
