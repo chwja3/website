@@ -1637,7 +1637,7 @@
           <option value="4청">4청</option>
           <option value="가족">가족</option>
           <option value="VIP">VIP</option>
-          <option value="작년청년">작년청년</option>
+          <option value="장년">장년</option>
         </select>
         <input type="text" id="regNickname" class="modal-input" placeholder="닉네임 (로그인 ID, 2~10자)" maxlength="10" autocomplete="username" />
         <input type="password" id="regPassword" class="modal-input" placeholder="비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
@@ -1677,7 +1677,7 @@
           <option value="4청">4청</option>
           <option value="가족">가족</option>
           <option value="VIP">VIP</option>
-          <option value="작년청년">작년청년</option>
+          <option value="장년">장년</option>
         </select>
         <div class="auth-status" id="findNicknameStatus"></div>
         <button class="btn btn-primary modal-btn" id="findNicknameBtn">닉네임 찾기</button>
@@ -1698,7 +1698,7 @@
           <option value="4청">4청</option>
           <option value="가족">가족</option>
           <option value="VIP">VIP</option>
-          <option value="작년청년">작년청년</option>
+          <option value="장년">장년</option>
         </select>
         <input type="password" id="resetPassword" class="modal-input" placeholder="새 비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
         <div class="auth-status" id="resetStatus"></div>
@@ -2178,7 +2178,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504';
+    const APP_VERSION = '20260504b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
