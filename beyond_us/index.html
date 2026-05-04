@@ -1635,6 +1635,9 @@
           <option value="2청">2청</option>
           <option value="3청">3청</option>
           <option value="4청">4청</option>
+          <option value="가족">가족</option>
+          <option value="VIP">VIP</option>
+          <option value="작년청년">작년청년</option>
         </select>
         <input type="text" id="regNickname" class="modal-input" placeholder="닉네임 (로그인 ID, 2~10자)" maxlength="10" autocomplete="username" />
         <input type="password" id="regPassword" class="modal-input" placeholder="비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
@@ -1655,8 +1658,30 @@
         <p class="auth-switch">
           <button class="auth-link" onclick="switchAuthPane('register')">뒤로가기</button>
           &nbsp;·&nbsp;
+          <button class="auth-link" onclick="switchAuthPane('findNickname')">닉네임을 잊었어요</button>
+          &nbsp;·&nbsp;
           <button class="auth-link" onclick="switchAuthPane('reset')">비밀번호를 잊었어요</button>
         </p>
+      </div>
+
+      <!-- 닉네임 찾기 -->
+      <div id="findNicknamePane" class="hidden">
+        <h2 class="modal-title">닉네임 찾기</h2>
+        <p class="modal-desc">가입할 때 입력한 이름과 소속으로 닉네임을 찾아요.</p>
+        <input type="text" id="findName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
+        <select id="findParish" class="modal-input">
+          <option value="">소속 선택</option>
+          <option value="1청">1청</option>
+          <option value="2청">2청</option>
+          <option value="3청">3청</option>
+          <option value="4청">4청</option>
+          <option value="가족">가족</option>
+          <option value="VIP">VIP</option>
+          <option value="작년청년">작년청년</option>
+        </select>
+        <div class="auth-status" id="findNicknameStatus"></div>
+        <button class="btn btn-primary modal-btn" id="findNicknameBtn">닉네임 찾기</button>
+        <p class="auth-switch"><button class="auth-link" onclick="switchAuthPane('login')">← 로그인으로 돌아가기</button></p>
       </div>
 
       <!-- 비밀번호 재설정 -->
@@ -1671,6 +1696,9 @@
           <option value="2청">2청</option>
           <option value="3청">3청</option>
           <option value="4청">4청</option>
+          <option value="가족">가족</option>
+          <option value="VIP">VIP</option>
+          <option value="작년청년">작년청년</option>
         </select>
         <input type="password" id="resetPassword" class="modal-input" placeholder="새 비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
         <div class="auth-status" id="resetStatus"></div>
@@ -2150,7 +2178,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260503';
+    const APP_VERSION = '20260504';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2478,11 +2506,11 @@
 
     /* ════ Auth 패인 전환 ════ */
     function switchAuthPane(pane) {
-      ['register', 'login', 'reset'].forEach(p => {
+      ['register', 'login', 'reset', 'findNickname'].forEach(p => {
         document.getElementById(p + 'Pane').classList.add('hidden');
       });
       document.getElementById(pane + 'Pane').classList.remove('hidden');
-      ['registerStatus', 'loginStatus', 'resetStatus'].forEach(id => {
+      ['registerStatus', 'loginStatus', 'resetStatus', 'findNicknameStatus'].forEach(id => {
         const el = document.getElementById(id);
         el.textContent = '';
         el.className = 'auth-status';
@@ -2680,6 +2708,35 @@
           statusEl.textContent = '입력한 정보와 일치하는 계정이 없어요.';
         } else {
           statusEl.textContent = '오류가 발생했어요.';
+        }
+      } catch(e) {
+        statusEl.textContent = '연결에 실패했어요.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    /* 닉네임 찾기 */
+    document.getElementById('findNicknameBtn').addEventListener('click', async () => {
+      const name     = document.getElementById('findName').value.trim();
+      const parish   = document.getElementById('findParish').value;
+      const statusEl = document.getElementById('findNicknameStatus');
+
+      if (!name || !parish) { statusEl.textContent = '이름과 소속을 모두 입력해주세요.'; return; }
+
+      const btn = document.getElementById('findNicknameBtn');
+      btn.disabled = true;
+      statusEl.textContent = '찾는 중...';
+      statusEl.className = 'auth-status';
+
+      try {
+        const res = await fetch(`${API_BASE}?action=findNickname&name=${encodeURIComponent(name)}&parish=${encodeURIComponent(parish)}&t=${Date.now()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (data.ok && data.nicknames && data.nicknames.length) {
+          statusEl.className = 'auth-status success';
+          statusEl.innerHTML = `찾았어요! 닉네임: <strong>${data.nicknames.map(n => escHtml(n)).join(', ')}</strong>`;
+        } else {
+          statusEl.textContent = '일치하는 계정을 찾지 못했어요. 이름·소속을 다시 확인해주세요.';
         }
       } catch(e) {
         statusEl.textContent = '연결에 실패했어요.';
@@ -4196,12 +4253,12 @@
         const isNew = !seen.includes(n.id);
         const imgs = parseNoticeImgs(n.imageUrl);
         const imgHtml = imgs.length
-          ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${imgs.map(u => `<img src="${u}" loading="lazy" style="max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;flex:1 1 auto;">`).join('')}</div>`
+          ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${imgs.map(u => `<img src="${u}" loading="lazy" onclick="openLightbox('${u}')" style="max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;flex:1 1 auto;cursor:pointer;">`).join('')}</div>`
           : '';
         return `
         <div class="notice-item">
           <div class="notice-title">📢 ${escHtml(n.title)}${isNew ? ' <span style="font-size:10px;background:#ef4444;color:white;border-radius:999px;padding:1px 7px;font-weight:700;vertical-align:middle;">NEW</span>' : ''}</div>
-          <div class="notice-content">${escHtml(n.content)}</div>
+          <div class="notice-content">${linkify(escHtml(n.content))}</div>
           ${imgHtml}
           <div class="notice-date">${formatNoticeDate(n.createdAt)}</div>
         </div>`;
@@ -4253,6 +4310,24 @@
     function escHtml(s) {
       return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
     }
+
+    /* URL → 하이퍼링크 변환 (escHtml 적용 후 호출) */
+    function linkify(s) {
+      return s.replace(/(https?:\/\/[^\s&lt;&gt;"]+)/g,
+        url => `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;word-break:break-all;">${url}</a>`);
+    }
+
+    /* 이미지 라이트박스 */
+    function openLightbox(src) {
+      const el = document.getElementById('lightboxOverlay');
+      document.getElementById('lightboxImg').src = src;
+      el.style.display = 'flex';
+    }
+    function closeLightbox() {
+      document.getElementById('lightboxOverlay').style.display = 'none';
+      document.getElementById('lightboxImg').src = '';
+    }
+
     function formatNoticeDate(v) {
       if (!v) return '';
       const d = new Date(v);
@@ -4990,5 +5065,11 @@
       }, 150);
     });
   </script>
+
+  <!-- ▣ 이미지 라이트박스 -->
+  <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
+    <img id="lightboxImg" src="" alt="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.6);" />
+    <button onclick="closeLightbox()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
 </body>
 </html>

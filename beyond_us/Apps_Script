@@ -39,6 +39,11 @@ function doGet(e) {
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
   if (action === 'getInquiries') return jsonOutput(getInquiries());
+  if (action === 'findNickname') {
+    const name   = e.parameter.name   || '';
+    const parish = e.parameter.parish || '';
+    return jsonOutput(findNickname(name, parish));
+  }
   if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || '', e.parameter.nickname || ''));
   if (action === 'getCurrentWeek') {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
@@ -743,6 +748,20 @@ function getUsers() {
     users.push({ nickname: data[i][0], name: data[i][2], parish: data[i][3], createdAt: data[i][4] });
   }
   return { ok: true, users };
+}
+
+function findNickname(name, parish) {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  const data  = sheet.getDataRange().getValues();
+  const nicknames = [];
+  for (let i = 1; i < data.length; i++) {
+    if (!data[i][0]) continue;
+    if (String(data[i][2]).trim() === name && String(data[i][3]).trim() === parish) {
+      nicknames.push(String(data[i][0]).trim());
+    }
+  }
+  if (nicknames.length === 0) return { ok: false, error: 'not_found' };
+  return { ok: true, nicknames };
 }
 
 function adminResetPassword(body) {
