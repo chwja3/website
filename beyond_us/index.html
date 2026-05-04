@@ -542,6 +542,18 @@
       background: radial-gradient(circle at center, #fff 0%, #ffe066 30%, rgba(255,190,0,0.55) 64%, transparent 100%);
       box-shadow: 0 0 9px rgba(255,220,0,0.95), 0 0 22px rgba(255,180,0,0.50), 0 0 36px rgba(255,200,80,0.18);
     }
+    /* 중복 카드 — 은색 후광 */
+    #cardGlow.glow-dup {
+      background:
+        radial-gradient(circle at 50% 50%, rgba(230,232,238,0.80) 0%, rgba(180,185,200,0.65) 22%, rgba(140,148,168,0.44) 42%, rgba(100,108,128,0.28) 58%, transparent 74%);
+    }
+    #sceneGlow.glow-dup {
+      background: radial-gradient(ellipse at 50% 54%,
+        rgba(210,212,220,0.26) 0%,
+        rgba(160,165,180,0.14) 32%,
+        rgba(120,126,144,0.10) 58%,
+        transparent 76%);
+    }
     #packLayer {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
@@ -2175,7 +2187,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504e';
+    const APP_VERSION = '20260504f';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3404,6 +3416,7 @@
     /* ════ 뽑기 오버레이 (GSAP 시네마틱) ════ */
     let drawState = 'idle';
     let drawResult = null;
+    let drawIsNew = true;   // 신규(true) vs 중복(false) — GAS isNew 필드 반영
     let revealClickEnabled = false;
     let isFlipping = false;
     let loadingDotsTimer = null;
@@ -3440,6 +3453,7 @@
     function openDrawOverlay() {
       drawState = 'carousel';
       drawResult = null;
+      drawIsNew = true;
       revealClickEnabled = false;
       isFlipping = false;
       pendingCard = null;
@@ -3517,6 +3531,9 @@
     function closeDrawOverlay() {
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
       document.getElementById('drawOverlay').classList.add('hidden');
+      // glow 클래스 초기화 (다음 뽑기를 위해)
+      document.getElementById('cardGlow').classList.remove('glow-dup');
+      document.getElementById('sceneGlow').classList.remove('glow-dup');
       if (pendingCard) {
         if (userStatus) {
           userStatus.drawnThisWeek = true;
@@ -3629,8 +3646,10 @@
         cardPromise.then(function(result) {
           if (result && !result.error && result.card) {
             pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
+            drawIsNew = (result.isNew !== false); // false 명시 시만 중복, undefined/true → 신규
           } else {
             pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+            drawIsNew = true; // 오류 fallback — 신규로 처리
           }
           drawResult = pendingCard;
           document.getElementById('cardFace').innerHTML = makeCardHTML(drawResult);
@@ -3780,7 +3799,18 @@
       document.getElementById('cardTrigger').classList.remove('clickable');
       gsap.to('#flipHint', { opacity: 0, y: -6, duration: 0.14 });
 
-      burstRevealSparks(1.0);
+      // 신규 / 중복 이펙트 분기 — glow 클래스 적용
+      var cardGlowEl  = document.getElementById('cardGlow');
+      var sceneGlowEl = document.getElementById('sceneGlow');
+      if (drawIsNew) {
+        cardGlowEl.classList.remove('glow-dup');
+        sceneGlowEl.classList.remove('glow-dup');
+      } else {
+        cardGlowEl.classList.add('glow-dup');
+        sceneGlowEl.classList.add('glow-dup');
+      }
+
+      burstRevealSparks(drawIsNew ? 1.3 : 0.5);
 
       var tlC = gsap.timeline({
         onComplete: function() {
@@ -3791,20 +3821,20 @@
           gsap.set('#settleActions', { display: 'flex' });
           gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
 
-          // 후광 펄스
+          // 후광 펄스 — 신규: 강하게 / 중복: 은은하게
           gsap.to('#cardGlow', {
-            opacity: 0.95,
-            scale: 1.12,
-            duration: 1.8,
+            opacity: drawIsNew ? 0.95 : 0.55,
+            scale:   drawIsNew ? 1.12 : 1.04,
+            duration: drawIsNew ? 1.8 : 2.6,
             ease: 'sine.inOut',
             yoyo: true,
             repeat: -1
           });
 
           gsap.to('#sceneGlow', {
-            opacity: 1.0,
-            scale: 1.18,
-            duration: 2.4,
+            opacity: drawIsNew ? 1.0 : 0.45,
+            scale:   drawIsNew ? 1.18 : 1.06,
+            duration: drawIsNew ? 2.4 : 3.2,
             ease: 'sine.inOut',
             yoyo: true,
             repeat: -1
@@ -3824,18 +3854,18 @@
       });
 
       tlC
-        .to('#sceneGlow', { opacity: 1, scale: 1.22, duration: 0.22, ease: 'power2.out' }, 0)
-        .to('#cardGlow', { opacity: 1, scale: 1.12, duration: 0.22, ease: 'power2.out' }, 0)
-        .to('#flashEl', { opacity: 0.96, duration: 0.05, ease: 'none' }, 0.06)
+        .to('#sceneGlow', { opacity: drawIsNew ? 1 : 0.42, scale: drawIsNew ? 1.22 : 1.06, duration: 0.22, ease: 'power2.out' }, 0)
+        .to('#cardGlow', { opacity: drawIsNew ? 1 : 0.48, scale: drawIsNew ? 1.12 : 1.02, duration: 0.22, ease: 'power2.out' }, 0)
+        .to('#flashEl', { opacity: drawIsNew ? 0.96 : 0.40, duration: 0.05, ease: 'none' }, 0.06)
         .to('#flashEl', { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
         .fromTo('#ringEl',
-          { opacity: 0.95, scale: 0.42 },
-          { opacity: 0, scale: 1.62, duration: 0.52, ease: 'power2.out' },
+          { opacity: drawIsNew ? 0.95 : 0.42, scale: 0.42 },
+          { opacity: 0, scale: drawIsNew ? 1.62 : 1.18, duration: 0.52, ease: 'power2.out' },
           0.08
         )
         .fromTo('#ringEl2',
-          { opacity: 0.80, scale: 0.38 },
-          { opacity: 0, scale: 2.4, duration: 0.72, ease: 'power1.out' },
+          { opacity: drawIsNew ? 0.80 : 0.30, scale: 0.38 },
+          { opacity: 0, scale: drawIsNew ? 2.4 : 1.6, duration: 0.72, ease: 'power1.out' },
           0.22
         )
         .to('#cardInner', {
@@ -3881,11 +3911,13 @@
         }, 0.82);
 
       setTimeout(function() {
-        burstRevealSparks(1.15);
+        burstRevealSparks(drawIsNew ? 1.4 : 0.45);
       }, 120);
-      setTimeout(function() {
-        burstRevealSparks(0.72);
-      }, 720);
+      if (drawIsNew) {
+        setTimeout(function() {
+          burstRevealSparks(0.9);
+        }, 720);
+      }
     });
 
     /* ════════════════════════════
