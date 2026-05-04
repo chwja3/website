@@ -3521,6 +3521,7 @@
     let isFlipping = false;
     let loadingDotsTimer = null;
     let rainbowRaysTween = null; // 무지개 회전 tween (cleanup용)
+    let spinAutoRevealTimer = null; // 10초 후 자동 공개 타이머
 
     /* 파티클 생성 (lazy) */
     const STAR_COUNT = 50;
@@ -3673,6 +3674,7 @@
       document.getElementById('cardGlow').classList.remove('glow-new', 'glow-dup');
       document.getElementById('sceneGlow').classList.remove('glow-new', 'glow-dup');
       if (rainbowRaysTween) { rainbowRaysTween.kill(); rainbowRaysTween = null; }
+      if (spinAutoRevealTimer) { clearTimeout(spinAutoRevealTimer); spinAutoRevealTimer = null; }
       resetDrawParticles();
 
       document.getElementById('cardFace').innerHTML = '';
@@ -3861,6 +3863,10 @@
                   ease: 'none',
                   repeat: -1
                 });
+                // 10초 후 자동 공개 (사용자가 탭 안 해도)
+                spinAutoRevealTimer = setTimeout(function() {
+                  document.getElementById('cardTrigger').click();
+                }, 10000);
                 enableRevealClick();
               }
             });
@@ -3965,6 +3971,7 @@
       drawState = 'card_flip_reveal';
       isFlipping = true;
 
+      if (spinAutoRevealTimer) { clearTimeout(spinAutoRevealTimer); spinAutoRevealTimer = null; }
       gsap.killTweensOf('#cardTrigger');
       gsap.killTweensOf('#cardInner');
       gsap.killTweensOf('#cardGlow');
