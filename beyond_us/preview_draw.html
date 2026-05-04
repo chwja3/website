@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Card Effect Preview</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0612;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* 별 배경 */
+  #starBg {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,0.6), transparent),
+      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1.5px 1.5px at 40% 80%, rgba(255,200,255,0.55), transparent),
+      radial-gradient(1px 1px at 80% 20%, rgba(200,220,255,0.5), transparent),
+      radial-gradient(2px 2px at 10% 60%, rgba(255,255,200,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 90% 50%, rgba(255,255,255,0.5), transparent);
+    background-size: 600px 600px;
+    z-index: 0;
+  }
+
+  .controls {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex; gap: 12px;
+  }
+  .controls button {
+    padding: 12px 24px;
+    border-radius: 999px;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+  }
+  .controls button:active { transform: scale(0.96); }
+  .controls .new   { background: linear-gradient(135deg, #ff7e3d, #ffb03d, #ffe066); color: #2a1500; }
+  .controls .dup   { background: linear-gradient(135deg, #888c9a, #b4b8c4); color: #1a1a22; }
+  .controls .reset { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); }
+
+  /* 무대 */
+  #stage {
+    position: relative;
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1;
+  }
+
+  #sceneWrap {
+    position: relative;
+    width: 280px; height: 440px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* 씬 후광 (가장 바깥) */
+  #sceneGlow {
+    position: absolute;
+    inset: -200px;
+    background: radial-gradient(ellipse at 50% 50%,
+      rgba(255, 200, 80, 0.55) 0%,
+      rgba(255, 130, 40, 0.40) 25%,
+      rgba(255, 80, 200, 0.22) 50%,
+      rgba(120, 80, 255, 0.14) 70%,
+      transparent 88%);
+    filter: blur(60px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  #sceneGlow.glow-dup {
+    background: radial-gradient(ellipse at 50% 50%,
+      rgba(210,212,220,0.30) 0%,
+      rgba(160,165,180,0.16) 35%,
+      rgba(120,126,144,0.10) 60%,
+      transparent 80%);
+  }
+
+  /* 카드 후광 (카드 바로 주위) */
+  #cardGlow {
+    position: absolute;
+    width: 380px; height: 460px;
+    border-radius: 999px;
+    background: radial-gradient(circle at 50% 50%,
+      rgba(255,250,200,0.95) 0%,
+      rgba(255,200,80,0.85) 18%,
+      rgba(255,130,40,0.70) 36%,
+      rgba(255,80,150,0.45) 56%,
+      transparent 78%);
+    filter: blur(36px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  #cardGlow.glow-dup {
+    background: radial-gradient(circle at 50% 50%,
+      rgba(230,232,238,0.85) 0%,
+      rgba(180,185,200,0.65) 22%,
+      rgba(140,148,168,0.44) 42%,
+      transparent 74%);
+  }
+
+  /* 무지개 광선 회전 */
+  #rainbowRays {
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      rgba(255, 80, 80, 0.55) 0deg,
+      transparent 18deg,
+      rgba(255, 180, 60, 0.55) 36deg,
+      transparent 54deg,
+      rgba(255, 240, 80, 0.55) 72deg,
+      transparent 90deg,
+      rgba(120, 240, 100, 0.55) 108deg,
+      transparent 126deg,
+      rgba(80, 200, 255, 0.55) 144deg,
+      transparent 162deg,
+      rgba(140, 100, 255, 0.55) 180deg,
+      transparent 198deg,
+      rgba(255, 100, 220, 0.55) 216deg,
+      transparent 234deg,
+      rgba(255, 80, 80, 0.55) 252deg,
+      transparent 270deg,
+      rgba(255, 200, 60, 0.55) 288deg,
+      transparent 306deg,
+      rgba(255, 240, 100, 0.55) 324deg,
+      transparent 342deg,
+      rgba(255, 80, 80, 0.55) 360deg
+    );
+    mask: radial-gradient(circle, transparent 22%, black 32%, black 70%, transparent 90%);
+    -webkit-mask: radial-gradient(circle, transparent 22%, black 32%, black 70%, transparent 90%);
+    filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  /* 수평 광선 */
+  #cardBeam {
+    position: absolute;
+    width: 1200px; height: 60px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,0) 8%,
+      rgba(255,240,180,0.5) 25%,
+      rgba(255,255,255,1) 50%,
+      rgba(255,240,180,0.5) 75%,
+      rgba(255,255,255,0) 92%,
+      transparent 100%);
+    filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 4;
+    mix-blend-mode: screen;
+  }
+  #cardBeam::before {
+    content: '';
+    position: absolute;
+    inset: 18px 0;
+    background: linear-gradient(90deg,
+      transparent, rgba(255,255,255,0.95) 50%, transparent);
+    filter: blur(2px);
+  }
+
+  /* 충격파 링 */
+  .ring {
+    position: absolute;
+    width: 280px; height: 280px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 230, 130, 0.95);
+    box-shadow:
+      0 0 30px rgba(255,200,80,0.85),
+      inset 0 0 20px rgba(255,220,120,0.55);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  /* 플래시 */
+  #flashEl {
+    position: absolute;
+    inset: -100px;
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,240,180,0.5) 30%, transparent 65%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* 별가루 / 불씨 레이어 */
+  #particleLayer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 6;
+  }
+  .star-particle {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, rgba(255,255,200,0.85) 40%, transparent 80%);
+    box-shadow: 0 0 8px rgba(255,255,255,0.95), 0 0 16px rgba(255,240,150,0.5);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+  }
+  .ember-particle {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, #ffd860 25%, rgba(255,140,40,0.8) 55%, transparent 85%);
+    box-shadow: 0 0 14px rgba(255,180,80,0.95), 0 0 28px rgba(255,120,40,0.6);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+  }
+  .spark-particle {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff 0%, rgba(255,238,185,0.96) 30%, rgba(255,164,90,0.68) 62%, transparent 100%);
+    box-shadow: 0 0 8px rgba(255,200,120,0.9);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+  }
+
+  /* 카드 */
+  #cardTrigger {
+    position: relative;
+    z-index: 10;
+    cursor: pointer;
+  }
+  #cardPerspective {
+    width: 200px; height: 290px;
+    perspective: 900px;
+    position: relative;
+  }
+  #cardInner {
+    width: 100%; height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(0deg);
+  }
+  .card-face {
+    position: absolute; inset: 0;
+    border-radius: 18px;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+  .card-back {
+    background: transparent;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card-back img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  .card-front {
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, #ff6b6b 0%, #ffa94d 50%, #ffd93d 100%);
+    box-shadow: 0 10px 40px rgba(255,150,80,0.6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 80px;
+  }
+  .card-front::before {
+    content: '🌟';
+    filter: drop-shadow(0 0 12px rgba(255,255,200,0.9));
+  }
+  .card-front.dup-front {
+    background: linear-gradient(135deg, #5a6275 0%, #8a92a8 50%, #b8bdcc 100%);
+  }
+  .card-front.dup-front::before {
+    content: '⚪';
+    filter: drop-shadow(0 0 8px rgba(200,220,240,0.7));
+  }
+
+  .label {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<div id="starBg"></div>
+
+<div class="controls">
+  <button class="new" id="btnNew">🎫 신규 카드</button>
+  <button class="dup" id="btnDup">🔁 중복 카드</button>
+  <button class="reset" id="btnReset">↺ 리셋</button>
+</div>
+
+<div id="stage">
+  <div id="sceneWrap">
+    <div id="sceneGlow"></div>
+    <div id="cardGlow"></div>
+    <div id="rainbowRays"></div>
+    <div id="cardBeam"></div>
+    <div class="ring" id="ring1"></div>
+    <div class="ring" id="ring2"></div>
+    <div class="ring" id="ring3"></div>
+    <div id="flashEl"></div>
+    <div id="particleLayer"></div>
+    <div id="cardTrigger">
+      <div id="cardPerspective">
+        <div id="cardInner">
+          <div class="card-face card-back"><img src="./images/앤카드뒷면최종.png" alt="card back"></div>
+          <div class="card-face card-front" id="cardFront"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="label">버튼 클릭 → 이펙트 재생 · 카드 클릭하면 다시 재생</div>
+
+<script>
+  /* ════ 파티클 생성 ════ */
+  const particleLayer = document.getElementById('particleLayer');
+  const STAR_COUNT = 50;
+  const EMBER_COUNT = 12;
+  const SPARK_COUNT = 24;
+
+  function createParticles() {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const el = document.createElement('span');
+      el.className = 'star-particle';
+      frag.appendChild(el);
+    }
+    for (let i = 0; i < EMBER_COUNT; i++) {
+      const el = document.createElement('span');
+      el.className = 'ember-particle';
+      frag.appendChild(el);
+    }
+    for (let i = 0; i < SPARK_COUNT; i++) {
+      const el = document.createElement('span');
+      el.className = 'spark-particle';
+      frag.appendChild(el);
+    }
+    particleLayer.appendChild(frag);
+  }
+  createParticles();
+
+  const stars   = document.querySelectorAll('.star-particle');
+  const embers  = document.querySelectorAll('.ember-particle');
+  const sparks  = document.querySelectorAll('.spark-particle');
+
+  /* ════ 리셋 ════ */
+  function resetAll() {
+    gsap.killTweensOf('*');
+    gsap.set('#cardInner', { rotateY: 0, rotateX: 0, rotateZ: 0 });
+    gsap.set('#cardTrigger', { scale: 1, x: 0, y: 0, rotation: 0 });
+    gsap.set('#cardGlow',     { opacity: 0, scale: 0.6 });
+    gsap.set('#sceneGlow',    { opacity: 0, scale: 0.7 });
+    gsap.set('#rainbowRays',  { opacity: 0, rotate: 0, scale: 0.4 });
+    gsap.set('#cardBeam',     { opacity: 0, scaleX: 0.1, scaleY: 1 });
+    gsap.set('#flashEl',      { opacity: 0 });
+    gsap.set('.ring',         { opacity: 0, scale: 0.4 });
+    document.getElementById('cardGlow').classList.remove('glow-dup');
+    document.getElementById('sceneGlow').classList.remove('glow-dup');
+    document.getElementById('cardFront').classList.remove('dup-front');
+    [...stars, ...embers, ...sparks].forEach(el => {
+      gsap.set(el, { opacity: 0, x: 0, y: 0, scale: 0.3 });
+    });
+  }
+  resetAll();
+
+  /* ════ 별가루 폭발 ════ */
+  function burstStars() {
+    stars.forEach((el, i) => {
+      const angle = (Math.PI * 2 * i) / stars.length + (Math.random() * 0.4 - 0.2);
+      const dist = 320 + Math.random() * 280;
+      gsap.set(el, { opacity: 0, x: 0, y: 0, scale: 0.3 });
+      gsap.to(el, {
+        opacity: 1,
+        scale: 0.8 + Math.random() * 0.7,
+        duration: 0.18,
+        delay: Math.random() * 0.12,
+        ease: 'power2.out'
+      });
+      gsap.to(el, {
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist,
+        duration: 1.4 + Math.random() * 0.5,
+        delay: Math.random() * 0.1,
+        ease: 'power2.out'
+      });
+      gsap.to(el, {
+        opacity: 0,
+        duration: 0.6,
+        delay: 0.7 + Math.random() * 0.3,
+        ease: 'power2.in'
+      });
+    });
+  }
+
+  /* ════ 불씨 (위로 떠오름) ════ */
+  function burstEmbers() {
+    embers.forEach((el, i) => {
+      const xOffset = (Math.random() - 0.5) * 320;
+      const yStart  = 80 + Math.random() * 60;
+      const yEnd    = -240 - Math.random() * 120;
+      const drift   = (Math.random() - 0.5) * 80;
+      gsap.set(el, { opacity: 0, x: xOffset, y: yStart, scale: 0.5 });
+      gsap.to(el, {
+        opacity: 1,
+        scale: 1 + Math.random() * 0.5,
+        duration: 0.25,
+        delay: Math.random() * 0.2,
+        ease: 'power2.out'
+      });
+      gsap.to(el, {
+        x: xOffset + drift,
+        y: yEnd,
+        duration: 1.6 + Math.random() * 0.6,
+        delay: Math.random() * 0.15,
+        ease: 'power1.out'
+      });
+      gsap.to(el, {
+        opacity: 0,
+        scale: 0.3,
+        duration: 0.5,
+        delay: 1.0 + Math.random() * 0.4,
+        ease: 'power2.in'
+      });
+    });
+  }
+
+  /* ════ 스파크 폭발 ════ */
+  function burstSparks(power) {
+    power = power || 1;
+    sparks.forEach((el, i) => {
+      const angle = (Math.PI * 2 * i) / sparks.length + (Math.random() * 0.18 - 0.09);
+      const dist = (140 + Math.random() * 120) * power;
+      gsap.set(el, { opacity: 0, x: 0, y: 0, scale: 0.2 });
+      gsap.to(el, {
+        opacity: 1,
+        scale: 0.7 + Math.random() * 0.5,
+        duration: 0.12,
+        ease: 'power2.out'
+      });
+      gsap.to(el, {
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist,
+        duration: 0.7 + Math.random() * 0.3,
+        ease: 'power2.out'
+      });
+      gsap.to(el, {
+        opacity: 0,
+        duration: 0.4,
+        delay: 0.4 + Math.random() * 0.2,
+        ease: 'power2.in'
+      });
+    });
+  }
+
+  /* ════ 신규 카드 이펙트 ════ */
+  function playNew() {
+    resetAll();
+
+    // 0.0 - 무지개 광선 등장 + 회전 시작
+    gsap.to('#rainbowRays', {
+      opacity: 0.65,
+      scale: 1,
+      duration: 0.5,
+      ease: 'power2.out'
+    });
+    gsap.to('#rainbowRays', {
+      rotate: 360,
+      duration: 4,
+      ease: 'none',
+      repeat: -1
+    });
+
+    // 0.0 - 후광 폭발
+    gsap.to('#sceneGlow', { opacity: 1, scale: 1.4, duration: 0.35, ease: 'power3.out' });
+    gsap.to('#cardGlow', {
+      opacity: 1,
+      scale: 1.8,
+      duration: 0.3,
+      ease: 'power3.out',
+      onComplete: function() {
+        // 펄스 화염
+        gsap.to('#cardGlow', {
+          scale: 1.65,
+          duration: 1.2,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1
+        });
+      }
+    });
+
+    // 0.05 - 플래시
+    gsap.to('#flashEl', { opacity: 1, duration: 0.06, delay: 0.05 });
+    gsap.to('#flashEl', { opacity: 0, duration: 0.32, delay: 0.11, ease: 'power2.out' });
+
+    // 0.08 - 별가루 폭발
+    setTimeout(burstStars, 80);
+
+    // 0.12 - 수평 광선
+    gsap.fromTo('#cardBeam',
+      { opacity: 0, scaleX: 0.05, scaleY: 0.5 },
+      { opacity: 1, scaleX: 1, scaleY: 1, duration: 0.18, ease: 'power3.out', delay: 0.12 }
+    );
+    gsap.to('#cardBeam', {
+      opacity: 0,
+      scaleY: 0.3,
+      duration: 0.4,
+      delay: 0.4,
+      ease: 'power2.in'
+    });
+
+    // 0.15 - 충격파 링 (3중)
+    gsap.fromTo('#ring1',
+      { opacity: 0.95, scale: 0.4 },
+      { opacity: 0, scale: 2.6, duration: 0.65, ease: 'power2.out', delay: 0.10 }
+    );
+    gsap.fromTo('#ring2',
+      { opacity: 0.85, scale: 0.4 },
+      { opacity: 0, scale: 3.4, duration: 0.85, ease: 'power1.out', delay: 0.22 }
+    );
+    gsap.fromTo('#ring3',
+      { opacity: 0.65, scale: 0.4 },
+      { opacity: 0, scale: 4.2, duration: 1.0, ease: 'power1.out', delay: 0.36 }
+    );
+
+    // 0.20 - 불씨 떠오름
+    setTimeout(burstEmbers, 200);
+
+    // 0.10 - 카드 플립
+    const tlCard = gsap.timeline({ delay: 0.08 });
+    tlCard
+      .to('#cardInner', { rotateY: 106, rotateX: 9, rotateZ: -3, duration: 0.30, ease: 'power2.in' })
+      .to('#cardInner', { rotateY: 194, rotateX: -3, rotateZ: 1.6, duration: 0.34, ease: 'power2.out' })
+      .to('#cardInner', { rotateY: 180, rotateX: 0, rotateZ: 0, duration: 0.26, ease: 'back.out(1.4)' })
+      .to('#cardTrigger', { scale: 1.18, duration: 0.10, ease: 'power3.out' }, '-=0.26')
+      .to('#cardTrigger', { scale: 1, duration: 0.42, ease: 'elastic.out(1, 0.45)' });
+
+    // 0.5 - 카드 진동 (임팩트)
+    gsap.to('#cardTrigger', {
+      x: '+=2',
+      duration: 0.04,
+      delay: 0.65,
+      repeat: 5,
+      yoyo: true,
+      ease: 'none'
+    });
+
+    // 추가 spark bursts
+    setTimeout(() => burstSparks(1.3), 100);
+    setTimeout(() => burstSparks(1.5), 280);
+    setTimeout(() => burstSparks(0.9), 700);
+  }
+
+  /* ════ 중복 카드 이펙트 ════ */
+  function playDup() {
+    resetAll();
+    document.getElementById('cardGlow').classList.add('glow-dup');
+    document.getElementById('sceneGlow').classList.add('glow-dup');
+    document.getElementById('cardFront').classList.add('dup-front');
+
+    // 약한 후광
+    gsap.to('#sceneGlow', { opacity: 0.5, scale: 1.06, duration: 0.32, ease: 'power2.out' });
+    gsap.to('#cardGlow', {
+      opacity: 0.55,
+      scale: 1.05,
+      duration: 0.28,
+      ease: 'power2.out',
+      onComplete: function() {
+        gsap.to('#cardGlow', {
+          scale: 1.0,
+          duration: 2.6,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1
+        });
+      }
+    });
+
+    // 약한 플래시
+    gsap.to('#flashEl', { opacity: 0.3, duration: 0.06, delay: 0.05 });
+    gsap.to('#flashEl', { opacity: 0, duration: 0.18, delay: 0.11, ease: 'power2.out' });
+
+    // 작은 링 1개
+    gsap.fromTo('#ring1',
+      { opacity: 0.4, scale: 0.4 },
+      { opacity: 0, scale: 1.4, duration: 0.5, ease: 'power2.out', delay: 0.08 }
+    );
+
+    // 카드 플립 (동일)
+    const tlCard = gsap.timeline({ delay: 0.08 });
+    tlCard
+      .to('#cardInner', { rotateY: 106, rotateX: 9, rotateZ: -3, duration: 0.30, ease: 'power2.in' })
+      .to('#cardInner', { rotateY: 194, rotateX: -3, rotateZ: 1.6, duration: 0.34, ease: 'power2.out' })
+      .to('#cardInner', { rotateY: 180, rotateX: 0, rotateZ: 0, duration: 0.26, ease: 'back.out(1.4)' });
+
+    // 약한 spark
+    setTimeout(() => burstSparks(0.5), 100);
+    setTimeout(() => burstSparks(0.45), 280);
+  }
+
+  document.getElementById('btnNew').addEventListener('click', playNew);
+  document.getElementById('btnDup').addEventListener('click', playDup);
+  document.getElementById('btnReset').addEventListener('click', resetAll);
+  document.getElementById('cardTrigger').addEventListener('click', () => {
+    // 마지막 모드 재생: 신규로 기본 처리
+    if (document.getElementById('cardGlow').classList.contains('glow-dup')) {
+      playDup();
+    } else {
+      playNew();
+    }
+  });
+</script>
+</body>
+</html>

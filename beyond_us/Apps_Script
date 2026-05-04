@@ -567,12 +567,20 @@ function drawCard(userId, weekKey, testMode) {
   }
 
   const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+
+  // 뽑기 전 기존 보유 여부 확인 (isNew 계산용 — updateCollectionSheet 전에 읽어야 정확)
+  let isNew = true;
+  try {
+    const existingCounts = getUserCollection(userId);
+    isNew = !(existingCounts[card.id] > 0);
+  } catch(e) {}
+
   // 항상 시트에 기록 (DEV → DEV 시트, PROD → PROD 시트)
   const draws = getOrCreateDrawSheet();
   draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
   updateCollectionSheet(userId, card.id, 1);
   try { updateTicketCols(userId); } catch(e) {}
-  return { ok: true, card };
+  return { ok: true, card, isNew };
 }
 
 // ── Hold & Pray ───────────────────────────────────
