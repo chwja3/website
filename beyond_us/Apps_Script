@@ -719,17 +719,43 @@ function resetPassword(body) {
   if (!newPassword || newPassword.length < 4) return { error: 'invalid_password' };
 
   const data = sheet.getDataRange().getValues();
+
+  // 닉네임이 명시된 경우: 이름+교구+닉네임 정확히 일치하는 계정 변경
+  if (nickname) {
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === nickname &&
+          String(data[i][2]).trim() === name &&
+          String(data[i][3]).trim() === parish) {
+        const cell = sheet.getRange(i + 1, 2);
+        cell.setNumberFormat('@');
+        cell.setValue(newPassword);
+        return { ok: true };
+      }
+    }
+    return { error: 'not_found' };
+  }
+
+  // 닉네임 없이 이름+교구로 검색
+  const matches = [];
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === nickname &&
-        String(data[i][2]).trim() === name &&
+    if (String(data[i][2]).trim() === name &&
         String(data[i][3]).trim() === parish) {
-      const cell = sheet.getRange(i + 1, 2);
-      cell.setNumberFormat('@');
-      cell.setValue(newPassword);
-      return { ok: true };
+      matches.push({ row: i + 1, nickname: String(data[i][0]).trim() });
     }
   }
-  return { error: 'not_found' };
+
+  if (matches.length === 0) return { error: 'not_found' };
+
+  // 동명이인: 닉네임 선택 요청
+  if (matches.length > 1) {
+    return { duplicates: matches.map(m => m.nickname) };
+  }
+
+  // 1명: 바로 변경
+  const cell = sheet.getRange(matches[0].row, 2);
+  cell.setNumberFormat('@');
+  cell.setValue(newPassword);
+  return { ok: true };
 }
 
 function getUsers() {

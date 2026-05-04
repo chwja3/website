@@ -1889,8 +1889,7 @@
       <!-- 비밀번호 재설정 -->
       <div id="resetPane" class="hidden">
         <h2 class="modal-title">비밀번호 재설정</h2>
-        <p class="modal-desc">가입할 때 입력한 정보로 본인을 확인해요.</p>
-        <input type="text" id="resetNickname" class="modal-input" placeholder="닉네임" autocomplete="username" />
+        <p class="modal-desc">가입할 때 입력한 이름과 교구로 확인해요.</p>
         <input type="text" id="resetName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
         <select id="resetParish" class="modal-input">
           <option value="">소속 선택</option>
@@ -1902,6 +1901,10 @@
           <option value="장년">장년</option>
         </select>
         <input type="password" id="resetPassword" class="modal-input" placeholder="새 비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
+        <div id="resetDuplicates" style="display:none; margin-bottom:8px;">
+          <p style="font-size:13px; color:var(--sub); margin:0 0 8px;">같은 이름의 계정이 여러 개예요. 내 닉네임을 선택해주세요.</p>
+          <div id="resetDuplicateList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
         <div class="auth-status" id="resetStatus"></div>
         <button class="btn btn-primary modal-btn" id="resetBtn">비밀번호 변경</button>
         <p class="auth-switch"><button class="auth-link" onclick="switchAuthPane('login')">← 로그인으로 돌아가기</button></p>
@@ -2301,7 +2304,7 @@
                 <span>비밀번호를 잊어버렸어요.</span>
                 <span class="faq-q-icon">▾</span>
               </button>
-              <div class="faq-a">로그인 화면에서 "비밀번호 재설정"을 눌러주세요. 닉네임과 이름을 입력하면 비밀번호를 새로 설정할 수 있어요.</div>
+              <div class="faq-a">로그인 화면에서 "비밀번호 재설정"을 눌러주세요. 이름과 교구를 입력하면 비밀번호를 새로 설정할 수 있어요.</div>
             </div>
 
             <div class="faq-item">
@@ -2546,7 +2549,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505b';
+    const APP_VERSION = '20260505c';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2892,6 +2895,7 @@
         el.textContent = '';
         el.className = 'auth-status';
       });
+      document.getElementById('resetDuplicates').style.display = 'none';
     }
 
     function saveAuth(nickname, password, parish) {
@@ -3054,20 +3058,15 @@
     });
 
     /* 비밀번호 재설정 */
-    document.getElementById('resetBtn').addEventListener('click', async () => {
-      const nickname    = document.getElementById('resetNickname').value.trim();
+    async function doResetPassword(nickname) {
       const name        = document.getElementById('resetName').value.trim();
       const parish      = document.getElementById('resetParish').value;
       const newPassword = document.getElementById('resetPassword').value;
       const statusEl    = document.getElementById('resetStatus');
+      const btn         = document.getElementById('resetBtn');
 
-      if (!nickname || !name || !parish || !newPassword) {
-        statusEl.textContent = '모든 항목을 입력해주세요.'; return;
-      }
-      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
-
-      const btn = document.getElementById('resetBtn');
       btn.disabled = true;
+      statusEl.className = 'auth-status';
       statusEl.textContent = '확인 중...';
 
       try {
@@ -3080,7 +3079,16 @@
         if (data.ok) {
           statusEl.className = 'auth-status success';
           statusEl.textContent = '비밀번호가 변경됐어요! 로그인해주세요.';
+          document.getElementById('resetDuplicates').style.display = 'none';
           setTimeout(() => switchAuthPane('login'), 1500);
+        } else if (data.duplicates) {
+          const dupWrap = document.getElementById('resetDuplicates');
+          const dupList = document.getElementById('resetDuplicateList');
+          dupList.innerHTML = data.duplicates.map(n =>
+            `<button class="btn btn-secondary" style="flex:none;font-size:13px;padding:6px 14px;" onclick="doResetPassword('${escHtml(n)}')">${escHtml(n)}</button>`
+          ).join('');
+          dupWrap.style.display = 'block';
+          statusEl.textContent = '';
         } else if (data.error === 'not_found') {
           statusEl.textContent = '입력한 정보와 일치하는 계정이 없어요.';
         } else {
@@ -3091,6 +3099,23 @@
       } finally {
         btn.disabled = false;
       }
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      const name        = document.getElementById('resetName').value.trim();
+      const parish      = document.getElementById('resetParish').value;
+      const newPassword = document.getElementById('resetPassword').value;
+      const statusEl    = document.getElementById('resetStatus');
+
+      document.getElementById('resetDuplicates').style.display = 'none';
+      statusEl.className = 'auth-status';
+
+      if (!name || !parish || !newPassword) {
+        statusEl.textContent = '모든 항목을 입력해주세요.'; return;
+      }
+      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+
+      doResetPassword('');
     });
 
     /* 닉네임 찾기 */
