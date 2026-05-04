@@ -2311,7 +2311,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504m';
+    const APP_VERSION = '20260504n';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3877,22 +3877,8 @@
             var tlB = gsap.timeline({
               onComplete: function() {
                 drawState = 'card_back_wait';
-                // 로딩 텍스트 대신 카드 스핀으로 기대감 연출
                 gsap.set('#cardLoadingHint', { opacity: 0 });
-                // #cardTrigger 전체를 회전 → #cardInner는 rotateY:0 고정 → 뒷면만 보임
-                // ↓ 스핀 속도 조절: duration 낮을수록 빠름 (0.4=빠름 / 1.0=느림)
-                gsap.to('#cardTrigger', {
-                  rotateY: 360,
-                  duration: 0.4,
-                  ease: 'none',
-                  repeat: -1
-                });
-                // 10초 후 자동 공개 (사용자가 탭 안 해도)
-                spinAutoRevealTimer = setTimeout(function() {
-                  if (drawState !== 'card_back_wait') return;
-                  revealClickEnabled = true; // 강제 활성화 후 클릭
-                  document.getElementById('cardTrigger').click();
-                }, 10000);
+                // 클릭 전엔 뒷면 정지 상태로 대기 — 클릭 순간부터 스핀 시작
                 enableRevealClick();
               }
             });
@@ -4034,125 +4020,93 @@
         sceneGlowEl.classList.add('glow-dup');
       }
 
-      burstRevealSparks(drawIsNew ? 1.3 : 0.5);
-
-      var tlC = gsap.timeline({
+      // 클릭 순간 빙글빙글 시작 → 3초에 걸쳐 감속 → 완전히 멈추면 카드 공개
+      gsap.to('#cardTrigger', {
+        rotateY: 1800,   // 5바퀴 (duration:0.2 초속으로 시작, power3.out으로 감속)
+        duration: 3.0,
+        ease: 'power3.out',
         onComplete: function() {
-          drawState = 'card_front_settle';
-          isFlipping = false;
+          gsap.set('#cardTrigger', { rotateY: 0 }); // 깔끔하게 0°로 스냅
 
+          burstRevealSparks(drawIsNew ? 1.3 : 0.5);
 
-          gsap.set('#settleActions', { display: 'flex' });
-          gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
+          var tlC = gsap.timeline({
+            onComplete: function() {
+              drawState = 'card_front_settle';
+              isFlipping = false;
 
-          // 후광 펄스 — 신규: 강하게 / 중복: 은은하게
-          gsap.to('#cardGlow', {
-            opacity: drawIsNew ? 0.95 : 0.55,
-            scale:   drawIsNew ? 1.80 : 1.04,
-            duration: drawIsNew ? 1.6 : 2.6,
-            ease: 'sine.inOut',
-            yoyo: true,
-            repeat: -1
+              gsap.set('#settleActions', { display: 'flex' });
+              gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
+
+              // 후광 펄스 — 신규: 강하게 / 중복: 은은하게
+              gsap.to('#cardGlow', {
+                opacity: drawIsNew ? 0.95 : 0.55,
+                scale:   drawIsNew ? 1.80 : 1.04,
+                duration: drawIsNew ? 1.6 : 2.6,
+                ease: 'sine.inOut', yoyo: true, repeat: -1
+              });
+              gsap.to('#sceneGlow', {
+                opacity: drawIsNew ? 1.0 : 0.45,
+                scale:   drawIsNew ? 1.55 : 1.06,
+                duration: drawIsNew ? 2.2 : 3.2,
+                ease: 'sine.inOut', yoyo: true, repeat: -1
+              });
+              // 신규 카드 — 임팩트 진동
+              if (drawIsNew) {
+                gsap.to('#cardTrigger', {
+                  x: 3, duration: 0.04, repeat: 5, yoyo: true, ease: 'none',
+                  onComplete: function() { gsap.set('#cardTrigger', { x: 0 }); }
+                });
+              }
+
+              // 앞면 반짝임 sweep 루프
+              var shimmerTl = gsap.timeline({ repeat: -1, repeatDelay: 2.2 });
+              shimmerTl
+                .fromTo('#cardFlipShine',
+                  { opacity: 0, x: '-150%' },
+                  { opacity: 0.82, x: '20%', duration: 0.28, ease: 'power2.in' }
+                )
+                .to('#cardFlipShine',
+                  { opacity: 0, x: '160%', duration: 0.32, ease: 'power2.out' }
+                );
+            }
           });
-          gsap.to('#sceneGlow', {
-            opacity: drawIsNew ? 1.0 : 0.45,
-            scale:   drawIsNew ? 1.55 : 1.06,
-            duration: drawIsNew ? 2.2 : 3.2,
-            ease: 'sine.inOut',
-            yoyo: true,
-            repeat: -1
-          });
-          // 신규 카드 — 임팩트 진동
-          if (drawIsNew) {
-            gsap.to('#cardTrigger', {
-              x: 3, duration: 0.04, repeat: 5, yoyo: true, ease: 'none',
-              onComplete: function() { gsap.set('#cardTrigger', { x: 0 }); }
-            });
-          }
 
-          // 앞면 반짝임 sweep 루프
-          var shimmerTl = gsap.timeline({ repeat: -1, repeatDelay: 2.2 });
-          shimmerTl
-            .fromTo('#cardFlipShine',
-              { opacity: 0, x: '-150%' },
-              { opacity: 0.82, x: '20%', duration: 0.28, ease: 'power2.in' }
+          tlC
+            .to('#sceneGlow', { opacity: drawIsNew ? 1 : 0.42, scale: drawIsNew ? 1.22 : 1.06, duration: 0.22, ease: 'power2.out' }, 0)
+            .to('#cardGlow',  { opacity: drawIsNew ? 1 : 0.48, scale: drawIsNew ? 1.12 : 1.02, duration: 0.22, ease: 'power2.out' }, 0)
+            .to('#flashEl',   { opacity: drawIsNew ? 0.96 : 0.40, duration: 0.05, ease: 'none' }, 0.06)
+            .to('#flashEl',   { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
+            .fromTo('#ringEl',
+              { opacity: drawIsNew ? 0.95 : 0.42, scale: 0.42 },
+              { opacity: 0, scale: drawIsNew ? 1.62 : 1.18, duration: 0.52, ease: 'power2.out' },
+              0.08
             )
-            .to('#cardFlipShine',
-              { opacity: 0, x: '160%', duration: 0.32, ease: 'power2.out' }
-            );
+            .fromTo('#ringEl2',
+              { opacity: drawIsNew ? 0.80 : 0.30, scale: 0.38 },
+              { opacity: 0, scale: drawIsNew ? 2.4 : 1.6, duration: 0.72, ease: 'power1.out' },
+              0.22
+            )
+            .fromTo('#ringEl3',
+              { opacity: drawIsNew ? 0.60 : 0, scale: 0.34 },
+              { opacity: 0, scale: drawIsNew ? 3.6 : 0, duration: 1.0, ease: 'power1.out' },
+              0.38
+            )
+            .to('#cardInner', { rotateY: 106, rotateX: 9, rotateZ: -3, duration: 0.28, ease: 'power2.in' }, 0.08)
+            .to('#cardFlipShine', { opacity: 0.98, x: '155%', duration: 0.34, ease: 'power2.out' }, 0.26)
+            .to('#cardInner', { rotateY: 194, rotateX: -3, rotateZ: 1.6, duration: 0.34, ease: 'power2.out' }, 0.31)
+            .to('#cardInner', { rotateY: 180, rotateX: 0, rotateZ: 0, duration: 0.26, ease: 'back.out(1.3)' }, 0.62)
+            .to('#cardTrigger', { scale: 2.00, duration: 0.09, ease: 'power3.out' }, 0.62)
+            .to('#cardTrigger', { scale: 1.82, duration: 0.38, ease: 'elastic.out(1, 0.45)' }, 0.71)
+            .to('#sceneGlow', { opacity: 0.92, scale: 1.08, duration: 0.48, ease: 'power2.out' }, 0.76)
+            .to('#cardGlow',  { opacity: 0.86, scale: 1.02, duration: 0.48, ease: 'power2.out' }, 0.82);
+
+          setTimeout(function() { burstRevealSparks(drawIsNew ? 1.4 : 0.45); }, 120);
+          if (drawIsNew) {
+            setTimeout(function() { burstRevealSparks(0.9); }, 720);
+          }
         }
       });
-
-      tlC
-        .to('#sceneGlow', { opacity: drawIsNew ? 1 : 0.42, scale: drawIsNew ? 1.22 : 1.06, duration: 0.22, ease: 'power2.out' }, 0)
-        .to('#cardGlow', { opacity: drawIsNew ? 1 : 0.48, scale: drawIsNew ? 1.12 : 1.02, duration: 0.22, ease: 'power2.out' }, 0)
-        .to('#flashEl', { opacity: drawIsNew ? 0.96 : 0.40, duration: 0.05, ease: 'none' }, 0.06)
-        .to('#flashEl', { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
-        .fromTo('#ringEl',
-          { opacity: drawIsNew ? 0.95 : 0.42, scale: 0.42 },
-          { opacity: 0, scale: drawIsNew ? 1.62 : 1.18, duration: 0.52, ease: 'power2.out' },
-          0.08
-        )
-        .fromTo('#ringEl2',
-          { opacity: drawIsNew ? 0.80 : 0.30, scale: 0.38 },
-          { opacity: 0, scale: drawIsNew ? 2.4 : 1.6, duration: 0.72, ease: 'power1.out' },
-          0.22
-        )
-        .fromTo('#ringEl3',
-          { opacity: drawIsNew ? 0.60 : 0, scale: 0.34 },
-          { opacity: 0, scale: drawIsNew ? 3.6 : 0, duration: 1.0, ease: 'power1.out' },
-          0.38
-        )
-        .to('#cardInner', {
-          rotateY: 106,
-          rotateX: 9,
-          rotateZ: -3,
-          duration: 0.28,
-          ease: 'power2.in'
-        }, 0.08)
-        .to('#cardFlipShine', {
-          opacity: 0.98,
-          x: '155%',
-          duration: 0.34,
-          ease: 'power2.out'
-        }, 0.26)
-        .to('#cardInner', {
-          rotateY: 194,
-          rotateX: -3,
-          rotateZ: 1.6,
-          duration: 0.34,
-          ease: 'power2.out'
-        }, 0.31)
-        .to('#cardInner', {
-          rotateY: 180,
-          rotateX: 0,
-          rotateZ: 0,
-          duration: 0.26,
-          ease: 'back.out(1.3)'
-        }, 0.62)
-        .to('#cardTrigger', { scale: 2.00, duration: 0.09, ease: 'power3.out' }, 0.62)
-        .to('#cardTrigger', { scale: 1.82, duration: 0.38, ease: 'elastic.out(1, 0.45)' }, 0.71)
-        .to('#sceneGlow', {
-          opacity: 0.92,
-          scale: 1.08,
-          duration: 0.48,
-          ease: 'power2.out'
-        }, 0.76)
-        .to('#cardGlow', {
-          opacity: 0.86,
-          scale: 1.02,
-          duration: 0.48,
-          ease: 'power2.out'
-        }, 0.82);
-
-      setTimeout(function() {
-        burstRevealSparks(drawIsNew ? 1.4 : 0.45);
-      }, 120);
-      if (drawIsNew) {
-        setTimeout(function() {
-          burstRevealSparks(0.9);
-        }, 720);
-      }
     });
 
     /* ════════════════════════════
