@@ -4311,7 +4311,8 @@
 
     /* URL → 하이퍼링크 변환 (escHtml 적용 후 호출) */
     function linkify(s) {
-      return s.replace(/(https?:\/\/[^\s&lt;&gt;"]+)/g,
+      // [^\s<>&"] : 공백·꺾쇠·앰퍼샌드·따옴표에서 멈춤 (escHtml 후라서 & 로 엔티티 시작을 감지)
+      return s.replace(/(https?:\/\/[^\s<>&"]+)/g,
         url => `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;word-break:break-all;">${url}</a>`);
     }
 
