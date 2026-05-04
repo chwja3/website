@@ -29,7 +29,8 @@
       "Bash(convert --version)",
       "Bash(sips *)",
       "Bash(python3 *)",
-      "Bash(gh pr create --title 'fix: PWA 아이콘 크기 복원 및 maskable 제거' --body ' *)"
+      "Bash(gh pr create --title 'fix: PWA 아이콘 크기 복원 및 maskable 제거' --body ' *)",
+      "Bash(git cherry-pick *)"
     ]
   }
 }
