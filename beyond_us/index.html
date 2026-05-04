@@ -2311,7 +2311,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504n';
+    const APP_VERSION = '20260504o';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3874,14 +3874,7 @@
             drawState = 'card_back_rise';
             gsap.set('#packLayer', { opacity: 0, pointerEvents: 'none' });
 
-            var tlB = gsap.timeline({
-              onComplete: function() {
-                drawState = 'card_back_wait';
-                gsap.set('#cardLoadingHint', { opacity: 0 });
-                // 클릭 전엔 뒷면 정지 상태로 대기 — 클릭 순간부터 스핀 시작
-                enableRevealClick();
-              }
-            });
+            var tlB = gsap.timeline();
 
             gsap.set('#cardTrigger', {
               scale: 1.72,
@@ -3891,18 +3884,24 @@
 
             tlB
               .set('#cardLayer', { pointerEvents: 'none' })
-              .to('#cardLayer', { opacity: 1, duration: 0.28, ease: 'power2.out' }, 0)
-              .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.35, ease: 'power2.out' }, 0)
+              .to('#cardLayer', { opacity: 1, duration: 0.22, ease: 'power2.out' }, 0)
+              .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.28, ease: 'power2.out' }, 0)
               .fromTo('#cardTrigger',
                 { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
-                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.7, ease: 'power3.out' },
+                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.42, ease: 'power3.out' },
                 0.04
               )
-              .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.35, ease: 'power2.out' }, 0)
+              .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.28, ease: 'power2.out' }, 0)
+              // 카드가 자리 잡히자마자 바로 클릭 가능
+              .call(function() {
+                drawState = 'card_back_wait';
+                gsap.set('#cardLoadingHint', { opacity: 0 });
+                enableRevealClick();
+              }, [], 0.46)
               .fromTo('#flipHint',
                 { opacity: 0, y: 10 },
-                { opacity: 0.72, y: 0, duration: 0.34, ease: 'power2.out' },
-                0.44
+                { opacity: 0.72, y: 0, duration: 0.28, ease: 'power2.out' },
+                0.46
               );
           }
         })
