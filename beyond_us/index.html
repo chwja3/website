@@ -2175,7 +2175,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504c';
+    const APP_VERSION = '20260504d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3915,8 +3915,9 @@
       document.getElementById('scoreProgressText').textContent = `${ws} / ${dt}점`;
       document.getElementById('scoreProgressBar').style.width = pct + '%';
       const hint = document.getElementById('scoreProgressHint');
-      if (ws >= dt) {
-        hint.innerHTML = '이번 주 카드 뽑기가 1회 가능해요 🎉 → <button onclick="document.getElementById(\'drawSection\').scrollIntoView({block:\'center\'})" style="margin-left:4px;padding:2px 10px;font-size:12px;font-weight:700;background:rgba(120,100,200,0.25);color:var(--primary);border:none;border-radius:999px;cursor:pointer;">뽑으러 가기</button>';
+      const earned = userStatus.earnedTicketThisWeek;
+      if (earned) {
+        hint.innerHTML = '이번 주차 뽑기 티켓 획득 🎫 → <button onclick="document.getElementById(\'drawSection\').scrollIntoView({block:\'center\'})" style="margin-left:4px;padding:2px 10px;font-size:12px;font-weight:700;background:rgba(120,100,200,0.25);color:var(--primary);border:none;border-radius:999px;cursor:pointer;">뽑으러 가기</button>';
         hint.style.color = 'var(--success)';
       } else {
         hint.textContent = `앞으로 ${dt - ws}점 더 모으면 카드 뽑기권 획득!`;
