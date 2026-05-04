@@ -3854,10 +3854,10 @@
                 // 로딩 텍스트 대신 카드 스핀으로 기대감 연출
                 gsap.set('#cardLoadingHint', { opacity: 0 });
                 // #cardTrigger 전체를 회전 → #cardInner는 rotateY:0 고정 → 뒷면만 보임
-                // ↓ 속도 조절: duration 낮을수록 빠름 (0.4=빠름 / 1.0=느림)
+                // ↓ 스핀 속도 조절: duration 낮을수록 빠름 (0.4=빠름 / 1.0=느림)
                 gsap.to('#cardTrigger', {
                   rotateY: 360,
-                  duration: 0.65,
+                  duration: 0.02,
                   ease: 'none',
                   repeat: -1
                 });
