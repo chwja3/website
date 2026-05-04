@@ -606,6 +606,16 @@ function getHoldPray(weekKey, nickname) {
     const entry = HOLD_PRAY_ENTRIES[idx];
     cards.push({ cardIndex: i, parish: entry.p, content: entry.c, anon: entry.a });
   }
+  // 3장 모두 익명이면 마지막 카드를 비익명으로 교체
+  if (cards.every(function(c) { return c.anon; })) {
+    for (let j = 0; j < n; j++) {
+      if (!usedIdx.has(j) && !HOLD_PRAY_ENTRIES[j].a) {
+        const entry = HOLD_PRAY_ENTRIES[j];
+        cards[2] = { cardIndex: 2, parish: entry.p, content: entry.c, anon: false };
+        break;
+      }
+    }
+  }
   return { ok: true, weekKey, cards };
 }
 
