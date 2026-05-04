@@ -493,16 +493,19 @@ function getUserStatus(userId, weekKey) {
   const weekEnd   = sunday.toISOString().slice(0, 10);
 
   // raw_checkins 전체 읽기 (이번 주 점수 + 오늘 항목 + 이월 계산에 재사용)
+  // 10열까지 읽어 J열(ticketEarned) 포함
   let allRows = [];
+  let earnedTicketThisWeek = false;
   try {
     const raw     = ss.getSheetByName(RAW_SHEET_NAME);
     const lastRow = raw.getLastRow();
     if (lastRow >= 2) {
-      allRows = raw.getRange(2, 1, lastRow - 1, 8).getValues();
+      allRows = raw.getRange(2, 1, lastRow - 1, 10).getValues();
       for (const row of allRows) {
         if (String(row[3]) !== userId) continue;
         if (String(row[1]) === config.weekTitle) {
           weekScore += Number(row[6]) || 0;
+          if (Number(row[9]) === 1) earnedTicketThisWeek = true; // J열 ticketEarned
           const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
           // 이번 주 제출 날짜 수집
           if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
@@ -573,6 +576,7 @@ function getUserStatus(userId, weekKey) {
     drawThreshold: config.drawThreshold,
     canDraw: pendingDraws > 0,
     pendingDraws,
+    earnedTicketThisWeek,
     drawnThisWeek,
     weekCard,
     collection,
