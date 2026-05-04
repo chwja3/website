@@ -146,7 +146,7 @@ function doPost(e) {
       return jsonOutput(resetPassword(body));
     }
     if (action === 'submitHoldPrayGuess') {
-      return jsonOutput(submitHoldPrayGuess(body.weekKey || '', body.guess || '', body.nickname || ''));
+      return jsonOutput(submitHoldPrayGuess(body.weekKey || '', body.guess || '', body.nickname || '', Number(body.cardIndex) || 0));
     }
     if (action === 'postInquiry')   return jsonOutput(postInquiry(body));
     if (action === 'editInquiry')   return jsonOutput(editInquiry(body));
@@ -616,26 +616,54 @@ function hashStr(s) {
 
 function getHoldPray(weekKey, nickname) {
   if (!weekKey) weekKey = 'w' + (getConfig().currentWeek);
-  const key   = weekKey + (nickname || '');
-  const idx   = hashStr(key) % HOLD_PRAY_ENTRIES.length;
-  const entry = HOLD_PRAY_ENTRIES[idx];
-  return {
-    ok:      true,
-    weekKey,
-    parish:  entry.p,
-    content: entry.c,
-    anon:    entry.a
-  };
+  const n = HOLD_PRAY_ENTRIES.length;
+  const cards = [];
+  const usedIdx = new Set();
+  for (let i = 0; i < 3; i++) {
+    const seed = weekKey + (nickname || '') + String(i);
+    let idx = hashStr(seed) % n;
+    let attempts = 0;
+    while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
+    usedIdx.add(idx);
+    const entry = HOLD_PRAY_ENTRIES[idx];
+    cards.push({ cardIndex: i, parish: entry.p, content: entry.c, anon: entry.a });
+  }
+  return { ok: true, weekKey, cards };
 }
 
-function submitHoldPrayGuess(weekKey, guess, nickname) {
+function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
   if (!weekKey || !guess) return { ok: false, error: 'missing params' };
-  const key   = weekKey + (nickname || '');
-  const idx   = hashStr(key) % HOLD_PRAY_ENTRIES.length;
-  const entry = HOLD_PRAY_ENTRIES[idx];
+  const n = HOLD_PRAY_ENTRIES.length;
+  const usedIdx = new Set();
+  let entryIdx = 0;
+  for (let i = 0; i <= (Number(cardIndex) || 0); i++) {
+    const seed = weekKey + (nickname || '') + String(i);
+    let idx = hashStr(seed) % n;
+    let attempts = 0;
+    while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
+    usedIdx.add(idx);
+    if (i === (Number(cardIndex) || 0)) entryIdx = idx;
+  }
+  const entry = HOLD_PRAY_ENTRIES[entryIdx];
   if (entry.a) return { ok: false, error: 'anon entry' };
   const correct = entry.n.replace(/\s/g, '') === guess.trim().replace(/\s/g, '');
-  return { ok: true, correct };
+  let ticketAwarded = false;
+  if (correct && (weekKey === 'w3' || weekKey === 'w6')) {
+    const bonusSheet = getOrCreateBonusDrawsSheet();
+    const last = bonusSheet.getLastRow();
+    const source = 'hp_' + weekKey;
+    let alreadyAwarded = false;
+    if (last >= 2) {
+      const rows = bonusSheet.getRange(2, 1, last - 1, 2).getValues();
+      alreadyAwarded = rows.some(function(r) { return String(r[0]) === nickname && String(r[1]) === source; });
+    }
+    if (!alreadyAwarded) {
+      bonusSheet.appendRow([nickname, source, new Date().toISOString()]);
+      try { updateTicketCols(nickname); } catch(e) {}
+      ticketAwarded = true;
+    }
+  }
+  return { ok: true, correct, ticketAwarded };
 }
 
 // ── 탭 설정 ──────────────────────────────────────

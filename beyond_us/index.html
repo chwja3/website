@@ -1524,6 +1524,34 @@
       font-size: 11px; background: rgba(var(--accent-rgb,255,183,110),0.18);
       color: var(--accent); border-radius: 8px; padding: 2px 8px; font-weight: 600;
     }
+    .hp-carousel-wrap { position: relative; }
+    .hp-slide-counter { text-align: center; font-size: 11px; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.03em; }
+    .hp-nav-row { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 10px; }
+    .hp-nav-btn {
+      background: none; border: 1.5px solid var(--border); color: var(--text);
+      font-size: 22px; width: 38px; height: 38px; border-radius: 50%;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    .hp-nav-btn:disabled { opacity: 0.25; cursor: default; }
+    .hp-dots { display: flex; gap: 6px; align-items: center; }
+    .hp-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border); cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .hp-dot.active { background: var(--accent); transform: scale(1.35); }
+    .hp-hint-btn {
+      display: block; margin: 8px auto 0; font-size: 11px;
+      color: var(--sub); background: none; border: none; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 2px; opacity: 0.65; padding: 4px 8px;
+    }
+    .hp-hint-btn:hover { opacity: 1; }
+    .hp-ticket-notice {
+      text-align: center; font-size: 12px; color: var(--accent); font-weight: 600;
+      background: rgba(var(--accent-rgb,255,183,110),0.15);
+      border: 1px solid rgba(var(--accent-rgb,255,183,110),0.3);
+      border-radius: 10px; padding: 8px 14px; margin-top: 10px;
+    }
 
     /* ── Coming Soon ── */
     #comingSoonScreen {
@@ -2242,9 +2270,9 @@
           <div class="hp-header-area">
             <div style="position:relative;display:inline-block;width:100%;">
               <p class="hp-header-title" style="margin-bottom:10px;">🕊️ Hold &amp; Pray 🕊️</p>
-              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 공동체 안의 한 분의 기도제목이 카드로 주어져요.<br><br>이름 빈칸을 채우고 그분을 위해 한 주간 중보기도해 주세요. 매주 새로운 기도제목이 업데이트돼요.</span></span>
+              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 공동체 안의 3분의 기도제목이 카드로 주어져요.<br><br>이름 빈칸을 채우고 그분들을 위해 중보기도해 주세요.<br><br>3주차·6주차에 이름을 1개라도 맞히면 앤 카드 뽑기권 1장 지급! (최대 2장)</span></span>
             </div>
-            <p class="hp-header-sub">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
+            <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
           </div>
           <div id="hpContent">
             <div class="hp-loading">불러오는 중...</div>
@@ -2535,7 +2563,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505j';
+    const APP_VERSION = '20260505k';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2836,9 +2864,9 @@
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
         const d = await res.json();
-        if (d.ok && d.content) {
-          el.textContent = d.content;
-          if (_hpData === null) _hpData = d;
+        const previewContent = d.ok && d.cards && d.cards[0] && d.cards[0].content;
+        if (previewContent) {
+          el.textContent = previewContent;
           if (loading) loading.style.display = 'none';
           if (overlay) overlay.style.display = '';
           fitHpText(el, overlay);
@@ -5232,9 +5260,10 @@
     }
 
     /* ════ Hold & Pray ════ */
-    let _hpData = null;
-    let _hpGuessCorrect = false;
-    let _hpCorrectName = '';
+    let _hpCards = [];
+    let _hpCurrentIdx = 0;
+    let _hpWeekKey = '';
+    let _hpCorrectMap = {}; // {cardIndex: name} — per week, loaded from localStorage
 
     function fitHpText(textEl, boxEl, opts = {}) {
       if (!textEl || !boxEl) return;
@@ -5263,11 +5292,10 @@
     async function loadHoldPray() {
       const wk = getWeekKey();
       const el = document.getElementById('hpContent');
-      const badge = document.getElementById('hpWeekBadge');
       if (!el) return;
 
-      if (_hpData && _hpData.weekKey === wk) {
-        renderHoldPrayCard(_hpData);
+      if (_hpWeekKey === wk && _hpCards.length === 3) {
+        renderHoldPray();
         return;
       }
 
@@ -5288,100 +5316,174 @@
         ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
-        _hpData = data;
-        const _savedName = localStorage.getItem('beyondus_hp_correct_' + data.weekKey);
-        if (_savedName) { _hpGuessCorrect = true; _hpCorrectName = _savedName; }
-        else { _hpGuessCorrect = false; _hpCorrectName = ''; }
-        renderHoldPrayCard(data);
+        _hpCards = data.cards || [];
+        _hpWeekKey = data.weekKey || wk;
+        _hpCurrentIdx = 0;
+        _hpCorrectMap = {};
+        _hpCards.forEach((_, i) => {
+          const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+          if (saved) _hpCorrectMap[i] = saved;
+        });
+        renderHoldPray();
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
       }
     }
 
-    function renderHoldPrayCard(data) {
+    function renderHoldPray() {
       const el = document.getElementById('hpContent');
-      if (!el) return;
-
-      const parishHtml = ''; // 손바닥 위 교구 뱃지 미표시
-
-      const nameLineHtml = data.anon ? '' : `
-        <div class="hp-divider"></div>
-        <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
-        <div class="hp-inline-guess" id="hpInlineGuess">
-          <span class="hp-inline-label">이름</span>
-          <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="본명 입력" />
-          <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray()">확인</button>
-        </div>
-        <p class="hp-result" id="hpResult"></p>`;
+      if (!el || !_hpCards.length) return;
+      const total = _hpCards.length;
 
       el.innerHTML = `
-        <div class="hp-card" style="margin-top:12px;">
-          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
-          <div class="hp-overlay">
-            ${parishHtml}
-            <p class="hp-overlay-text">${escHtml(data.content)}</p>
+        <div class="hp-carousel-wrap" id="hpCarouselWrap">
+          <div class="hp-slide-counter" id="hpSlideCounter">${_hpCurrentIdx + 1} / ${total}</div>
+          <div id="hpCardSlot"></div>
+          <div class="hp-nav-row">
+            <button class="hp-nav-btn" id="hpNavPrev" onclick="hpGoTo(_hpCurrentIdx - 1)" disabled>&#8249;</button>
+            <div class="hp-dots" id="hpDots">
+              ${_hpCards.map((_, i) => `<span class="hp-dot${i === _hpCurrentIdx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}
+            </div>
+            <button class="hp-nav-btn" id="hpNavNext" onclick="hpGoTo(_hpCurrentIdx + 1)">&#8250;</button>
           </div>
         </div>
-
-        <div class="hp-bottom-area">
-          <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
-          ${nameLineHtml}
-        </div>
-
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
-      if (_hpGuessCorrect && !data.anon) {
-        const wrap = document.getElementById('hpInlineGuess');
-        if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(_hpCorrectName)}</span>`;
+      renderHpCard(_hpCurrentIdx);
+
+      const wrap = document.getElementById('hpCarouselWrap');
+      if (wrap) {
+        let touchStartX = 0;
+        wrap.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        wrap.addEventListener('touchend', e => {
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          if (Math.abs(dx) > 40) dx < 0 ? hpGoTo(_hpCurrentIdx + 1) : hpGoTo(_hpCurrentIdx - 1);
+        });
       }
+    }
+
+    function renderHpCard(idx) {
+      const slot = document.getElementById('hpCardSlot');
+      if (!slot || !_hpCards[idx]) return;
+      const card = _hpCards[idx];
+      const correctName = _hpCorrectMap[idx];
+
+      let bottomHtml;
+      if (card.anon) {
+        bottomHtml = `<p class="hp-anon-label">익명으로 제출된 기도제목이에요 🙏</p>`;
+      } else if (correctName) {
+        bottomHtml = `
+          <div class="hp-divider"></div>
+          <div class="hp-inline-guess">
+            <span class="hp-inline-label">이름 :</span>
+            <span class="hp-inline-name">${escHtml(correctName)}</span>
+          </div>`;
+      } else {
+        bottomHtml = `
+          <div class="hp-divider"></div>
+          <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
+          <div class="hp-inline-guess" id="hpInlineGuess">
+            <span class="hp-inline-label">이름</span>
+            <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="본명 입력" />
+            <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
+          </div>
+          <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
+          <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에서 못 찾겠어요?</button>`;
+      }
+
+      slot.innerHTML = `
+        <div class="hp-card" style="margin-top:8px;">
+          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+          <div class="hp-overlay">
+            <p class="hp-overlay-text">${escHtml(card.content)}</p>
+          </div>
+        </div>
+        <div class="hp-bottom-area" style="margin-top:14px;">
+          <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
+          ${bottomHtml}
+        </div>`;
 
       const input = document.getElementById('hpGuessInput');
       if (input) {
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') guessHoldPray(); });
+        const capturedIdx = idx;
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') guessHoldPray(capturedIdx); });
       }
 
-      const overlayEl  = el.querySelector('.hp-overlay');
-      const overlayTxt = el.querySelector('.hp-overlay-text');
+      const overlayEl  = slot.querySelector('.hp-overlay');
+      const overlayTxt = slot.querySelector('.hp-overlay-text');
       if (overlayTxt && overlayEl) fitHpText(overlayTxt, overlayEl);
     }
 
-    async function guessHoldPray() {
-      if (_hpGuessCorrect) return;
+    function hpGoTo(idx) {
+      const total = _hpCards.length;
+      if (idx < 0 || idx >= total) return;
+      _hpCurrentIdx = idx;
+      const counter = document.getElementById('hpSlideCounter');
+      if (counter) counter.textContent = `${idx + 1} / ${total}`;
+      const dots = document.querySelectorAll('#hpDots .hp-dot');
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      const prevBtn = document.getElementById('hpNavPrev');
+      const nextBtn = document.getElementById('hpNavNext');
+      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (nextBtn) nextBtn.disabled = idx === total - 1;
+      renderHpCard(idx);
+    }
+
+    async function guessHoldPray(cardIdx) {
+      if (_hpCorrectMap[cardIdx]) return;
       const input  = document.getElementById('hpGuessInput');
       const btn    = document.getElementById('hpGuessBtn');
       const result = document.getElementById('hpResult');
       const guess  = (input?.value || '').trim();
-      if (!guess || !_hpData) return;
+      if (!guess || !_hpCards.length) return;
 
       btn.disabled = true;
-      result.className = 'hp-result';
-      result.style.display = 'none';
+      if (result) result.style.display = 'none';
 
       try {
-        const res  = await fetch(API_BASE, {
+        const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'submitHoldPrayGuess', weekKey: _hpData.weekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '' })
+          body: JSON.stringify({ action: 'submitHoldPrayGuess', weekKey: _hpWeekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '', cardIndex: cardIdx })
         });
         const data = await res.json();
         if (data.correct) {
-          _hpGuessCorrect = true;
-          _hpCorrectName  = guess;
-          localStorage.setItem('beyondus_hp_correct_' + _hpData.weekKey, guess);
-          const wrap = document.getElementById('hpInlineGuess');
-          if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(guess)}</span>`;
-          if (result) { result.textContent = '🎉 정답이에요! 함께 기도해줘서 감사해요!'; result.className = 'hp-result-inline correct'; result.style.display = ''; }
+          _hpCorrectMap[cardIdx] = guess;
+          localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + cardIdx, guess);
+          renderHpCard(cardIdx);
+          if (data.ticketAwarded) {
+            const slot = document.getElementById('hpCardSlot');
+            if (slot) {
+              const toast = document.createElement('p');
+              toast.className = 'hp-ticket-notice';
+              toast.textContent = '🎫 뽑기권 1장 획득!';
+              slot.querySelector('.hp-bottom-area')?.appendChild(toast);
+            }
+          }
         } else {
           if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
           btn.disabled = false;
-          input.value = '';
-          input.focus();
+          if (input) { input.value = ''; input.focus(); }
         }
       } catch(e) {
-        result.className = 'hp-result wrong';
-        result.textContent = '오류가 발생했어요. 다시 시도해주세요.';
-        result.style.display = 'block';
-        btn.disabled = false;
+        if (result) { result.textContent = '오류가 발생했어요. 다시 시도해주세요.'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function hpHintInquiry(cardIdx) {
+      const nick = localStorage.getItem('beyondus_nickname') || '';
+      const parish = localStorage.getItem('beyondus_parish') || '';
+      const body = `[H&P 힌트 요청] 주차: ${_hpWeekKey}, 카드: ${cardIdx + 1}번`;
+      try {
+        await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'postInquiry', nickname: nick, parish, content: body })
+        });
+        alert('힌트 요청이 접수됐어요!\n개발자가 확인 후 도움을 드릴게요 🙏');
+      } catch(e) {
+        alert('요청 전송 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
       }
     }
 
