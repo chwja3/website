@@ -1243,10 +1243,9 @@
       background: var(--line); color: var(--sub);
       font-size: 11px; font-weight: 800; border: none; cursor: pointer;
       flex-shrink: 0; line-height: 1; padding: 0;
-      vertical-align: middle; margin-left: 6px;
     }
     .help-btn:active { background: var(--primary-soft); }
-    .help-wrap { position: relative; display: inline-block; }
+    .help-wrap { position: relative; display: inline-flex; align-items: center; align-self: center; flex-shrink: 0; }
     .help-tooltip {
       display: none; position: absolute; z-index: 200;
       top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
@@ -2549,7 +2548,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505c';
+    const APP_VERSION = '20260505d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
