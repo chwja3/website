@@ -4309,12 +4309,12 @@
       return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
     }
 
-    /* URL → 하이퍼링크 변환 (escHtml 적용 후 호출) */
-    function linkify(s) {
-      // escHtml 후에 호출되므로 실제 <> 는 없음. & 에서 멈추면 &amp; &lt; 등 엔티티 앞에서 정지
-      return s.replace(/(https?:\/\/[^\s&"]+)/g,
-        url => `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;word-break:break-all;">${url}</a>`);
-    }
+    // /* URL → 하이퍼링크 변환 (escHtml 적용 후 호출) */
+    // function linkify(s) {
+    //   // escHtml 후에 호출되므로 실제 <> 는 없음. & 에서 멈추면 &amp; &lt; 등 엔티티 앞에서 정지
+    //   return s.replace(/(https?:\/\/[^\s&"]+)/g,
+    //     url => `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);text-decoration:underline;word-break:break-all;">${url}</a>`);
+    // }
 
     /* 이미지 라이트박스 */
     function openLightbox(src) {
