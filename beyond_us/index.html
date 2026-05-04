@@ -2144,7 +2144,7 @@
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card" id="drawSection">
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!</span></span></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!<br><br>6/17(화)부터 1층 로비 허브존에서 실물 카드를 수령할 수 있어요.</span></span></span></h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -2198,7 +2198,7 @@
           <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
-            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 여기서 모아볼 수 있어요.<br><br>총 10종(온라인 9종 + 히든 1종)이 있고 현장 카드는 수련회 당일 지급돼요.<br><br>교환현황 탭에서 카드 교환 내역도 확인할 수 있어요.</span></span>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 여기서 모아볼 수 있어요.<br><br>총 10종(온라인 9종 + 히든 1종)이 있고 현장 카드는 수련회 당일 지급돼요.<br><br>6/17(화)부터 1층 로비 허브존에서 실물 카드를 수령할 수 있어요.<br><br>교환현황 탭에서 카드 교환 내역도 확인할 수 있어요.</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2576,7 +2576,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505s';
+    const APP_VERSION = '20260505t';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
