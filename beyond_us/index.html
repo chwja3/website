@@ -2330,11 +2330,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-<<<<<<< HEAD
-    const APP_VERSION = '20260504f';
-=======
     const APP_VERSION = '20260504p';
->>>>>>> dev
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
