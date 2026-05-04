@@ -998,11 +998,13 @@
 
     async function deleteNotice(rowIndex) {
       if (!confirm('이 공지사항을 삭제할까요?')) return;
+      const el = document.getElementById('noticeItem_' + rowIndex);
+      if (el) el.remove();
+      cachedAdminNotices = cachedAdminNotices.filter(n => n.rowIndex !== rowIndex);
       try {
         const res = await post({ action: 'deleteNotice', adminPw, rowIndex });
-        if (res.ok) loadAdminNotices();
-        else alert('삭제 실패: ' + (res.error || ''));
-      } catch(e) { alert('연결 오류'); }
+        if (!res.ok) { alert('삭제 실패: ' + (res.error || '')); loadAdminNotices(); }
+      } catch(e) { alert('연결 오류'); loadAdminNotices(); }
     }
 
     // Drive 공유 URL → img 태그 직링크 변환
