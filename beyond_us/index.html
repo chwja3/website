@@ -2568,7 +2568,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505q';
+    const APP_VERSION = '20260505r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5399,7 +5399,7 @@
             <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
           </div>
           <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
-          <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에서 못 찾겠어요?</button>`;
+          <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`;
       }
 
       slot.innerHTML = `
