@@ -2287,7 +2287,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504j';
+    const APP_VERSION = '20260504k';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3865,6 +3865,8 @@
                 });
                 // 10초 후 자동 공개 (사용자가 탭 안 해도)
                 spinAutoRevealTimer = setTimeout(function() {
+                  if (drawState !== 'card_back_wait') return;
+                  revealClickEnabled = true; // 강제 활성화 후 클릭
                   document.getElementById('cardTrigger').click();
                 }, 10000);
                 enableRevealClick();
