@@ -1236,6 +1236,60 @@
     }
     .notice-dot.visible { display: block; }
 
+    /* 도움말 툴팁 */
+    .help-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--line); color: var(--sub);
+      font-size: 11px; font-weight: 800; border: none; cursor: pointer;
+      flex-shrink: 0; line-height: 1; padding: 0;
+    }
+    .help-btn:active { background: var(--primary-soft); }
+    .help-wrap { position: relative; display: inline-flex; align-items: center; align-self: center; flex-shrink: 0; }
+    .help-tooltip {
+      display: none; position: absolute; z-index: 200;
+      top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+      background: #2c2c2e; color: #fff;
+      font-size: 12.5px; font-weight: 400; line-height: 1.65;
+      padding: 10px 13px; border-radius: 10px;
+      width: 250px; white-space: normal;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+      pointer-events: none;
+    }
+    .help-tooltip::before {
+      content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+      border: 6px solid transparent; border-bottom-color: #2c2c2e;
+    }
+    .help-tooltip.tip-right { left: auto; right: 0; transform: none; }
+    .help-tooltip.tip-right::before { left: auto; right: 3px; transform: none; }
+    .help-tooltip.show { display: block; }
+
+    /* QnA FAQ 아코디언 */
+    .faq-item { border-bottom: 1px solid var(--line); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      width: 100%; background: none; border: none; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; text-align: left;
+      font-size: 14px; font-weight: 700; color: var(--text); gap: 8px;
+    }
+    .faq-q-icon {
+      font-size: 11px; color: var(--sub); flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+    .faq-item.open .faq-q-icon { transform: rotate(180deg); }
+    .faq-a {
+      display: none; font-size: 13.5px; color: var(--sub);
+      line-height: 1.7; padding-bottom: 14px; white-space: pre-line;
+    }
+    .faq-item.open .faq-a { display: block; }
+    .faq-category {
+      font-size: 11px; font-weight: 700; color: var(--primary);
+      letter-spacing: 0.08em; text-transform: uppercase;
+      margin: 20px 0 8px;
+    }
+    .faq-category:first-child { margin-top: 4px; }
+
     /* ════════════════════════════
        앱 콘텐츠 / 섹션
     ════════════════════════════ */
@@ -1354,7 +1408,7 @@
       #sectionPrayer .hp-card { max-height: calc(100vh - 180px); width: auto; margin: 0 auto; display: flex; justify-content: center; }
       #sectionPrayer .hp-card-img { height: calc(100vh - 180px); width: auto; max-width: 100%; border-radius: 16px; }
     }
-    .hp-header-area { text-align: center; padding: 20px 0 4px; }
+    .hp-header-area { text-align: center; padding: 20px 0 4px; position: relative; z-index: 10; }
     .hp-header-title { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; margin-bottom: 10px; }
     .hp-header-sub { font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
     .hp-bottom-area { margin-top: 20px; }
@@ -1469,6 +1523,39 @@
     .hp-week-badge {
       font-size: 11px; background: rgba(var(--accent-rgb,255,183,110),0.18);
       color: var(--accent); border-radius: 8px; padding: 2px 8px; font-weight: 600;
+    }
+    .hp-carousel-wrap { position: relative; cursor: grab; }
+    .hp-carousel-wrap:active { cursor: grabbing; }
+    .hp-slide-counter { text-align: center; font-size: 11px; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.03em; }
+    .hp-card-frame { position: relative; }
+    .hp-nav-btn {
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
+      background: rgba(0,0,0,0.28); backdrop-filter: blur(2px);
+      border: none; color: #fff;
+      font-size: 26px; width: 34px; height: 52px; border-radius: 8px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
+    }
+    #hpNavPrev { left: 6px; }
+    #hpNavNext { right: 6px; }
+    .hp-nav-btn:disabled { opacity: 0.15; cursor: default; }
+    .hp-dots { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 10px; }
+    .hp-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border); cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .hp-dot.active { background: var(--accent); transform: scale(1.35); }
+    .hp-hint-btn {
+      display: block; margin: 8px auto 0; font-size: 11px;
+      color: var(--sub); background: none; border: none; cursor: pointer;
+      text-decoration: underline; text-underline-offset: 2px; opacity: 0.65; padding: 4px 8px;
+    }
+    .hp-hint-btn:hover { opacity: 1; }
+    .hp-ticket-notice {
+      text-align: center; font-size: 12px; color: var(--accent); font-weight: 600;
+      background: rgba(var(--accent-rgb,255,183,110),0.15);
+      border: 1px solid rgba(var(--accent-rgb,255,183,110),0.3);
+      border-radius: 10px; padding: 8px 14px; margin-top: 10px;
     }
 
     /* ── Coming Soon ── */
@@ -1834,8 +1921,7 @@
       <!-- 비밀번호 재설정 -->
       <div id="resetPane" class="hidden">
         <h2 class="modal-title">비밀번호 재설정</h2>
-        <p class="modal-desc">가입할 때 입력한 정보로 본인을 확인해요.</p>
-        <input type="text" id="resetNickname" class="modal-input" placeholder="닉네임" autocomplete="username" />
+        <p class="modal-desc">가입할 때 입력한 이름과 교구로 확인해요.</p>
         <input type="text" id="resetName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
         <select id="resetParish" class="modal-input">
           <option value="">소속 선택</option>
@@ -1847,6 +1933,10 @@
           <option value="장년">장년</option>
         </select>
         <input type="password" id="resetPassword" class="modal-input" placeholder="새 비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
+        <div id="resetDuplicates" style="display:none; margin-bottom:8px;">
+          <p style="font-size:13px; color:var(--sub); margin:0 0 8px;">같은 이름의 계정이 여러 개예요. 내 닉네임을 선택해주세요.</p>
+          <div id="resetDuplicateList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
         <div class="auth-status" id="resetStatus"></div>
         <button class="btn btn-primary modal-btn" id="resetBtn">비밀번호 변경</button>
         <p class="auth-switch"><button class="auth-link" onclick="switchAuthPane('login')">← 로그인으로 돌아가기</button></p>
@@ -1991,6 +2081,7 @@
         <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
         <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
+        <li class="drawer-item" data-section="faq"><span class="drawer-label">QnA</span></li>
         <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
       </ul>
       <div class="drawer-logout">
@@ -2024,7 +2115,7 @@
 
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
-            <h2 class="card-title">오늘 실천한 항목을 체크해주세요</h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>주간 목표 점수를 달성하면 앤 카드 뽑기권이 생겨요.</span></span></h2>
             <div id="scoreProgressWrap" style="display:none; margin-bottom:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:13px; font-weight:700; color:var(--text);">이번 주 누적 점수</span>
@@ -2053,7 +2144,7 @@
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card" id="drawSection">
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종) <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!</span></span></span></h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -2104,9 +2195,10 @@
       <!-- ② 컬렉션 -->
       <div id="sectionCollection" class="section hidden">
         <div class="wrap">
-          <div class="coll-tabs">
+          <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 여기서 모아볼 수 있어요.<br><br>총 10종(온라인 9종 + 히든 1종)이 있고 현장 카드는 수련회 당일 지급돼요.<br><br>교환현황 탭에서 카드 교환 내역도 확인할 수 있어요.</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2181,13 +2273,159 @@
       <div id="sectionPrayer" class="section hidden">
         <div class="wrap">
           <div class="hp-header-area">
-            <p class="hp-header-title">🕊️ Hold &amp; Pray 🕊️</p>
-            <p class="hp-header-sub">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
+            <div style="position:relative;display:inline-block;width:100%;">
+              <p class="hp-header-title" style="margin-bottom:10px;">🕊️ Hold &amp; Pray 🕊️</p>
+              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>내가 중보하는 이 사람이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서<br>이름을 확인할 수 있어요.<br><br>3주차·6주차에는 3명 중 1명이라도 맞히면<br>앤 카드 뽑기권 1장을 드려요!</span></span>
+            </div>
+            <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
           </div>
           <div id="hpContent">
             <div class="hp-loading">불러오는 중...</div>
           </div>
           <p class="footer-note">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"<br>— 요한복음 13:34–35</p>
+        </div>
+      </div>
+
+      <!-- QnA -->
+      <div id="sectionFaq" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">❓ QnA</h2>
+            <p class="card-sub" style="margin-bottom:12px;">자주 묻는 질문을 모아뒀어요.</p>
+            <input type="search" id="faqSearch" placeholder="🔍 검색" style="width:100%; padding:10px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--primary-soft); color:var(--text); outline:none; margin-bottom:4px; box-sizing:border-box;" oninput="filterFaq(this.value)" />
+            <div id="faqEmpty" style="display:none; font-size:14px; color:var(--sub); text-align:center; padding:20px 0;">검색 결과가 없어요.</div>
+
+            <div class="faq-category">앱 기본 사용법</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>앱은 어떻게 설치하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">Safari(iOS) 또는 Chrome(Android)으로 앱에 접속한 뒤, 공유 버튼 → "홈 화면에 추가"를 눌러주세요. 앱처럼 바탕화면에 아이콘이 생겨요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>닉네임을 잊어버렸어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">로그인 화면에서 "닉네임 찾기"를 눌러 가입 시 등록한 이름과 교구를 입력하면 닉네임을 확인할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>비밀번호를 잊어버렸어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">로그인 화면에서 "비밀번호 재설정"을 눌러주세요. 이름과 교구를 입력하면 비밀번호를 새로 설정할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>여러 기기에서 써도 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">네, 같은 닉네임/비밀번호로 어느 기기에서든 로그인할 수 있어요. 미션 제출 내역은 서버에 저장되니 기기가 바뀌어도 이어서 사용할 수 있어요.</div>
+            </div>
+
+            <div class="faq-category">사전미션</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>미션은 언제까지 제출해야 하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">그날 실천한 항목은 당일 자정(서울 기준) 전까지 제출해야 해요. 자정이 지나면 해당 날짜 항목은 더 이상 제출할 수 없으니 당일에 꼭 체크해주세요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>하루에 여러 번 나눠서 제출할 수 있나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">네! 아침에 일부 항목을 제출하고, 저녁에 추가로 실천한 항목을 다시 제출할 수 있어요. 단, 이미 제출한 항목은 중복 제출이 안 돼요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>미션 항목은 언제 바뀌나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">미션은 주차별로 바뀌며, 매주 월요일 자정(서울 기준)에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해서 그 다음 월요일(5/12)에 초기화돼요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>오늘 실수로 잘못 체크했어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">한 번 제출된 항목은 수정이 어려워요. 실수가 있다면 개발자 문의 탭을 통해 알려주세요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>EN카드 뽑기권은 어떻게 얻나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">이번 주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요. 이번 주에 뽑지 않아도 다음 주로 자동 이월돼요.</div>
+            </div>
+
+            <div class="faq-category">EN카드 &amp; 컬렉션</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>카드 종류가 어떻게 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">온라인 뽑기 카드 9종(성령의 열매), 수련회 현장 지급 카드, 히든 카드 1종이 있어요. 총 10종 이상을 모을 수 있어요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>같은 카드가 또 나왔어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">중복 카드가 나올 수도 있어요. 중복 보유 장수는 컬렉션에서 확인할 수 있고, 카드 교환 기능을 통해 다른 분과 교환할 수 있어요.</div>
+            </div>
+
+            <div class="faq-category">Hold &amp; Pray</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>Hold &amp; Pray가 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">매주 공동체 안의 한 분의 기도제목이 카드로 주어져요. 그 분의 이름을 맞추고 한 주간 중보기도하는 미션이에요. "Hold"는 손에 들고 기도한다는 의미예요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>이름 정답을 맞추면 어떻게 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">정답을 맞추면 해당 분의 이름이 카드에 고정돼요. 앞으로도 그분의 이름을 기억하며 기도해주세요!</div>
+            </div>
+
+            <div class="faq-category">B.B.B. (현장미션)</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>B.B.B.가 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">Buddy Beyond Buddy의 약자예요. 수련회 현장에서 진행되는 미션으로, 배정된 케어버디를 몰래 챙겨주는 게임이에요. 누가 나의 버디인지는 맞춰봐야 알 수 있어요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>케어버디 이름이 아직 안 보여요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">B.B.B. 배정은 수련회 당일 공개될 예정이에요. 조금만 기다려주세요!</div>
+            </div>
+
+          </section>
         </div>
       </div>
 
@@ -2208,7 +2446,7 @@
       <!-- ⑥ 단톡방 -->
       <div id="sectionChat" class="section hidden">
         <div class="chat-wrap">
-          <div class="chat-header">💬 단톡방</div>
+          <div class="chat-header" style="display:flex;align-items:center;justify-content:center;gap:6px;position:relative;">💬 단톡방<span class="help-wrap" style="position:absolute;right:12px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="background:rgba(255,255,255,0.2);color:#fff;">?</button><span class="help-tooltip tip-right">로그인하면 청년교구 공동체와 실시간으로 대화할 수 있어요.<br><br>내 메시지는 오른쪽, 다른 분의 메시지는 왼쪽에 표시돼요. 교구 뱃지도 함께 보여요.</span></span></div>
           <div class="chat-messages" id="chatMessages">
             <div class="chat-notice" id="chatNotice">
               <span>불러오는 중...</span>
@@ -2229,7 +2467,7 @@
 
             <!-- 헤더 -->
             <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
-            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;">B.B.B. <span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span></h2>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;">B.B.B. <span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">수련회 현장에서 진행되는 미션이에요.<br><br>배정된 케어버디를 몰래 챙겨주고, 반대로 누가 나를 챙겨주고 있는지 맞춰보는 게임이에요! 수련회 당일 공개될 예정이에요.</span></span></h2>
 
             <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:20px 0 12px;">불러오는 중...</div>
 
@@ -2330,7 +2568,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260504p';
+    const APP_VERSION = '20260505r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2622,9 +2860,9 @@
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
         const d = await res.json();
-        if (d.ok && d.content) {
-          el.textContent = d.content;
-          if (_hpData === null) _hpData = d;
+        const previewContent = d.ok && d.cards && d.cards[0] && d.cards[0].content;
+        if (previewContent) {
+          el.textContent = previewContent;
           if (loading) loading.style.display = 'none';
           if (overlay) overlay.style.display = '';
           fitHpText(el, overlay);
@@ -2667,6 +2905,7 @@
         el.textContent = '';
         el.className = 'auth-status';
       });
+      document.getElementById('resetDuplicates').style.display = 'none';
     }
 
     function saveAuth(nickname, password, parish) {
@@ -2829,20 +3068,15 @@
     });
 
     /* 비밀번호 재설정 */
-    document.getElementById('resetBtn').addEventListener('click', async () => {
-      const nickname    = document.getElementById('resetNickname').value.trim();
+    async function doResetPassword(nickname) {
       const name        = document.getElementById('resetName').value.trim();
       const parish      = document.getElementById('resetParish').value;
       const newPassword = document.getElementById('resetPassword').value;
       const statusEl    = document.getElementById('resetStatus');
+      const btn         = document.getElementById('resetBtn');
 
-      if (!nickname || !name || !parish || !newPassword) {
-        statusEl.textContent = '모든 항목을 입력해주세요.'; return;
-      }
-      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
-
-      const btn = document.getElementById('resetBtn');
       btn.disabled = true;
+      statusEl.className = 'auth-status';
       statusEl.textContent = '확인 중...';
 
       try {
@@ -2855,7 +3089,16 @@
         if (data.ok) {
           statusEl.className = 'auth-status success';
           statusEl.textContent = '비밀번호가 변경됐어요! 로그인해주세요.';
+          document.getElementById('resetDuplicates').style.display = 'none';
           setTimeout(() => switchAuthPane('login'), 1500);
+        } else if (data.duplicates) {
+          const dupWrap = document.getElementById('resetDuplicates');
+          const dupList = document.getElementById('resetDuplicateList');
+          dupList.innerHTML = data.duplicates.map(n =>
+            `<button class="btn btn-secondary" style="flex:none;font-size:13px;padding:6px 14px;" onclick="doResetPassword('${escHtml(n)}')">${escHtml(n)}</button>`
+          ).join('');
+          dupWrap.style.display = 'block';
+          statusEl.textContent = '';
         } else if (data.error === 'not_found') {
           statusEl.textContent = '입력한 정보와 일치하는 계정이 없어요.';
         } else {
@@ -2866,6 +3109,23 @@
       } finally {
         btn.disabled = false;
       }
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      const name        = document.getElementById('resetName').value.trim();
+      const parish      = document.getElementById('resetParish').value;
+      const newPassword = document.getElementById('resetPassword').value;
+      const statusEl    = document.getElementById('resetStatus');
+
+      document.getElementById('resetDuplicates').style.display = 'none';
+      statusEl.className = 'auth-status';
+
+      if (!name || !parish || !newPassword) {
+        statusEl.textContent = '모든 항목을 입력해주세요.'; return;
+      }
+      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+
+      doResetPassword('');
     });
 
     /* 닉네임 찾기 */
@@ -4443,6 +4703,7 @@
       secret:     'sectionSecret',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
+      faq:        'sectionFaq',
     };
     let _currentSection = 'mission';
     function switchSection(name) {
@@ -4467,6 +4728,54 @@
     document.querySelectorAll('.drawer-item').forEach(el => {
       el.addEventListener('click', () => switchSection(el.dataset.section));
     });
+
+    /* ════ 도움말 툴팁 ════ */
+    function toggleHelpTip(btn) {
+      const tip = btn.nextElementSibling;
+      const isOpen = tip.classList.contains('show');
+      document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
+      if (!isOpen) tip.classList.add('show');
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.help-wrap')) {
+        document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
+      }
+    });
+
+    /* ════ QnA FAQ ════ */
+    function toggleFaq(btn) {
+      const item = btn.closest('.faq-item');
+      const isOpen = item.classList.contains('open');
+      document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
+      if (!isOpen) item.classList.add('open');
+    }
+
+    function filterFaq(query) {
+      const q = query.trim().toLowerCase();
+      const items = document.querySelectorAll('#sectionFaq .faq-item');
+      const categories = document.querySelectorAll('#sectionFaq .faq-category');
+      let anyVisible = false;
+
+      items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        const visible = !q || text.includes(q);
+        item.style.display = visible ? '' : 'none';
+        if (visible) anyVisible = true;
+      });
+
+      // 카테고리 헤더: 바로 다음에 보이는 faq-item이 없으면 숨김
+      categories.forEach(cat => {
+        let next = cat.nextElementSibling;
+        let hasVisible = false;
+        while (next && !next.classList.contains('faq-category')) {
+          if (next.classList.contains('faq-item') && next.style.display !== 'none') hasVisible = true;
+          next = next.nextElementSibling;
+        }
+        cat.style.display = hasVisible ? '' : 'none';
+      });
+
+      document.getElementById('faqEmpty').style.display = anyVisible ? 'none' : 'block';
+    }
 
     /* ════ 공지사항 ════ */
     let cachedNotices = [];
@@ -4948,9 +5257,10 @@
     }
 
     /* ════ Hold & Pray ════ */
-    let _hpData = null;
-    let _hpGuessCorrect = false;
-    let _hpCorrectName = '';
+    let _hpCards = [];
+    let _hpCurrentIdx = 0;
+    let _hpWeekKey = '';
+    let _hpCorrectMap = {}; // {cardIndex: name} — per week, loaded from localStorage
 
     function fitHpText(textEl, boxEl, opts = {}) {
       if (!textEl || !boxEl) return;
@@ -4979,11 +5289,10 @@
     async function loadHoldPray() {
       const wk = getWeekKey();
       const el = document.getElementById('hpContent');
-      const badge = document.getElementById('hpWeekBadge');
       if (!el) return;
 
-      if (_hpData && _hpData.weekKey === wk) {
-        renderHoldPrayCard(_hpData);
+      if (_hpWeekKey === wk && _hpCards.length === 3) {
+        renderHoldPray();
         return;
       }
 
@@ -5004,100 +5313,184 @@
         ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
-        _hpData = data;
-        const _savedName = localStorage.getItem('beyondus_hp_correct_' + data.weekKey);
-        if (_savedName) { _hpGuessCorrect = true; _hpCorrectName = _savedName; }
-        else { _hpGuessCorrect = false; _hpCorrectName = ''; }
-        renderHoldPrayCard(data);
+        _hpCards = data.cards || [];
+        _hpWeekKey = data.weekKey || wk;
+        _hpCurrentIdx = 0;
+        _hpCorrectMap = {};
+        _hpCards.forEach((_, i) => {
+          const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+          if (saved) _hpCorrectMap[i] = saved;
+        });
+        renderHoldPray();
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
       }
     }
 
-    function renderHoldPrayCard(data) {
+    function renderHoldPray() {
       const el = document.getElementById('hpContent');
-      if (!el) return;
-
-      const parishHtml = ''; // 손바닥 위 교구 뱃지 미표시
-
-      const nameLineHtml = data.anon ? '' : `
-        <div class="hp-divider"></div>
-        <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
-        <div class="hp-inline-guess" id="hpInlineGuess">
-          <span class="hp-inline-label">이름</span>
-          <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="본명 입력" />
-          <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray()">확인</button>
-        </div>
-        <p class="hp-result" id="hpResult"></p>`;
+      if (!el || !_hpCards.length) return;
+      const total = _hpCards.length;
 
       el.innerHTML = `
-        <div class="hp-card" style="margin-top:12px;">
-          <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
-          <div class="hp-overlay">
-            ${parishHtml}
-            <p class="hp-overlay-text">${escHtml(data.content)}</p>
+        <div class="hp-carousel-wrap" id="hpCarouselWrap">
+          <div class="hp-slide-counter" id="hpSlideCounter">${_hpCurrentIdx + 1} / ${total}</div>
+          <div id="hpCardSlot"></div>
+          <div class="hp-dots" id="hpDots">
+            ${_hpCards.map((_, i) => `<span class="hp-dot${i === _hpCurrentIdx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}
           </div>
         </div>
-
-        <div class="hp-bottom-area">
-          <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
-          ${nameLineHtml}
-        </div>
-
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
-      if (_hpGuessCorrect && !data.anon) {
-        const wrap = document.getElementById('hpInlineGuess');
-        if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(_hpCorrectName)}</span>`;
+      renderHpCard(_hpCurrentIdx);
+
+      const wrap = document.getElementById('hpCarouselWrap');
+      if (wrap) {
+        let touchStartX = 0;
+        wrap.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        wrap.addEventListener('touchend', e => {
+          const dx = e.changedTouches[0].clientX - touchStartX;
+          if (Math.abs(dx) > 40) dx < 0 ? hpGoTo(_hpCurrentIdx + 1) : hpGoTo(_hpCurrentIdx - 1);
+        });
+        let mouseStartX = 0, mouseDragging = false;
+        wrap.addEventListener('mousedown', e => { mouseDragging = true; mouseStartX = e.clientX; });
+        wrap.addEventListener('mousemove', e => { if (mouseDragging) e.preventDefault(); }, { passive: false });
+        wrap.addEventListener('mouseup', e => {
+          if (!mouseDragging) return;
+          mouseDragging = false;
+          const dx = e.clientX - mouseStartX;
+          if (Math.abs(dx) > 40) dx < 0 ? hpGoTo(_hpCurrentIdx + 1) : hpGoTo(_hpCurrentIdx - 1);
+        });
+        wrap.addEventListener('mouseleave', () => { mouseDragging = false; });
       }
+    }
+
+    function renderHpCard(idx) {
+      const slot = document.getElementById('hpCardSlot');
+      if (!slot || !_hpCards[idx]) return;
+      const card = _hpCards[idx];
+      const correctName = _hpCorrectMap[idx];
+
+      let bottomHtml;
+      if (card.anon) {
+        bottomHtml = `<p class="hp-anon-label">익명으로 제출된 기도제목이에요 🙏</p>`;
+      } else if (correctName) {
+        bottomHtml = `
+          <div class="hp-divider"></div>
+          <div class="hp-inline-guess">
+            <span class="hp-inline-label">이름 :</span>
+            <span class="hp-inline-name">${escHtml(correctName)}</span>
+          </div>`;
+      } else {
+        bottomHtml = `
+          <div class="hp-divider"></div>
+          <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
+          <div class="hp-inline-guess" id="hpInlineGuess">
+            <span class="hp-inline-label">이름</span>
+            <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="본명 입력" />
+            <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
+          </div>
+          <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
+          <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`;
+      }
+
+      slot.innerHTML = `
+        <div class="hp-card-frame">
+          <button class="hp-nav-btn" id="hpNavPrev" onclick="hpGoTo(${idx - 1})" ${idx === 0 ? 'disabled' : ''}>&#8249;</button>
+          <div class="hp-card" style="margin-top:8px;">
+            <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+            <div class="hp-overlay">
+              <p class="hp-overlay-text">${escHtml(card.content)}</p>
+            </div>
+          </div>
+          <button class="hp-nav-btn" id="hpNavNext" onclick="hpGoTo(${idx + 1})" ${idx === _hpCards.length - 1 ? 'disabled' : ''}>&#8250;</button>
+        </div>
+        <div class="hp-bottom-area" style="margin-top:14px;">
+          <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
+          ${bottomHtml}
+        </div>`;
 
       const input = document.getElementById('hpGuessInput');
       if (input) {
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') guessHoldPray(); });
+        const capturedIdx = idx;
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') guessHoldPray(capturedIdx); });
       }
 
-      const overlayEl  = el.querySelector('.hp-overlay');
-      const overlayTxt = el.querySelector('.hp-overlay-text');
+      const overlayEl  = slot.querySelector('.hp-overlay');
+      const overlayTxt = slot.querySelector('.hp-overlay-text');
       if (overlayTxt && overlayEl) fitHpText(overlayTxt, overlayEl);
     }
 
-    async function guessHoldPray() {
-      if (_hpGuessCorrect) return;
+    function hpGoTo(idx) {
+      const total = _hpCards.length;
+      if (idx < 0 || idx >= total) return;
+      _hpCurrentIdx = idx;
+      const counter = document.getElementById('hpSlideCounter');
+      if (counter) counter.textContent = `${idx + 1} / ${total}`;
+      const dots = document.querySelectorAll('#hpDots .hp-dot');
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+      const prevBtn = document.getElementById('hpNavPrev');
+      const nextBtn = document.getElementById('hpNavNext');
+      if (prevBtn) prevBtn.disabled = idx === 0;
+      if (nextBtn) nextBtn.disabled = idx === total - 1;
+      renderHpCard(idx);
+    }
+
+    async function guessHoldPray(cardIdx) {
+      if (_hpCorrectMap[cardIdx]) return;
       const input  = document.getElementById('hpGuessInput');
       const btn    = document.getElementById('hpGuessBtn');
       const result = document.getElementById('hpResult');
       const guess  = (input?.value || '').trim();
-      if (!guess || !_hpData) return;
+      if (!guess || !_hpCards.length) return;
 
       btn.disabled = true;
-      result.className = 'hp-result';
-      result.style.display = 'none';
+      if (result) result.style.display = 'none';
 
       try {
-        const res  = await fetch(API_BASE, {
+        const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'submitHoldPrayGuess', weekKey: _hpData.weekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '' })
+          body: JSON.stringify({ action: 'submitHoldPrayGuess', weekKey: _hpWeekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '', cardIndex: cardIdx })
         });
         const data = await res.json();
         if (data.correct) {
-          _hpGuessCorrect = true;
-          _hpCorrectName  = guess;
-          localStorage.setItem('beyondus_hp_correct_' + _hpData.weekKey, guess);
-          const wrap = document.getElementById('hpInlineGuess');
-          if (wrap) wrap.innerHTML = `<span class="hp-inline-label">이름 :</span><span class="hp-inline-name">${escHtml(guess)}</span>`;
-          if (result) { result.textContent = '🎉 정답이에요! 함께 기도해줘서 감사해요!'; result.className = 'hp-result-inline correct'; result.style.display = ''; }
+          _hpCorrectMap[cardIdx] = guess;
+          localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + cardIdx, guess);
+          renderHpCard(cardIdx);
+          if (data.ticketAwarded) {
+            const slot = document.getElementById('hpCardSlot');
+            if (slot) {
+              const toast = document.createElement('p');
+              toast.className = 'hp-ticket-notice';
+              toast.textContent = '🎫 뽑기권 1장 획득!';
+              slot.querySelector('.hp-bottom-area')?.appendChild(toast);
+            }
+          }
         } else {
           if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
           btn.disabled = false;
-          input.value = '';
-          input.focus();
+          if (input) { input.value = ''; input.focus(); }
         }
       } catch(e) {
-        result.className = 'hp-result wrong';
-        result.textContent = '오류가 발생했어요. 다시 시도해주세요.';
-        result.style.display = 'block';
-        btn.disabled = false;
+        if (result) { result.textContent = '오류가 발생했어요. 다시 시도해주세요.'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function hpHintInquiry(cardIdx) {
+      const nick = localStorage.getItem('beyondus_nickname') || '';
+      const parish = localStorage.getItem('beyondus_parish') || '';
+      const body = `[H&P 힌트 요청] 주차: ${_hpWeekKey}, 카드: ${cardIdx + 1}번`;
+      try {
+        await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'postInquiry', nickname: nick, parish, content: body })
+        });
+        alert('힌트 요청이 접수됐어요!\n개발자가 확인 후 도움을 드릴게요 🙏');
+      } catch(e) {
+        alert('요청 전송 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
       }
     }
 
