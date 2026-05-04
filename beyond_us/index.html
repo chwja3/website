@@ -2275,7 +2275,7 @@
           <div class="hp-header-area">
             <div style="position:relative;display:inline-block;width:100%;">
               <p class="hp-header-title" style="margin-bottom:10px;">🕊️ Hold &amp; Pray 🕊️</p>
-              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>기도하는 사람이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서<br>이름을 확인할 수 있어요.<br><br>3주차·6주차에 이름을 1개라도 맞히면<br>앤 카드 뽑기권 1장을 드려요! (최대 2장)</span></span>
+              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>기도하는 사람이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서<br>이름을 확인할 수 있어요.<br><br>3주차·6주차에는 3명 중 1명이라도 맞히면<br>앤 카드 뽑기권 1장을 드려요!</span></span>
             </div>
             <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
           </div>
@@ -2568,7 +2568,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505o';
+    const APP_VERSION = '20260505p';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
