@@ -2482,7 +2482,7 @@
 
             <!-- 헤더 -->
             <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
-            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;">B.B.B. <span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">수련회 현장에서 진행되는 미션이에요.<br><br>배정된 케어버디를 몰래 챙겨주고, 반대로 누가 나를 챙겨주고 있는지 맞춰보는 게임이에요! 수련회 당일 공개될 예정이에요.</span></span></h2>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;">B.B.B.<span style="font-size:13px;font-weight:500;color:var(--sub);margin-left:6px;">(Buddy Beyond Buddy)</span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">수련회 현장에서 진행되는 미션이에요.<br><br>배정된 케어버디를 몰래 챙겨주고, 반대로 누가 나를 챙겨주고 있는지 맞춰보는 게임이에요! 수련회 당일 공개될 예정이에요.</span></span></h2>
 
             <div id="bbbLoading" style="color:var(--sub);font-size:14px;text-align:center;padding:20px 0 12px;">불러오는 중...</div>
 
@@ -2583,7 +2583,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505za';
+    const APP_VERSION = '20260505zb';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
