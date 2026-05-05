@@ -240,10 +240,13 @@
         </div>
 
         <div class="card">
-          <h2 class="card-title">유저별 보유 현황</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h2 class="card-title" style="margin:0;">유저별 보유 현황 · 실물 수령</h2>
+          </div>
+          <input type="search" id="cardUserSearch" placeholder="🔍 닉네임 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterCardUsers(this.value)" />
           <div class="table-wrap">
             <table>
-              <thead><tr><th>닉네임</th><th>보유 종수</th><th>총 뽑기</th></tr></thead>
+              <thead><tr><th>닉네임</th><th>뽑은 카드</th><th style="text-align:center;">수령</th></tr></thead>
               <tbody id="cardUserTableBody">
                 <tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
               </tbody>
@@ -612,6 +615,59 @@
     document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
 
     /* ── 카드 현황 ── */
+    let _cardUserStats = [];
+
+    function renderCardUserRows(stats) {
+      const tbody = document.getElementById('cardUserTableBody');
+      if (!stats.length) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">뽑기 기록이 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = stats.map(u => {
+        const cardTags = u.cards.map(c =>
+          `<span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(247,151,30,0.15);color:#b8600a;margin:2px 2px 2px 0;">${esc(c.name)}</span>`
+        ).join('');
+        const btnStyle = u.received
+          ? 'background:#22c55e;color:#fff;border:none;'
+          : 'background:var(--line);color:var(--sub);border:none;';
+        const btnLabel = u.received ? '✓ 수령' : '미수령';
+        return `<tr id="cardRow_${esc(u.nickname)}">
+          <td><strong>${esc(u.nickname)}</strong><br><span style="color:var(--sub);font-size:11px;">${u.total}회 뽑기</span></td>
+          <td>${cardTags}</td>
+          <td style="text-align:center;">
+            <button onclick="toggleCardReceived('${esc(u.nickname)}', ${!u.received})"
+              style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;${btnStyle}">
+              ${btnLabel}
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function filterCardUsers(q) {
+      const filtered = q.trim()
+        ? _cardUserStats.filter(u => u.nickname.includes(q.trim()))
+        : _cardUserStats;
+      renderCardUserRows(filtered);
+    }
+
+    async function toggleCardReceived(nickname, received) {
+      const row = document.getElementById('cardRow_' + nickname);
+      const btn = row ? row.querySelector('button') : null;
+      if (btn) { btn.disabled = true; btn.textContent = '...'; }
+      try {
+        const res = await post({ action: 'setCardReceived', adminPw, nickname, received });
+        if (res.ok) {
+          const u = _cardUserStats.find(x => x.nickname === nickname);
+          if (u) u.received = received;
+          filterCardUsers(document.getElementById('cardUserSearch').value);
+        } else {
+          alert('오류: ' + (res.error || ''));
+          if (btn) { btn.disabled = false; }
+        }
+      } catch(e) { alert('연결 오류'); if (btn) { btn.disabled = false; } }
+    }
+
     const SPIRIT_CARDS_ADMIN = [
       {id:1,name:'사랑',emoji:'❤️',g1:'#ff758c',g2:'#c0392b'},
       {id:2,name:'희락',emoji:'☀️',g1:'#f7971e',g2:'#c0850a'},
@@ -647,23 +703,8 @@
         }).join('');
 
         // 유저별 현황
-        const tbody = document.getElementById('cardUserTableBody');
-        if (!res.userStats.length) {
-          tbody.innerHTML = '<tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">뽑기 기록이 없어요.</td></tr>';
-          return;
-        }
-        tbody.innerHTML = res.userStats.map(u => `
-          <tr>
-            <td><strong>${esc(u.nickname)}</strong></td>
-            <td>
-              <span style="font-weight:800;">${u.unique}</span>
-              <span style="color:var(--sub); font-size:12px;"> / 9종</span>
-              <div style="height:4px; background:var(--line); border-radius:4px; margin-top:4px;">
-                <div style="height:100%; width:${Math.round(u.unique/9*100)}%; background:linear-gradient(90deg,#f7971e,#ff758c); border-radius:4px;"></div>
-              </div>
-            </td>
-            <td style="color:var(--sub);">${u.total}회</td>
-          </tr>`).join('');
+        _cardUserStats = res.userStats;
+        renderCardUserRows(_cardUserStats);
       } catch(e) {
         document.getElementById('cardUserTableBody').innerHTML =
           '<tr><td colspan="3" style="color:var(--danger);">서버 연결 오류</td></tr>';

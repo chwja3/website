@@ -188,6 +188,10 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(backfillRawCheckinsCols());
     }
+    if (action === 'setCardReceived') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(setCardReceived(body));
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -947,31 +951,73 @@ function editNotice(body) {
 }
 
 // ── 카드 통계 ─────────────────────────────────────
+function getOrCreateCardReceivedSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('CardReceived');
+  if (!sheet) {
+    sheet = ss.insertSheet('CardReceived');
+    sheet.appendRow(['nickname', 'receivedAt']);
+  }
+  return sheet;
+}
+
+function setCardReceived(body) {
+  const nickname = String(body.nickname || '').trim();
+  const received = body.received !== false;
+  if (!nickname) return { error: 'missing_nickname' };
+  const sheet = getOrCreateCardReceivedSheet();
+  const last = sheet.getLastRow();
+  let foundRow = -1;
+  if (last >= 2) {
+    const rows = sheet.getRange(2, 1, last - 1, 1).getValues();
+    rows.forEach(function(r, i) { if (String(r[0]) === nickname) foundRow = i + 2; });
+  }
+  if (received && foundRow === -1) {
+    sheet.appendRow([nickname, new Date().toISOString()]);
+  } else if (!received && foundRow !== -1) {
+    sheet.deleteRow(foundRow);
+  }
+  return { ok: true };
+}
+
 function getCardStats() {
   const draws = getOrCreateDrawSheet();
   const last  = draws.getLastRow();
   if (last < 2) return { ok: true, cardCounts: {}, userStats: [], totalDraws: 0 };
 
   const rows = draws.getRange(2, 1, last - 1, 5).getValues();
+
+  const receivedSheet = getOrCreateCardReceivedSheet();
+  const receivedSet = new Set();
+  const rLast = receivedSheet.getLastRow();
+  if (rLast >= 2) {
+    receivedSheet.getRange(2, 1, rLast - 1, 1).getValues().forEach(function(r) { receivedSet.add(String(r[0])); });
+  }
+
   const cardCounts = {};
-  SPIRIT_CARDS.forEach(c => { cardCounts[c.id] = 0; });
+  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
 
   const userMap = {};
-  rows.forEach(row => {
-    const userId = String(row[0]);
-    const cardId = Number(row[2]);
+  rows.forEach(function(row) {
+    const userId   = String(row[0]);
+    const cardId   = Number(row[2]);
+    const cardName = String(row[3] || '');
     if (!userId) return;
     cardCounts[cardId] = (cardCounts[cardId] || 0) + 1;
-    if (!userMap[userId]) userMap[userId] = { unique: new Set(), total: 0 };
-    userMap[userId].unique.add(cardId);
+    if (!userMap[userId]) userMap[userId] = { cards: new Map(), total: 0 };
+    if (!userMap[userId].cards.has(cardId)) userMap[userId].cards.set(cardId, cardName);
     userMap[userId].total++;
   });
 
-  const userStats = Object.entries(userMap).map(([nickname, s]) => ({
-    nickname,
-    unique: s.unique.size,
-    total:  s.total
-  })).sort((a, b) => b.unique - a.unique || b.total - a.total);
+  const userStats = Object.entries(userMap).map(function([nickname, s]) {
+    return {
+      nickname,
+      unique:    s.cards.size,
+      total:     s.total,
+      cards:     Array.from(s.cards.entries()).map(function([id, name]) { return { id: id, name: name }; }),
+      received:  receivedSet.has(nickname)
+    };
+  }).sort(function(a, b) { return b.unique - a.unique || b.total - a.total; });
 
   return { ok: true, cardCounts, userStats, totalDraws: rows.length };
 }
