@@ -2576,7 +2576,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505u';
+    const APP_VERSION = '20260505v';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4367,31 +4367,35 @@
             .to('#cardTrigger', { scale: 2.00, duration: 0.09, ease: 'power3.out' }, 0.62)
             .to('#cardTrigger', { scale: 1.82, duration: 0.38, ease: 'elastic.out(1, 0.45)' }, 0.71)
             .to('#sceneGlow', { opacity: 0.92, scale: 1.08, duration: 0.48, ease: 'power2.out' }, 0.76)
-            .to('#cardGlow',  { opacity: 0.86, scale: 1.02, duration: 0.48, ease: 'power2.out' }, 0.82)
-            // ── 십자 빔 — 카드 공개 순간 ──
-            // 수평 외곽 황금 잔광: 빠른 등장 → 서서히 사라지는 잔광
-            .fromTo('#cardBeam',
-              { opacity: 0, scaleX: 0.15, scaleY: 0.6 },
-              { opacity: 1, scaleX: 1, scaleY: 1, duration: 0.10, ease: 'power4.out' },
-              0.62
-            )
-            .to('#cardBeam', { opacity: 0.55, duration: 0.18, ease: 'power1.in' }, 0.72)
-            .to('#cardBeam', { opacity: 0, duration: 1.6,  ease: 'power2.in' }, 0.90)
-            // 수평 코어 라인: 순간 섬광 후 소멸
-            .fromTo('#cardBeamCore',
-              { opacity: 0, scaleX: 0.1 },
-              { opacity: 1, scaleX: 1, duration: 0.08, ease: 'power4.out' },
-              0.62
-            )
-            .to('#cardBeamCore', { opacity: 0, duration: 0.40, ease: 'power2.in' }, 0.70)
-            // 수직 빔: 수평보다 약하게, 같은 잔광
-            .fromTo('#cardBeamV',
-              { opacity: 0, scaleY: 0.15, scaleX: 0.6 },
-              { opacity: 0.70, scaleY: 1, scaleX: 1, duration: 0.10, ease: 'power4.out' },
-              0.62
-            )
-            .to('#cardBeamV', { opacity: 0.35, duration: 0.18, ease: 'power1.in' }, 0.72)
-            .to('#cardBeamV', { opacity: 0, duration: 1.4,  ease: 'power2.in' }, 0.90);
+            .to('#cardGlow',  { opacity: 0.86, scale: 1.02, duration: 0.48, ease: 'power2.out' }, 0.82);
+
+          // ── 십자 빔 — 신규 카드 공개 순간만 ──
+          if (drawIsNew) {
+            // 수평 외곽 황금 잔광
+            tlC
+              .fromTo('#cardBeam',
+                { opacity: 0, scaleX: 0.15, scaleY: 0.6 },
+                { opacity: 1, scaleX: 1, scaleY: 1, duration: 0.10, ease: 'power4.out' },
+                0.62
+              )
+              .to('#cardBeam', { opacity: 0.55, duration: 0.18, ease: 'power1.in' }, 0.72)
+              .to('#cardBeam', { opacity: 0, duration: 1.6,  ease: 'power2.in' }, 0.90)
+              // 수평 코어 라인: 순간 섬광
+              .fromTo('#cardBeamCore',
+                { opacity: 0, scaleX: 0.1 },
+                { opacity: 1, scaleX: 1, duration: 0.08, ease: 'power4.out' },
+                0.62
+              )
+              .to('#cardBeamCore', { opacity: 0, duration: 0.40, ease: 'power2.in' }, 0.70)
+              // 수직 빔
+              .fromTo('#cardBeamV',
+                { opacity: 0, scaleY: 0.15, scaleX: 0.6 },
+                { opacity: 0.70, scaleY: 1, scaleX: 1, duration: 0.10, ease: 'power4.out' },
+                0.62
+              )
+              .to('#cardBeamV', { opacity: 0.35, duration: 0.18, ease: 'power1.in' }, 0.72)
+              .to('#cardBeamV', { opacity: 0, duration: 1.4,  ease: 'power2.in' }, 0.90);
+          }
 
           setTimeout(function() { burstRevealSparks(drawIsNew ? 1.4 : 0.45); }, 120);
           if (drawIsNew) {
