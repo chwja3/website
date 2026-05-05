@@ -2198,7 +2198,7 @@
           <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
-            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 여기서 모아볼 수 있어요.<br><br>총 10종(온라인 9종 + 히든 1종)이 있고 현장 카드는 수련회 당일 지급돼요.<br><br>뽑은 카드는 5/17(일)부터 1층 로비 부스에서 실물 카드를 수령할 수 있어요. (TF 팀에게 뽑은 카드를 보여주세요.)<br><br>교환현황 탭에서 카드 교환 내역도 확인할 수 있어요.</span></span>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 당일 미션을 달성하면 지급돼요.<br><br>다른 유저와 카드 교환도 할 수 있어요!</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2208,6 +2208,9 @@
             </div>
             <!-- 교환 현황 패널 -->
             <div id="collPanelTrades" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+                <span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="교환 도움말">?</button><span class="help-tooltip tip-right">실물 카드를 먼저 수령한 뒤 교환하면,<br>교환 상대에게 실물 카드를 직접 전달할 수 있어요.<br><br>교환이 완료되면 상대방의 Hold &amp; Pray 기도제목이 보여요.<br>기도해주고 기도했어요! 버튼을 꼭 눌러주세요.</span></span>
+              </div>
               <div id="tradesList"><p class="card-sub">교환 내역이 없어요.</p></div>
             </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
@@ -2579,7 +2582,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505x';
+    const APP_VERSION = '20260505y';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())

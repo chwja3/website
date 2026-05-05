@@ -630,19 +630,36 @@ function getHoldPray(weekKey, nickname) {
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
   if (!weekKey || !guess) return { ok: false, error: 'missing params' };
   const n = HOLD_PRAY_ENTRIES.length;
+  const ci = Number(cardIndex) || 0;
   const usedIdx = new Set();
-  let entryIdx = 0;
-  for (let i = 0; i <= (Number(cardIndex) || 0); i++) {
+  const allEntryIdxs = [];
+
+  // getHoldPray와 동일하게 3장 전체 선택
+  for (let i = 0; i < 3; i++) {
     const seed = weekKey + (nickname || '') + String(i);
     let idx = hashStr(seed) % n;
     let attempts = 0;
     while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
     usedIdx.add(idx);
-    if (i === (Number(cardIndex) || 0)) entryIdx = idx;
+    allEntryIdxs.push(idx);
   }
+
+  let entryIdx = allEntryIdxs[ci];
+
+  // 3장 모두 익명이면 마지막 카드 교체 (getHoldPray와 동일)
+  const allAnon = allEntryIdxs.every(function(i) { return HOLD_PRAY_ENTRIES[i].a; });
+  if (allAnon && ci === 2) {
+    for (let j = 0; j < n; j++) {
+      if (!usedIdx.has(j) && !HOLD_PRAY_ENTRIES[j].a) {
+        entryIdx = j;
+        break;
+      }
+    }
+  }
+
   const entry = HOLD_PRAY_ENTRIES[entryIdx];
   if (entry.a) return { ok: false, error: 'anon entry' };
-  const correct = entry.n.replace(/\s/g, '') === guess.trim().replace(/\s/g, '');
+  const correct = entry.n.replace(/\s/g, '').toLowerCase() === guess.trim().replace(/\s/g, '').toLowerCase();
   let ticketAwarded = false;
   if (correct && (weekKey === 'w3' || weekKey === 'w6')) {
     const bonusSheet = getOrCreateBonusDrawsSheet();
@@ -963,6 +980,13 @@ function getOrCreateCardReceivedSheet() {
     sheet = ss.insertSheet('CardReceived');
     sheet.appendRow(['nickname', 'cardId', 'receivedQty', 'updatedAt']);
     sheet.setFrozenRows(1);
+  } else {
+    // 구버전 헤더(2열) → 4열로 자동 수정
+    const lastCol = sheet.getLastColumn();
+    const headerRow = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+    if (lastCol < 4 || headerRow[1] !== 'cardId') {
+      sheet.getRange(1, 1, 1, 4).setValues([['nickname', 'cardId', 'receivedQty', 'updatedAt']]);
+    }
   }
   return sheet;
 }
@@ -1102,7 +1126,7 @@ function getCardStats() {
       var received  = (userReceivedMap[nickname] && userReceivedMap[nickname][ci]) || 0;
       var outList   = (tradeOutMap[nickname]    && tradeOutMap[nickname][ci])    || [];
       var inList    = (tradeInMap[nickname]     && tradeInMap[nickname][ci])     || [];
-      if (drew === 0 && inList.length === 0 && outList.length === 0) continue;
+      if (drew === 0 && inList.length === 0) continue;
       cards.push({
         cardId:    ci,
         cardName:  CARD_NAMES[ci - 1],
