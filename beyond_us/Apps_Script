@@ -999,7 +999,8 @@ function getCardStats() {
   } catch(e) {}
 
   var cardCounts = {};
-  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
+  var receivedCounts = {};
+  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; receivedCounts[c.id] = 0; });
 
   var userMap = {};
   rows.forEach(function(row, i) {
@@ -1011,6 +1012,7 @@ function getCardStats() {
     var received = String(row[5]).toUpperCase() === 'TRUE';
     if (!userId) return;
     cardCounts[cardId] = (cardCounts[cardId] || 0) + 1;
+    if (received) receivedCounts[cardId] = (receivedCounts[cardId] || 0) + 1;
     if (!userMap[userId]) userMap[userId] = [];
     userMap[userId].push({ rowIndex: i + 2, cardId: cardId, cardName: cardName, weekKey: weekKey, drawnAt: drawnAt, received: received });
   });
@@ -1019,7 +1021,7 @@ function getCardStats() {
     return { nickname: nickname, name: nameMap[nickname] || '', draws: userMap[nickname] };
   }).sort(function(a, b) { return b.draws.length - a.draws.length; });
 
-  return { ok: true, cardCounts: cardCounts, userStats: userStats, totalDraws: rows.length };
+  return { ok: true, cardCounts: cardCounts, receivedCounts: receivedCounts, userStats: userStats, totalDraws: rows.length };
 }
 
 // ── 전체 주차 데이터 초기 세팅 (Apps Script 편집기에서 1회 실행) ──

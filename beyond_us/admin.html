@@ -742,22 +742,28 @@
         document.getElementById('cardTotalDraws').textContent = res.totalDraws;
         document.getElementById('cardTotalUsers').textContent = res.userStats ? res.userStats.length : 0;
 
-        // 카드별 현황
+        // 카드별 현황 (많이 뽑힌 순 내림차순)
         const grid = document.getElementById('cardStatsGrid');
-        const maxCnt = Math.max(1, ...SPIRIT_CARDS_ADMIN.map(c => res.cardCounts[c.id] || 0));
-        grid.innerHTML = SPIRIT_CARDS_ADMIN.map(c => {
+        const sortedCards = [...SPIRIT_CARDS_ADMIN].sort((a, b) => (res.cardCounts[b.id] || 0) - (res.cardCounts[a.id] || 0));
+        const maxCnt = Math.max(1, res.cardCounts[sortedCards[0].id] || 0);
+        grid.innerHTML = sortedCards.map(c => {
           const cnt = res.cardCounts[c.id] || 0;
+          const rcv = (res.receivedCounts && res.receivedCounts[c.id]) || 0;
           const pct = Math.round(cnt / maxCnt * 100);
+          const rcvPct = cnt > 0 ? Math.round(rcv / cnt * 100) : 0;
           return `
             <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);">
               <img src="images/${c.name}.png" style="width:36px;height:52px;object-fit:contain;border-radius:4px;flex-shrink:0;" onerror="this.style.display='none'" />
               <div style="flex:1;min-width:0;">
-                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
                   <span style="font-size:13px;font-weight:800;">${c.name}</span>
-                  <span style="font-size:15px;font-weight:900;color:var(--primary);">${cnt}<span style="font-size:11px;font-weight:500;color:var(--sub);">회</span></span>
+                  <span style="font-size:13px;font-weight:900;color:var(--primary);">${cnt}회
+                    <span style="font-size:11px;font-weight:600;color:#22c55e;margin-left:4px;">✓${rcv}</span>
+                  </span>
                 </div>
-                <div style="height:6px;background:var(--line);border-radius:4px;overflow:hidden;">
-                  <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f7971e,#ff758c);border-radius:4px;transition:width .3s;"></div>
+                <div style="height:6px;background:var(--line);border-radius:4px;overflow:hidden;position:relative;">
+                  <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f7971e,#ff758c);border-radius:4px;"></div>
+                  <div style="position:absolute;top:0;left:0;height:100%;width:${rcvPct}%;background:rgba(34,197,94,0.5);border-radius:4px;"></div>
                 </div>
               </div>
             </div>`;
