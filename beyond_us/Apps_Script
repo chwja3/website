@@ -192,6 +192,10 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setCardReceived(body));
     }
+    if (action === 'setDrawReceived') {
+      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(setDrawReceived(body));
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -962,68 +966,48 @@ function getOrCreateCardReceivedSheet() {
 }
 
 function setCardReceived(body) {
-  const nickname = String(body.nickname || '').trim();
-  const received = body.received !== false;
-  if (!nickname) return { error: 'missing_nickname' };
-  const sheet = getOrCreateCardReceivedSheet();
-  const last = sheet.getLastRow();
-  let foundRow = -1;
-  if (last >= 2) {
-    const rows = sheet.getRange(2, 1, last - 1, 1).getValues();
-    rows.forEach(function(r, i) { if (String(r[0]) === nickname) foundRow = i + 2; });
-  }
-  if (received && foundRow === -1) {
-    sheet.appendRow([nickname, new Date().toISOString()]);
-  } else if (!received && foundRow !== -1) {
-    sheet.deleteRow(foundRow);
-  }
+  // 구버전 호환용 — 신규는 setDrawReceived 사용
+  return { ok: true };
+}
+
+function setDrawReceived(body) {
+  var rowIndex = Number(body.rowIndex);
+  var received = body.received !== false;
+  if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
+  var sheet = getOrCreateDrawSheet();
+  sheet.getRange(rowIndex, 6).setValue(received ? 'TRUE' : '');
   return { ok: true };
 }
 
 function getCardStats() {
-  const draws = getOrCreateDrawSheet();
-  const last  = draws.getLastRow();
+  var sheet = getOrCreateDrawSheet();
+  var last  = sheet.getLastRow();
   if (last < 2) return { ok: true, cardCounts: {}, userStats: [], totalDraws: 0 };
 
-  const rows = draws.getRange(2, 1, last - 1, 5).getValues();
+  var rows = sheet.getRange(2, 1, last - 1, 6).getValues();
 
-  const receivedSheet = getOrCreateCardReceivedSheet();
-  const receivedSet = new Set();
-  const rLast = receivedSheet.getLastRow();
-  if (rLast >= 2) {
-    receivedSheet.getRange(2, 1, rLast - 1, 1).getValues().forEach(function(r) { receivedSet.add(String(r[0])); });
-  }
-
-  const cardCounts = {};
+  var cardCounts = {};
   SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
 
-  const userMap = {};
-  rows.forEach(function(row) {
-    const userId   = String(row[0]);
-    const cardId   = Number(row[2]);
-    const cardName = String(row[3] || '');
+  var userMap = {};
+  rows.forEach(function(row, i) {
+    var userId   = String(row[0]);
+    var weekKey  = String(row[1] || '');
+    var cardId   = Number(row[2]);
+    var cardName = String(row[3] || '');
+    var drawnAt  = String(row[4] || '');
+    var received = String(row[5]).toUpperCase() === 'TRUE';
     if (!userId) return;
     cardCounts[cardId] = (cardCounts[cardId] || 0) + 1;
-    if (!userMap[userId]) userMap[userId] = { cards: new Map(), total: 0 };
-    if (!userMap[userId].cards.has(cardId)) userMap[userId].cards.set(cardId, cardName);
-    userMap[userId].total++;
+    if (!userMap[userId]) userMap[userId] = [];
+    userMap[userId].push({ rowIndex: i + 2, cardId: cardId, cardName: cardName, weekKey: weekKey, drawnAt: drawnAt, received: received });
   });
 
-  const userStats = Object.entries(userMap).map(function(entry) {
-    var nickname = entry[0];
-    var s = entry[1];
-    var cardArr = [];
-    s.cards.forEach(function(name, id) { cardArr.push({ id: id, name: name }); });
-    return {
-      nickname: nickname,
-      unique:   s.cards.size,
-      total:    s.total,
-      cards:    cardArr,
-      received: receivedSet.has(nickname)
-    };
-  }).sort(function(a, b) { return b.unique - a.unique || b.total - a.total; });
+  var userStats = Object.keys(userMap).map(function(nickname) {
+    return { nickname: nickname, draws: userMap[nickname] };
+  }).sort(function(a, b) { return b.draws.length - a.draws.length; });
 
-  return { ok: true, cardCounts, userStats, totalDraws: rows.length };
+  return { ok: true, cardCounts: cardCounts, userStats: userStats, totalDraws: rows.length };
 }
 
 // ── 전체 주차 데이터 초기 세팅 (Apps Script 편집기에서 1회 실행) ──

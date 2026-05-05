@@ -271,9 +271,9 @@
           <input type="search" id="cardUserSearch" placeholder="🔍 닉네임 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterCardUsers(this.value)" />
           <div class="table-wrap">
             <table>
-              <thead><tr><th>닉네임</th><th>뽑은 카드</th><th style="text-align:center;">수령</th></tr></thead>
+              <thead><tr><th>카드</th><th>주차</th><th>날짜</th><th style="text-align:center;">수령</th></tr></thead>
               <tbody id="cardUserTableBody">
-                <tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
+                <tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
               </tbody>
             </table>
           </div>
@@ -654,31 +654,46 @@
     /* ── 카드 현황 ── */
     let _cardUserStats = [];
 
+    function drawDate(drawnAt) {
+      if (!drawnAt) return '';
+      const d = new Date(drawnAt);
+      if (isNaN(d)) return String(drawnAt).slice(0, 10);
+      return `${d.getMonth()+1}/${d.getDate()}`;
+    }
+
     function renderCardUserRows(stats) {
       const tbody = document.getElementById('cardUserTableBody');
       if (!stats.length) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:var(--sub);text-align:center;padding:20px;">뽑기 기록이 없어요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">뽑기 기록이 없어요.</td></tr>';
         return;
       }
-      tbody.innerHTML = stats.map(u => {
-        const cardTags = u.cards.map(c =>
-          `<span style="display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(247,151,30,0.15);color:#b8600a;margin:2px 2px 2px 0;">${esc(c.name)}</span>`
-        ).join('');
-        const btnStyle = u.received
-          ? 'background:#22c55e;color:#fff;border:none;'
-          : 'background:var(--line);color:var(--sub);border:none;';
-        const btnLabel = u.received ? '✓ 수령' : '미수령';
-        return `<tr id="cardRow_${esc(u.nickname)}">
-          <td><strong>${esc(u.nickname)}</strong><br><span style="color:var(--sub);font-size:11px;">${u.total}회 뽑기</span></td>
-          <td>${cardTags}</td>
-          <td style="text-align:center;">
-            <button onclick="toggleCardReceived('${esc(u.nickname)}', ${!u.received})"
-              style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;${btnStyle}">
-              ${btnLabel}
-            </button>
+      let html = '';
+      stats.forEach(u => {
+        html += `<tr style="background:var(--primary-soft);">
+          <td colspan="4" style="padding:8px 12px;">
+            <strong>${esc(u.nickname)}</strong>
+            <span style="color:var(--sub);font-size:12px;margin-left:6px;">총 ${u.draws.length}회</span>
           </td>
         </tr>`;
-      }).join('');
+        u.draws.forEach(d => {
+          const btnStyle = d.received
+            ? 'background:#22c55e;color:#fff;border:none;'
+            : 'background:var(--line);color:var(--sub);border:none;';
+          const btnLabel = d.received ? '✓ 수령' : '미수령';
+          html += `<tr id="drawRow_${d.rowIndex}">
+            <td style="padding-left:20px;font-size:13px;">${esc(d.cardName)}</td>
+            <td style="color:var(--sub);font-size:12px;">${esc(d.weekKey)}</td>
+            <td style="color:var(--sub);font-size:12px;">${drawDate(d.drawnAt)}</td>
+            <td style="text-align:center;">
+              <button onclick="toggleDrawReceived(${d.rowIndex}, ${!d.received}, '${esc(u.nickname)}')"
+                style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}">
+                ${btnLabel}
+              </button>
+            </td>
+          </tr>`;
+        });
+      });
+      tbody.innerHTML = html;
     }
 
     function filterCardUsers(q) {
@@ -688,15 +703,15 @@
       renderCardUserRows(filtered);
     }
 
-    async function toggleCardReceived(nickname, received) {
-      const row = document.getElementById('cardRow_' + nickname);
+    async function toggleDrawReceived(rowIndex, received, nickname) {
+      const row = document.getElementById('drawRow_' + rowIndex);
       const btn = row ? row.querySelector('button') : null;
       if (btn) { btn.disabled = true; btn.textContent = '...'; }
       try {
-        const res = await post({ action: 'setCardReceived', adminPw, nickname, received });
+        const res = await post({ action: 'setDrawReceived', adminPw, rowIndex, received });
         if (res.ok) {
           const u = _cardUserStats.find(x => x.nickname === nickname);
-          if (u) u.received = received;
+          if (u) { const d = u.draws.find(x => x.rowIndex === rowIndex); if (d) d.received = received; }
           filterCardUsers(document.getElementById('cardUserSearch').value);
         } else {
           alert('오류: ' + (res.error || ''));
@@ -723,7 +738,7 @@
         if (!res.ok) return;
 
         document.getElementById('cardTotalDraws').textContent = res.totalDraws;
-        document.getElementById('cardTotalUsers').textContent = res.userStats.length;
+        document.getElementById('cardTotalUsers').textContent = res.userStats ? res.userStats.length : 0;
 
         // 카드별 현황
         const grid = document.getElementById('cardStatsGrid');
