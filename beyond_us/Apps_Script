@@ -188,9 +188,9 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(backfillRawCheckinsCols());
     }
-    if (action === 'setCardReceived') {
+    if (action === 'setCardReceivedQty') {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
-      return jsonOutput(setCardReceived(body));
+      return jsonOutput(setCardReceivedQty(body));
     }
     if (action === 'setDrawReceived') {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
@@ -955,18 +955,36 @@ function editNotice(body) {
 }
 
 // ── 카드 통계 ─────────────────────────────────────
+// CardReceived 컬럼: nickname(A) | cardId(B) | receivedQty(C) | updatedAt(D)
 function getOrCreateCardReceivedSheet() {
   const ss = getSpreadsheet();
   let sheet = ss.getSheetByName('CardReceived');
   if (!sheet) {
     sheet = ss.insertSheet('CardReceived');
-    sheet.appendRow(['nickname', 'receivedAt']);
+    sheet.appendRow(['nickname', 'cardId', 'receivedQty', 'updatedAt']);
+    sheet.setFrozenRows(1);
   }
   return sheet;
 }
 
-function setCardReceived(body) {
-  // 구버전 호환용 — 신규는 setDrawReceived 사용
+// 수령 수량 upsert (nickname + cardId 기준)
+function setCardReceivedQty(body) {
+  var nickname = String(body.nickname || '');
+  var cardId   = Number(body.cardId);
+  var qty      = Number(body.qty);
+  if (!nickname || !cardId || isNaN(qty) || qty < 0) return { error: 'invalid_params' };
+  var sheet = getOrCreateCardReceivedSheet();
+  var last = sheet.getLastRow();
+  if (last >= 2) {
+    var rows = sheet.getRange(2, 1, last - 1, 2).getValues();
+    for (var i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === nickname && Number(rows[i][1]) === cardId) {
+        sheet.getRange(i + 2, 3, 1, 2).setValues([[qty, new Date()]]);
+        return { ok: true };
+      }
+    }
+  }
+  sheet.appendRow([nickname, cardId, qty, new Date()]);
   return { ok: true };
 }
 
@@ -980,16 +998,49 @@ function setDrawReceived(body) {
 }
 
 function getCardStats() {
-  var sheet = getOrCreateDrawSheet();
-  var last  = sheet.getLastRow();
-  if (last < 2) return { ok: true, cardCounts: {}, userStats: [], totalDraws: 0 };
+  var ss = getSpreadsheet();
 
-  var rows = sheet.getRange(2, 1, last - 1, 6).getValues();
+  // 1. CardDraws → 카드별 전체 뽑기 횟수 (상단 그리드용)
+  var cardCounts = {};
+  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
+  var totalDraws = 0;
+  try {
+    var drawSheet = getOrCreateDrawSheet();
+    var drawLast = drawSheet.getLastRow();
+    if (drawLast >= 2) {
+      var drawRows = drawSheet.getRange(2, 1, drawLast - 1, 3).getValues();
+      drawRows.forEach(function(row) {
+        var cardId = Number(row[2]);
+        if (cardId) { cardCounts[cardId] = (cardCounts[cardId] || 0) + 1; totalDraws++; }
+      });
+    }
+  } catch(e) {}
 
-  // 닉네임 → 이름 맵
+  // 2. CardReceived → 카드별 수령 수량 합계 + 유저별 수령 맵
+  var receivedCounts = {};
+  var userReceivedMap = {}; // nickname → { cardId: qty }
+  SPIRIT_CARDS.forEach(function(c) { receivedCounts[c.id] = 0; });
+  try {
+    var rcvSheet = getOrCreateCardReceivedSheet();
+    var rcvLast = rcvSheet.getLastRow();
+    if (rcvLast >= 2) {
+      var rcvRows = rcvSheet.getRange(2, 1, rcvLast - 1, 3).getValues();
+      rcvRows.forEach(function(row) {
+        var nick = String(row[0]);
+        var cid  = Number(row[1]);
+        var qty  = Number(row[2]) || 0;
+        if (!nick || !cid) return;
+        receivedCounts[cid] = (receivedCounts[cid] || 0) + qty;
+        if (!userReceivedMap[nick]) userReceivedMap[nick] = {};
+        userReceivedMap[nick][cid] = qty;
+      });
+    }
+  } catch(e) {}
+
+  // 3. 닉네임 → 이름 맵
   var nameMap = {};
   try {
-    var usersSheet = getSpreadsheet().getSheetByName('Users');
+    var usersSheet = ss.getSheetByName('Users');
     if (usersSheet) {
       var uData = usersSheet.getDataRange().getValues();
       for (var i = 1; i < uData.length; i++) {
@@ -998,30 +1049,36 @@ function getCardStats() {
     }
   } catch(e) {}
 
-  var cardCounts = {};
-  var receivedCounts = {};
-  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; receivedCounts[c.id] = 0; });
+  // 4. Collection → 유저별 현재 보유 카드 수량
+  var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
+  var userStats = [];
+  try {
+    var colSheet = getOrCreateCollectionSheet();
+    var colLast = colSheet.getLastRow();
+    if (colLast >= 2) {
+      var colRows = colSheet.getRange(2, 1, colLast - 1, 13).getValues();
+      colRows.forEach(function(row) {
+        var nickname = String(row[0]);
+        if (!nickname) return;
+        var cards = [];
+        for (var ci = 1; ci <= 9; ci++) {
+          var holding = Number(row[ci + 3]) || 0; // col 5~13 → idx 4~12
+          if (holding <= 0) continue;
+          var rcv = (userReceivedMap[nickname] && userReceivedMap[nickname][ci]) || 0;
+          cards.push({ cardId: ci, cardName: CARD_NAMES[ci - 1], holding: holding, received: rcv });
+        }
+        if (cards.length === 0) return;
+        userStats.push({ nickname: nickname, name: nameMap[nickname] || '', cards: cards });
+      });
+      userStats.sort(function(a, b) {
+        var ta = a.cards.reduce(function(s, c) { return s + c.holding; }, 0);
+        var tb = b.cards.reduce(function(s, c) { return s + c.holding; }, 0);
+        return tb - ta;
+      });
+    }
+  } catch(e) {}
 
-  var userMap = {};
-  rows.forEach(function(row, i) {
-    var userId   = String(row[0]);
-    var weekKey  = String(row[1] || '');
-    var cardId   = Number(row[2]);
-    var cardName = String(row[3] || '');
-    var drawnAt  = String(row[4] || '');
-    var received = String(row[5]).toUpperCase() === 'TRUE';
-    if (!userId) return;
-    cardCounts[cardId] = (cardCounts[cardId] || 0) + 1;
-    if (received) receivedCounts[cardId] = (receivedCounts[cardId] || 0) + 1;
-    if (!userMap[userId]) userMap[userId] = [];
-    userMap[userId].push({ rowIndex: i + 2, cardId: cardId, cardName: cardName, weekKey: weekKey, drawnAt: drawnAt, received: received });
-  });
-
-  var userStats = Object.keys(userMap).map(function(nickname) {
-    return { nickname: nickname, name: nameMap[nickname] || '', draws: userMap[nickname] };
-  }).sort(function(a, b) { return b.draws.length - a.draws.length; });
-
-  return { ok: true, cardCounts: cardCounts, receivedCounts: receivedCounts, userStats: userStats, totalDraws: rows.length };
+  return { ok: true, cardCounts: cardCounts, receivedCounts: receivedCounts, userStats: userStats, totalDraws: totalDraws };
 }
 
 // ── 전체 주차 데이터 초기 세팅 (Apps Script 편집기에서 1회 실행) ──
