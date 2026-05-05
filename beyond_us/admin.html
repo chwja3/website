@@ -44,16 +44,40 @@
 
     .admin-wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 60px; }
 
-    /* ── 탭 ── */
-    .tabs { display: flex; gap: 0; margin-bottom: 20px; border-bottom: 2px solid var(--line); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-    .tabs::-webkit-scrollbar { display: none; }
-    .tab-btn {
-      padding: 10px 18px; font-size: 14px; font-weight: 700;
-      border: 0; background: none; color: var(--sub); cursor: pointer;
-      border-bottom: 2px solid transparent; margin-bottom: -2px;
-      white-space: nowrap; flex-shrink: 0;
+    /* ── 햄버거 드로어 ── */
+    .menu-btn {
+      background: none; border: none; color: #faf6ef;
+      font-size: 22px; cursor: pointer; padding: 4px 8px;
+      line-height: 1; flex-shrink: 0;
     }
-    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .drawer-overlay {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(44,36,23,0.45); backdrop-filter: blur(2px);
+    }
+    .drawer-overlay.open { display: block; }
+    .admin-drawer {
+      position: fixed; top: 0; left: -280px; width: 260px; height: 100vh;
+      background: var(--card); border-right: 1px solid var(--line);
+      z-index: 201; transition: left .22s ease; overflow-y: auto;
+      box-shadow: 4px 0 24px rgba(44,36,23,0.15);
+    }
+    .admin-drawer.open { left: 0; }
+    .drawer-head {
+      padding: 18px 20px 14px; font-size: 13px; font-weight: 800;
+      color: var(--sub); letter-spacing: .06em; border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .drawer-close { background:none; border:none; font-size:18px; cursor:pointer; color:var(--sub); padding:2px 4px; }
+    .drawer-item {
+      display: block; width: 100%; text-align: left;
+      padding: 14px 20px; font-size: 15px; font-weight: 700;
+      background: none; border: none; border-bottom: 1px solid var(--line);
+      color: var(--text); cursor: pointer;
+    }
+    .drawer-item:hover { background: var(--primary-soft); }
+    .drawer-item.active { color: var(--primary); background: var(--primary-soft); }
+
+    /* ── 패널 ── */
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
@@ -92,7 +116,7 @@
     }
     .btn-primary { background: var(--primary); color: #faf6ef; width: 100%; margin-top: 4px; }
     .btn-sm      { padding: 5px 12px; font-size: 13px; }
-    .btn-ghost   { background: var(--primary-soft); color: var(--text); border: 1px solid var(--line); }
+    .btn-ghost, .btn-secondary { background: var(--primary-soft); color: var(--text); border: 1px solid var(--line); }
     .btn-danger  { background: var(--danger); color: white; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
     .input {
@@ -146,24 +170,25 @@
   <!-- ── 어드민 패널 ── -->
   <div id="adminPanel">
     <div class="admin-header">
+      <button class="menu-btn" id="menuBtn">☰</button>
       <h1>Beyond Us 어드민</h1>
-      <span class="admin-header-sub">관리자 전용</span>
+      <span class="admin-header-sub" id="activePanelLabel">대시보드</span>
     </div>
 
-    <div class="admin-wrap">
+    <!-- 드로어 -->
+    <div class="drawer-overlay" id="drawerOverlay"></div>
+    <nav class="admin-drawer" id="adminDrawer">
+      <div class="drawer-head">메뉴 <button class="drawer-close" id="drawerCloseBtn">✕</button></div>
+      <button class="drawer-item" data-panel="notice">공지</button>
+      <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
+      <button class="drawer-item" data-panel="settings">사전미션 설정</button>
+      <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
+      <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
+      <button class="drawer-item" data-panel="bbb">B.B.B.</button>
+      <button class="drawer-item" data-panel="collection">Collection</button>
+    </nav>
 
-      <!-- 탭 -->
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="checkin">📊 체크인</button>
-        <button class="tab-btn" data-tab="cards">🃏 카드</button>
-        <button class="tab-btn" data-tab="users">👥 유저</button>
-        <button class="tab-btn" data-tab="notice">📢 공지</button>
-        <button class="tab-btn" data-tab="inquiry">💬 문의</button>
-        <button class="tab-btn" data-tab="trades">🔄 교환</button>
-        <button class="tab-btn" data-tab="bbb">🤝 B.B.B.</button>
-        <button class="tab-btn" data-tab="collection">📊 Collection</button>
-        <button class="tab-btn" data-tab="settings">⚙️ 설정</button>
-      </div>
+    <div class="admin-wrap">
 
       <!-- ① 유저 관리 -->
       <div id="tab-users" class="tab-panel">
@@ -234,8 +259,8 @@
             <h2 class="card-title" style="margin:0;">카드별 뽑힌 횟수</h2>
             <button class="btn btn-ghost btn-sm" id="refreshCardsBtn">새로고침</button>
           </div>
-          <div id="cardStatsGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px;">
-            <p style="color:var(--sub); font-size:14px; text-align:center; padding:20px; grid-column:1/-1;">불러오는 중...</p>
+          <div id="cardStatsGrid">
+            <p style="color:var(--sub); font-size:14px; text-align:center; padding:20px;">불러오는 중...</p>
           </div>
         </div>
 
@@ -252,6 +277,15 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- 교환 로그 (병합) -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 class="card-title" style="margin:0;">교환 로그</h2>
+            <button class="btn btn-ghost btn-sm" onclick="loadAdminTrades()">새로고침</button>
+          </div>
+          <div id="tradesLogBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -298,16 +332,6 @@
         </div>
       </div>
 
-      <!-- ⑤ 교환 로그 -->
-      <div id="tab-trades" class="tab-panel">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h2 class="card-title" style="margin:0;">교환 로그</h2>
-            <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px;" onclick="loadAdminTrades()">새로고침</button>
-          </div>
-          <div id="tradesLogBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
-        </div>
-      </div>
 
       <!-- B.B.B. 탭 -->
       <div id="tab-bbb" class="tab-panel">
@@ -548,18 +572,31 @@
       if (e.key === 'Enter') doAdminLogin();
     });
 
-    /* ── 탭 전환 ── */
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'cards')   loadCardStats();
-        if (btn.dataset.tab === 'inquiry') loadAdminInquiries();
-        if (btn.dataset.tab === 'trades')  loadAdminTrades();
-        if (btn.dataset.tab === 'bbb')     loadAdminBBB();
-      });
+    /* ── 드로어 / 패널 전환 ── */
+    function openDrawer() {
+      document.getElementById('adminDrawer').classList.add('open');
+      document.getElementById('drawerOverlay').classList.add('open');
+    }
+    function closeDrawer() {
+      document.getElementById('adminDrawer').classList.remove('open');
+      document.getElementById('drawerOverlay').classList.remove('open');
+    }
+    function switchPanel(panelId, label) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.drawer-item').forEach(b => b.classList.remove('active'));
+      document.getElementById('tab-' + panelId).classList.add('active');
+      document.querySelectorAll(`.drawer-item[data-panel="${panelId}"]`).forEach(b => b.classList.add('active'));
+      document.getElementById('activePanelLabel').textContent = label || panelId;
+      closeDrawer();
+      if (panelId === 'cards')   { loadCardStats(); loadAdminTrades(); }
+      if (panelId === 'inquiry') loadAdminInquiries();
+      if (panelId === 'bbb')     loadAdminBBB();
+    }
+    document.getElementById('menuBtn').addEventListener('click', openDrawer);
+    document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
+    document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+    document.querySelectorAll('.drawer-item').forEach(btn => {
+      btn.addEventListener('click', () => switchPanel(btn.dataset.panel, btn.textContent.trim()));
     });
 
     /* ── 유저 목록 ── */
@@ -690,15 +727,22 @@
 
         // 카드별 현황
         const grid = document.getElementById('cardStatsGrid');
+        const maxCnt = Math.max(1, ...SPIRIT_CARDS_ADMIN.map(c => res.cardCounts[c.id] || 0));
         grid.innerHTML = SPIRIT_CARDS_ADMIN.map(c => {
           const cnt = res.cardCounts[c.id] || 0;
+          const pct = Math.round(cnt / maxCnt * 100);
           return `
-            <div style="border-radius:12px; padding:10px 6px; text-align:center;
-                        background:linear-gradient(135deg,${c.g1},${c.g2}); color:white;">
-              <div style="font-size:22px;">${c.emoji}</div>
-              <div style="font-size:11px; font-weight:800; margin:4px 0 2px;">${c.name}</div>
-              <div style="font-size:18px; font-weight:900;">${cnt}</div>
-              <div style="font-size:10px; opacity:.8;">회</div>
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);">
+              <img src="images/${c.name}.png" style="width:36px;height:52px;object-fit:contain;border-radius:4px;flex-shrink:0;" onerror="this.style.display='none'" />
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">
+                  <span style="font-size:13px;font-weight:800;">${c.name}</span>
+                  <span style="font-size:15px;font-weight:900;color:var(--primary);">${cnt}<span style="font-size:11px;font-weight:500;color:var(--sub);">회</span></span>
+                </div>
+                <div style="height:6px;background:var(--line);border-radius:4px;overflow:hidden;">
+                  <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#f7971e,#ff758c);border-radius:4px;transition:width .3s;"></div>
+                </div>
+              </div>
             </div>`;
         }).join('');
 

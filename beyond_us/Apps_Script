@@ -1009,13 +1009,17 @@ function getCardStats() {
     userMap[userId].total++;
   });
 
-  const userStats = Object.entries(userMap).map(function([nickname, s]) {
+  const userStats = Object.entries(userMap).map(function(entry) {
+    var nickname = entry[0];
+    var s = entry[1];
+    var cardArr = [];
+    s.cards.forEach(function(name, id) { cardArr.push({ id: id, name: name }); });
     return {
-      nickname,
-      unique:    s.cards.size,
-      total:     s.total,
-      cards:     Array.from(s.cards.entries()).map(function([id, name]) { return { id: id, name: name }; }),
-      received:  receivedSet.has(nickname)
+      nickname: nickname,
+      unique:   s.cards.size,
+      total:    s.total,
+      cards:    cardArr,
+      received: receivedSet.has(nickname)
     };
   }).sort(function(a, b) { return b.unique - a.unique || b.total - a.total; });
 
