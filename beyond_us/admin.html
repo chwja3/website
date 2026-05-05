@@ -437,10 +437,16 @@
       <div id="tab-settings" class="tab-panel">
 
         <div class="card">
-          <h2 class="card-title">현재 주차 설정</h2>
-          <p style="font-size:13px; color:var(--sub); margin-bottom:16px;">선택한 주차의 미션이 앱에 표시됩니다.</p>
-          <div style="font-size:14px; color:var(--sub); margin-bottom:14px;">현재: <strong id="currentWeekLabel" style="color:var(--text);">불러오는 중...</strong></div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+          <h2 class="card-title">주차 설정 · 미션 편집</h2>
+
+          <!-- 현재 적용 주차 표시 -->
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:var(--primary-soft); border-radius:10px; margin-bottom:16px;">
+            <span style="font-size:13px; color:var(--sub);">현재 앱 표시 주차</span>
+            <strong id="currentWeekLabel" style="color:var(--text); font-size:15px;">불러오는 중...</strong>
+          </div>
+
+          <!-- 주차 선택 (클릭 = 조회만) -->
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
             <button class="btn btn-secondary week-sel-btn" data-week="1">1주차</button>
             <button class="btn btn-secondary week-sel-btn" data-week="2">2주차</button>
             <button class="btn btn-secondary week-sel-btn" data-week="3">3주차</button>
@@ -448,24 +454,27 @@
             <button class="btn btn-secondary week-sel-btn" data-week="5">5주차</button>
             <button class="btn btn-secondary week-sel-btn" data-week="6">6주차</button>
           </div>
-          <div class="status" id="weekSetStatus"></div>
-        </div>
+          <p style="font-size:12px; color:var(--sub); margin-bottom:14px;">주차를 선택하면 미션을 확인·편집할 수 있어요. 앱에 바로 반영되지 않아요.</p>
 
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h2 class="card-title" style="margin:0;">미션 편집 — <span id="missionEditWeekLabel">주차 선택 후 로드</span></h2>
-            <button class="btn btn-ghost btn-sm" id="missionLoadBtn" style="display:none;">다시 불러오기</button>
-          </div>
-          <div id="missionEditHint" style="font-size:13px; color:var(--sub);">위에서 주차를 선택하면 해당 주차 미션을 편집할 수 있어요.</div>
+          <!-- 미션 편집 폼 -->
+          <div id="missionEditHint" style="font-size:13px; color:var(--sub); padding:12px 0;">주차를 선택하면 미션 내용을 불러와요.</div>
           <div id="missionEditForm" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-size:14px; font-weight:700; color:var(--text);"><span id="missionEditWeekLabel">-</span> 미션 내용</span>
+              <button class="btn btn-ghost btn-sm" id="missionLoadBtn">다시 불러오기</button>
+            </div>
             <div style="display:flex; gap:8px; margin-bottom:12px;">
               <input type="text" id="missionTitle" class="input" placeholder="주차 제목 (예: 1주차 5/10)" style="flex:1;" />
               <input type="number" id="missionThreshold" class="input" placeholder="뽑기기준" style="width:80px;" min="1" />
             </div>
             <div id="missionItemList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
             <div class="status" id="missionSaveStatus"></div>
-            <button class="btn btn-primary" id="missionSaveBtn" style="width:100%; margin-top:4px;">저장</button>
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <button class="btn btn-secondary" id="missionSaveBtn" style="flex:1;">미션 내용 저장</button>
+              <button class="btn btn-primary" id="weekApplyBtn" style="flex:1; display:none;">앱에 반영하기</button>
+            </div>
           </div>
+          <div class="status" id="weekSetStatus" style="margin-top:8px;"></div>
         </div>
 
         <div class="card">
@@ -898,41 +907,65 @@
     }
 
     /* ── 주차 설정 ── */
+    let editingWeek = null;
+    let activeWeek  = null;
+
     async function loadCurrentWeek() {
       try {
         const res = await get({ action: 'getCurrentWeek', adminPw });
-        if (res.ok) { updateWeekUI(res.week); loadMissionConfig(res.week); }
+        if (res.ok) {
+          activeWeek = res.week;
+          editingWeek = res.week;
+          updateWeekUI();
+          loadMissionConfig(res.week);
+        }
       } catch(e) {}
     }
 
-    function updateWeekUI(week) {
-      document.getElementById('currentWeekLabel').textContent = `${week}주차`;
+    function updateWeekUI() {
+      document.getElementById('currentWeekLabel').textContent = activeWeek ? `${activeWeek}주차` : '불러오는 중...';
       document.querySelectorAll('.week-sel-btn').forEach(btn => {
-        btn.className = 'btn ' + (Number(btn.dataset.week) === week ? 'btn-primary' : 'btn-secondary') + ' week-sel-btn';
+        const w = Number(btn.dataset.week);
+        const isSelected = w === editingWeek;
+        const isActive   = w === activeWeek;
+        btn.className = 'btn ' + (isSelected ? 'btn-primary' : 'btn-secondary') + ' week-sel-btn';
+        btn.innerHTML = isActive
+          ? `${w}주차 <span style="font-size:10px;opacity:0.75;font-weight:500;">적용중</span>`
+          : `${w}주차`;
       });
+      const applyBtn = document.getElementById('weekApplyBtn');
+      if (applyBtn) {
+        const different = editingWeek && editingWeek !== activeWeek;
+        applyBtn.style.display = different ? '' : 'none';
+        if (different) applyBtn.textContent = `${editingWeek}주차 앱에 반영하기`;
+      }
     }
 
-    let editingWeek = null;
-
     document.querySelectorAll('.week-sel-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const week = Number(btn.dataset.week);
-        const statusEl = document.getElementById('weekSetStatus');
-        statusEl.textContent = '변경 중...';
-        statusEl.className = 'status';
-        try {
-          const res = await post({ action: 'setCurrentWeek', adminPw, week });
-          if (res.ok) {
-            updateWeekUI(week);
-            statusEl.textContent = `${week}주차로 변경됐어요!`;
-            statusEl.className = 'status ok';
-          }
-        } catch(e) {
-          statusEl.textContent = '오류가 발생했어요.';
-          statusEl.className = 'status error';
-        }
-        loadMissionConfig(week);
+      btn.addEventListener('click', () => {
+        editingWeek = Number(btn.dataset.week);
+        updateWeekUI();
+        loadMissionConfig(editingWeek);
       });
+    });
+
+    document.getElementById('weekApplyBtn').addEventListener('click', async () => {
+      if (!editingWeek) return;
+      const statusEl = document.getElementById('weekSetStatus');
+      statusEl.textContent = '반영 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'setCurrentWeek', adminPw, week: editingWeek });
+        if (res.ok) {
+          activeWeek = editingWeek;
+          updateWeekUI();
+          statusEl.textContent = `${editingWeek}주차로 반영됐어요!`;
+          statusEl.className = 'status ok';
+        }
+      } catch(e) {
+        statusEl.textContent = '오류가 발생했어요.';
+        statusEl.className = 'status error';
+      }
     });
 
     async function loadMissionConfig(week) {
