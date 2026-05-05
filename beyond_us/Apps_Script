@@ -986,6 +986,18 @@ function getCardStats() {
 
   var rows = sheet.getRange(2, 1, last - 1, 6).getValues();
 
+  // 닉네임 → 이름 맵
+  var nameMap = {};
+  try {
+    var usersSheet = getSpreadsheet().getSheetByName('Users');
+    if (usersSheet) {
+      var uData = usersSheet.getDataRange().getValues();
+      for (var i = 1; i < uData.length; i++) {
+        if (uData[i][0]) nameMap[String(uData[i][0])] = String(uData[i][2] || '');
+      }
+    }
+  } catch(e) {}
+
   var cardCounts = {};
   SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
 
@@ -1004,7 +1016,7 @@ function getCardStats() {
   });
 
   var userStats = Object.keys(userMap).map(function(nickname) {
-    return { nickname: nickname, draws: userMap[nickname] };
+    return { nickname: nickname, name: nameMap[nickname] || '', draws: userMap[nickname] };
   }).sort(function(a, b) { return b.draws.length - a.draws.length; });
 
   return { ok: true, cardCounts: cardCounts, userStats: userStats, totalDraws: rows.length };

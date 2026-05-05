@@ -268,7 +268,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
             <h2 class="card-title" style="margin:0;">유저별 보유 현황 · 실물 수령</h2>
           </div>
-          <input type="search" id="cardUserSearch" placeholder="🔍 닉네임 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterCardUsers(this.value)" />
+          <input type="search" id="cardUserSearch" placeholder="🔍 닉네임 또는 이름 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterCardUsers(this.value)" />
           <div class="table-wrap">
             <table>
               <thead><tr><th>카드</th><th>주차</th><th>날짜</th><th style="text-align:center;">수령</th></tr></thead>
@@ -672,6 +672,7 @@
         html += `<tr style="background:var(--primary-soft);">
           <td colspan="4" style="padding:8px 12px;">
             <strong>${esc(u.nickname)}</strong>
+            ${u.name ? `<span style="color:var(--sub);font-size:12px;margin-left:4px;">(${esc(u.name)})</span>` : ''}
             <span style="color:var(--sub);font-size:12px;margin-left:6px;">총 ${u.draws.length}회</span>
           </td>
         </tr>`;
@@ -697,8 +698,9 @@
     }
 
     function filterCardUsers(q) {
-      const filtered = q.trim()
-        ? _cardUserStats.filter(u => u.nickname.includes(q.trim()))
+      const t = q.trim();
+      const filtered = t
+        ? _cardUserStats.filter(u => u.nickname.includes(t) || (u.name && u.name.includes(t)))
         : _cardUserStats;
       renderCardUserRows(filtered);
     }
