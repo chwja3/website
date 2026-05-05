@@ -266,14 +266,15 @@
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 class="card-title" style="margin:0;">유저별 보유 현황 · 실물 수령</h2>
+            <h2 class="card-title" style="margin:0;">유저별 뽑기 · 실물 수령</h2>
+            <button id="unreceivedFilterBtn" class="btn btn-ghost btn-sm" onclick="toggleUnreceivedFilter()" style="font-size:12px;">미수령자만</button>
           </div>
           <input type="search" id="cardUserSearch" placeholder="🔍 닉네임 또는 이름 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterCardUsers(this.value)" />
           <div class="table-wrap">
             <table>
-              <thead><tr><th>카드</th><th style="text-align:center;">보유</th><th style="text-align:center;">수령</th><th style="text-align:center;">토글</th></tr></thead>
+              <thead><tr><th>카드</th><th style="text-align:center;">뽑기</th><th style="text-align:center;">수령</th><th style="text-align:center;">미수령</th><th style="text-align:center;">수령 처리</th></tr></thead>
               <tbody id="cardUserTableBody">
-                <tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
+                <tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
               </tbody>
             </table>
           </div>
@@ -661,42 +662,85 @@
       return `${d.getMonth()+1}/${d.getDate()}`;
     }
 
+    let _unreceivedOnly = false;
+
+    function toggleUnreceivedFilter() {
+      _unreceivedOnly = !_unreceivedOnly;
+      const btn = document.getElementById('unreceivedFilterBtn');
+      btn.style.background = _unreceivedOnly ? 'var(--primary)' : '';
+      btn.style.color = _unreceivedOnly ? '#fff' : '';
+      filterCardUsers(document.getElementById('cardUserSearch').value);
+    }
+
+    function tradeBadges(outList, inList) {
+      // 중복 이름 집계
+      function countArr(arr) {
+        const m = {};
+        arr.forEach(n => { m[n] = (m[n]||0)+1; });
+        return Object.entries(m).map(([n,c]) => c>1 ? `${esc(n)} x${c}` : esc(n)).join(', ');
+      }
+      let html = '';
+      if (outList && outList.length) html += `<span style="font-size:10px;color:#f59e0b;background:rgba(245,158,11,0.12);padding:1px 5px;border-radius:4px;margin-left:5px;">양도→${countArr(outList)}</span>`;
+      if (inList  && inList.length)  html += `<span style="font-size:10px;color:#8b5cf6;background:rgba(139,92,246,0.12);padding:1px 5px;border-radius:4px;margin-left:3px;">취득←${countArr(inList)}</span>`;
+      return html;
+    }
+
     function renderCardUserRows(stats) {
       const tbody = document.getElementById('cardUserTableBody');
       if (!stats.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">보유 카드 기록이 없어요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">해당하는 유저가 없어요.</td></tr>';
         return;
       }
       let html = '';
       stats.forEach(u => {
-        const totalHolding = u.cards.reduce((s, c) => s + c.holding, 0);
+        const totalDrew     = u.cards.reduce((s, c) => s + c.drew, 0);
         const totalReceived = u.cards.reduce((s, c) => s + c.received, 0);
+        const totalNeeded   = u.cards.reduce((s, c) => s + c.needed, 0);
         html += `<tr style="background:var(--primary-soft);">
-          <td colspan="4" style="padding:8px 12px;">
+          <td colspan="5" style="padding:8px 12px;">
             <strong>${esc(u.nickname)}</strong>
             ${u.name ? `<span style="color:var(--sub);font-size:12px;margin-left:4px;">(${esc(u.name)})</span>` : ''}
-            <span style="color:var(--sub);font-size:12px;margin-left:6px;">보유 ${totalHolding}장</span>
-            <span style="color:#22c55e;font-size:12px;margin-left:4px;">수령 ${totalReceived}장</span>
+            <span style="color:var(--sub);font-size:12px;margin-left:6px;">뽑기 ${totalDrew}장</span>
+            ${totalNeeded > 0
+              ? `<span style="color:#ef4444;font-size:12px;font-weight:700;margin-left:4px;">미수령 ${totalNeeded}장</span>`
+              : `<span style="color:#22c55e;font-size:12px;font-weight:700;margin-left:4px;">✓ 완료</span>`}
           </td>
         </tr>`;
         u.cards.forEach(c => {
-          const allReceived = c.received >= c.holding;
-          const btnStyle = allReceived
-            ? 'background:#22c55e;color:#fff;border:none;'
-            : 'background:var(--line);color:var(--sub);border:none;';
-          const btnLabel = allReceived ? `✓ ${c.received}/${c.holding}` : `${c.received}/${c.holding} 수령`;
-          const rowId = `cardRow_${esc(u.nickname)}_${c.cardId}`;
-          html += `<tr id="${rowId}">
-            <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)}${c.holding > 1 ? `<span style="color:var(--sub);font-size:11px;margin-left:4px;">x${c.holding}</span>` : ''}</td>
-            <td style="color:var(--sub);font-size:12px;text-align:center;">보유 ${c.holding}</td>
-            <td style="color:#22c55e;font-size:12px;text-align:center;">수령 ${c.received}</td>
-            <td style="text-align:center;">
-              <button onclick="toggleCardReceived('${esc(u.nickname)}',${c.cardId},'${esc(c.cardName)}',${c.received},${c.holding})"
-                style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}">
-                ${btnLabel}
-              </button>
-            </td>
-          </tr>`;
+          const badges = tradeBadges(c.tradeOutTo, c.tradeInFrom);
+          if (c.drew > 0) {
+            // TF 배부 책임 있는 행
+            const done    = c.received >= c.drew;
+            const partial = c.received > 0 && c.received < c.drew;
+            const btnStyle = done    ? 'background:#22c55e;color:#fff;border:none;'
+                           : partial ? 'background:#f59e0b;color:#fff;border:none;'
+                           :           'background:var(--line);color:var(--sub);border:none;';
+            const rowId = `cardRow_${esc(u.nickname)}_${c.cardId}`;
+            html += `<tr id="${rowId}">
+              <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)}${c.drew>1?`<span style="color:var(--sub);font-size:11px;margin-left:3px;">x${c.drew}</span>`:''}${badges}</td>
+              <td style="color:var(--sub);font-size:12px;text-align:center;">${c.drew}</td>
+              <td style="color:#22c55e;font-size:12px;text-align:center;">${c.received}</td>
+              <td style="color:#ef4444;font-size:12px;text-align:center;font-weight:${c.needed>0?700:400};">${c.needed>0?c.needed:'-'}</td>
+              <td style="text-align:center;">
+                ${done
+                  ? `<span style="color:#22c55e;font-size:11px;font-weight:700;">✓${c.received}/${c.drew}</span>
+                     <button onclick="setCardReceived('${esc(u.nickname)}',${c.cardId},${c.drew},0)"
+                       style="margin-left:4px;padding:2px 6px;border-radius:5px;font-size:10px;background:none;border:1px solid var(--line);color:var(--sub);cursor:pointer;">되돌리기</button>`
+                  : `<button onclick="setCardReceived('${esc(u.nickname)}',${c.cardId},${c.drew},${c.received+1})"
+                       style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}">
+                       ${c.received}/${c.drew} +1
+                     </button>`}
+              </td>
+            </tr>`;
+          } else if (c.tradeIn > 0) {
+            // 교환 취득만 있는 행 (TF 배부 불필요)
+            html += `<tr style="opacity:0.55;">
+              <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)}${badges}</td>
+              <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
+              <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
+              <td colspan="2" style="color:var(--sub);font-size:11px;text-align:center;">교환취득 · TF 배부 불필요</td>
+            </tr>`;
+          }
         });
       });
       tbody.innerHTML = html;
@@ -704,30 +748,33 @@
 
     function filterCardUsers(q) {
       const t = q.trim();
-      const filtered = t
+      let filtered = t
         ? _cardUserStats.filter(u => u.nickname.includes(t) || (u.name && u.name.includes(t)))
         : _cardUserStats;
+      if (_unreceivedOnly) filtered = filtered.filter(u => u.cards.some(c => c.needed > 0));
       renderCardUserRows(filtered);
     }
 
-    async function toggleCardReceived(nickname, cardId, cardName, currentReceived, holding) {
+    async function setCardReceived(nickname, cardId, drew, newQty) {
       const rowId = `cardRow_${nickname}_${cardId}`;
       const row = document.getElementById(rowId);
-      const btn = row ? row.querySelector('button') : null;
-      // 수령 0 → holding (전체수령) → 0 순환
-      const newQty = currentReceived < holding ? holding : 0;
-      if (btn) { btn.disabled = true; btn.textContent = '...'; }
+      const btns = row ? row.querySelectorAll('button') : [];
+      btns.forEach(b => { b.disabled = true; });
       try {
-        const res = await post({ action: 'setCardReceivedQty', adminPw, nickname, cardId, qty: newQty });
+        const qty = Math.min(newQty, drew); // 뽑기 수 초과 불가
+        const res = await post({ action: 'setCardReceivedQty', adminPw, nickname, cardId, qty });
         if (res.ok) {
           const u = _cardUserStats.find(x => x.nickname === nickname);
-          if (u) { const cd = u.cards.find(x => x.cardId === cardId); if (cd) cd.received = newQty; }
+          if (u) {
+            const cd = u.cards.find(x => x.cardId === cardId);
+            if (cd) { cd.received = qty; cd.needed = Math.max(0, cd.drew - qty); }
+          }
           filterCardUsers(document.getElementById('cardUserSearch').value);
         } else {
           alert('오류: ' + (res.error || ''));
-          if (btn) { btn.disabled = false; }
+          btns.forEach(b => { b.disabled = false; });
         }
-      } catch(e) { alert('연결 오류'); if (btn) { btn.disabled = false; } }
+      } catch(e) { alert('연결 오류'); btns.forEach(b => { b.disabled = false; }); }
     }
 
     const SPIRIT_CARDS_ADMIN = [
@@ -748,7 +795,8 @@
         if (!res.ok) return;
 
         document.getElementById('cardTotalDraws').textContent = res.totalDraws;
-        document.getElementById('cardTotalUsers').textContent = res.userStats ? res.userStats.length : 0;
+        const drewUsers = res.userStats ? res.userStats.filter(u => u.cards.some(c => c.drew > 0)).length : 0;
+        document.getElementById('cardTotalUsers').textContent = drewUsers;
 
         // 카드별 현황 (많이 뽑힌 순 내림차순)
         const grid = document.getElementById('cardStatsGrid');

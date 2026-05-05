@@ -999,24 +999,31 @@ function setDrawReceived(body) {
 
 function getCardStats() {
   var ss = getSpreadsheet();
+  var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
 
-  // 1. CardDraws → 카드별 전체 뽑기 횟수 (상단 그리드용)
+  // 1. CardDraws → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
   var cardCounts = {};
-  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
   var totalDraws = 0;
+  var userDrawMap = {}; // nickname → { cardId: count }
+  SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
   try {
     var drawSheet = getOrCreateDrawSheet();
     var drawLast = drawSheet.getLastRow();
     if (drawLast >= 2) {
       var drawRows = drawSheet.getRange(2, 1, drawLast - 1, 3).getValues();
       drawRows.forEach(function(row) {
-        var cardId = Number(row[2]);
-        if (cardId) { cardCounts[cardId] = (cardCounts[cardId] || 0) + 1; totalDraws++; }
+        var nick = String(row[0]);
+        var cid  = Number(row[2]);
+        if (!nick || !cid) return;
+        cardCounts[cid] = (cardCounts[cid] || 0) + 1;
+        totalDraws++;
+        if (!userDrawMap[nick]) userDrawMap[nick] = {};
+        userDrawMap[nick][cid] = (userDrawMap[nick][cid] || 0) + 1;
       });
     }
   } catch(e) {}
 
-  // 2. CardReceived → 카드별 수령 수량 합계 + 유저별 수령 맵
+  // 2. CardReceived → 카드별 총 수령 수 + 유저별 수령 맵
   var receivedCounts = {};
   var userReceivedMap = {}; // nickname → { cardId: qty }
   SPIRIT_CARDS.forEach(function(c) { receivedCounts[c.id] = 0; });
@@ -1037,7 +1044,41 @@ function getCardStats() {
     }
   } catch(e) {}
 
-  // 3. 닉네임 → 이름 맵
+  // 3. Trades(accepted) → 유저별 교환 양도/취득 맵
+  var tradeOutMap = {}; // nickname → { cardId: [counterpart, ...] }
+  var tradeInMap  = {}; // nickname → { cardId: [counterpart, ...] }
+  try {
+    var tradeSheet = getOrCreateTradesSheet();
+    var tradeLast = tradeSheet.getLastRow();
+    if (tradeLast >= 2) {
+      var tradeRows = tradeSheet.getRange(2, 1, tradeLast - 1, 8).getValues();
+      // cols: id(0), requester(1), requesterCardId(2), requesterCardName(3),
+      //       target(4), targetCardId(5), targetCardName(6), status(7)
+      tradeRows.forEach(function(row) {
+        if (String(row[7]) !== 'accepted') return;
+        var req      = String(row[1]);
+        var reqCard  = Number(row[2]);
+        var tgt      = String(row[4]);
+        var tgtCard  = Number(row[5]);
+        // requester: 양도 reqCard → tgt, 취득 tgtCard ← tgt
+        if (!tradeOutMap[req]) tradeOutMap[req] = {};
+        if (!tradeOutMap[req][reqCard]) tradeOutMap[req][reqCard] = [];
+        tradeOutMap[req][reqCard].push(tgt);
+        if (!tradeInMap[req]) tradeInMap[req] = {};
+        if (!tradeInMap[req][tgtCard]) tradeInMap[req][tgtCard] = [];
+        tradeInMap[req][tgtCard].push(tgt);
+        // target: 양도 tgtCard → req, 취득 reqCard ← req
+        if (!tradeOutMap[tgt]) tradeOutMap[tgt] = {};
+        if (!tradeOutMap[tgt][tgtCard]) tradeOutMap[tgt][tgtCard] = [];
+        tradeOutMap[tgt][tgtCard].push(req);
+        if (!tradeInMap[tgt]) tradeInMap[tgt] = {};
+        if (!tradeInMap[tgt][reqCard]) tradeInMap[tgt][reqCard] = [];
+        tradeInMap[tgt][reqCard].push(req);
+      });
+    }
+  } catch(e) {}
+
+  // 4. 닉네임 → 이름 맵
   var nameMap = {};
   try {
     var usersSheet = ss.getSheetByName('Users');
@@ -1049,34 +1090,38 @@ function getCardStats() {
     }
   } catch(e) {}
 
-  // 4. Collection → 유저별 현재 보유 카드 수량
-  var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
-  var userStats = [];
-  try {
-    var colSheet = getOrCreateCollectionSheet();
-    var colLast = colSheet.getLastRow();
-    if (colLast >= 2) {
-      var colRows = colSheet.getRange(2, 1, colLast - 1, 13).getValues();
-      colRows.forEach(function(row) {
-        var nickname = String(row[0]);
-        if (!nickname) return;
-        var cards = [];
-        for (var ci = 1; ci <= 9; ci++) {
-          var holding = Number(row[ci + 3]) || 0; // col 5~13 → idx 4~12
-          if (holding <= 0) continue;
-          var rcv = (userReceivedMap[nickname] && userReceivedMap[nickname][ci]) || 0;
-          cards.push({ cardId: ci, cardName: CARD_NAMES[ci - 1], holding: holding, received: rcv });
-        }
-        if (cards.length === 0) return;
-        userStats.push({ nickname: nickname, name: nameMap[nickname] || '', cards: cards });
-      });
-      userStats.sort(function(a, b) {
-        var ta = a.cards.reduce(function(s, c) { return s + c.holding; }, 0);
-        var tb = b.cards.reduce(function(s, c) { return s + c.holding; }, 0);
-        return tb - ta;
+  // 5. 유저별 카드 통합 (뽑기 또는 교환이 있는 모든 유저)
+  var allNicks = {};
+  Object.keys(userDrawMap).forEach(function(n) { allNicks[n] = 1; });
+  Object.keys(tradeInMap).forEach(function(n) { allNicks[n] = 1; });
+
+  var userStats = Object.keys(allNicks).map(function(nickname) {
+    var cards = [];
+    for (var ci = 1; ci <= 9; ci++) {
+      var drew      = (userDrawMap[nickname]    && userDrawMap[nickname][ci])    || 0;
+      var received  = (userReceivedMap[nickname] && userReceivedMap[nickname][ci]) || 0;
+      var outList   = (tradeOutMap[nickname]    && tradeOutMap[nickname][ci])    || [];
+      var inList    = (tradeInMap[nickname]     && tradeInMap[nickname][ci])     || [];
+      if (drew === 0 && inList.length === 0 && outList.length === 0) continue;
+      cards.push({
+        cardId:    ci,
+        cardName:  CARD_NAMES[ci - 1],
+        drew:      drew,
+        received:  Math.min(received, drew), // 수령은 뽑기 수 초과 불가
+        needed:    Math.max(0, drew - received),
+        tradeOut:  outList.length,
+        tradeOutTo: outList,
+        tradeIn:   inList.length,
+        tradeInFrom: inList
       });
     }
-  } catch(e) {}
+    return { nickname: nickname, name: nameMap[nickname] || '', cards: cards };
+  }).filter(function(u) { return u.cards.length > 0; })
+    .sort(function(a, b) {
+      var ta = a.cards.reduce(function(s, c) { return s + c.drew; }, 0);
+      var tb = b.cards.reduce(function(s, c) { return s + c.drew; }, 0);
+      return tb - ta;
+    });
 
   return { ok: true, cardCounts: cardCounts, receivedCounts: receivedCounts, userStats: userStats, totalDraws: totalDraws };
 }

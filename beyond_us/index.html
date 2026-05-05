@@ -2223,7 +2223,10 @@
         <div style="max-width:380px;margin:32px auto 60px;padding:24px 20px;background:var(--card);border-radius:20px;position:relative;border:1px solid var(--line);">
           <button onclick="closeTradeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--sub);font-size:24px;cursor:pointer;line-height:1;">×</button>
           <h3 id="tradeModalTitle" style="margin:0 0 4px;font-size:16px;font-weight:700;color:var(--text);">카드 교환 신청</h3>
-          <div id="tradeStepIndicator" style="font-size:11px;color:var(--sub);margin-bottom:16px;"></div>
+          <div id="tradeStepIndicator" style="font-size:11px;color:var(--sub);margin-bottom:10px;"></div>
+          <div style="background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#92600a;line-height:1.5;">
+            실물 카드를 먼저 수령한 뒤 교환하면,<br>교환 상대에게 실물 카드를 직접 전달할 수 있어요.
+          </div>
           <!-- Step 1: 닉네임 검색 -->
           <div id="tradeStep1">
             <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">교환할 상대방 닉네임을 입력해주세요.</p>
@@ -2576,7 +2579,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505w';
+    const APP_VERSION = '20260505x';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
