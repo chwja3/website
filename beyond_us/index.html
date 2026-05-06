@@ -2573,7 +2573,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506d';
+    const APP_VERSION = '20260506e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5351,10 +5351,6 @@
       if (!badge) return;
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
       badge.style.display = isTicketWeek ? 'inline-block' : 'none';
-      if (isTicketWeek) {
-        badge.textContent = _hpTicketAlreadyAwarded ? '🎫 이번 주 뽑기권 이미 획득했어요!' : '🎫 이번 주 정답 맞히면 뽑기권 1장!';
-        badge.style.opacity = _hpTicketAlreadyAwarded ? '0.6' : '1';
-      }
     }
 
     function renderHoldPray() {
@@ -5409,6 +5405,8 @@
             <span class="hp-inline-name">${escHtml(correctName)}</span>
           </div>`;
       } else {
+        const ticketNotice = (_hpTicketAlreadyAwarded && (_hpWeekKey === 'w3' || _hpWeekKey === 'w6'))
+          ? `<p class="hp-ticket-notice" style="opacity:0.65;">🎫 이번 주 뽑기권은 이미 획득했어요!</p>` : '';
         bottomHtml = `
           <div class="hp-divider"></div>
           <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
@@ -5418,6 +5416,7 @@
             <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
           </div>
           <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
+          ${ticketNotice}
           <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`;
       }
 
