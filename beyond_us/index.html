@@ -2573,7 +2573,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506c';
+    const APP_VERSION = '20260506d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5270,6 +5270,7 @@
     let _hpCurrentIdx = 0;
     let _hpWeekKey = '';
     let _hpCorrectMap = {}; // {cardIndex: name} — per week, loaded from localStorage
+    let _hpTicketAlreadyAwarded = false;
 
     function fitHpText(textEl, boxEl, opts = {}) {
       if (!textEl || !boxEl) return;
@@ -5325,6 +5326,7 @@
         _hpWeekKey = data.weekKey || '';
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
+        _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
         // localStorage 먼저 로드 (오프라인 fallback)
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
@@ -5344,12 +5346,22 @@
       }
     }
 
+    function updateHpBadge() {
+      const badge = document.getElementById('hpTicketWeekBadge');
+      if (!badge) return;
+      const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
+      badge.style.display = isTicketWeek ? 'inline-block' : 'none';
+      if (isTicketWeek) {
+        badge.textContent = _hpTicketAlreadyAwarded ? '🎫 이번 주 뽑기권 이미 획득했어요!' : '🎫 이번 주 정답 맞히면 뽑기권 1장!';
+        badge.style.opacity = _hpTicketAlreadyAwarded ? '0.6' : '1';
+      }
+    }
+
     function renderHoldPray() {
       const el = document.getElementById('hpContent');
       if (!el || !_hpCards.length) return;
       const total = _hpCards.length;
-      const badge = document.getElementById('hpTicketWeekBadge');
-      if (badge) badge.style.display = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6') ? 'inline-block' : 'none';
+      updateHpBadge();
 
       el.innerHTML = `
         <div class="hp-carousel-wrap" id="hpCarouselWrap">
@@ -5466,12 +5478,22 @@
           _hpCorrectMap[cardIdx] = guess;
           localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + cardIdx, guess);
           renderHpCard(cardIdx);
+          const slot = document.getElementById('hpCardSlot');
           if (data.ticketAwarded) {
-            const slot = document.getElementById('hpCardSlot');
+            _hpTicketAlreadyAwarded = true;
+            updateHpBadge();
             if (slot) {
               const toast = document.createElement('p');
               toast.className = 'hp-ticket-notice';
               toast.textContent = '🎫 뽑기권 1장 획득!';
+              slot.querySelector('.hp-bottom-area')?.appendChild(toast);
+            }
+          } else if (_hpWeekKey === 'w3' || _hpWeekKey === 'w6') {
+            if (slot) {
+              const toast = document.createElement('p');
+              toast.className = 'hp-ticket-notice';
+              toast.style.opacity = '0.6';
+              toast.textContent = '이번 주 뽑기권은 이미 받으셨어요 🙏';
               slot.querySelector('.hp-bottom-area')?.appendChild(toast);
             }
           }

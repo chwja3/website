@@ -652,7 +652,21 @@ function getHoldPray(weekKey, nickname) {
     }
   }
 
-  return { ok: true, weekKey, cards, correctMap };
+  // 이번 주 뽑기권 이미 수령 여부 확인 (w3/w6)
+  let ticketAlreadyAwarded = false;
+  if (nickname && (weekKey === 'w3' || weekKey === 'w6')) {
+    const bonusSheet = getOrCreateBonusDrawsSheet();
+    const last = bonusSheet.getLastRow();
+    const source = 'hp_' + weekKey;
+    if (last >= 2) {
+      const rows = bonusSheet.getRange(2, 1, last - 1, 2).getValues();
+      ticketAlreadyAwarded = rows.some(function(r) {
+        return String(r[0]) === nickname && String(r[1]) === source;
+      });
+    }
+  }
+
+  return { ok: true, weekKey, cards, correctMap, ticketAlreadyAwarded };
 }
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
