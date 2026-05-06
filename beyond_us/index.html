@@ -2573,7 +2573,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506a';
+    const APP_VERSION = '20260506b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5354,11 +5354,7 @@
 
       el.innerHTML = `
         <div class="hp-carousel-wrap" id="hpCarouselWrap">
-          <div class="hp-slide-counter" id="hpSlideCounter">${_hpCurrentIdx + 1} / ${total}</div>
           <div id="hpCardSlot"></div>
-          <div class="hp-dots" id="hpDots">
-            ${_hpCards.map((_, i) => `<span class="hp-dot${i === _hpCurrentIdx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}
-          </div>
         </div>
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
@@ -5414,6 +5410,8 @@
           <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`;
       }
 
+      const dotsHtml = `<div class="hp-dots" id="hpDots">${_hpCards.map((_, i) => `<span class="hp-dot${i === idx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}</div>`;
+
       slot.innerHTML = `
         <div class="hp-card-frame">
           <div class="hp-card" style="margin-top:8px;">
@@ -5423,6 +5421,7 @@
             </div>
           </div>
         </div>
+        ${dotsHtml}
         <div class="hp-bottom-area" style="margin-top:14px;">
           <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
           ${bottomHtml}
@@ -5443,10 +5442,6 @@
       const total = _hpCards.length;
       if (idx < 0 || idx >= total) return;
       _hpCurrentIdx = idx;
-      const counter = document.getElementById('hpSlideCounter');
-      if (counter) counter.textContent = `${idx + 1} / ${total}`;
-      const dots = document.querySelectorAll('#hpDots .hp-dot');
-      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
       renderHpCard(idx);
     }
 
