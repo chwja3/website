@@ -1113,6 +1113,9 @@
       font-size:11px; font-weight:700; color:var(--sub);
       margin:14px 0 6px; letter-spacing:0.04em;
     }
+    .mini-card-rare-locked {
+      border-color: #b8860b !important;
+    }
     .mini-card-rare-locked .mini-card-silhouette {
       filter: sepia(1) saturate(4) hue-rotate(5deg) brightness(0.78);
     }
@@ -2201,7 +2204,7 @@
           <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
-            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 히든 1종)이 있고, 히든 카드는 수련회 당일 특별 미션에서 획득할 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟️ 수련회 응모권 혜택<br>참석시 응모권 1장<br>앤카드 3종 → 추가 응모권 1장 = 🎟️🎟️<br>앤카드 5종 → 추가 응모권 3장 = 🎟️🎟️🎟️🎟️<br>앤카드 10종 → 추가 응모권 5장 + 한정판 굿즈</span></span>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 히든 1종)이 있고, 히든 카드는 수련회 당일 특별 미션에서 획득할 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟️ 수련회 응모권 혜택<br>참석시 응모권 1장<br>앤카드 3종 → 추가 응모권 1장<br>앤카드 5종 → 추가 응모권 3장<br>앤카드 10종 → 추가 응모권 5장 + 한정판 굿즈</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2588,7 +2591,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zb';
+    const APP_VERSION = '20260506zc';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
