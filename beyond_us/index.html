@@ -1531,10 +1531,10 @@
     .hp-dots { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 10px; }
     .hp-dot {
       width: 7px; height: 7px; border-radius: 50%;
-      background: var(--border); cursor: pointer;
+      background: var(--line); cursor: pointer;
       transition: background 0.2s, width 0.2s, border-radius 0.2s;
     }
-    .hp-dot.active { background: var(--accent); width: 20px; border-radius: 4px; transform: none; }
+    .hp-dot.active { background: var(--primary); width: 20px; border-radius: 4px; }
     .hp-hint-btn {
       display: block; margin: 8px auto 0; font-size: 11px;
       color: var(--sub); background: none; border: none; cursor: pointer;
@@ -2573,7 +2573,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505zb';
+    const APP_VERSION = '20260506a';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
