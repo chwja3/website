@@ -1547,12 +1547,22 @@
       transition: background 0.2s, width 0.2s, border-radius 0.2s;
     }
     .hp-dot.active { background: var(--primary); width: 20px; border-radius: 4px; }
-    .hp-hint-btn {
-      display: block; margin: 8px auto 0; font-size: 11px;
-      color: var(--sub); background: none; border: none; cursor: pointer;
-      text-decoration: underline; text-underline-offset: 2px; opacity: 0.65; padding: 4px 8px;
+    .hp-hint-icon {
+      width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid var(--sub); background: none;
+      color: var(--sub); font-size: 11px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; opacity: 0.5; padding: 0; line-height: 1;
     }
-    .hp-hint-btn:hover { opacity: 1; }
+    .hp-hint-icon:hover { opacity: 0.9; }
+    .hp-hint-popup {
+      text-align: center; margin-top: 6px;
+    }
+    .hp-hint-link {
+      font-size: 11px; color: var(--sub); cursor: pointer; background: none; border: none;
+      text-decoration: underline; text-underline-offset: 2px; opacity: 0.65; padding: 0;
+    }
+    .hp-hint-link:hover { opacity: 1; }
     .hp-ticket-notice {
       display: block; width: fit-content; margin: 8px auto 0;
       font-size: 12px; font-weight: 700; color: #b8860b;
@@ -2591,7 +2601,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506ze';
+    const APP_VERSION = '20260506zf';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5479,10 +5489,13 @@
             <span class="hp-inline-label">이름</span>
             <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="여기에 입력해 주세요" />
             <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
+            <button class="hp-hint-icon" onclick="document.getElementById('hpHintPopup').style.display=document.getElementById('hpHintPopup').style.display==='none'?'block':'none'" aria-label="힌트">!</button>
+          </div>
+          <div class="hp-hint-popup" id="hpHintPopup" style="display:none;">
+            <button class="hp-hint-link" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>
           </div>
           <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
-          ${ticketNotice}
-          <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`;
+          ${ticketNotice}`;
       }
 
       const dotsHtml = `<div class="hp-dots" id="hpDots">${_hpCards.map((_, i) => `<span class="hp-dot${i === idx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}</div>`;
