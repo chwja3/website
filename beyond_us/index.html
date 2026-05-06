@@ -2584,7 +2584,7 @@
               </div>
 
               <!-- 시크릿버디 -->
-              <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #86efac;">
+              <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #fde68a;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
                 <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
                   <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbSecretName">—</p>
@@ -2650,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zw';
+    const APP_VERSION = '20260506zx';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
