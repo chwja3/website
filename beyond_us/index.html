@@ -2575,7 +2575,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506f';
+    const APP_VERSION = '20260506g';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5519,6 +5519,7 @@
               toast.textContent = '🎫 뽑기권 1장도 획득했어요!';
               slot.querySelector('.hp-bottom-area')?.appendChild(toast);
             }
+            loadUserStatus(); // 홈 뽑기권 뱃지 즉시 갱신
           }
         } else {
           if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
