@@ -2650,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zu';
+    const APP_VERSION = '20260506zv';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5211,6 +5211,49 @@
     /* ════ B.B.B. ════ */
     let _bbbData = null;
 
+    function _bbbShowPhoto(src) {
+      const img = document.getElementById('bbbPhotoImg');
+      img.src = src;
+      img.style.display = 'block';
+      const modalImg = document.getElementById('bbbPhotoModalImg');
+      if (modalImg) modalImg.src = src;
+      document.getElementById('bbbPhotoPlaceholder').style.display = 'none';
+      document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
+      document.getElementById('bbbPhotoLabel').style.border = '1px solid rgba(0,0,0,0.35)';
+    }
+    function openBbbPhotoModal() {
+      const modal = document.getElementById('bbbPhotoModal');
+      if (modal) modal.style.display = 'flex';
+    }
+    function closeBbbPhotoModal() {
+      const modal = document.getElementById('bbbPhotoModal');
+      if (modal) modal.style.display = 'none';
+    }
+    async function deleteBbbPhoto() {
+      if (!confirm('사진을 삭제할까요?')) return;
+      closeBbbPhotoModal();
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      const statusEl = document.getElementById('bbbPhotoStatus');
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'deleteBBBPhoto', userId: nickname }),
+          redirect: 'follow'
+        }).then(r => r.json());
+        if (res.ok) {
+          const img = document.getElementById('bbbPhotoImg');
+          img.src = ''; img.style.display = 'none';
+          const modalImg = document.getElementById('bbbPhotoModalImg');
+          if (modalImg) modalImg.src = '';
+          document.getElementById('bbbPhotoPlaceholder').style.display = '';
+          document.getElementById('bbbPhotoPlaceholderText').style.display = '';
+          document.getElementById('bbbPhotoLabel').style.border = '1.5px dashed var(--line)';
+          if (statusEl) statusEl.textContent = '';
+        }
+      } catch(e) { alert('삭제 중 오류가 발생했어요.'); }
+    }
+
     async function loadBBB() {
       const nickname = localStorage.getItem('beyondus_nickname') || '';
       if (!nickname) return;
@@ -5240,46 +5283,6 @@
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
-        function _bbbShowPhoto(src) {
-          const img = document.getElementById('bbbPhotoImg');
-          img.src = src;
-          img.style.display = 'block';
-          document.getElementById('bbbPhotoModalImg').src = src;
-          document.getElementById('bbbPhotoPlaceholder').style.display = 'none';
-          document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
-          document.getElementById('bbbPhotoLabel').style.border = '1px solid rgba(0,0,0,0.12)';
-        }
-        function openBbbPhotoModal() {
-          const modal = document.getElementById('bbbPhotoModal');
-          if (modal) modal.style.display = 'flex';
-        }
-        function closeBbbPhotoModal() {
-          const modal = document.getElementById('bbbPhotoModal');
-          if (modal) modal.style.display = 'none';
-        }
-        async function deleteBbbPhoto() {
-          if (!confirm('사진을 삭제할까요?')) return;
-          closeBbbPhotoModal();
-          const nickname = localStorage.getItem('beyondus_nickname') || '';
-          const statusEl = document.getElementById('bbbPhotoStatus');
-          try {
-            const res = await fetch(API_BASE, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ action: 'deleteBBBPhoto', userId: nickname }),
-              redirect: 'follow'
-            }).then(r => r.json());
-            if (res.ok) {
-              const img = document.getElementById('bbbPhotoImg');
-              img.src = ''; img.style.display = 'none';
-              document.getElementById('bbbPhotoModalImg').src = '';
-              document.getElementById('bbbPhotoPlaceholder').style.display = '';
-              document.getElementById('bbbPhotoPlaceholderText').style.display = '';
-              document.getElementById('bbbPhotoLabel').style.border = '1.5px dashed var(--line)';
-              if (statusEl) statusEl.textContent = '';
-            }
-          } catch(e) { alert('삭제 중 오류가 발생했어요.'); }
-        }
         if (bbbRes.myPhoto) _bbbShowPhoto(bbbRes.myPhoto);
 
         document.getElementById('bbbPhotoInput').onchange = async function() {
