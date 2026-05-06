@@ -597,7 +597,8 @@ function drawCard(userId, weekKey, testMode) {
     }
   }
 
-  const card = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
+  const drawableCards = SPIRIT_CARDS.filter(function(c) { return c.id !== 10; });
+  const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
 
   // 뽑기 전 기존 보유 여부 확인 (isNew 계산용 — updateCollectionSheet 전에 읽어야 정확)
   let isNew = true;
