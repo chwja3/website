@@ -168,6 +168,7 @@ function doPost(e) {
     if (action === 'prayForTrade') return jsonOutput(prayForTrade(body));
     if (action === 'guessBBBSecret')        return jsonOutput(guessBBBSecret(body));
     if (action === 'uploadBBBPhoto')        return jsonOutput(uploadBBBPhoto(body));
+    if (action === 'deleteBBBPhoto')        return jsonOutput(deleteBBBPhoto(body));
     if (action === 'sendBBBMessage')        return jsonOutput(sendBBBMessage(body));
     if (action === 'adminSetBBBMessageOpen') return jsonOutput(adminSetBBBMessageOpen(body));
     if (action === 'adminSetupBBBMatching') {
@@ -2098,6 +2099,22 @@ function uploadBBBPhoto(body) {
   }
 
   return { ok: true, rewarded: isFirstUpload };
+}
+
+function deleteBBBPhoto(body) {
+  const userId = String(body.userId || '').trim();
+  if (!userId) return { error: '필수 항목 누락.' };
+  const photoSheet = getOrCreateBBBPhotosSheet();
+  const last = photoSheet.getLastRow();
+  if (last < 2) return { ok: true };
+  const rows = photoSheet.getRange(2, 1, last - 1, 1).getValues();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) === userId) {
+      photoSheet.deleteRow(i + 2);
+      break;
+    }
+  }
+  return { ok: true };
 }
 
 // ─ 어드민: 매칭 데이터 직접 입력
