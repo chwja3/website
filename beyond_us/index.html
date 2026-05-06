@@ -1109,6 +1109,148 @@
       overflow: visible;
     }
 
+    /* ══════════════════════════
+       히든 카드 — 레드카펫 + 골드함
+    ══════════════════════════ */
+    .hidden-card-section { position:relative; margin-top:22px; }
+
+    .hidden-card-carpet {
+      position:absolute; inset:-10px -18px;
+      background:
+        repeating-linear-gradient(0deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 4px),
+        repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 8px),
+        linear-gradient(180deg, transparent 0%, #700a0a 12%, #9e0f0f 40%, #b01212 60%, #9e0f0f 88%, transparent 100%);
+      pointer-events:none; z-index:0;
+    }
+    .hidden-card-carpet::before,
+    .hidden-card-carpet::after {
+      content:''; position:absolute; left:10px; right:10px; height:2px;
+      background:linear-gradient(90deg, transparent, rgba(212,175,55,0.85) 20%, rgba(255,220,60,0.95) 50%, rgba(212,175,55,0.85) 80%, transparent);
+    }
+    .hidden-card-carpet::before { top:10px; }
+    .hidden-card-carpet::after  { bottom:10px; }
+
+    @keyframes chestGlow {
+      0%,100% { box-shadow:0 0 14px rgba(212,175,55,0.15),0 6px 28px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.07); }
+      50%      { box-shadow:0 0 28px rgba(212,175,55,0.35),0 6px 28px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.07); }
+    }
+    @keyframes chestShimmer {
+      0%   { transform:translateX(-150%) skewX(-18deg); }
+      100% { transform:translateX(320%)  skewX(-18deg); }
+    }
+    @keyframes chestStarTwinkle {
+      0%,100% { opacity:0.2; transform:scale(1); }
+      50%      { opacity:1;   transform:scale(1.6); }
+    }
+    .hidden-card-chest {
+      position:relative; z-index:1;
+      border-radius:18px;
+      background:linear-gradient(135deg,#0d0b1b 0%,#160e2c 45%,#0b1920 100%);
+      border:1.5px solid rgba(212,175,55,0.52);
+      padding:18px 18px;
+      display:flex; align-items:center; gap:16px;
+      overflow:hidden;
+      animation:chestGlow 3.5s ease-in-out infinite;
+      transition:transform .15s;
+      cursor:default;
+    }
+    .hidden-card-chest.unlocked { cursor:pointer; }
+    .hidden-card-chest.unlocked:active { transform:scale(0.98); }
+    .hidden-card-chest::before {
+      content:''; position:absolute; top:0; bottom:0; width:55%; left:0;
+      background:linear-gradient(90deg,transparent,rgba(212,175,55,0.07),transparent);
+      animation:chestShimmer 4.5s ease-in-out infinite;
+      pointer-events:none;
+    }
+    .hidden-card-chest::after {
+      content:''; position:absolute; inset:5px; border-radius:14px;
+      border:1px solid rgba(212,175,55,0.13); pointer-events:none;
+    }
+    .hidden-chest-card-area {
+      flex-shrink:0; width:66px; height:104px; border-radius:11px;
+      display:flex; align-items:center; justify-content:center;
+      position:relative; z-index:1;
+    }
+    .hidden-chest-card-area.locked {
+      background:linear-gradient(135deg,#1d1534,#291c48);
+      border:1.5px solid rgba(212,175,55,0.32);
+      font-size:32px;
+      filter:drop-shadow(0 0 10px rgba(212,175,55,0.5));
+    }
+    .hidden-chest-card-area.got {
+      box-shadow:0 0 20px rgba(212,175,55,0.6),0 2px 10px rgba(0,0,0,0.5);
+    }
+    .hidden-chest-card-area.got img {
+      width:100%; height:100%; object-fit:contain; border-radius:11px; display:block;
+    }
+    .hidden-chest-stars { position:absolute; inset:0; pointer-events:none; z-index:0; }
+    .hcs {
+      position:absolute; width:3px; height:3px;
+      background:rgba(212,175,55,0.8); border-radius:50%;
+      animation:chestStarTwinkle 2s ease-in-out infinite;
+    }
+    .hidden-chest-info { flex:1; z-index:1; }
+    .hidden-chest-tag {
+      font-size:9px; font-weight:800; letter-spacing:0.18em;
+      color:rgba(212,175,55,0.62); text-transform:uppercase; margin-bottom:4px;
+    }
+    .hidden-chest-name {
+      font-size:20px; font-weight:900;
+      color:rgba(212,175,55,0.97);
+      text-shadow:0 0 16px rgba(212,175,55,0.55);
+      letter-spacing:0.04em; margin-bottom:4px;
+    }
+    .hidden-chest-hint {
+      font-size:11.5px; line-height:1.55; color:rgba(255,255,255,0.38);
+    }
+    .hidden-chest-badge {
+      display:inline-flex; align-items:center; gap:4px;
+      font-size:11px; font-weight:700;
+      color:rgba(212,175,55,0.92);
+      background:rgba(212,175,55,0.13);
+      border:1px solid rgba(212,175,55,0.32);
+      border-radius:999px; padding:2px 10px; margin-top:7px;
+    }
+
+    /* ── 응모권 마일스톤 패널 ── */
+    .raffle-panel {
+      position:relative; z-index:1;
+      margin-top:12px;
+      border-radius:14px;
+      background:rgba(0,0,0,0.22);
+      border:1px solid rgba(212,175,55,0.22);
+      padding:14px 16px;
+    }
+    .raffle-panel-title {
+      font-size:10px; font-weight:800; letter-spacing:0.14em;
+      color:rgba(212,175,55,0.68); text-transform:uppercase;
+      text-align:center; margin-bottom:10px;
+    }
+    .raffle-milestone {
+      display:flex; align-items:center; gap:9px;
+      padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05);
+      font-size:13px;
+    }
+    .raffle-milestone:last-of-type { border-bottom:none; }
+    .raffle-milestone.done .rm-label  { color:rgba(255,255,255,0.88); }
+    .raffle-milestone.done .rm-reward { color:rgba(212,175,55,0.92); font-weight:700; }
+    .raffle-milestone:not(.done) .rm-label  { color:rgba(255,255,255,0.28); }
+    .raffle-milestone:not(.done) .rm-reward { color:rgba(255,255,255,0.22); }
+    .rm-check { font-size:14px; flex-shrink:0; width:18px; text-align:center; }
+    .rm-label  { flex:1; font-size:12.5px; }
+    .rm-reward { font-size:12px; flex-shrink:0; }
+    .raffle-total {
+      margin-top:10px; padding-top:10px;
+      border-top:1px solid rgba(212,175,55,0.22);
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .raffle-total-label { font-size:12px; color:rgba(255,255,255,0.48); }
+    .raffle-total-value {
+      font-size:19px; font-weight:900;
+      color:rgba(212,175,55,0.97);
+      text-shadow:0 0 10px rgba(212,175,55,0.45);
+    }
+
     /* ════════════════════════════
        Auth 화면 (전체 페이지)
     ════════════════════════════ */
@@ -2200,6 +2342,7 @@
             <div id="collPanelGrid">
               <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
               <div class="collection-grid" id="collectionGrid"></div>
+              <div id="hiddenCardSlot"></div>
             </div>
             <!-- 교환 현황 패널 -->
             <div id="collPanelTrades" style="display:none;">
@@ -2578,7 +2721,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506o';
+    const APP_VERSION = '20260506p';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3307,11 +3450,9 @@
 
       const counts = {};
       (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
-      const unique = Object.keys(counts).length;
 
       const newCardIds = new Set();
       Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => newCardIds.add(Number(localStorage.getItem(k))));
-      // 컬렉션에 없는 카드를 가리키는 유령 키 제거
       newCardIds.forEach(id => {
         if (!(counts[id] > 0)) {
           Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(id)).forEach(k => localStorage.removeItem(k));
@@ -3319,7 +3460,11 @@
         }
       });
 
-      sub.textContent = `${currentNickname}님의 컬렉션 · ${unique}/9종 보유`;
+      const spiritUnique = SPIRIT_CARDS.filter(c => counts[c.id] > 0).length;
+      const hiddenCnt    = counts[10] || 0;
+      const totalUnique  = spiritUnique + (hiddenCnt > 0 ? 1 : 0);
+      sub.textContent = `${currentNickname}님의 컬렉션 · ${totalUnique}/10종 보유`;
+
       grid.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = counts[card.id] || 0;
         const locked = cnt === 0;
@@ -3345,6 +3490,83 @@
             ${isNew ? `<div style="position:absolute;top:2px;right:2px;width:9px;height:9px;background:#e05a5a;border-radius:50%;z-index:5;border:1.5px solid var(--card);pointer-events:none;"></div>` : ''}
           </div>`;
       }).join('');
+
+      renderHiddenSection(hiddenCnt, spiritUnique + (hiddenCnt > 0 ? 1 : 0));
+    }
+
+    function renderHiddenSection(hiddenCnt, totalUnique) {
+      const slot = document.getElementById('hiddenCardSlot');
+      if (!slot) return;
+
+      const got = hiddenCnt > 0;
+
+      // 응모권 마일스톤 계산
+      const m3   = totalUnique >= 3;
+      const m5   = totalUnique >= 5;
+      const m10  = totalUnique >= 10;
+      let tickets = 1; // 기본 참석
+      if (m3) tickets += 1;
+      if (m5) tickets += 3;
+      if (m10) tickets += 5;
+
+      const chestCard = got
+        ? `<div class="hidden-chest-card-area got"><img src="images/히든.png" alt="히든 카드"></div>`
+        : `<div class="hidden-chest-card-area locked">🔒</div>`;
+
+      const chestInfo = got
+        ? `<div class="hidden-chest-tag">HIDDEN CARD</div>
+           <div class="hidden-chest-name">히든 카드</div>
+           <div class="hidden-chest-hint">획득하셨어요!</div>
+           <span class="hidden-chest-badge">✨ 전종 보유</span>`
+        : `<div class="hidden-chest-tag">HIDDEN CARD</div>
+           <div class="hidden-chest-name">히든 카드</div>
+           <div class="hidden-chest-hint">수련회 당일 특별 미션에서<br>획득할 수 있어요</div>`;
+
+      const sparkles = [
+        'top:14%;right:6%;animation-delay:0s',
+        'top:38%;right:11%;animation-delay:0.9s',
+        'bottom:18%;right:5%;animation-delay:1.6s',
+        'top:22%;left:68%;animation-delay:0.4s',
+        'bottom:14%;left:70%;animation-delay:1.2s',
+        'top:55%;right:18%;animation-delay:2.1s',
+      ].map(s => `<span class="hcs" style="${s}"></span>`).join('');
+
+      slot.innerHTML = `
+        <div class="hidden-card-section">
+          <div class="hidden-card-carpet"></div>
+          <div class="hidden-card-chest${got ? ' unlocked' : ''}"${got ? ` onclick="openCardDetail(10,${hiddenCnt})"` : ''}>
+            <div class="hidden-chest-stars">${sparkles}</div>
+            ${chestCard}
+            <div class="hidden-chest-info">${chestInfo}</div>
+          </div>
+          <div class="raffle-panel">
+            <div class="raffle-panel-title">🎟 수련회 응모권 예상</div>
+            <div class="raffle-milestone done">
+              <span class="rm-check">✓</span>
+              <span class="rm-label">수련회 참석</span>
+              <span class="rm-reward">1장</span>
+            </div>
+            <div class="raffle-milestone${m3 ? ' done' : ''}">
+              <span class="rm-check">${m3 ? '✓' : '○'}</span>
+              <span class="rm-label">카드 3종 달성</span>
+              <span class="rm-reward">+1장</span>
+            </div>
+            <div class="raffle-milestone${m5 ? ' done' : ''}">
+              <span class="rm-check">${m5 ? '✓' : '○'}</span>
+              <span class="rm-label">카드 5종 달성</span>
+              <span class="rm-reward">+3장</span>
+            </div>
+            <div class="raffle-milestone${m10 ? ' done' : ''}">
+              <span class="rm-check">${m10 ? '✓' : '○'}</span>
+              <span class="rm-label">카드 10종 전종 🎁</span>
+              <span class="rm-reward">+5장 + 굿즈</span>
+            </div>
+            <div class="raffle-total">
+              <span class="raffle-total-label">예상 수령 응모권</span>
+              <span class="raffle-total-value">${tickets}장</span>
+            </div>
+          </div>
+        </div>`;
     }
 
     /* ════ 교환 시스템 ════ */

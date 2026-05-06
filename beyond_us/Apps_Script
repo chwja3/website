@@ -16,6 +16,7 @@ const SPIRIT_CARDS = [
   {id:7, name:'충성'},
   {id:8, name:'온유'},
   {id:9, name:'절제'},
+  {id:10, name:'히든'},
 ];
 
 // ── GET ──────────────────────────────────────────
@@ -197,10 +198,20 @@ function doPost(e) {
       return jsonOutput(setDrawReceived(body));
     }
 
+    if (action === 'adminGrantHiddenCard') return jsonOutput(adminGrantHiddenCard(body));
+
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
     return jsonOutput({ ok: false, message: err.message });
   }
+}
+
+function adminGrantHiddenCard(body) {
+  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  const userId = String(body.userId || '').trim();
+  if (!userId) return { error: 'missing_userId' };
+  updateCollectionSheet(userId, 10, 1);
+  return { ok: true };
 }
 
 // ── config 시트 구조 ──────────────────────────────
@@ -1431,33 +1442,37 @@ function replyInquiry(body) {
 }
 
 // ── Collection 시트 ───────────────────────────────
-// 컬럼 구조 (14열):
+// 컬럼 구조 (15열):
 // 1:userId  2:누적뽑기권  3:실제뽑은개수  4:남은개수
-// 5:사랑  6:희락  7:화평  8:오래참음  9:자비  10:양선  11:충성  12:온유  13:절제  14:총카드수
+// 5:사랑  6:희락  7:화평  8:오래참음  9:자비  10:양선  11:충성  12:온유  13:절제  14:총카드수  15:히든
 function getOrCreateCollectionSheet() {
   const ss = getSpreadsheet();
   let sheet = ss.getSheetByName('Collection');
   if (!sheet) {
     sheet = ss.insertSheet('Collection');
-    sheet.appendRow(['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수']);
+    sheet.appendRow(['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수','히든']);
     sheet.setFrozenRows(1);
+  } else {
+    if (sheet.getLastColumn() < 15) sheet.getRange(1, 15).setValue('히든');
   }
   return sheet;
 }
 
-// { cardId: count } 형태로 반환 (카드는 col 5~13 = idx 4~12)
+// { cardId: count } 형태로 반환 (카드 1~9: col 5~13 = idx 4~12, 히든(10): col 15 = idx 14)
 function getUserCollection(userId) {
   const sheet = getOrCreateCollectionSheet();
   const last = sheet.getLastRow();
   if (last < 2) return {};
-  const rows = sheet.getRange(2, 1, last - 1, 14).getValues();
+  const rows = sheet.getRange(2, 1, last - 1, 15).getValues();
   for (const row of rows) {
     if (String(row[0]) !== userId) continue;
     const counts = {};
     for (let i = 1; i <= 9; i++) {
-      const cnt = Number(row[i + 3]) || 0; // cardId i → idx i+3
+      const cnt = Number(row[i + 3]) || 0;
       if (cnt > 0) counts[i] = cnt;
     }
+    const hidden = Number(row[14]) || 0;
+    if (hidden > 0) counts[10] = hidden;
     return counts;
   }
   return {};
@@ -1481,7 +1496,8 @@ function getCollectionTickets(userId) {
   return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
 }
 
-// delta: +1 추가, -1 제거 (카드 col = cardId+4, 총카드수 = col14)
+// delta: +1 추가, -1 제거
+// cardId 1~9 → col 5~13(idx 4~12), 히든(10) → col 15(idx 14), 총카드수 = col 14(idx 13)
 function updateCollectionSheet(userId, cardId, delta) {
   const sheet = getOrCreateCollectionSheet();
   const last = sheet.getLastRow();
@@ -1492,16 +1508,17 @@ function updateCollectionSheet(userId, cardId, delta) {
       if (String(ids[i][0]) === userId) { rowIndex = i + 2; break; }
     }
   }
+  const cardIdx = cardId <= 9 ? cardId + 3 : 14; // 1~9→idx4~12, 10→idx14
+  const cardCol = cardId <= 9 ? cardId + 4 : 15;  // 1~9→col5~13, 10→col15
   if (rowIndex === -1) {
-    const newRow = new Array(14).fill(0);
+    const newRow = new Array(15).fill(0);
     newRow[0] = userId;
     if (delta > 0) {
-      newRow[cardId + 3] = delta; // cardId 1~9 → idx 4~12
-      newRow[13] = delta;         // 총카드수
+      newRow[cardIdx] = delta;
+      newRow[13] = delta; // 총카드수
     }
     sheet.appendRow(newRow);
   } else {
-    const cardCol = cardId + 4; // cardId 1~9 → col 5~13
     const cardCell = sheet.getRange(rowIndex, cardCol);
     cardCell.setValue(Math.max(0, (Number(cardCell.getValue()) || 0) + delta));
     const totalCell = sheet.getRange(rowIndex, 14);
