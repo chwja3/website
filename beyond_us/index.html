@@ -2101,7 +2101,7 @@
       <ul class="drawer-nav">
         <li class="drawer-item" data-section="notice"><span class="drawer-label">공지사항</span><span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item active" data-section="mission"><span class="drawer-label">사전미션</span></li>
-        <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span></li>
+        <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span><span id="drawerPrayerDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
         <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
@@ -2609,7 +2609,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zh';
+    const APP_VERSION = '20260506zi';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4658,6 +4658,7 @@
       renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
       applyTabSettings(data);
+      updatePrayerDot();
       setStatus('최신 현황으로 업데이트되었어요.', 'success');
       return data;
     }
@@ -4786,7 +4787,11 @@
       });
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
-      if (name === 'prayer') loadHoldPray();
+      if (name === 'prayer') {
+        if (lastConfigData?.weekTitle) localStorage.setItem('beyondus_hp_last_seen_week', lastConfigData.weekTitle);
+        document.getElementById('drawerPrayerDot')?.classList.remove('visible');
+        loadHoldPray();
+      }
       if (name === 'secret') loadBBB();
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
@@ -4855,6 +4860,16 @@
     function saveSeenIds(ids) {
       localStorage.setItem('beyondus_seen_notices', JSON.stringify(ids));
     }
+    function updatePrayerDot() {
+      const dot = document.getElementById('drawerPrayerDot');
+      if (!dot) return;
+      const weekTitle = lastConfigData?.weekTitle || '';
+      const isNewWeek = weekTitle && weekTitle !== (localStorage.getItem('beyondus_hp_last_seen_week') || '');
+      const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
+      const hasTicketAlert = isTicketWeek && !_hpTicketAlreadyAwarded;
+      dot.classList.toggle('visible', !!(isNewWeek || hasTicketAlert));
+    }
+
     function updateNoticeDot() {
       const seen = getSeenIds();
       const hasNew = cachedNotices.some(n => !seen.includes(n.id));
@@ -5403,6 +5418,7 @@
           });
         }
         renderHoldPray();
+        updatePrayerDot();
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
       }
