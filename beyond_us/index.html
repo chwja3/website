@@ -2532,7 +2532,7 @@
 
             <!-- 헤더 -->
             <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
-            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;">B.B.B.<span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span></span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">수련회 현장에서 진행되는 미션이에요.</span></span></h2>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;">B.B.B.<span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span></span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">수련회 현장에서 진행되는 미션이에요.<br><br>🤍 <b>케어버디</b><br>내가 몰래 챙겨야 할 사람이에요. 사진 찍기, 익명 메시지 보내기 미션을 수행해요.<br><br>🔮 <b>시크릿버디</b><br>나를 몰래 챙겨주고 있는 사람이에요. 수련회 당일 누구인지 맞춰볼 수 있어요!</span></span></h2>
 
             <div id="bbbLoading" style="text-align:center;padding:32px 0;">
               <img src="images/hc_logo_png2.png" style="width:100px;height:auto;margin-bottom:16px;" alt="Beyond Us" />
@@ -2650,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zz';
+    const APP_VERSION = '20260507a';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
