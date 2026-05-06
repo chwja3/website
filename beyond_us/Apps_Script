@@ -129,6 +129,7 @@ function doPost(e) {
     if (action === 'submitHoldPrayGuess') {
       return jsonOutput(submitHoldPrayGuess(body.weekKey || '', body.guess || '', body.nickname || '', Number(body.cardIndex) || 0));
     }
+    if (action === 'postHpHint')    return jsonOutput(postHpHint(body));
     if (action === 'postInquiry')   return jsonOutput(postInquiry(body));
     if (action === 'editInquiry')   return jsonOutput(editInquiry(body));
     if (action === 'deleteInquiry') return jsonOutput(deleteInquiry(body));
@@ -678,7 +679,26 @@ function getHoldPray(weekKey, nickname) {
     }
   }
 
-  return { ok: true, weekKey, cards, correctMap, ticketAlreadyAwarded };
+  // 힌트 답변 조회
+  const hintReplies = {};
+  if (nickname) {
+    const inqSheet = getOrCreateInquirySheet();
+    const inqLast = inqSheet.getLastRow();
+    if (inqLast >= 2) {
+      const inqRows = inqSheet.getRange(2, 1, inqLast - 1, 6).getValues();
+      inqRows.forEach(function(r) {
+        if (String(r[1]) !== nickname) return;
+        const reply = String(r[4] || '').trim();
+        if (!reply) return;
+        const match = String(r[2]).match(/주차: ([^,]+), 카드: (\d+)번/);
+        if (match && match[1] === weekKey) {
+          hintReplies[Number(match[2]) - 1] = reply;
+        }
+      });
+    }
+  }
+
+  return { ok: true, weekKey, cards, correctMap, ticketAlreadyAwarded, hintReplies };
 }
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
@@ -1346,6 +1366,18 @@ function verifyUserPassword(nickname, password) {
     if (String(data[i][0]).trim() === nickname && String(data[i][1]).trim() === password) return true;
   }
   return false;
+}
+
+function postHpHint(body) {
+  const nickname  = String(body.nickname  || '').trim();
+  const weekKey   = String(body.weekKey   || '').trim();
+  const cardIndex = Number(body.cardIndex) || 0;
+  if (!nickname || !weekKey) return { error: 'missing_fields' };
+  const sheet = getOrCreateInquirySheet();
+  const id = new Date().getTime();
+  const content = '[H&P 힌트 요청] 주차: ' + weekKey + ', 카드: ' + (cardIndex + 1) + '번';
+  sheet.appendRow([id, nickname, content, new Date().toISOString(), '', '']);
+  return { ok: true, id: String(id) };
 }
 
 function getInquiries() {
