@@ -2663,7 +2663,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507e';
+    const APP_VERSION = '20260507f';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5616,9 +5616,12 @@
         } else {
           hintHtml = `<button class="hp-hint-below" onclick="hpHintInquiry(${idx})">현수막에서 카드를 못 찾겠어요</button>`;
         }
+        const promptText = (isTicketWeek && _hpTicketAlreadyAwarded)
+          ? '뽑기권은 이미 받았어도 주인공을 맞혀볼 수 있어요!'
+          : '이 기도제목의 주인공이 누구인지 알 것 같다면?';
         bottomHtml = `
           <div class="${boxClass}" id="hpGuessBox">
-            <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
+            <p class="hp-guess-prompt">${promptText}</p>
             <div class="hp-inline-guess" id="hpInlineGuess">
               <span class="hp-inline-label">이름</span>
               <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="여기에 입력해 주세요" />
