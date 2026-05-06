@@ -1113,10 +1113,6 @@
       font-size:11px; font-weight:700; color:var(--sub);
       margin:14px 0 6px; letter-spacing:0.04em;
     }
-    .mini-card-rare-locked {
-      background:#cec4b4 !important;
-      border-color:#bdb3a2 !important;
-    }
     .mini-card-rare-locked .mini-card-silhouette {
       filter: sepia(1) saturate(4) hue-rotate(5deg) brightness(0.78);
     }
@@ -2592,7 +2588,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506z';
+    const APP_VERSION = '20260506za';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
