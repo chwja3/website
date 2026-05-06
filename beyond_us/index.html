@@ -1113,23 +1113,12 @@
       font-size:11px; font-weight:700; color:var(--sub);
       margin:14px 0 6px; letter-spacing:0.04em;
     }
-    @keyframes rareShimmer {
-      0%   { transform: translateX(-140%) rotate(28deg); }
-      100% { transform: translateX(280%)  rotate(28deg); }
+    .mini-card-rare-locked {
+      background:#cec4b4 !important;
+      border-color:#bdb3a2 !important;
     }
-    .mini-card-rare-locked { overflow:hidden; }
-    .mini-card-rare-locked::before {
-      content:''; position:absolute;
-      top:-60%; bottom:-60%; width:38%;
-      background:linear-gradient(90deg,
-        transparent,
-        rgba(212,175,55,0.18),
-        rgba(255,220,70,0.55),
-        rgba(212,175,55,0.18),
-        transparent
-      );
-      animation:rareShimmer 2.8s ease-in-out infinite;
-      pointer-events:none;
+    .mini-card-rare-locked .mini-card-silhouette {
+      filter: sepia(1) saturate(4) hue-rotate(5deg) brightness(0.78);
     }
 
     /* ════════════════════════════
@@ -2603,7 +2592,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506y';
+    const APP_VERSION = '20260506z';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
