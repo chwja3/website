@@ -343,7 +343,7 @@
       height: 100%;
       position: relative;
       overflow: hidden;
-      background-image: url('images/앤카드뒷면최종.png');
+      background-image: url('images/앤카드뒷면최최종.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 100% 100%;
@@ -710,7 +710,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background-image: url('images/앤카드뒷면최종.png');
+      background-image: url('images/앤카드뒷면최최종.png');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 100% 100%;
@@ -1109,6 +1109,17 @@
       overflow: visible;
     }
 
+    .coll-subtitle {
+      font-size:11px; font-weight:700; color:var(--sub);
+      margin:14px 0 6px; letter-spacing:0.04em;
+    }
+    .mini-card-rare-locked {
+      border-color: #c8bc82 !important;
+    }
+    .mini-card-rare-locked .mini-card-silhouette {
+      filter: sepia(1) saturate(4) hue-rotate(5deg) brightness(0.78);
+    }
+
     /* ════════════════════════════
        Auth 화면 (전체 페이지)
     ════════════════════════════ */
@@ -1457,11 +1468,12 @@
     .hp-inline-guess { display: flex; align-items: center; gap: 6px; justify-content: center; }
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
-      flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--border);
-      color: var(--text); font-size: 18px; padding: 2px 4px; outline: none; max-width: 120px;
-      font-family: 'Nanum Pen Script', 'Gowun Dodum', cursive; text-align: center;
+      flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--line);
+      color: var(--text); font-size: 16px; padding: 2px 4px; outline: none; max-width: 140px;
+      font-family: inherit; text-align: center;
     }
-    .hp-inline-input:focus { border-bottom-color: var(--accent); }
+    .hp-inline-input::placeholder { font-size: 11px; color: var(--sub); opacity: 0.6; }
+    .hp-inline-input:focus { border-bottom-color: var(--primary); }
     .hp-inline-btn {
       background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600;
       cursor: pointer; padding: 3px 8px; border-radius: 6px;
@@ -1528,23 +1540,13 @@
     .hp-carousel-wrap:active { cursor: grabbing; }
     .hp-slide-counter { text-align: center; font-size: 11px; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.03em; }
     .hp-card-frame { position: relative; }
-    .hp-nav-btn {
-      position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
-      background: rgba(0,0,0,0.28); backdrop-filter: blur(2px);
-      border: none; color: #fff;
-      font-size: 26px; width: 34px; height: 52px; border-radius: 8px;
-      cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
-    }
-    #hpNavPrev { left: 6px; }
-    #hpNavNext { right: 6px; }
-    .hp-nav-btn:disabled { opacity: 0.15; cursor: default; }
     .hp-dots { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 10px; }
     .hp-dot {
       width: 7px; height: 7px; border-radius: 50%;
-      background: var(--border); cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
+      background: var(--line); cursor: pointer;
+      transition: background 0.2s, width 0.2s, border-radius 0.2s;
     }
-    .hp-dot.active { background: var(--accent); transform: scale(1.35); }
+    .hp-dot.active { background: var(--primary); width: 20px; border-radius: 4px; }
     .hp-hint-btn {
       display: block; margin: 8px auto 0; font-size: 11px;
       color: var(--sub); background: none; border: none; cursor: pointer;
@@ -1552,10 +1554,14 @@
     }
     .hp-hint-btn:hover { opacity: 1; }
     .hp-ticket-notice {
-      text-align: center; font-size: 12px; color: var(--accent); font-weight: 600;
-      background: rgba(var(--accent-rgb,255,183,110),0.15);
-      border: 1px solid rgba(var(--accent-rgb,255,183,110),0.3);
-      border-radius: 10px; padding: 8px 14px; margin-top: 10px;
+      display: block; width: fit-content; margin: 8px auto 0;
+      font-size: 12px; font-weight: 700; color: #b8860b;
+      background: rgba(200,160,60,0.15); border: 1px solid rgba(200,160,60,0.35);
+      border-radius: 999px; padding: 4px 14px;
+    }
+    .hp-correct-msg {
+      text-align: center; font-size: 14px; color: var(--success); font-weight: 600;
+      margin-top: 10px;
     }
 
     /* ── Coming Soon ── */
@@ -2198,13 +2204,15 @@
           <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
-            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 당일 미션을 달성하면 지급돼요.<br><br>다른 유저와 카드 교환도 할 수 있어요!</span></span>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 당일 특별 미션에서 획득할 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟️ 수련회 응모권 혜택<br>참석시 응모권 1장<br>앤카드 3종 → 추가 응모권 1장<br>앤카드 5종 → 추가 응모권 3장<br>앤카드 10종 → 추가 응모권 5장 + 한정판 굿즈</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
             <div id="collPanelGrid">
               <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
+              <p class="coll-subtitle" id="collSubNormal" style="display:none">일반카드</p>
               <div class="collection-grid" id="collectionGrid"></div>
+              <div id="hiddenCardSlot"></div>
             </div>
             <!-- 교환 현황 패널 -->
             <div id="collPanelTrades" style="display:none;">
@@ -2281,7 +2289,7 @@
           <div class="hp-header-area">
             <div style="position:relative;display:inline-block;width:100%;">
               <p class="hp-header-title" style="margin-bottom:6px;">🕊️ Hold &amp; Pray 🕊️</p>
-              <span id="hpTicketWeekBadge" style="display:none;font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);border:1px solid rgba(200,160,60,0.35);padding:2px 10px;border-radius:999px;margin-bottom:10px;display:none;">🎫 이번 주 정답 맞히면 뽑기권 1장!</span>
+              <span id="hpTicketWeekBadge" style="display:none;font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);border:1px solid rgba(200,160,60,0.35);padding:2px 10px;border-radius:999px;margin-bottom:10px;display:none;">🎫 이번 주는 이름을 맞히면 뽑기권을 드려요.</span>
               <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>누구인지 궁금하다면 1층 로비 Hold &amp; Pray 현수막에서 이름을 확인할 수 있어요.<br><br>3주차·6주차에는 1명이라도 맞히면 앤 카드 뽑기권 1장을 드려요!</span></span>
             </div>
             <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
@@ -2393,7 +2401,7 @@
                 <span>카드 종류가 어떻게 되나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
-              <div class="faq-a">온라인 뽑기 카드 9종(성령의 열매), 수련회 현장 지급 카드, 히든 카드 1종이 있어요. 총 10종 이상을 모을 수 있어요!</div>
+              <div class="faq-a">온라인 뽑기 카드 9종(성령의 열매), 수련회 현장 지급 레어 카드 1종이 있어요. 총 10종을 모을 수 있어요!</div>
             </div>
 
             <div class="faq-item">
@@ -2583,7 +2591,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260505zb';
+    const APP_VERSION = '20260506ze';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2597,16 +2605,17 @@
 
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
-      { id:1, name:'사랑',    g1:'#ff758c', g2:'#c0392b', img:'images/사랑.png' },
-      { id:2, name:'희락',    g1:'#f7971e', g2:'#c0850a', img:'images/희락.png' },
-      { id:3, name:'화평',    g1:'#185a9d', g2:'#43cea2', img:'images/화평.png' },
-      { id:4, name:'오래참음', g1:'#8b6914', g2:'#c8a96e', img:'images/오래참음.png' },
-      { id:5, name:'자비',    g1:'#2d6a4f', g2:'#52b788', img:'images/자비.png' },
-      { id:6, name:'양선',    g1:'#11998e', g2:'#38ef7d', img:'images/양선.png' },
-      { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/충성.png' },
-      { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/온유.png' },
-      { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/절제.png' },
+      { id:1, name:'사랑',    g1:'#ff758c', g2:'#c0392b', img:'images/앤카드사랑최최종.png' },
+      { id:2, name:'희락',    g1:'#f7971e', g2:'#c0850a', img:'images/앤카드희락최최종.png' },
+      { id:3, name:'화평',    g1:'#185a9d', g2:'#43cea2', img:'images/앤카드화평최최종.png' },
+      { id:4, name:'오래참음', g1:'#8b6914', g2:'#c8a96e', img:'images/앤카드오래참음최최종.png' },
+      { id:5, name:'자비',    g1:'#2d6a4f', g2:'#52b788', img:'images/앤카드자비최최종.png' },
+      { id:6, name:'양선',    g1:'#11998e', g2:'#38ef7d', img:'images/앤카드양선최최종.png' },
+      { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/앤카드충성최최종.png' },
+      { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/앤카드온유최최종.png' },
+      { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/앤카드절제최최종.png' },
     ];
+    const HIDDEN_CARD = { id:10, name:'히든', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
 
     /* ── 카드 이미지 프리로드 ── */
     SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
@@ -3181,7 +3190,7 @@
 
     /* ════ 카드 상세 오버레이 ════ */
     function openCardDetail(cardId, cnt) {
-      const card = SPIRIT_CARDS.find(c => c.id === cardId);
+      const card = cardId === 10 ? HIDDEN_CARD : SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
       // 새 카드 dot 제거
       Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(cardId)).forEach(k => localStorage.removeItem(k));
@@ -3312,11 +3321,9 @@
 
       const counts = {};
       (userStatus.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
-      const unique = Object.keys(counts).length;
 
       const newCardIds = new Set();
       Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => newCardIds.add(Number(localStorage.getItem(k))));
-      // 컬렉션에 없는 카드를 가리키는 유령 키 제거
       newCardIds.forEach(id => {
         if (!(counts[id] > 0)) {
           Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(id)).forEach(k => localStorage.removeItem(k));
@@ -3324,7 +3331,12 @@
         }
       });
 
-      sub.textContent = `${currentNickname}님의 컬렉션 · ${unique}/9종 보유`;
+      const spiritUnique = SPIRIT_CARDS.filter(c => counts[c.id] > 0).length;
+      const hiddenCnt    = counts[10] || 0;
+      const totalUnique  = spiritUnique + (hiddenCnt > 0 ? 1 : 0);
+      sub.textContent = `${currentNickname}님의 컬렉션 · ${totalUnique}/10종 보유`;
+      document.getElementById('collSubNormal').style.display = '';
+
       grid.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = counts[card.id] || 0;
         const locked = cnt === 0;
@@ -3350,6 +3362,26 @@
             ${isNew ? `<div style="position:absolute;top:2px;right:2px;width:9px;height:9px;background:#e05a5a;border-radius:50%;z-index:5;border:1.5px solid var(--card);pointer-events:none;"></div>` : ''}
           </div>`;
       }).join('');
+
+      renderHiddenSection(hiddenCnt);
+    }
+
+    function renderHiddenSection(hiddenCnt) {
+      const slot = document.getElementById('hiddenCardSlot');
+      if (!slot) return;
+
+      const got = hiddenCnt > 0;
+      const cardInner = got
+        ? `<div class="mini-card mini-card-img" onclick="openCardDetail(10,${hiddenCnt})"><img src="images/히든.png" style="width:100%;height:100%;object-fit:contain;display:block;"></div>`
+        : `<div class="mini-card mini-card-locked mini-card-rare-locked"><img src="images/앤수배.png" class="mini-card-silhouette" alt=""></div>`;
+
+      slot.innerHTML = `
+        <p class="coll-subtitle">레어카드</p>
+        <div class="collection-grid">
+          <div class="mini-card-wrap" style="${got ? 'cursor:pointer;' : ''}">
+            ${cardInner}
+          </div>
+        </div>`;
     }
 
     /* ════ 교환 시스템 ════ */
@@ -5280,6 +5312,7 @@
     let _hpCurrentIdx = 0;
     let _hpWeekKey = '';
     let _hpCorrectMap = {}; // {cardIndex: name} — per week, loaded from localStorage
+    let _hpTicketAlreadyAwarded = false;
 
     function fitHpText(textEl, boxEl, opts = {}) {
       if (!textEl || !boxEl) return;
@@ -5306,11 +5339,10 @@
     }
 
     async function loadHoldPray() {
-      const wk = getWeekKey();
       const el = document.getElementById('hpContent');
       if (!el) return;
 
-      if (_hpWeekKey === wk && _hpCards.length === 3) {
+      if (_hpCards.length === 3) {
         renderHoldPray();
         return;
       }
@@ -5327,39 +5359,71 @@
       try {
         const nick = localStorage.getItem('beyondus_nickname') || '';
         const [res] = await Promise.all([
-          fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          fetch(`${API_BASE}?action=getHoldPray&weekKey=&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
         _hpCards = data.cards || [];
-        _hpWeekKey = data.weekKey || wk;
+        _hpWeekKey = data.weekKey || '';
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
+        _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
+        // localStorage 먼저 로드 (오프라인 fallback)
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
           if (saved) _hpCorrectMap[i] = saved;
         });
+        // 서버 correctMap으로 덮어씀 (크로스-기기 동기화 — 서버 우선)
+        if (data.correctMap) {
+          Object.keys(data.correctMap).forEach(k => {
+            const i = Number(k);
+            _hpCorrectMap[i] = data.correctMap[k];
+            localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i, data.correctMap[k]);
+          });
+        }
         renderHoldPray();
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
       }
     }
 
+    function hpConfetti() {
+      const colors = ['#f4a261','#e76f51','#2a9d8f','#e9c46a','#ff9f1c','#a8dadc','#ffb347','#c77dff'];
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      for (let i = 0; i < 32; i++) {
+        const el = document.createElement('div');
+        const size = 6 + Math.random() * 6;
+        el.style.cssText = `position:fixed;width:${size}px;height:${size}px;border-radius:${Math.random()>.5?'50%':'3px'};background:${colors[i%colors.length]};left:${cx}px;top:${cy}px;pointer-events:none;z-index:9999;`;
+        document.body.appendChild(el);
+        const angle = (Math.random() * 360) * Math.PI / 180;
+        const dist = 80 + Math.random() * 140;
+        gsap.to(el, {
+          x: Math.cos(angle) * dist, y: Math.sin(angle) * dist + 60,
+          opacity: 0, rotation: Math.random() * 720 - 360,
+          duration: 0.7 + Math.random() * 0.7, ease: 'power2.out',
+          onComplete: () => el.remove()
+        });
+      }
+    }
+
+    function updateHpBadge() {
+      const badge = document.getElementById('hpTicketWeekBadge');
+      if (!badge) return;
+      const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
+      badge.style.display = isTicketWeek ? 'inline-block' : 'none';
+    }
+
     function renderHoldPray() {
       const el = document.getElementById('hpContent');
       if (!el || !_hpCards.length) return;
       const total = _hpCards.length;
-      const badge = document.getElementById('hpTicketWeekBadge');
-      if (badge) badge.style.display = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6') ? 'inline-block' : 'none';
+      updateHpBadge();
 
       el.innerHTML = `
         <div class="hp-carousel-wrap" id="hpCarouselWrap">
-          <div class="hp-slide-counter" id="hpSlideCounter">${_hpCurrentIdx + 1} / ${total}</div>
           <div id="hpCardSlot"></div>
-          <div class="hp-dots" id="hpDots">
-            ${_hpCards.map((_, i) => `<span class="hp-dot${i === _hpCurrentIdx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}
-          </div>
         </div>
         <button class="btn btn-secondary hp-home-btn" onclick="switchSection('mission')">← 홈으로 가기</button>`;
 
@@ -5396,36 +5460,43 @@
       if (card.anon) {
         bottomHtml = `<p class="hp-anon-label">익명으로 제출된 기도제목이에요 🙏</p>`;
       } else if (correctName) {
+        const ticketNotice = (_hpTicketAlreadyAwarded && (_hpWeekKey === 'w3' || _hpWeekKey === 'w6'))
+          ? `<span class="hp-ticket-notice">이번 주 Hold &amp; Pray 보너스 뽑기권을 모두 획득했어요.</span>` : '';
         bottomHtml = `
           <div class="hp-divider"></div>
           <div class="hp-inline-guess">
             <span class="hp-inline-label">이름 :</span>
             <span class="hp-inline-name">${escHtml(correctName)}</span>
-          </div>`;
+          </div>
+          ${ticketNotice}`;
       } else {
+        const ticketNotice = (_hpTicketAlreadyAwarded && (_hpWeekKey === 'w3' || _hpWeekKey === 'w6'))
+          ? `<span class="hp-ticket-notice">이번 주 Hold &amp; Pray 보너스 뽑기권을 모두 획득했어요.</span>` : '';
         bottomHtml = `
           <div class="hp-divider"></div>
           <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
           <div class="hp-inline-guess" id="hpInlineGuess">
             <span class="hp-inline-label">이름</span>
-            <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="본명 입력" />
+            <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="여기에 입력해 주세요" />
             <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
           </div>
           <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
+          ${ticketNotice}
           <button class="hp-hint-btn" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`;
       }
 
+      const dotsHtml = `<div class="hp-dots" id="hpDots">${_hpCards.map((_, i) => `<span class="hp-dot${i === idx ? ' active' : ''}" onclick="hpGoTo(${i})"></span>`).join('')}</div>`;
+
       slot.innerHTML = `
         <div class="hp-card-frame">
-          <button class="hp-nav-btn" id="hpNavPrev" onclick="hpGoTo(${idx - 1})" ${idx === 0 ? 'disabled' : ''}>&#8249;</button>
           <div class="hp-card" style="margin-top:8px;">
             <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
             <div class="hp-overlay">
               <p class="hp-overlay-text">${escHtml(card.content)}</p>
             </div>
           </div>
-          <button class="hp-nav-btn" id="hpNavNext" onclick="hpGoTo(${idx + 1})" ${idx === _hpCards.length - 1 ? 'disabled' : ''}>&#8250;</button>
         </div>
+        ${dotsHtml}
         <div class="hp-bottom-area" style="margin-top:14px;">
           <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
           ${bottomHtml}
@@ -5446,14 +5517,6 @@
       const total = _hpCards.length;
       if (idx < 0 || idx >= total) return;
       _hpCurrentIdx = idx;
-      const counter = document.getElementById('hpSlideCounter');
-      if (counter) counter.textContent = `${idx + 1} / ${total}`;
-      const dots = document.querySelectorAll('#hpDots .hp-dot');
-      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
-      const prevBtn = document.getElementById('hpNavPrev');
-      const nextBtn = document.getElementById('hpNavNext');
-      if (prevBtn) prevBtn.disabled = idx === 0;
-      if (nextBtn) nextBtn.disabled = idx === total - 1;
       renderHpCard(idx);
     }
 
@@ -5479,14 +5542,24 @@
           _hpCorrectMap[cardIdx] = guess;
           localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + cardIdx, guess);
           renderHpCard(cardIdx);
+          hpConfetti();
+          const slot = document.getElementById('hpCardSlot');
+          if (slot) {
+            const msg = document.createElement('p');
+            msg.className = 'hp-correct-msg';
+            msg.textContent = '맞췄어요! 기도해주셔서 감사합니다 🙏';
+            slot.querySelector('.hp-bottom-area')?.appendChild(msg);
+          }
           if (data.ticketAwarded) {
-            const slot = document.getElementById('hpCardSlot');
+            _hpTicketAlreadyAwarded = true;
+            updateHpBadge();
             if (slot) {
               const toast = document.createElement('p');
               toast.className = 'hp-ticket-notice';
-              toast.textContent = '🎫 뽑기권 1장 획득!';
+              toast.textContent = '뽑기권 1장도 획득했어요!';
               slot.querySelector('.hp-bottom-area')?.appendChild(toast);
             }
+            loadUserStatus(); // 홈 뽑기권 뱃지 즉시 갱신
           }
         } else {
           if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
