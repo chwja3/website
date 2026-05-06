@@ -1556,20 +1556,39 @@
     }
     .hp-hint-icon:hover { opacity: 0.85; }
     .hp-hint-popup {
-      text-align: center; margin-top: 6px;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      min-width: 170px; max-width: 220px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 11px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      z-index: 20;
+      text-align: left;
+    }
+    .hp-hint-popup::after {
+      content: '';
+      position: absolute;
+      bottom: -5px; right: 5px;
+      width: 8px; height: 8px;
+      background: var(--card);
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      transform: rotate(45deg);
     }
     .hp-hint-link {
-      font-size: 11px; color: var(--sub); cursor: pointer; background: none; border: none;
-      text-decoration: underline; text-underline-offset: 2px; opacity: 0.65; padding: 0;
+      font-size: 11px; color: var(--primary); cursor: pointer; background: none; border: none;
+      text-decoration: underline; text-underline-offset: 2px; padding: 0; display: block; width: 100%;
+      text-align: left; line-height: 1.5;
     }
-    .hp-hint-link:hover { opacity: 1; }
+    .hp-hint-link:hover { opacity: 0.75; }
     .hp-hint-reply {
-      font-size: 12px; color: var(--text); line-height: 1.6;
-      background: rgba(200,160,60,0.1); border-left: 3px solid #b8860b;
-      padding: 6px 10px; border-radius: 0 6px 6px 0; margin: 0; text-align: left;
+      font-size: 11px; color: var(--text); line-height: 1.6; margin: 0;
     }
     .hp-hint-pending {
-      font-size: 11px; color: var(--sub); opacity: 0.75; margin: 0; text-align: center;
+      font-size: 11px; color: var(--sub); opacity: 0.75; margin: 0; line-height: 1.5;
     }
     .hp-ticket-notice {
       display: block; width: fit-content; margin: 6px auto 0;
@@ -2631,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zt';
+    const APP_VERSION = '20260506zu';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4836,6 +4855,10 @@
       if (!e.target.closest('.help-wrap')) {
         document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
       }
+      if (!e.target.closest('.hp-hint-icon') && !e.target.closest('.hp-hint-popup')) {
+        const p = document.getElementById('hpHintPopup');
+        if (p) p.style.display = 'none';
+      }
     });
 
     /* ════ QnA FAQ ════ */
@@ -5589,17 +5612,17 @@
             <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="여기에 입력해 주세요" />
             <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
             <div style="position:relative;display:inline-flex;flex-shrink:0;">
-              <button class="hp-hint-icon" onclick="document.getElementById('hpHintPopup').style.display=document.getElementById('hpHintPopup').style.display==='none'?'block':'none'" aria-label="힌트">!</button>
+              <button class="hp-hint-icon" onclick="event.stopPropagation();var p=document.getElementById('hpHintPopup');p.style.display=p.style.display==='none'?'block':'none'" aria-label="힌트">!</button>
               ${_hpHintReplies[idx] ? '<span style="position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:#e05a5a;border-radius:50%;pointer-events:none;border:1.5px solid var(--card);"></span>' : ''}
+              <div class="hp-hint-popup" id="hpHintPopup" style="display:none;" onclick="event.stopPropagation()">
+                ${_hpHintReplies[idx]
+                  ? `<p class="hp-hint-reply">💡 ${escHtml(_hpHintReplies[idx])}</p>`
+                  : localStorage.getItem('beyondus_hp_hint_' + _hpWeekKey + '_' + idx)
+                    ? `<p class="hp-hint-pending">힌트 요청이 접수됐어요.<br>답변이 오면 여기서 확인할 수 있어요 🙏</p>`
+                    : `<button class="hp-hint-link" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`
+                }
+              </div>
             </div>
-          </div>
-          <div class="hp-hint-popup" id="hpHintPopup" style="display:none;">
-            ${_hpHintReplies[idx]
-              ? `<p class="hp-hint-reply">💡 ${escHtml(_hpHintReplies[idx])}</p>`
-              : localStorage.getItem('beyondus_hp_hint_' + _hpWeekKey + '_' + idx)
-                ? `<p class="hp-hint-pending">힌트 요청이 접수됐어요. 답변이 오면 여기서 확인할 수 있어요 🙏</p>`
-                : `<button class="hp-hint-link" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`
-            }
           </div>
           <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
           ${ticketNotice}`;
