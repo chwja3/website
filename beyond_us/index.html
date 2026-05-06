@@ -2650,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zv';
+    const APP_VERSION = '20260506zw';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5219,7 +5219,7 @@
       if (modalImg) modalImg.src = src;
       document.getElementById('bbbPhotoPlaceholder').style.display = 'none';
       document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
-      document.getElementById('bbbPhotoLabel').style.border = '1px solid rgba(0,0,0,0.35)';
+      document.getElementById('bbbPhotoLabel').style.border = '1px solid #1a1a1a';
     }
     function openBbbPhotoModal() {
       const modal = document.getElementById('bbbPhotoModal');
