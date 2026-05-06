@@ -2578,7 +2578,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506n';
+    const APP_VERSION = '20260506o';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5423,12 +5423,15 @@
       if (card.anon) {
         bottomHtml = `<p class="hp-anon-label">익명으로 제출된 기도제목이에요 🙏</p>`;
       } else if (correctName) {
+        const ticketNotice = (_hpTicketAlreadyAwarded && (_hpWeekKey === 'w3' || _hpWeekKey === 'w6'))
+          ? `<span class="hp-ticket-notice">이번 주 Hold &amp; Pray 보너스 뽑기권을 모두 획득했어요.</span>` : '';
         bottomHtml = `
           <div class="hp-divider"></div>
           <div class="hp-inline-guess">
             <span class="hp-inline-label">이름 :</span>
             <span class="hp-inline-name">${escHtml(correctName)}</span>
-          </div>`;
+          </div>
+          ${ticketNotice}`;
       } else {
         const ticketNotice = (_hpTicketAlreadyAwarded && (_hpWeekKey === 'w3' || _hpWeekKey === 'w6'))
           ? `<span class="hp-ticket-notice">이번 주 Hold &amp; Pray 보너스 뽑기권을 모두 획득했어요.</span>` : '';
