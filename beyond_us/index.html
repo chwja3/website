@@ -1556,28 +1556,48 @@
     }
     .hp-hint-icon:hover { opacity: 0.85; }
     .hp-hint-popup {
-      text-align: center; margin-top: 6px;
+      position: absolute;
+      bottom: calc(100% + 8px);
+      right: 0;
+      min-width: 170px; max-width: 220px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 11px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      z-index: 20;
+      text-align: left;
+    }
+    .hp-hint-popup::after {
+      content: '';
+      position: absolute;
+      bottom: -5px; right: 5px;
+      width: 8px; height: 8px;
+      background: var(--card);
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      transform: rotate(45deg);
     }
     .hp-hint-link {
-      font-size: 11px; color: var(--sub); cursor: pointer; background: none; border: none;
-      text-decoration: underline; text-underline-offset: 2px; opacity: 0.65; padding: 0;
+      font-size: 11px; color: var(--primary); cursor: pointer; background: none; border: none;
+      text-decoration: underline; text-underline-offset: 2px; padding: 0; display: block; width: 100%;
+      text-align: left; line-height: 1.5;
     }
-    .hp-hint-link:hover { opacity: 1; }
+    .hp-hint-link:hover { opacity: 0.75; }
     .hp-hint-reply {
-      font-size: 12px; color: var(--text); line-height: 1.6;
-      background: rgba(200,160,60,0.1); border-left: 3px solid #b8860b;
-      padding: 6px 10px; border-radius: 0 6px 6px 0; margin: 0; text-align: left;
+      font-size: 11px; color: var(--text); line-height: 1.6; margin: 0;
     }
     .hp-hint-pending {
-      font-size: 11px; color: var(--sub); opacity: 0.75; margin: 0; text-align: center;
+      font-size: 11px; color: var(--sub); opacity: 0.75; margin: 0; line-height: 1.5;
     }
     .hp-ticket-notice {
       display: block; width: fit-content; margin: 6px auto 0;
       font-size: 10px; font-weight: 500; color: rgba(184,134,11,0.6);
       background: rgba(200,160,60,0.07); border: 1px solid rgba(200,160,60,0.2);
-      border-radius: 999px; padding: 2px 10px; cursor: pointer;
+      border-radius: 999px; padding: 2px 10px;
     }
-    .hp-ticket-notice:hover { background: rgba(200,160,60,0.13); }
+    button.hp-ticket-notice { cursor: pointer; }
+    button.hp-ticket-notice:hover { background: rgba(200,160,60,0.13); }
     .hp-correct-msg {
       text-align: center; font-size: 14px; color: var(--success); font-weight: 600;
       margin-top: 10px;
@@ -2546,10 +2566,20 @@
                   </div>
                   <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
                     <input type="file" id="bbbPhotoInput" accept="image/*" style="display:none;" />
-                    <img id="bbbPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
+                    <img id="bbbPhotoImg" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbPhotoModal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
                     <span id="bbbPhotoPlaceholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
                     <span id="bbbPhotoPlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
                   </label>
+
+                  <!-- 사진 확대 모달 -->
+                  <div id="bbbPhotoModal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbPhotoModal()">
+                    <img id="bbbPhotoModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                    <div style="display:flex;gap:12px;margin-top:20px;">
+                      <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="closeBbbPhotoModal();document.getElementById('bbbPhotoInput').click()">수정</label>
+                      <button onclick="deleteBbbPhoto()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                    </div>
+                    <button onclick="closeBbbPhotoModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                  </div>
                 </div>
               </div>
 
@@ -2620,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zr';
+    const APP_VERSION = '20260506zu';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4825,6 +4855,10 @@
       if (!e.target.closest('.help-wrap')) {
         document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
       }
+      if (!e.target.closest('.hp-hint-icon') && !e.target.closest('.hp-hint-popup')) {
+        const p = document.getElementById('hpHintPopup');
+        if (p) p.style.display = 'none';
+      }
     });
 
     /* ════ QnA FAQ ════ */
@@ -5210,9 +5244,41 @@
           const img = document.getElementById('bbbPhotoImg');
           img.src = src;
           img.style.display = 'block';
+          document.getElementById('bbbPhotoModalImg').src = src;
           document.getElementById('bbbPhotoPlaceholder').style.display = 'none';
           document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
-          document.getElementById('bbbPhotoLabel').style.border = '1.5px solid var(--primary)';
+          document.getElementById('bbbPhotoLabel').style.border = '1px solid rgba(0,0,0,0.12)';
+        }
+        function openBbbPhotoModal() {
+          const modal = document.getElementById('bbbPhotoModal');
+          if (modal) modal.style.display = 'flex';
+        }
+        function closeBbbPhotoModal() {
+          const modal = document.getElementById('bbbPhotoModal');
+          if (modal) modal.style.display = 'none';
+        }
+        async function deleteBbbPhoto() {
+          if (!confirm('사진을 삭제할까요?')) return;
+          closeBbbPhotoModal();
+          const nickname = localStorage.getItem('beyondus_nickname') || '';
+          const statusEl = document.getElementById('bbbPhotoStatus');
+          try {
+            const res = await fetch(API_BASE, {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ action: 'deleteBBBPhoto', userId: nickname }),
+              redirect: 'follow'
+            }).then(r => r.json());
+            if (res.ok) {
+              const img = document.getElementById('bbbPhotoImg');
+              img.src = ''; img.style.display = 'none';
+              document.getElementById('bbbPhotoModalImg').src = '';
+              document.getElementById('bbbPhotoPlaceholder').style.display = '';
+              document.getElementById('bbbPhotoPlaceholderText').style.display = '';
+              document.getElementById('bbbPhotoLabel').style.border = '1.5px dashed var(--line)';
+              if (statusEl) statusEl.textContent = '';
+            }
+          } catch(e) { alert('삭제 중 오류가 발생했어요.'); }
         }
         if (bbbRes.myPhoto) _bbbShowPhoto(bbbRes.myPhoto);
 
@@ -5546,17 +5612,17 @@
             <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="여기에 입력해 주세요" />
             <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
             <div style="position:relative;display:inline-flex;flex-shrink:0;">
-              <button class="hp-hint-icon" onclick="document.getElementById('hpHintPopup').style.display=document.getElementById('hpHintPopup').style.display==='none'?'block':'none'" aria-label="힌트">!</button>
+              <button class="hp-hint-icon" onclick="event.stopPropagation();var p=document.getElementById('hpHintPopup');p.style.display=p.style.display==='none'?'block':'none'" aria-label="힌트">!</button>
               ${_hpHintReplies[idx] ? '<span style="position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:#e05a5a;border-radius:50%;pointer-events:none;border:1.5px solid var(--card);"></span>' : ''}
+              <div class="hp-hint-popup" id="hpHintPopup" style="display:none;" onclick="event.stopPropagation()">
+                ${_hpHintReplies[idx]
+                  ? `<p class="hp-hint-reply">💡 ${escHtml(_hpHintReplies[idx])}</p>`
+                  : localStorage.getItem('beyondus_hp_hint_' + _hpWeekKey + '_' + idx)
+                    ? `<p class="hp-hint-pending">힌트 요청이 접수됐어요.<br>답변이 오면 여기서 확인할 수 있어요 🙏</p>`
+                    : `<button class="hp-hint-link" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`
+                }
+              </div>
             </div>
-          </div>
-          <div class="hp-hint-popup" id="hpHintPopup" style="display:none;">
-            ${_hpHintReplies[idx]
-              ? `<p class="hp-hint-reply">💡 ${escHtml(_hpHintReplies[idx])}</p>`
-              : localStorage.getItem('beyondus_hp_hint_' + _hpWeekKey + '_' + idx)
-                ? `<p class="hp-hint-pending">힌트 요청이 접수됐어요. 답변이 오면 여기서 확인할 수 있어요 🙏</p>`
-                : `<button class="hp-hint-link" onclick="hpHintInquiry(${idx})">현수막에 기도카드가 없는 것 같아요.</button>`
-            }
           </div>
           <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
           ${ticketNotice}`;
