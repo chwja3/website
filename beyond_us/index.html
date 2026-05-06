@@ -2585,7 +2585,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506w';
+    const APP_VERSION = '20260506x';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2608,8 +2608,8 @@
       { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/앤카드충성최최종.png' },
       { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/앤카드온유최최종.png' },
       { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/앤카드절제최최종.png' },
-      { id:10, name:'히든',  g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' },
     ];
+    const HIDDEN_CARD = { id:10, name:'히든', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
 
     /* ── 카드 이미지 프리로드 ── */
     SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
@@ -3184,7 +3184,7 @@
 
     /* ════ 카드 상세 오버레이 ════ */
     function openCardDetail(cardId, cnt) {
-      const card = SPIRIT_CARDS.find(c => c.id === cardId);
+      const card = cardId === 10 ? HIDDEN_CARD : SPIRIT_CARDS.find(c => c.id === cardId);
       if (!card) return;
       // 새 카드 dot 제거
       Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_') && localStorage.getItem(k) === String(cardId)).forEach(k => localStorage.removeItem(k));
