@@ -2646,7 +2646,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506q';
+    const APP_VERSION = '20260506r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3426,15 +3426,12 @@
       const got = hiddenCnt > 0;
 
       const slotContent = got
-        ? `<img src="images/히든.png" style="width:76px;height:120px;object-fit:contain;border-radius:8px;display:block;">`
+        ? `<img src="images/히든.png" style="width:76px;height:120px;object-fit:contain;border-radius:8px;display:block;filter:drop-shadow(0 0 10px rgba(212,175,55,0.7)) drop-shadow(0 0 22px rgba(212,175,55,0.35));">`
         : `<div class="hidden-holo-sleeve"><div class="hidden-holo-shine"></div></div>`;
-
-      const label = got ? '✨ 획득!' : '히든 카드';
 
       slot.innerHTML = `
         <div class="hidden-velvet-tray${got ? ' unlocked' : ''}"${got ? ` onclick="openCardDetail(10,${hiddenCnt})"` : ''}>
           <div class="hidden-velvet-slot">${slotContent}</div>
-          <p class="hidden-tray-label">${label}</p>
         </div>`;
     }
 
