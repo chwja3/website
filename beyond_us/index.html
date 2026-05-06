@@ -2578,7 +2578,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506l';
+    const APP_VERSION = '20260506m';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5353,20 +5353,17 @@
 
     function hpConfetti() {
       const colors = ['#f4a261','#e76f51','#2a9d8f','#e9c46a','#ff9f1c','#a8dadc','#ffb347','#c77dff'];
-      const slot = document.getElementById('hpCardSlot');
-      if (!slot) return;
-      const rect = slot.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height * 0.35;
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
       for (let i = 0; i < 32; i++) {
         const el = document.createElement('div');
         const size = 6 + Math.random() * 6;
         el.style.cssText = `position:fixed;width:${size}px;height:${size}px;border-radius:${Math.random()>.5?'50%':'3px'};background:${colors[i%colors.length]};left:${cx}px;top:${cy}px;pointer-events:none;z-index:9999;`;
         document.body.appendChild(el);
         const angle = (Math.random() * 360) * Math.PI / 180;
-        const dist = 70 + Math.random() * 130;
+        const dist = 80 + Math.random() * 140;
         gsap.to(el, {
-          x: Math.cos(angle) * dist, y: Math.sin(angle) * dist + 80,
+          x: Math.cos(angle) * dist, y: Math.sin(angle) * dist + 60,
           opacity: 0, rotation: Math.random() * 720 - 360,
           duration: 0.7 + Math.random() * 0.7, ease: 'power2.out',
           onComplete: () => el.remove()
