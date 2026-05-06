@@ -1542,8 +1542,10 @@
     }
     .hp-hint-btn:hover { opacity: 1; }
     .hp-ticket-notice {
-      text-align: center; font-size: 13px; color: var(--sub); font-weight: 500;
-      padding: 2px 0; margin-top: 8px;
+      display: block; text-align: center; margin-top: 8px;
+      font-size: 12px; font-weight: 700; color: #b8860b;
+      background: rgba(200,160,60,0.15); border: 1px solid rgba(200,160,60,0.35);
+      border-radius: 999px; padding: 4px 14px;
     }
     .hp-correct-msg {
       text-align: center; font-size: 14px; color: var(--success); font-weight: 600;
@@ -2575,7 +2577,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506h';
+    const APP_VERSION = '20260506i';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5431,7 +5433,7 @@
           </div>`;
       } else {
         const ticketNotice = (_hpTicketAlreadyAwarded && (_hpWeekKey === 'w3' || _hpWeekKey === 'w6'))
-          ? `<p class="hp-ticket-notice">(이번주 Hold &amp; Pray에서 얻을 수 있는 뽑기권을 모두 획득했어요.)</p>` : '';
+          ? `<p class="hp-ticket-notice">🎫 이번 주 Hold &amp; Pray 뽑기권을 모두 획득했어요!</p>` : '';
         bottomHtml = `
           <div class="hp-divider"></div>
           <p class="hp-guess-prompt">이 기도제목의 주인공이 누구인지 알 것 같다면?</p>
