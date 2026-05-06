@@ -2663,7 +2663,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507d';
+    const APP_VERSION = '20260507e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5296,7 +5296,11 @@
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
-        if (bbbRes.myPhoto) _bbbShowPhoto(bbbRes.myPhoto);
+        if (bbbRes.myPhoto) {
+          _bbbShowPhoto(bbbRes.myPhoto);
+          const st = document.getElementById('bbbPhotoStatus');
+          if (st) { st.textContent = '✓ 뽑기권 획득 완료'; st.style.color = 'var(--sub)'; st.style.fontWeight = '500'; }
+        }
 
         document.getElementById('bbbPhotoInput').onchange = async function() {
           const file = this.files[0];
@@ -5316,7 +5320,9 @@
             const res = await REDIRECT.json();
             if (res.ok) {
               _bbbShowPhoto(base64);
-              statusEl.textContent = res.rewarded ? '뽑기권 1개 지급됐어요' : '사진 업데이트 완료';
+              statusEl.textContent = res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료';
+              statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
+              statusEl.style.fontWeight = res.rewarded ? '600' : '500';
             } else {
               statusEl.textContent = res.error || '업로드 실패';
             }
