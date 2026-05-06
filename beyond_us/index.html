@@ -2620,7 +2620,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zm';
+    const APP_VERSION = '20260506zn';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5473,7 +5473,11 @@
       if (dot) dot.style.display = 'none';
       updatePrayerDot();
       const input = document.getElementById('hpGuessInput');
-      if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      if (input) {
+        input.focus();
+        const y = input.getBoundingClientRect().top + window.pageYOffset - 120;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
     }
 
     function renderHoldPray() {
