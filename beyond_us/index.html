@@ -1109,52 +1109,9 @@
       overflow: visible;
     }
 
-    /* ══════════════════════════
-       히든 카드 — 벨벳 트레이
-    ══════════════════════════ */
-
-    /* 트레이 외벽 (림) */
-    .hidden-velvet-tray {
-      margin-top:18px;
-      border-radius:12px;
-      padding:14px;
-      background:#7c1010;
-      box-shadow:
-        0 4px 18px rgba(0,0,0,0.45),
-        inset 0 2px 2px rgba(255,255,255,0.09),
-        inset 0 -3px 5px rgba(0,0,0,0.45);
-      border:1px solid rgba(0,0,0,0.45);
-      transition:transform .15s;
-      cursor:default;
-    }
-    .hidden-velvet-tray.unlocked { cursor:pointer; }
-    .hidden-velvet-tray.unlocked:active { transform:scale(0.99); }
-
-    /* 벨벳 내부면 */
-    .hidden-velvet-inner {
-      border-radius:5px;
-      padding:20px 16px;
-      background:#9e1414;
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:
-        inset 0 3px 10px rgba(0,0,0,0.45),
-        inset 3px 0 8px rgba(0,0,0,0.2),
-        inset -3px 0 8px rgba(0,0,0,0.2);
-    }
-
-    /* 카드 홈 — 너비는 JS에서 미니카드 실측값으로 주입 */
-    .hidden-velvet-slot {
-      min-width:80px;
-      aspect-ratio:54 / 86;
-      border-radius:10px;
-      background:#2e0505;
-      box-shadow:
-        inset 0 8px 22px rgba(0,0,0,0.8),
-        inset 6px 0 16px rgba(0,0,0,0.5),
-        inset -6px 0 16px rgba(0,0,0,0.5),
-        inset 0 -5px 12px rgba(0,0,0,0.4);
-      display:flex; align-items:center; justify-content:center;
-      overflow:hidden;
+    .coll-subtitle {
+      font-size:11px; font-weight:700; color:var(--sub);
+      margin:14px 0 6px; letter-spacing:0.04em;
     }
 
     /* ════════════════════════════
@@ -2247,6 +2204,7 @@
             <!-- 내 컬렉션 패널 -->
             <div id="collPanelGrid">
               <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
+              <p class="coll-subtitle" id="collSubNormal" style="display:none">일반카드</p>
               <div class="collection-grid" id="collectionGrid"></div>
               <div id="hiddenCardSlot"></div>
             </div>
@@ -2627,7 +2585,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506v';
+    const APP_VERSION = '20260506w';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2650,6 +2608,7 @@
       { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/앤카드충성최최종.png' },
       { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/앤카드온유최최종.png' },
       { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/앤카드절제최최종.png' },
+      { id:10, name:'히든',  g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' },
     ];
 
     /* ── 카드 이미지 프리로드 ── */
@@ -3370,6 +3329,7 @@
       const hiddenCnt    = counts[10] || 0;
       const totalUnique  = spiritUnique + (hiddenCnt > 0 ? 1 : 0);
       sub.textContent = `${currentNickname}님의 컬렉션 · ${totalUnique}/10종 보유`;
+      document.getElementById('collSubNormal').style.display = '';
 
       grid.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = counts[card.id] || 0;
@@ -3400,34 +3360,22 @@
       renderHiddenSection(hiddenCnt);
     }
 
-    function sizeHiddenSlot() {
-      requestAnimationFrame(() => {
-        const ref    = document.querySelector('#collectionGrid .mini-card-wrap');
-        const target = document.querySelector('#hiddenCardSlot .hidden-velvet-slot');
-        if (!ref || !target) return;
-        const w = ref.getBoundingClientRect().width;
-        if (w > 0) target.style.width = w + 'px';
-      });
-    }
-
     function renderHiddenSection(hiddenCnt) {
       const slot = document.getElementById('hiddenCardSlot');
       if (!slot) return;
 
       const got = hiddenCnt > 0;
-
-      const slotContent = got
-        ? `<img src="images/히든.png" style="width:100%;height:100%;object-fit:contain;border-radius:10px;display:block;filter:drop-shadow(0 0 10px rgba(212,175,55,0.7)) drop-shadow(0 0 22px rgba(212,175,55,0.35));">`
-        : ``;
+      const cardInner = got
+        ? `<div class="mini-card mini-card-img" onclick="openCardDetail(10,${hiddenCnt})"><img src="images/히든.png" style="width:100%;height:100%;object-fit:contain;display:block;"></div>`
+        : `<div class="mini-card mini-card-locked"><img src="images/앤수배.png" class="mini-card-silhouette" alt=""></div>`;
 
       slot.innerHTML = `
-        <div class="hidden-velvet-tray${got ? ' unlocked' : ''}"${got ? ` onclick="openCardDetail(10,${hiddenCnt})"` : ''}>
-          <div class="hidden-velvet-inner">
-            <div class="hidden-velvet-slot">${slotContent}</div>
+        <p class="coll-subtitle">레어카드</p>
+        <div class="collection-grid">
+          <div class="mini-card-wrap" style="${got ? 'cursor:pointer;' : ''}">
+            ${cardInner}
           </div>
         </div>`;
-
-      sizeHiddenSlot();
     }
 
     /* ════ 교환 시스템 ════ */
@@ -4813,7 +4761,6 @@
         el.classList.toggle('active', el.dataset.section === name);
       });
       if (name === 'notice') markAllSeen();
-      if (name === 'collection') sizeHiddenSlot();
       if (name === 'inquiry') loadInquiries();
       if (name === 'prayer') loadHoldPray();
       if (name === 'secret') loadBBB();
