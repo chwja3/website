@@ -1113,6 +1113,24 @@
       font-size:11px; font-weight:700; color:var(--sub);
       margin:14px 0 6px; letter-spacing:0.04em;
     }
+    @keyframes rareShimmer {
+      0%   { transform: translateX(-140%) rotate(28deg); }
+      100% { transform: translateX(280%)  rotate(28deg); }
+    }
+    .mini-card-rare-locked { overflow:hidden; }
+    .mini-card-rare-locked::before {
+      content:''; position:absolute;
+      top:-60%; bottom:-60%; width:38%;
+      background:linear-gradient(90deg,
+        transparent,
+        rgba(212,175,55,0.18),
+        rgba(255,220,70,0.55),
+        rgba(212,175,55,0.18),
+        transparent
+      );
+      animation:rareShimmer 2.8s ease-in-out infinite;
+      pointer-events:none;
+    }
 
     /* ════════════════════════════
        Auth 화면 (전체 페이지)
@@ -2585,7 +2603,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506x';
+    const APP_VERSION = '20260506y';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3367,7 +3385,7 @@
       const got = hiddenCnt > 0;
       const cardInner = got
         ? `<div class="mini-card mini-card-img" onclick="openCardDetail(10,${hiddenCnt})"><img src="images/히든.png" style="width:100%;height:100%;object-fit:contain;display:block;"></div>`
-        : `<div class="mini-card mini-card-locked"><img src="images/앤수배.png" class="mini-card-silhouette" alt=""></div>`;
+        : `<div class="mini-card mini-card-locked mini-card-rare-locked"><img src="images/앤수배.png" class="mini-card-silhouette" alt=""></div>`;
 
       slot.innerHTML = `
         <p class="coll-subtitle">레어카드</p>
