@@ -2307,7 +2307,10 @@
           <div class="hp-header-area">
             <div style="position:relative;display:inline-block;width:100%;">
               <p class="hp-header-title" style="margin-bottom:6px;">🕊️ Hold &amp; Pray 🕊️</p>
-              <span id="hpTicketWeekBadge" style="display:none;font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);border:1px solid rgba(200,160,60,0.35);padding:2px 10px;border-radius:999px;margin-bottom:10px;display:none;">🎫 이번 주는 이름을 맞히면 뽑기권을 드려요.</span>
+              <span style="position:relative;display:inline-block;">
+                <button id="hpTicketWeekBadge" onclick="hpTicketBadgeClick()" style="display:none;font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);border:1px solid rgba(200,160,60,0.35);padding:2px 10px;border-radius:999px;margin-bottom:10px;cursor:pointer;">🎫 이번 주는 이름을 맞히면 뽑기권을 드려요.</button>
+                <span id="hpTicketBadgeDot" style="display:none;position:absolute;top:-2px;right:-2px;width:7px;height:7px;background:#e05a5a;border-radius:50%;pointer-events:none;border:1.5px solid var(--card);"></span>
+              </span>
               <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>누구인지 궁금하다면 1층 로비 Hold &amp; Pray 현수막에서 이름을 확인할 수 있어요.<br><br>3주차·6주차에는 1명이라도 맞히면 앤 카드 뽑기권 1장을 드려요!</span></span>
             </div>
             <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
@@ -2609,7 +2612,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zi';
+    const APP_VERSION = '20260506zj';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4866,8 +4869,8 @@
       const weekTitle = lastConfigData?.weekTitle || '';
       const isNewWeek = weekTitle && weekTitle !== (localStorage.getItem('beyondus_hp_last_seen_week') || '');
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
-      const hasTicketAlert = isTicketWeek && !_hpTicketAlreadyAwarded;
-      dot.classList.toggle('visible', !!(isNewWeek || hasTicketAlert));
+      const ticketNotSeen = isTicketWeek && !localStorage.getItem('beyondus_hp_ticket_seen_' + _hpWeekKey);
+      dot.classList.toggle('visible', !!(isNewWeek || ticketNotSeen));
     }
 
     function updateNoticeDot() {
@@ -5446,9 +5449,23 @@
 
     function updateHpBadge() {
       const badge = document.getElementById('hpTicketWeekBadge');
+      const dot   = document.getElementById('hpTicketBadgeDot');
       if (!badge) return;
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
       badge.style.display = isTicketWeek ? 'inline-block' : 'none';
+      if (dot) {
+        const seen = localStorage.getItem('beyondus_hp_ticket_seen_' + _hpWeekKey);
+        dot.style.display = (isTicketWeek && !seen) ? 'inline-block' : 'none';
+      }
+    }
+
+    function hpTicketBadgeClick() {
+      localStorage.setItem('beyondus_hp_ticket_seen_' + _hpWeekKey, '1');
+      const dot = document.getElementById('hpTicketBadgeDot');
+      if (dot) dot.style.display = 'none';
+      updatePrayerDot();
+      const input = document.getElementById('hpGuessInput');
+      if (input) { input.focus(); input.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     }
 
     function renderHoldPray() {
