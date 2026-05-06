@@ -1543,7 +1543,7 @@
     }
     .hp-hint-btn:hover { opacity: 1; }
     .hp-ticket-notice {
-      display: inline-block; margin-top: 8px;
+      display: block; width: fit-content; margin: 8px auto 0;
       font-size: 12px; font-weight: 700; color: #b8860b;
       background: rgba(200,160,60,0.15); border: 1px solid rgba(200,160,60,0.35);
       border-radius: 999px; padding: 4px 14px;
@@ -2578,7 +2578,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506k';
+    const APP_VERSION = '20260506l';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
