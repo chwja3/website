@@ -2124,7 +2124,7 @@
         <li class="drawer-item active" data-section="mission"><span class="drawer-label">사전미션</span></li>
         <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span><span id="drawerPrayerDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
-        <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션</span></li>
+        <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션 B.B.B.</span></li>
         <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
         <li class="drawer-item" data-section="faq"><span class="drawer-label">QnA</span></li>
         <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
@@ -2650,7 +2650,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zy';
+    const APP_VERSION = '20260506zz';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
