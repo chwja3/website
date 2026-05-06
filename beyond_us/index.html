@@ -2612,7 +2612,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zj';
+    const APP_VERSION = '20260506zk';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5556,7 +5556,7 @@
           <div class="hp-card" style="margin-top:8px;">
             <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
             <div class="hp-overlay">
-              <p class="hp-overlay-text">${escHtml(card.content)}</p>
+              <p class="hp-overlay-text">${escHtml(card.content).replace(/ (\d+\.) /g, '<br>$1 ')}</p>
             </div>
           </div>
         </div>
