@@ -2620,7 +2620,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zo';
+    const APP_VERSION = '20260506zp';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5460,10 +5460,11 @@
       const dot   = document.getElementById('hpTicketBadgeDot');
       if (!badge) return;
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
-      badge.style.display = isTicketWeek ? 'inline-block' : 'none';
+      const showBadge = isTicketWeek && !_hpTicketAlreadyAwarded;
+      badge.style.display = showBadge ? 'inline-block' : 'none';
       if (dot) {
         const seen = localStorage.getItem('beyondus_hp_ticket_seen_' + _hpWeekKey);
-        dot.style.display = (isTicketWeek && !seen) ? 'inline-block' : 'none';
+        dot.style.display = (showBadge && !seen) ? 'inline-block' : 'none';
       }
     }
 
