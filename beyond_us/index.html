@@ -2573,7 +2573,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506b';
+    const APP_VERSION = '20260506c';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5296,11 +5296,10 @@
     }
 
     async function loadHoldPray() {
-      const wk = getWeekKey();
       const el = document.getElementById('hpContent');
       if (!el) return;
 
-      if (_hpWeekKey === wk && _hpCards.length === 3) {
+      if (_hpCards.length === 3) {
         renderHoldPray();
         return;
       }
@@ -5317,13 +5316,13 @@
       try {
         const nick = localStorage.getItem('beyondus_nickname') || '';
         const [res] = await Promise.all([
-          fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          fetch(`${API_BASE}?action=getHoldPray&weekKey=&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
         _hpCards = data.cards || [];
-        _hpWeekKey = data.weekKey || wk;
+        _hpWeekKey = data.weekKey || '';
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
         // localStorage 먼저 로드 (오프라인 fallback)
