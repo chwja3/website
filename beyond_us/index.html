@@ -1548,13 +1548,13 @@
     }
     .hp-dot.active { background: var(--primary); width: 20px; border-radius: 4px; }
     .hp-hint-icon {
-      width: 20px; height: 20px; border-radius: 50%;
+      width: 17px; height: 17px; border-radius: 50%;
       border: 1.5px solid var(--sub); background: none;
-      color: var(--sub); font-size: 11px; font-weight: 700;
+      color: var(--sub); font-size: 10px; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; opacity: 0.5; padding: 0; line-height: 1;
+      flex-shrink: 0; opacity: 0.45; padding: 0; line-height: 1;
     }
-    .hp-hint-icon:hover { opacity: 0.9; }
+    .hp-hint-icon:hover { opacity: 0.85; }
     .hp-hint-popup {
       text-align: center; margin-top: 6px;
     }
@@ -2601,7 +2601,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zf';
+    const APP_VERSION = '20260506zg';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
