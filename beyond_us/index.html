@@ -1110,145 +1110,70 @@
     }
 
     /* ══════════════════════════
-       히든 카드 — 레드카펫 + 골드함
+       히든 카드 — 벨벳 트레이 + 홀로그램 슬리브
     ══════════════════════════ */
-    .hidden-card-section { position:relative; margin-top:22px; }
-
-    .hidden-card-carpet {
-      position:absolute; inset:-10px -18px;
+    .hidden-velvet-tray {
+      margin-top:18px; position:relative;
+      border-radius:14px;
+      padding:22px 16px 14px;
+      display:flex; flex-direction:column; align-items:center; gap:10px;
       background:
-        repeating-linear-gradient(0deg, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, transparent 1px, transparent 4px),
-        repeating-linear-gradient(90deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 1px, transparent 1px, transparent 8px),
-        linear-gradient(180deg, transparent 0%, #700a0a 12%, #9e0f0f 40%, #b01212 60%, #9e0f0f 88%, transparent 100%);
-      pointer-events:none; z-index:0;
-    }
-    .hidden-card-carpet::before,
-    .hidden-card-carpet::after {
-      content:''; position:absolute; left:10px; right:10px; height:2px;
-      background:linear-gradient(90deg, transparent, rgba(212,175,55,0.85) 20%, rgba(255,220,60,0.95) 50%, rgba(212,175,55,0.85) 80%, transparent);
-    }
-    .hidden-card-carpet::before { top:10px; }
-    .hidden-card-carpet::after  { bottom:10px; }
-
-    @keyframes chestGlow {
-      0%,100% { box-shadow:0 0 14px rgba(212,175,55,0.15),0 6px 28px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.07); }
-      50%      { box-shadow:0 0 28px rgba(212,175,55,0.35),0 6px 28px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.07); }
-    }
-    @keyframes chestShimmer {
-      0%   { transform:translateX(-150%) skewX(-18deg); }
-      100% { transform:translateX(320%)  skewX(-18deg); }
-    }
-    @keyframes chestStarTwinkle {
-      0%,100% { opacity:0.2; transform:scale(1); }
-      50%      { opacity:1;   transform:scale(1.6); }
-    }
-    .hidden-card-chest {
-      position:relative; z-index:1;
-      border-radius:18px;
-      background:linear-gradient(135deg,#0d0b1b 0%,#160e2c 45%,#0b1920 100%);
-      border:1.5px solid rgba(212,175,55,0.52);
-      padding:18px 18px;
-      display:flex; align-items:center; gap:16px;
+        radial-gradient(ellipse 65% 45% at 32% 28%, rgba(255,255,255,0.055) 0%, transparent 100%),
+        repeating-linear-gradient(45deg, rgba(0,0,0,0.028) 0px, rgba(0,0,0,0.028) 2px, transparent 2px, transparent 5px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.018) 0px, rgba(0,0,0,0.018) 2px, transparent 2px, transparent 5px),
+        linear-gradient(150deg, #7e1010 0%, #9c1414 28%, #8b1212 58%, #6a0d0d 100%);
+      box-shadow:
+        0 4px 22px rgba(0,0,0,0.55),
+        inset 0 1px 3px rgba(255,255,255,0.1),
+        inset 0 -3px 10px rgba(0,0,0,0.38);
+      border:1px solid rgba(0,0,0,0.5);
       overflow:hidden;
-      animation:chestGlow 3.5s ease-in-out infinite;
       transition:transform .15s;
       cursor:default;
     }
-    .hidden-card-chest.unlocked { cursor:pointer; }
-    .hidden-card-chest.unlocked:active { transform:scale(0.98); }
-    .hidden-card-chest::before {
-      content:''; position:absolute; top:0; bottom:0; width:55%; left:0;
-      background:linear-gradient(90deg,transparent,rgba(212,175,55,0.07),transparent);
-      animation:chestShimmer 4.5s ease-in-out infinite;
+    .hidden-velvet-tray::after {
+      content:''; position:absolute; inset:0;
+      border-radius:14px; border:1px solid rgba(255,255,255,0.09);
       pointer-events:none;
     }
-    .hidden-card-chest::after {
-      content:''; position:absolute; inset:5px; border-radius:14px;
-      border:1px solid rgba(212,175,55,0.13); pointer-events:none;
-    }
-    .hidden-chest-card-area {
-      flex-shrink:0; width:66px; height:104px; border-radius:11px;
-      display:flex; align-items:center; justify-content:center;
-      position:relative; z-index:1;
-    }
-    .hidden-chest-card-area.locked {
-      background:linear-gradient(135deg,#1d1534,#291c48);
-      border:1.5px solid rgba(212,175,55,0.32);
-      font-size:32px;
-      filter:drop-shadow(0 0 10px rgba(212,175,55,0.5));
-    }
-    .hidden-chest-card-area.got {
-      box-shadow:0 0 20px rgba(212,175,55,0.6),0 2px 10px rgba(0,0,0,0.5);
-    }
-    .hidden-chest-card-area.got img {
-      width:100%; height:100%; object-fit:contain; border-radius:11px; display:block;
-    }
-    .hidden-chest-stars { position:absolute; inset:0; pointer-events:none; z-index:0; }
-    .hcs {
-      position:absolute; width:3px; height:3px;
-      background:rgba(212,175,55,0.8); border-radius:50%;
-      animation:chestStarTwinkle 2s ease-in-out infinite;
-    }
-    .hidden-chest-info { flex:1; z-index:1; }
-    .hidden-chest-tag {
-      font-size:9px; font-weight:800; letter-spacing:0.18em;
-      color:rgba(212,175,55,0.62); text-transform:uppercase; margin-bottom:4px;
-    }
-    .hidden-chest-name {
-      font-size:20px; font-weight:900;
-      color:rgba(212,175,55,0.97);
-      text-shadow:0 0 16px rgba(212,175,55,0.55);
-      letter-spacing:0.04em; margin-bottom:4px;
-    }
-    .hidden-chest-hint {
-      font-size:11.5px; line-height:1.55; color:rgba(255,255,255,0.38);
-    }
-    .hidden-chest-badge {
-      display:inline-flex; align-items:center; gap:4px;
-      font-size:11px; font-weight:700;
-      color:rgba(212,175,55,0.92);
-      background:rgba(212,175,55,0.13);
-      border:1px solid rgba(212,175,55,0.32);
-      border-radius:999px; padding:2px 10px; margin-top:7px;
+    .hidden-velvet-tray.unlocked { cursor:pointer; }
+    .hidden-velvet-tray.unlocked:active { transform:scale(0.99); }
+
+    .hidden-velvet-slot {
+      width:84px; height:132px; border-radius:10px; position:relative;
+      background:linear-gradient(145deg,#560909,#6b0d0d);
+      box-shadow:inset 0 3px 10px rgba(0,0,0,0.65),inset 0 0 18px rgba(0,0,0,0.4),0 1px 2px rgba(255,255,255,0.06);
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
     }
 
-    /* ── 응모권 마일스톤 패널 ── */
-    .raffle-panel {
-      position:relative; z-index:1;
-      margin-top:12px;
-      border-radius:14px;
-      background:rgba(0,0,0,0.22);
-      border:1px solid rgba(212,175,55,0.22);
-      padding:14px 16px;
+    .hidden-holo-sleeve {
+      width:76px; height:120px; border-radius:8px; position:relative; overflow:hidden;
+      border:1px solid rgba(255,255,255,0.42);
+      box-shadow:0 0 14px rgba(180,130,255,0.18),0 0 0 0.5px rgba(255,255,255,0.14),inset 0 0 10px rgba(255,255,255,0.04);
+      background:rgba(230,230,255,0.03);
     }
-    .raffle-panel-title {
-      font-size:10px; font-weight:800; letter-spacing:0.14em;
-      color:rgba(212,175,55,0.68); text-transform:uppercase;
-      text-align:center; margin-bottom:10px;
+    @keyframes holoSpin {
+      0%   { transform:rotate(0deg); }
+      100% { transform:rotate(360deg); }
     }
-    .raffle-milestone {
-      display:flex; align-items:center; gap:9px;
-      padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.05);
-      font-size:13px;
+    .hidden-holo-shine {
+      position:absolute; width:220%; height:220%; top:-60%; left:-60%;
+      background:conic-gradient(
+        from 0deg,
+        rgba(255,80,120,0.16),
+        rgba(255,190,30,0.1),
+        rgba(60,255,160,0.14),
+        rgba(30,150,255,0.16),
+        rgba(180,30,255,0.13),
+        rgba(255,60,200,0.1),
+        rgba(255,80,120,0.16)
+      );
+      animation:holoSpin 6s linear infinite;
     }
-    .raffle-milestone:last-of-type { border-bottom:none; }
-    .raffle-milestone.done .rm-label  { color:rgba(255,255,255,0.88); }
-    .raffle-milestone.done .rm-reward { color:rgba(212,175,55,0.92); font-weight:700; }
-    .raffle-milestone:not(.done) .rm-label  { color:rgba(255,255,255,0.28); }
-    .raffle-milestone:not(.done) .rm-reward { color:rgba(255,255,255,0.22); }
-    .rm-check { font-size:14px; flex-shrink:0; width:18px; text-align:center; }
-    .rm-label  { flex:1; font-size:12.5px; }
-    .rm-reward { font-size:12px; flex-shrink:0; }
-    .raffle-total {
-      margin-top:10px; padding-top:10px;
-      border-top:1px solid rgba(212,175,55,0.22);
-      display:flex; justify-content:space-between; align-items:center;
-    }
-    .raffle-total-label { font-size:12px; color:rgba(255,255,255,0.48); }
-    .raffle-total-value {
-      font-size:19px; font-weight:900;
-      color:rgba(212,175,55,0.97);
-      text-shadow:0 0 10px rgba(212,175,55,0.45);
+
+    .hidden-tray-label {
+      font-size:11px; color:rgba(255,255,255,0.42);
+      margin:0; letter-spacing:0.08em; text-align:center;
     }
 
     /* ════════════════════════════
@@ -2335,7 +2260,7 @@
           <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
-            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 당일 미션을 달성하면 지급돼요.<br><br>다른 유저와 카드 교환도 할 수 있어요!</span></span>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 EN카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 히든 1종)이 있고, 히든 카드는 수련회 당일 특별 미션에서 획득할 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟 수련회 응모권 혜택<br>참석만 해도 1장, 카드 3종 +1장, 5종 +3장, 10종 전종 +5장 + 한정판 굿즈</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -2721,7 +2646,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506p';
+    const APP_VERSION = '20260506q';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3491,81 +3416,25 @@
           </div>`;
       }).join('');
 
-      renderHiddenSection(hiddenCnt, spiritUnique + (hiddenCnt > 0 ? 1 : 0));
+      renderHiddenSection(hiddenCnt);
     }
 
-    function renderHiddenSection(hiddenCnt, totalUnique) {
+    function renderHiddenSection(hiddenCnt) {
       const slot = document.getElementById('hiddenCardSlot');
       if (!slot) return;
 
       const got = hiddenCnt > 0;
 
-      // 응모권 마일스톤 계산
-      const m3   = totalUnique >= 3;
-      const m5   = totalUnique >= 5;
-      const m10  = totalUnique >= 10;
-      let tickets = 1; // 기본 참석
-      if (m3) tickets += 1;
-      if (m5) tickets += 3;
-      if (m10) tickets += 5;
+      const slotContent = got
+        ? `<img src="images/히든.png" style="width:76px;height:120px;object-fit:contain;border-radius:8px;display:block;">`
+        : `<div class="hidden-holo-sleeve"><div class="hidden-holo-shine"></div></div>`;
 
-      const chestCard = got
-        ? `<div class="hidden-chest-card-area got"><img src="images/히든.png" alt="히든 카드"></div>`
-        : `<div class="hidden-chest-card-area locked">🔒</div>`;
-
-      const chestInfo = got
-        ? `<div class="hidden-chest-tag">HIDDEN CARD</div>
-           <div class="hidden-chest-name">히든 카드</div>
-           <div class="hidden-chest-hint">획득하셨어요!</div>
-           <span class="hidden-chest-badge">✨ 전종 보유</span>`
-        : `<div class="hidden-chest-tag">HIDDEN CARD</div>
-           <div class="hidden-chest-name">히든 카드</div>
-           <div class="hidden-chest-hint">수련회 당일 특별 미션에서<br>획득할 수 있어요</div>`;
-
-      const sparkles = [
-        'top:14%;right:6%;animation-delay:0s',
-        'top:38%;right:11%;animation-delay:0.9s',
-        'bottom:18%;right:5%;animation-delay:1.6s',
-        'top:22%;left:68%;animation-delay:0.4s',
-        'bottom:14%;left:70%;animation-delay:1.2s',
-        'top:55%;right:18%;animation-delay:2.1s',
-      ].map(s => `<span class="hcs" style="${s}"></span>`).join('');
+      const label = got ? '✨ 획득!' : '히든 카드';
 
       slot.innerHTML = `
-        <div class="hidden-card-section">
-          <div class="hidden-card-carpet"></div>
-          <div class="hidden-card-chest${got ? ' unlocked' : ''}"${got ? ` onclick="openCardDetail(10,${hiddenCnt})"` : ''}>
-            <div class="hidden-chest-stars">${sparkles}</div>
-            ${chestCard}
-            <div class="hidden-chest-info">${chestInfo}</div>
-          </div>
-          <div class="raffle-panel">
-            <div class="raffle-panel-title">🎟 수련회 응모권 예상</div>
-            <div class="raffle-milestone done">
-              <span class="rm-check">✓</span>
-              <span class="rm-label">수련회 참석</span>
-              <span class="rm-reward">1장</span>
-            </div>
-            <div class="raffle-milestone${m3 ? ' done' : ''}">
-              <span class="rm-check">${m3 ? '✓' : '○'}</span>
-              <span class="rm-label">카드 3종 달성</span>
-              <span class="rm-reward">+1장</span>
-            </div>
-            <div class="raffle-milestone${m5 ? ' done' : ''}">
-              <span class="rm-check">${m5 ? '✓' : '○'}</span>
-              <span class="rm-label">카드 5종 달성</span>
-              <span class="rm-reward">+3장</span>
-            </div>
-            <div class="raffle-milestone${m10 ? ' done' : ''}">
-              <span class="rm-check">${m10 ? '✓' : '○'}</span>
-              <span class="rm-label">카드 10종 전종 🎁</span>
-              <span class="rm-reward">+5장 + 굿즈</span>
-            </div>
-            <div class="raffle-total">
-              <span class="raffle-total-label">예상 수령 응모권</span>
-              <span class="raffle-total-value">${tickets}장</span>
-            </div>
-          </div>
+        <div class="hidden-velvet-tray${got ? ' unlocked' : ''}"${got ? ` onclick="openCardDetail(10,${hiddenCnt})"` : ''}>
+          <div class="hidden-velvet-slot">${slotContent}</div>
+          <p class="hidden-tray-label">${label}</p>
         </div>`;
     }
 
