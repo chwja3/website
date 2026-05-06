@@ -1528,23 +1528,13 @@
     .hp-carousel-wrap:active { cursor: grabbing; }
     .hp-slide-counter { text-align: center; font-size: 11px; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.03em; }
     .hp-card-frame { position: relative; }
-    .hp-nav-btn {
-      position: absolute; top: 50%; transform: translateY(-50%); z-index: 5;
-      background: rgba(0,0,0,0.28); backdrop-filter: blur(2px);
-      border: none; color: #fff;
-      font-size: 26px; width: 34px; height: 52px; border-radius: 8px;
-      cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
-    }
-    #hpNavPrev { left: 6px; }
-    #hpNavNext { right: 6px; }
-    .hp-nav-btn:disabled { opacity: 0.15; cursor: default; }
     .hp-dots { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 10px; }
     .hp-dot {
       width: 7px; height: 7px; border-radius: 50%;
       background: var(--border); cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
+      transition: background 0.2s, width 0.2s, border-radius 0.2s;
     }
-    .hp-dot.active { background: var(--accent); transform: scale(1.35); }
+    .hp-dot.active { background: var(--accent); width: 20px; border-radius: 4px; transform: none; }
     .hp-hint-btn {
       display: block; margin: 8px auto 0; font-size: 11px;
       color: var(--sub); background: none; border: none; cursor: pointer;
@@ -5336,10 +5326,19 @@
         _hpWeekKey = data.weekKey || wk;
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
+        // localStorage 먼저 로드 (오프라인 fallback)
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
           if (saved) _hpCorrectMap[i] = saved;
         });
+        // 서버 correctMap으로 덮어씀 (크로스-기기 동기화 — 서버 우선)
+        if (data.correctMap) {
+          Object.keys(data.correctMap).forEach(k => {
+            const i = Number(k);
+            _hpCorrectMap[i] = data.correctMap[k];
+            localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i, data.correctMap[k]);
+          });
+        }
         renderHoldPray();
       } catch(e) {
         el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
@@ -5417,14 +5416,12 @@
 
       slot.innerHTML = `
         <div class="hp-card-frame">
-          <button class="hp-nav-btn" id="hpNavPrev" onclick="hpGoTo(${idx - 1})" ${idx === 0 ? 'disabled' : ''}>&#8249;</button>
           <div class="hp-card" style="margin-top:8px;">
             <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
             <div class="hp-overlay">
               <p class="hp-overlay-text">${escHtml(card.content)}</p>
             </div>
           </div>
-          <button class="hp-nav-btn" id="hpNavNext" onclick="hpGoTo(${idx + 1})" ${idx === _hpCards.length - 1 ? 'disabled' : ''}>&#8250;</button>
         </div>
         <div class="hp-bottom-area" style="margin-top:14px;">
           <p class="hp-lobby-inline">위 기도제목이 누구인지 궁금하다면,<br>1층 로비 Hold &amp; Pray 현수막에서 찾아보세요!<br>다른 지체의 기도제목에도 손을 얹어 함께 기도해주세요.</p>
@@ -5450,10 +5447,6 @@
       if (counter) counter.textContent = `${idx + 1} / ${total}`;
       const dots = document.querySelectorAll('#hpDots .hp-dot');
       dots.forEach((d, i) => d.classList.toggle('active', i === idx));
-      const prevBtn = document.getElementById('hpNavPrev');
-      const nextBtn = document.getElementById('hpNavNext');
-      if (prevBtn) prevBtn.disabled = idx === 0;
-      if (nextBtn) nextBtn.disabled = idx === total - 1;
       renderHpCard(idx);
     }
 

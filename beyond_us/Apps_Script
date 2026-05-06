@@ -426,6 +426,18 @@ function getDashboardData() {
   };
 }
 
+// ── H&P 정답 기록 시트 ─────────────────────────────
+function getOrCreateHPGuessesSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('HPGuesses');
+  if (!sheet) {
+    sheet = ss.insertSheet('HPGuesses');
+    sheet.appendRow(['nickname', 'weekKey', 'cardIndex', 'guessedName', 'answeredAt']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
 // ── 보너스 뽑기권 시트 ──────────────────────────────
 function getOrCreateBonusDrawsSheet() {
   const ss = getSpreadsheet();
@@ -624,7 +636,23 @@ function getHoldPray(weekKey, nickname) {
       }
     }
   }
-  return { ok: true, weekKey, cards };
+
+  // 이전에 정답을 맞춘 카드 목록 조회 (크로스-기기 동기화)
+  const correctMap = {};
+  if (nickname) {
+    const guessSheet = getOrCreateHPGuessesSheet();
+    const last = guessSheet.getLastRow();
+    if (last >= 2) {
+      const rows = guessSheet.getRange(2, 1, last - 1, 4).getValues();
+      rows.forEach(function(r) {
+        if (String(r[0]) === nickname && String(r[1]) === weekKey) {
+          correctMap[Number(r[2])] = String(r[3]);
+        }
+      });
+    }
+  }
+
+  return { ok: true, weekKey, cards, correctMap };
 }
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
@@ -660,6 +688,21 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
   const entry = HOLD_PRAY_ENTRIES[entryIdx];
   if (entry.a) return { ok: false, error: 'anon entry' };
   const correct = entry.n.replace(/\s/g, '').toLowerCase() === guess.trim().replace(/\s/g, '').toLowerCase();
+  if (correct) {
+    // 정답 기록 (크로스-기기 동기화용) — 중복 방지
+    const guessSheet = getOrCreateHPGuessesSheet();
+    const last = guessSheet.getLastRow();
+    let alreadyRecorded = false;
+    if (last >= 2) {
+      const rows = guessSheet.getRange(2, 1, last - 1, 3).getValues();
+      alreadyRecorded = rows.some(function(r) {
+        return String(r[0]) === nickname && String(r[1]) === weekKey && Number(r[2]) === ci;
+      });
+    }
+    if (!alreadyRecorded) {
+      guessSheet.appendRow([nickname, weekKey, ci, guess.trim(), new Date().toISOString()]);
+    }
+  }
   let ticketAwarded = false;
   if (correct && (weekKey === 'w3' || weekKey === 'w6')) {
     const bonusSheet = getOrCreateBonusDrawsSheet();
