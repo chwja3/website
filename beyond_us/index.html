@@ -1575,8 +1575,9 @@
       display: block; width: fit-content; margin: 8px auto 0;
       font-size: 12px; font-weight: 700; color: #b8860b;
       background: rgba(200,160,60,0.15); border: 1px solid rgba(200,160,60,0.35);
-      border-radius: 999px; padding: 4px 14px;
+      border-radius: 999px; padding: 4px 14px; cursor: pointer;
     }
+    .hp-ticket-notice:hover { background: rgba(200,160,60,0.25); }
     .hp-correct-msg {
       text-align: center; font-size: 14px; color: var(--success); font-weight: 600;
       margin-top: 10px;
@@ -2612,7 +2613,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zk';
+    const APP_VERSION = '20260506zl';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5618,9 +5619,10 @@
             _hpTicketAlreadyAwarded = true;
             updateHpBadge();
             if (slot) {
-              const toast = document.createElement('p');
+              const toast = document.createElement('button');
               toast.className = 'hp-ticket-notice';
-              toast.textContent = '뽑기권 1장도 획득했어요!';
+              toast.textContent = '뽑기권 1장을 넣어드렸어요~ 🎫';
+              toast.onclick = () => switchSection('mission');
               slot.querySelector('.hp-bottom-area')?.appendChild(toast);
             }
             loadUserStatus(); // 홈 뽑기권 뱃지 즉시 갱신
