@@ -1572,12 +1572,12 @@
       font-size: 11px; color: var(--sub); opacity: 0.75; margin: 0; text-align: center;
     }
     .hp-ticket-notice {
-      display: block; width: fit-content; margin: 8px auto 0;
-      font-size: 12px; font-weight: 700; color: #b8860b;
-      background: rgba(200,160,60,0.15); border: 1px solid rgba(200,160,60,0.35);
-      border-radius: 999px; padding: 4px 14px; cursor: pointer;
+      display: block; width: fit-content; margin: 6px auto 0;
+      font-size: 10px; font-weight: 500; color: rgba(184,134,11,0.6);
+      background: rgba(200,160,60,0.07); border: 1px solid rgba(200,160,60,0.2);
+      border-radius: 999px; padding: 2px 10px; cursor: pointer;
     }
-    .hp-ticket-notice:hover { background: rgba(200,160,60,0.25); }
+    .hp-ticket-notice:hover { background: rgba(200,160,60,0.13); }
     .hp-correct-msg {
       text-align: center; font-size: 14px; color: var(--success); font-weight: 600;
       margin-top: 10px;
@@ -2620,7 +2620,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506zq';
+    const APP_VERSION = '20260506zr';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
