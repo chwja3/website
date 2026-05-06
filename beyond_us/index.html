@@ -1112,68 +1112,91 @@
     /* ══════════════════════════
        히든 카드 — 벨벳 트레이 + 홀로그램 슬리브
     ══════════════════════════ */
+
+    /* 트레이 외벽 (림) */
     .hidden-velvet-tray {
       margin-top:18px; position:relative;
-      border-radius:14px;
-      padding:22px 16px 14px;
-      display:flex; flex-direction:column; align-items:center; gap:10px;
-      background:
-        radial-gradient(ellipse 65% 45% at 32% 28%, rgba(255,255,255,0.055) 0%, transparent 100%),
-        repeating-linear-gradient(45deg, rgba(0,0,0,0.028) 0px, rgba(0,0,0,0.028) 2px, transparent 2px, transparent 5px),
-        repeating-linear-gradient(-45deg, rgba(0,0,0,0.018) 0px, rgba(0,0,0,0.018) 2px, transparent 2px, transparent 5px),
-        linear-gradient(150deg, #7e1010 0%, #9c1414 28%, #8b1212 58%, #6a0d0d 100%);
+      border-radius:20px;
+      padding:12px;
+      background:linear-gradient(165deg, #a01515 0%, #7e0e0e 35%, #911212 65%, #6c0c0c 100%);
       box-shadow:
-        0 4px 22px rgba(0,0,0,0.55),
-        inset 0 1px 3px rgba(255,255,255,0.1),
-        inset 0 -3px 10px rgba(0,0,0,0.38);
+        0 6px 28px rgba(0,0,0,0.6),
+        0 2px 5px rgba(0,0,0,0.35),
+        inset 0 2px 3px rgba(255,255,255,0.16),
+        inset 0 -2px 4px rgba(0,0,0,0.4);
       border:1px solid rgba(0,0,0,0.5);
       overflow:hidden;
       transition:transform .15s;
       cursor:default;
     }
-    .hidden-velvet-tray::after {
-      content:''; position:absolute; inset:0;
-      border-radius:14px; border:1px solid rgba(255,255,255,0.09);
-      pointer-events:none;
+    /* 림 상단 하이라이트 라인 */
+    .hidden-velvet-tray::before {
+      content:''; position:absolute; top:12px; left:12px; right:12px; height:1px;
+      background:rgba(255,255,255,0.1); pointer-events:none;
     }
     .hidden-velvet-tray.unlocked { cursor:pointer; }
     .hidden-velvet-tray.unlocked:active { transform:scale(0.99); }
 
-    .hidden-velvet-slot {
-      width:84px; height:132px; border-radius:10px; position:relative;
-      background:linear-gradient(145deg,#560909,#6b0d0d);
-      box-shadow:inset 0 3px 10px rgba(0,0,0,0.65),inset 0 0 18px rgba(0,0,0,0.4),0 1px 2px rgba(255,255,255,0.06);
-      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    /* 벨벳 내부면 */
+    .hidden-velvet-inner {
+      border-radius:10px;
+      padding:20px 16px;
+      display:flex; align-items:center; justify-content:center;
+      background:
+        radial-gradient(ellipse 70% 38% at 28% 22%, rgba(255,255,255,0.058) 0%, transparent 100%),
+        repeating-linear-gradient(45deg,  rgba(0,0,0,0.032) 0px, rgba(0,0,0,0.032) 2px, transparent 2px, transparent 5px),
+        repeating-linear-gradient(-45deg, rgba(0,0,0,0.022) 0px, rgba(0,0,0,0.022) 2px, transparent 2px, transparent 5px),
+        linear-gradient(155deg, #8e1313 0%, #a81818 28%, #951414 62%, #7a1010 100%);
+      box-shadow:
+        inset 0 6px 18px rgba(0,0,0,0.52),
+        inset 0 2px 7px rgba(0,0,0,0.32),
+        inset 0 -2px 8px rgba(0,0,0,0.2);
     }
 
+    /* 카드 홈 (3D 함몰) */
+    .hidden-velvet-slot {
+      /* 위 그리드 미니카드와 동일 비율·크기 */
+      width:calc((100% - 16px) / 3);
+      aspect-ratio:54 / 86;
+      border-radius:12px;
+      background:linear-gradient(160deg, #3b0606 0%, #500a0a 50%, #3b0606 100%);
+      box-shadow:
+        inset 0 10px 28px rgba(0,0,0,0.82),
+        inset 8px  0 20px rgba(0,0,0,0.55),
+        inset -8px 0 20px rgba(0,0,0,0.55),
+        inset 0  -6px 14px rgba(0,0,0,0.42),
+        0 0 0 1px rgba(0,0,0,0.55);
+      position:relative; overflow:hidden;
+      display:flex; align-items:center; justify-content:center;
+    }
+    /* 홈 상단 엣지 캐치라이트 */
+    .hidden-velvet-slot::after {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background:linear-gradient(90deg, transparent, rgba(160,30,30,0.35) 30%, rgba(190,45,45,0.35) 50%, rgba(160,30,30,0.35) 70%, transparent);
+      pointer-events:none;
+    }
+
+    /* 홀로그램 슬리브 */
     .hidden-holo-sleeve {
-      width:76px; height:120px; border-radius:8px; position:relative; overflow:hidden;
-      border:1px solid rgba(255,255,255,0.42);
-      box-shadow:0 0 14px rgba(180,130,255,0.18),0 0 0 0.5px rgba(255,255,255,0.14),inset 0 0 10px rgba(255,255,255,0.04);
-      background:rgba(230,230,255,0.03);
+      width:84%; height:84%; border-radius:9px; position:relative; overflow:hidden;
+      border:1px solid rgba(255,255,255,0.4);
+      box-shadow:0 0 14px rgba(180,130,255,0.18),0 0 0 0.5px rgba(255,255,255,0.12),inset 0 0 10px rgba(255,255,255,0.05);
+      background:rgba(220,220,250,0.03);
     }
     @keyframes holoSpin {
       0%   { transform:rotate(0deg); }
       100% { transform:rotate(360deg); }
     }
     .hidden-holo-shine {
-      position:absolute; width:220%; height:220%; top:-60%; left:-60%;
+      position:absolute; width:230%; height:230%; top:-65%; left:-65%;
       background:conic-gradient(
         from 0deg,
-        rgba(255,80,120,0.16),
-        rgba(255,190,30,0.1),
-        rgba(60,255,160,0.14),
-        rgba(30,150,255,0.16),
-        rgba(180,30,255,0.13),
-        rgba(255,60,200,0.1),
-        rgba(255,80,120,0.16)
+        rgba(255,70,110,0.18), rgba(255,190,30,0.11),
+        rgba(50,255,155,0.15), rgba(20,145,255,0.18),
+        rgba(175,25,255,0.14), rgba(255,55,195,0.11),
+        rgba(255,70,110,0.18)
       );
       animation:holoSpin 6s linear infinite;
-    }
-
-    .hidden-tray-label {
-      font-size:11px; color:rgba(255,255,255,0.42);
-      margin:0; letter-spacing:0.08em; text-align:center;
     }
 
     /* ════════════════════════════
@@ -2646,7 +2669,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506r';
+    const APP_VERSION = '20260506s';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3431,7 +3454,9 @@
 
       slot.innerHTML = `
         <div class="hidden-velvet-tray${got ? ' unlocked' : ''}"${got ? ` onclick="openCardDetail(10,${hiddenCnt})"` : ''}>
-          <div class="hidden-velvet-slot">${slotContent}</div>
+          <div class="hidden-velvet-inner">
+            <div class="hidden-velvet-slot">${slotContent}</div>
+          </div>
         </div>`;
     }
 
