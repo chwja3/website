@@ -1155,6 +1155,7 @@
 
     /* 카드 홈 (3D 함몰) — 너비는 JS에서 미니카드 실측값으로 주입 */
     .hidden-velvet-slot {
+      min-width:80px; /* 측정 전 폴백 */
       aspect-ratio:54 / 86;
       border-radius:12px;
       background:linear-gradient(160deg, #3b0606 0%, #500a0a 50%, #3b0606 100%);
@@ -2667,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260506t';
+    const APP_VERSION = '20260506u';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3440,6 +3441,16 @@
       renderHiddenSection(hiddenCnt);
     }
 
+    function sizeHiddenSlot() {
+      requestAnimationFrame(() => {
+        const ref    = document.querySelector('#collectionGrid .mini-card-wrap');
+        const target = document.querySelector('#hiddenCardSlot .hidden-velvet-slot');
+        if (!ref || !target) return;
+        const w = ref.getBoundingClientRect().width;
+        if (w > 0) target.style.width = w + 'px';
+      });
+    }
+
     function renderHiddenSection(hiddenCnt) {
       const slot = document.getElementById('hiddenCardSlot');
       if (!slot) return;
@@ -3457,12 +3468,7 @@
           </div>
         </div>`;
 
-      // 위 그리드 미니카드 실측 너비 그대로 적용
-      requestAnimationFrame(() => {
-        const ref    = document.querySelector('#collectionGrid .mini-card-wrap');
-        const target = slot.querySelector('.hidden-velvet-slot');
-        if (ref && target) target.style.width = ref.getBoundingClientRect().width + 'px';
-      });
+      sizeHiddenSlot();
     }
 
     /* ════ 교환 시스템 ════ */
@@ -4848,6 +4854,7 @@
         el.classList.toggle('active', el.dataset.section === name);
       });
       if (name === 'notice') markAllSeen();
+      if (name === 'collection') sizeHiddenSlot();
       if (name === 'inquiry') loadInquiries();
       if (name === 'prayer') loadHoldPray();
       if (name === 'secret') loadBBB();
