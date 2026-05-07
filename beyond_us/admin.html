@@ -181,11 +181,12 @@
       <div class="drawer-head">메뉴 <button class="drawer-close" id="drawerCloseBtn">✕</button></div>
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
-      <button class="drawer-item" data-panel="settings">사전미션 설정</button>
+      <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
+      <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
-      <button class="drawer-item" data-panel="bbb">B.B.B.</button>
-      <button class="drawer-item" data-panel="collection">Collection</button>
+      <button class="drawer-item" data-panel="bbb">현장미션 (BBB)</button>
+      <button class="drawer-item" data-panel="collection">카드 집계</button>
     </nav>
 
     <div class="admin-wrap">
@@ -477,8 +478,12 @@
           <div class="status" id="weekSetStatus" style="margin-top:8px;"></div>
         </div>
 
+      </div>
+
+      <!-- 탭 활성화 패널 -->
+      <div id="tab-tabtoggle" class="tab-panel">
         <div class="card">
-          <h2 class="card-title">메뉴 탭 활성화 설정</h2>
+          <h2 class="card-title">메뉴 탭 활성화</h2>
           <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">비활성화하면 모든 사용자의 앱에서 해당 탭이 숨겨져요.</p>
 
           <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
@@ -487,8 +492,12 @@
               <input type="checkbox" id="togglePrayer" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
             <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">현장미션 (BBB)</span>
+              <span style="font-size:15px; font-weight:700;">현장미션</span>
               <input type="checkbox" id="toggleSecret" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
+            </label>
+            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
+              <span style="font-size:15px; font-weight:700;">채팅방</span>
+              <input type="checkbox" id="toggleChat" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
           </div>
 
@@ -1059,6 +1068,7 @@
         if (res.ok) {
           document.getElementById('togglePrayer').checked = res.prayer !== false;
           document.getElementById('toggleSecret').checked = res.secret !== false;
+          document.getElementById('toggleChat').checked   = res.chat   !== false;
         }
       } catch(e) {}
     }
@@ -1074,7 +1084,8 @@
           action: 'setTabSettings',
           adminPw,
           prayer: document.getElementById('togglePrayer').checked,
-          secret: document.getElementById('toggleSecret').checked
+          secret: document.getElementById('toggleSecret').checked,
+          chat:   document.getElementById('toggleChat').checked
         });
         if (res.ok) {
           statusEl.className = 'status ok';

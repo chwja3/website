@@ -875,10 +875,12 @@ function getTabSettings() {
   const sheet  = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const prayer = sheet.getRange('B2').getValue();
   const secret = sheet.getRange('B3').getValue();
+  const chat   = sheet.getRange('B5').getValue();
   return {
     ok:     true,
     prayer: prayer === '' ? true : Boolean(prayer),
-    secret: secret === '' ? true : Boolean(secret)
+    secret: secret === '' ? true : Boolean(secret),
+    chat:   chat   === '' ? true : Boolean(chat)
   };
 }
 
@@ -887,6 +889,7 @@ function setTabSettings(body) {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   sheet.getRange('B2').setValue(body.prayer !== false);
   sheet.getRange('B3').setValue(body.secret !== false);
+  sheet.getRange('B5').setValue(body.chat   !== false);
   return { ok: true };
 }
 

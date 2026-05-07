@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507s';
+    const APP_VERSION = '20260507t';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4563,11 +4563,13 @@
 
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
-      const { prayer, secret } = data.tabSettings;
+      const { prayer, secret, chat } = data.tabSettings;
       const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
       const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
+      const chatItem   = document.querySelector('.drawer-item[data-section="chat"]');
       if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
       if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
+      if (chatItem)   chatItem.style.display   = (chat   === false) ? 'none' : '';
     }
 
     function updateScoreProgress() {
