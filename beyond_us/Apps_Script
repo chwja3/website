@@ -673,15 +673,41 @@ function getYouthHpEntries() {
       return String(r[2]).trim() !== ''; // 기도제목 없는 행 제외
     })
     .map(function(r) {
-      const anon = r[3] === true || String(r[3]).toLowerCase() === 'true';
+      const name = String(r[0]).trim();
+      const isMugimyung = !name || name === '무기명';
+      const anon = isMugimyung || r[3] === true || String(r[3]).toLowerCase() === 'true';
       return {
-        n: String(r[0]).trim(),
+        n: isMugimyung ? '무기명' : name,
         p: String(r[1]).trim(),
         c: String(r[2]).trim(),
         a: anon,
         nick: String(r[4]).trim()
       };
     });
+}
+
+// 시트의 빈 이름 셀을 "무기명"으로 일괄 수정 (1회 실행용)
+function fixHoldPrayBlankNames() {
+  const sheet = getOrCreateHoldPraySheet();
+  const last = sheet.getLastRow();
+  if (last < 2) return '데이터 없음';
+  const range = sheet.getRange(2, 1, last - 1, 4);
+  const values = range.getValues();
+  let fixed = 0;
+  values.forEach(function(r, i) {
+    const name = String(r[0]).trim();
+    if (!name || name === '무기명') {
+      if (!name) {
+        sheet.getRange(i + 2, 1).setValue('무기명');
+        fixed++;
+      }
+      // 익명 칸도 TRUE 보장
+      if (r[3] !== true && String(r[3]).toLowerCase() !== 'true') {
+        sheet.getRange(i + 2, 4).setValue(true);
+      }
+    }
+  });
+  return '완료: ' + fixed + '개 행 수정됨';
 }
 
 function getHoldPray(weekKey, nickname) {
