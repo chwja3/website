@@ -2334,7 +2334,8 @@
           </div>
           <!-- Step 4: 확인 -->
           <div id="tradeStep4" style="display:none;">
-            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:var(--primary-soft);border-radius:12px;padding:14px;margin-bottom:14px;"></div>
+            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:var(--primary-soft);border-radius:12px;padding:14px;margin-bottom:8px;"></div>
+            <p style="font-size:12px;color:#e25;margin:0 0 10px;text-align:center;">⏱ 상대방이 <b>5분 내</b> 수락해야 교환이 완료돼요</p>
             <div id="tradeSubmitStatus" style="font-size:13px;color:var(--danger);margin-bottom:8px;min-height:18px;"></div>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-ghost" style="flex:1;" onclick="tradeGoBack()">← 다시 선택</button>
@@ -2734,7 +2735,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zw';
+    const APP_VERSION = '20260507zx';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3058,6 +3059,10 @@
       if (localStorage.getItem('beyondus_trade_dot') === '1') {
         document.getElementById('tradeMenuDot').classList.add('visible');
         document.getElementById('drawerTradeDot').style.display = 'inline-block';
+      }
+      // 30초마다 교환 현황 폴링 (실시간 알림)
+      if (!window._tradePollingTimer) {
+        window._tradePollingTimer = setInterval(() => { if (currentNickname) loadTrades(); }, 30000);
       }
     }
 
@@ -3822,7 +3827,7 @@
         }
 
         const isIncomingPending = isPending && !isMine;
-        const labelMap = { pending: isMine ? '대기중' : `${escHtml(otherNick)}님의 교환요청`, rejected: '거절됨', cancelled: '취소됨', '실패 (시간 초과)': '만료됨' };
+        const labelMap = { pending: isMine ? '대기중' : `${escHtml(otherNick)}님의 교환요청`, rejected: '거절됨', cancelled: '취소됨', '실패 (시간 초과)': '5분 초과 자동 취소' };
         const label = labelMap[t.status] || t.status;
         const labelColor = isPending ? 'var(--text)' : 'var(--sub)';
         const actions = isPending
@@ -3833,13 +3838,23 @@
                 <button onclick="doTradeReject('${t.id}')" style="font-size:11px;padding:4px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--sub);cursor:pointer;">거절</button>
               </div>`)
           : '';
+        const remainMs = isPending ? (new Date(t.createdAt).getTime() + 5*60*1000 - Date.now()) : 0;
+        const remainSec = Math.max(0, Math.floor(remainMs / 1000));
+        const remainMin = Math.floor(remainSec / 60);
+        const remainSecPart = remainSec % 60;
+        const timerHtml = isPending && remainMs > 0
+          ? `<span id="tradeTimer_${t.id}" style="font-size:11px;color:#e25;font-weight:700;">⏱ ${remainMin}분 ${String(remainSecPart).padStart(2,'0')}초 남음</span>`
+          : (isPending ? `<span style="font-size:11px;color:var(--sub);">만료 처리 중...</span>` : '');
         return `<div style="background:var(--primary-soft);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <div style="display:flex;align-items:center;gap:6px;">
               <span style="font-size:12px;font-weight:700;color:${labelColor};">${label}</span>
               ${isIncomingPending ? `<span style="display:inline-block;width:7px;height:7px;background:#e05a5a;border-radius:50%;flex-shrink:0;"></span>` : ''}
             </div>
-            ${!isIncomingPending ? `<span style="font-size:11px;color:var(--sub);">${escHtml(otherNick)}</span>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;">
+              ${timerHtml}
+              ${!isIncomingPending ? `<span style="font-size:11px;color:var(--sub);">${escHtml(otherNick)}</span>` : ''}
+            </div>
           </div>
           <div style="font-size:13px;color:var(--text);">
             <span style="font-weight:600;">${escHtml(myCard)}</span>
@@ -3871,6 +3886,20 @@
         html += resolved.map(t => renderItem(t, t.requester === currentNickname)).join('');
       }
       el.innerHTML = html || '<p class="card-sub">교환 내역이 없어요.</p>';
+      // pending 항목 1초마다 카운트다운
+      clearInterval(window._tradeCountdownTimer);
+      const pendingItems = [...(data.incoming || []), ...(data.outgoing || [])].filter(t => t.status === 'pending');
+      if (pendingItems.length) {
+        window._tradeCountdownTimer = setInterval(() => {
+          pendingItems.forEach(t => {
+            const el = document.getElementById('tradeTimer_' + t.id);
+            if (!el) return;
+            const ms = new Date(t.createdAt).getTime() + 5*60*1000 - Date.now();
+            if (ms <= 0) { el.textContent = '만료 처리 중...'; el.style.color = 'var(--sub)'; return; }
+            const s = Math.floor(ms/1000); el.textContent = `⏱ ${Math.floor(s/60)}분 ${String(s%60).padStart(2,'0')}초 남음`;
+          });
+        }, 1000);
+      }
       // 교환현황 탭이 실제로 열려있을 때만 상대 기도 알림 "봤음" 처리
       const tradesVisible = document.getElementById('collPanelTrades') && document.getElementById('collPanelTrades').style.display !== 'none';
       if (tradesVisible) {
