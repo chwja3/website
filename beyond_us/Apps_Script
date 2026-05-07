@@ -2222,7 +2222,6 @@ function uploadBBBPhoto(body) {
   }
 
   const now = new Date().toISOString();
-  const isFirstUpload = existingRow === -1;
 
   if (existingRow === -1) {
     photoSheet.appendRow([userId, photo, now]);
@@ -2230,13 +2229,25 @@ function uploadBBBPhoto(body) {
     photoSheet.getRange(existingRow, 2, 1, 2).setValues([[photo, now]]);
   }
 
-  // 최초 업로드 시에만 뽑기권 1개 지급
-  if (isFirstUpload) {
-    getOrCreateBonusDrawsSheet().appendRow([userId, 'bbb_photo', now]);
+  // BonusDraws 이력 기준으로 최초 여부 판단 (삭제 후 재업로드 중복 지급 방지)
+  const bonusSheet = getOrCreateBonusDrawsSheet();
+  const bLast = bonusSheet.getLastRow();
+  let alreadyRewarded = false;
+  if (bLast >= 2) {
+    const bRows = bonusSheet.getRange(2, 1, bLast - 1, 2).getValues();
+    for (let i = 0; i < bRows.length; i++) {
+      if (String(bRows[i][0]) === userId && String(bRows[i][1]) === 'bbb_photo') {
+        alreadyRewarded = true; break;
+      }
+    }
+  }
+
+  if (!alreadyRewarded) {
+    bonusSheet.appendRow([userId, 'bbb_photo', now]);
     try { updateTicketCols(userId); } catch(e) {}
   }
 
-  return { ok: true, rewarded: isFirstUpload };
+  return { ok: true, rewarded: !alreadyRewarded };
 }
 
 function deleteBBBPhoto(body) {
