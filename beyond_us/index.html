@@ -1469,10 +1469,10 @@
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
       flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--line);
-      color: var(--text); font-size: 16px; padding: 2px 4px; outline: none; max-width: 140px;
+      color: var(--text); font-size: 13px; padding: 2px 4px; outline: none; max-width: 140px;
       font-family: inherit; text-align: center;
     }
-    .hp-inline-input::placeholder { font-size: 11px; color: var(--sub); opacity: 0.6; }
+    .hp-inline-input::placeholder { color: var(--sub); opacity: 0.6; }
     .hp-inline-input:focus { border-bottom-color: var(--primary); }
     .hp-inline-btn {
       background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600;
@@ -2663,7 +2663,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507f';
+    const APP_VERSION = '20260507g';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5624,7 +5624,7 @@
             <p class="hp-guess-prompt">${promptText}</p>
             <div class="hp-inline-guess" id="hpInlineGuess">
               <span class="hp-inline-label">이름</span>
-              <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="여기에 입력해 주세요" />
+              <input class="hp-inline-input" id="hpGuessInput" type="text" maxlength="10" autocomplete="off" placeholder="이름 입력" />
               <button class="hp-inline-btn" id="hpGuessBtn" onclick="guessHoldPray(${idx})">확인</button>
             </div>
             ${hintHtml}
