@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507n';
+    const APP_VERSION = '20260507o';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3010,6 +3010,11 @@
     }
 
     function saveAuth(nickname, password, parish) {
+      const prev = localStorage.getItem('beyondus_nickname');
+      if (prev && prev !== nickname) {
+        localStorage.removeItem('beyondus_cache_userStatus_' + prev);
+        localStorage.removeItem('beyondus_cache_config');
+      }
       localStorage.setItem('beyondus_nickname', nickname);
       localStorage.setItem('beyondus_password', password);
       localStorage.setItem('beyondus_parish',   parish);
@@ -3019,6 +3024,9 @@
 
     /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
     async function autoLogin() {
+      // GAS cold-start warm-up: 실제 fetch 전에 인스턴스 깨우기
+      fetch(API_BASE + '?action=dashboard&t=' + Date.now(), { cache: 'no-store' }).catch(() => {});
+
       const savedNickname = localStorage.getItem('beyondus_nickname');
       const savedPassword = localStorage.getItem('beyondus_password');
       const savedParish   = localStorage.getItem('beyondus_parish');
@@ -3037,8 +3045,12 @@
       const cachedAppOpenDate = localStorage.getItem('beyondus_app_open_date') || '';
       if (shouldEnterApp(cachedIsStaff, cachedAppOpenDate)) {
         showApp();
-        try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
-        if (lastConfigData) renderConfig(lastConfigData);
+        // stale-while-revalidate: 이전 데이터로 즉시 렌더
+        const cachedConfig = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
+        if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
+        const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
+        if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
+        try { await Promise.all([loadAll(), loadUserStatus(), loadTrades()]); } catch(e) {}
       } else {
         showComingSoon();
       }
@@ -3067,8 +3079,7 @@
           const onApp        = !document.getElementById('appScreen').classList.contains('hidden');
           if (canEnter && onComingSoon) {
             showApp();
-            try { await Promise.all([loadAll(), loadUserStatus()]); } catch(e) {}
-            if (lastConfigData) renderConfig(lastConfigData);
+            try { await Promise.all([loadAll(), loadUserStatus(), loadTrades()]); } catch(e) {}
           } else if (!canEnter && onApp) {
             showComingSoon();
           }
@@ -3107,7 +3118,7 @@
           const aod = localStorage.getItem('beyondus_app_open_date') || '';
           updateUserBadge();
           if (shouldEnterApp(false, aod)) {
-            showApp(); loadAll(); loadUserStatus();
+            showApp(); Promise.all([loadAll(), loadUserStatus(), loadTrades()]).catch(() => {});
           } else {
             showComingSoon();
           }
@@ -3149,8 +3160,7 @@
           updateUserBadge();
           if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
             showApp();
-            loadAll();
-            loadUserStatus();
+            Promise.all([loadAll(), loadUserStatus(), loadTrades()]).catch(() => {});
           } else {
             showComingSoon();
           }
@@ -3850,6 +3860,7 @@
         );
         if (!res.ok) throw new Error();
         userStatus = await res.json();
+        if (currentNickname) localStorage.setItem('beyondus_cache_userStatus_' + currentNickname, JSON.stringify(userStatus));
         // 서버 이번 주 제출 날짜로 로컬 캘린더 복원 (재설치 후에도 스탬프 유지)
         if (userStatus.weekDates?.length) {
           const stored = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
@@ -3866,7 +3877,6 @@
       renderCollection();
       updateScoreProgress();
       if (lastConfigData) renderConfig(lastConfigData);
-      loadTrades();
     }
 
     function ensureRevealSparks() {
@@ -4714,6 +4724,7 @@
     async function loadAll() {
       setStatus('현황을 불러오고 있어요...');
       const data = await fetchDashboard();
+      localStorage.setItem('beyondus_cache_config', JSON.stringify(data));
       renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
       applyTabSettings(data);
