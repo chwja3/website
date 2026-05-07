@@ -1927,7 +1927,7 @@ function requestTrade(body) {
 
   // 보유 확인
   const reqColl = getUserCollection(requester);
-  if (!(reqColl[requesterCardId] > 0)) return { error: '내가 해당 카드를 보유하고 있지 않아요.' };
+  if (!(reqColl[requesterCardId] >= 2)) return { error: '중복 보유한 카드(2장 이상)만 교환할 수 있어요.' };
   const tgtColl = getUserCollection(target);
   if (!(tgtColl[targetCardId] > 0)) return { error: '상대방이 해당 카드를 보유하고 있지 않아요.' };
 
