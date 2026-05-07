@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507t';
+    const APP_VERSION = '20260507u';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5503,6 +5503,7 @@
     let _hpWeekKey = '';
     let _hpCorrectMap = {}; // {cardIndex: name} — per week, loaded from localStorage
     let _hpTicketAlreadyAwarded = false;
+    let _hpTicketCardIdx = -1; // 실제 뽑기권이 지급된 카드 인덱스 (-1: 없음)
     let _hpHintReplies = {};
 
     function fitHpText(textEl, boxEl, opts = {}) {
@@ -5549,6 +5550,7 @@
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = hpCached.ticketAlreadyAwarded || false;
+        _hpTicketCardIdx = parseInt(localStorage.getItem('beyondus_hp_ticket_card_' + _hpWeekKey) ?? '-1');
         _hpHintReplies = hpCached.hintReplies || {};
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
@@ -5584,6 +5586,7 @@
         _hpCurrentIdx = (hpHasCache && sameWeek) ? prevIdx : 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
+        _hpTicketCardIdx = parseInt(localStorage.getItem('beyondus_hp_ticket_card_' + _hpWeekKey) ?? '-1');
         _hpHintReplies = data.hintReplies || {};
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
@@ -5684,8 +5687,8 @@
       const correctName = _hpCorrectMap[idx];
 
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
-      // 정답 맞춘 카드에만 "획득 완료" 표시
-      const ticketFooterCorrect = isTicketWeek
+      // 실제로 이 카드에서 뽑기권이 지급된 경우에만 "획득 완료" 표시
+      const ticketFooterCorrect = (isTicketWeek && idx === _hpTicketCardIdx)
         ? `<p class="hp-ticket-done">✓ 뽑기권 획득 완료</p>`
         : '';
       // 미답 카드는 아직 미획득일 때만 "지급 예고" 표시
@@ -5806,6 +5809,8 @@
           }
           if (data.ticketAwarded) {
             _hpTicketAlreadyAwarded = true;
+            _hpTicketCardIdx = cardIdx;
+            localStorage.setItem('beyondus_hp_ticket_card_' + _hpWeekKey, String(cardIdx));
             updateHpBadge();
             const ticketBadge = document.getElementById('ticketBadge');
             if (ticketBadge) {
