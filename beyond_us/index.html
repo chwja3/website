@@ -2723,7 +2723,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zg';
+    const APP_VERSION = '20260507zh';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5566,11 +5566,14 @@
       const SIZE = 46; // px
       container.innerHTML = BBB_M3_SPOTS.map((spot, i) => {
         const src = photos[i];
+        const circleStyle = src
+          ? `border:1px solid rgba(255,255,255,0.7);box-shadow:0 2px 8px rgba(0,0,0,0.28);background:transparent;`
+          : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
         return `
           <div style="position:absolute;top:${spot.top}%;left:${spot.left}%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:2;">
-            <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.28);background:rgba(255,255,255,0.85);display:flex;align-items:center;justify-content:center;cursor:pointer;"
+            <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;${circleStyle}display:flex;align-items:center;justify-content:center;cursor:pointer;"
                  onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}">
-              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;color:#aaa;font-weight:300;line-height:1;">+</span>`}
+              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;color:rgba(255,255,255,0.85);font-weight:300;line-height:1;">+</span>`}
             </div>
             <span style="font-size:9px;font-weight:700;color:#333;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:6px;white-space:nowrap;">${spot.label}</span>
             <input type="file" id="bbbM3Input${i}" accept="image/*" style="display:none;" onchange="bbbM3Upload(${i}, this)" />
