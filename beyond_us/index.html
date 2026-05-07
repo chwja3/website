@@ -2733,7 +2733,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zr';
+    const APP_VERSION = '20260507zs';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5567,7 +5567,7 @@
       { label: '사망의 음침한 골짜기',  top: 72, left: 79 }, // #25 — 우측 하단
       { label: '기쁨의 산',            top: 12, left: 82 }, // #31 — 우측 최상단
       { label: '뿔라의 땅',            top: 20, left: 41 }, // #36 — 상단 중앙좌
-      { label: '천성',                 top: 42, left: 13 }, // #39 — 좌측 건물 (최종 목적지)
+      { label: '천성',                 top: 52, left: 13 }, // #39 — 좌측 건물 (최종 목적지)
     ];
 
     function _bbbRenderM3Spots(photos, m3Rewarded) {
