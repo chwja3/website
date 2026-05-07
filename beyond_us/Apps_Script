@@ -617,33 +617,40 @@ function getUserStatus(userId, weekKey) {
 function drawCard(userId, weekKey, testMode) {
   if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
 
-  const config = getConfig();
-  const ss     = getSpreadsheet();
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
-  // DEV 환경은 뽑기권 검증 스킵 (테스트 자유롭게)
-  if (!_devMode) {
-    const pendingDraws = getCollectionTickets(userId).remaining;
-    if (pendingDraws <= 0) {
-      return { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
-    }
-  }
-
-  const drawableCards = SPIRIT_CARDS.filter(function(c) { return c.id !== 10; });
-  const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
-
-  // 뽑기 전 기존 보유 여부 확인 (isNew 계산용 — updateCollectionSheet 전에 읽어야 정확)
-  let isNew = true;
   try {
-    const existingCounts = getUserCollection(userId);
-    isNew = !(existingCounts[card.id] > 0);
-  } catch(e) {}
+    const config = getConfig();
+    const ss     = getSpreadsheet();
 
-  // 항상 시트에 기록 (DEV → DEV 시트, PROD → PROD 시트)
-  const draws = getOrCreateDrawSheet();
-  draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
-  updateCollectionSheet(userId, card.id, 1);
-  try { updateTicketCols(userId); } catch(e) {}
-  return { ok: true, card, isNew };
+    // DEV 환경은 뽑기권 검증 스킵 (테스트 자유롭게)
+    if (!_devMode) {
+      const pendingDraws = getCollectionTickets(userId).remaining;
+      if (pendingDraws <= 0) {
+        return { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
+      }
+    }
+
+    const drawableCards = SPIRIT_CARDS.filter(function(c) { return c.id !== 10; });
+    const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
+
+    // 뽑기 전 기존 보유 여부 확인 (isNew 계산용 — updateCollectionSheet 전에 읽어야 정확)
+    let isNew = true;
+    try {
+      const existingCounts = getUserCollection(userId);
+      isNew = !(existingCounts[card.id] > 0);
+    } catch(e) {}
+
+    // 항상 시트에 기록 (DEV → DEV 시트, PROD → PROD 시트)
+    const draws = getOrCreateDrawSheet();
+    draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
+    updateCollectionSheet(userId, card.id, 1);
+    try { updateTicketCols(userId); } catch(e) {}
+    return { ok: true, card, isNew };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── Hold & Pray ───────────────────────────────────
