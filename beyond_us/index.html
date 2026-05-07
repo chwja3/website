@@ -2736,7 +2736,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zy';
+    const APP_VERSION = '20260507zz';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3561,6 +3561,14 @@
     }
 
     function openTradeModal(preCardId) {
+      // 중복 카드(2장 이상) 없으면 진입 차단
+      const counts = {};
+      (userStatus?.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
+      const hasDuplicate = Object.values(counts).some(n => n >= 2);
+      if (!hasDuplicate) {
+        alert('교환하려면 같은 카드를 2장 이상 보유해야 해요.\n중복 카드가 생기면 다시 시도해주세요!');
+        return;
+      }
       _tradeTargetNickname = ''; _tradeTargetColl = {};
       _tradeMyCardId = preCardId || null; _tradeTheirCardId = null;
       _tradeStep = 1;
