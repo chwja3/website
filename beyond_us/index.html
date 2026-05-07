@@ -2636,16 +2636,21 @@
                 <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 8px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
                 <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0 0 10px;min-height:16px;font-weight:600;"></p>
                 <!-- 지도 + 스팟 오버레이 -->
-                <div id="bbbM3Map" style="position:relative;width:100%;padding-top:66%;border-radius:12px;overflow:visible;">
-                  <!-- 지도 이미지 (없으면 placeholder) -->
+                <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
+                  <!-- 지도 이미지 -->
                   <div style="position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#ddd8cc;">
-                    <img id="bbbM3MapImg" src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;height:100%;object-fit:cover;" />
+                    <img id="bbbM3MapImg" src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openBbbM3MapModal()" />
                     <div id="bbbM3MapPlaceholder" style="display:none;"></div>
                   </div>
-                  <!-- 스팟 슬롯 5개 (절대 포지션 — 지도 들어오면 top/left 조정) -->
+                  <!-- 스팟 슬롯 -->
                   <div id="bbbM3Spots"></div>
                 </div>
-                <!-- M3 사진 확대 모달 -->
+                <!-- 지도 전체화면 모달 -->
+                <div id="bbbM3MapModal" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBbbM3MapModal()">
+                  <img src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;max-height:90vh;object-fit:contain;" />
+                  <button onclick="closeBbbM3MapModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                </div>
+                <!-- M3 스팟 사진 확대 모달 -->
                 <div id="bbbM3Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM3Modal()">
                   <img id="bbbM3ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
                   <div style="display:flex;gap:12px;margin-top:20px;">
@@ -2723,7 +2728,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zh';
+    const APP_VERSION = '20260507zi';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5616,6 +5621,8 @@
       modal.style.display = 'flex';
     }
     function closeBbbM3Modal() { const m = document.getElementById('bbbM3Modal'); if (m) m.style.display = 'none'; }
+    function openBbbM3MapModal() { const m = document.getElementById('bbbM3MapModal'); if (m) { m.style.display = 'flex'; } }
+    function closeBbbM3MapModal() { const m = document.getElementById('bbbM3MapModal'); if (m) m.style.display = 'none'; }
     function reopenBbbM3Input() { const spot = Number(document.getElementById('bbbM3Modal').dataset.spot); closeBbbM3Modal(); document.getElementById('bbbM3Input' + spot)?.click(); }
     async function deleteBbbM3Photo() {
       const spotIdx = Number(document.getElementById('bbbM3Modal').dataset.spot);
