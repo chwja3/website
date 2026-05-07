@@ -2644,6 +2644,11 @@
                   </div>
                   <!-- 스팟 슬롯 -->
                   <div id="bbbM3Spots"></div>
+                  <!-- 지도 확대 안내 툴팁 -->
+                  <div style="position:absolute;top:7px;right:7px;z-index:10;" class="help-wrap">
+                    <button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:18px;height:18px;font-size:10px;opacity:0.85;">?</button>
+                    <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
+                  </div>
                 </div>
                 <!-- 지도 전체화면 모달 -->
                 <div id="bbbM3MapModal" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBbbM3MapModal()">
@@ -2728,7 +2733,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zn';
+    const APP_VERSION = '20260507zo';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
