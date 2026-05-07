@@ -2633,8 +2633,8 @@
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
                 <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
                 <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
-                <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 3px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
-                <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0 0 6px;min-height:14px;font-weight:600;"></p>
+                <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
+                <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0 0 3px;min-height:12px;font-weight:600;"></p>
                 <!-- 지도 + 스팟 오버레이 -->
                 <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
                   <!-- 지도 이미지 -->
@@ -2728,7 +2728,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zk';
+    const APP_VERSION = '20260507zl';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
