@@ -819,14 +819,21 @@
 
     let _ticketStatsAll = [];
     async function loadTicketStats() {
+      const tbody = document.getElementById('ticketStatsBody');
       try {
         const res = await get({ action: 'getTicketStats', adminPw });
-        if (!res.ok) return;
+        if (!res.ok) {
+          tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger);text-align:center;padding:16px;">오류: ${esc(res.error || 'GAS 재배포 필요')}</td></tr>`;
+          return;
+        }
         _ticketStatsAll = res.users || [];
         document.getElementById('ticketTotalRemaining').textContent = res.totalRemaining || 0;
         document.getElementById('ticketActiveUsers').textContent = _ticketStatsAll.filter(u => u.remaining > 0).length;
         renderTicketStats(_ticketStatsAll);
-      } catch(e) { console.error(e); }
+      } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger);text-align:center;padding:16px;">연결 오류 — GAS 재배포 후 새로고침</td></tr>`;
+        console.error(e);
+      }
     }
     function renderTicketStats(users) {
       const tbody = document.getElementById('ticketStatsBody');
