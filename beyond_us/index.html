@@ -2628,11 +2628,11 @@
                 </div>
               </div>
 
-              <!-- MISSION 3: 필그림하우스 스팟 5곳 -->
+              <!-- MISSION 3: 필그림하우스 스팟 7곳 -->
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
-                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 5스팟 인증</p>
-                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">5곳 모두 채우면 뽑기권 +1</p>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
                 <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 8px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
                 <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0 0 10px;min-height:16px;font-weight:600;"></p>
                 <!-- 지도 + 스팟 오버레이 -->
@@ -2723,7 +2723,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507ze';
+    const APP_VERSION = '20260507zf';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5551,11 +5551,13 @@
 
     /* ── MISSION 3 ── */
     const BBB_M3_SPOTS = [
-      { label: '좁은문',      top: 57, left: 43 }, // #6
-      { label: '십자가',      top: 46, left: 62 }, // #14
-      { label: '뷰티풀하우스', top: 70, left: 47 }, // #20~23
-      { label: '기쁨의 산',   top: 27, left: 69 }, // #33~34
-      { label: '천성',        top: 62, left: 11 }, // #39
+      { label: '좁은문',          top: 57, left: 43 }, // #6
+      { label: '십자가',          top: 46, left: 62 }, // #14
+      { label: '뷰티풀하우스',    top: 70, left: 47 }, // #20~23
+      { label: '사망의 음침한 골짜기', top: 75, left: 68 }, // #25
+      { label: '기쁨의 산',       top: 27, left: 69 }, // #33~34
+      { label: '뿔라의 땅',       top: 28, left: 40 }, // #36
+      { label: '천성',            top: 62, left: 11 }, // #39
     ];
 
     function _bbbRenderM3Spots(photos, m3Rewarded) {
@@ -5577,12 +5579,12 @@
       const filled = photos.filter(Boolean).length;
       const statusEl = document.getElementById('bbbM3Status');
       if (statusEl) {
-        statusEl.textContent = m3Rewarded ? '✓ 뽑기권 획득 완료' : filled > 0 ? `${filled}/5 완료` : '';
+        statusEl.textContent = m3Rewarded ? '✓ 뽑기권 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
         statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
       }
     }
     function _bbbInitMission3(bbbRes) {
-      _bbbRenderM3Spots(bbbRes.myPhotoM3 || [null,null,null,null,null], bbbRes.m3Rewarded);
+      _bbbRenderM3Spots(bbbRes.myPhotoM3 || [null,null,null,null,null,null,null], bbbRes.m3Rewarded);
     }
     async function bbbM3Upload(spotIdx, input) {
       const file = input.files[0];
@@ -5594,7 +5596,7 @@
         const base64 = await _compressImage(file, 400, 0.55);
         const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm3_' + spotIdx }), redirect: 'follow' })).json();
         if (res.ok) {
-          if (_bbbData) { _bbbData.myPhotoM3 = _bbbData.myPhotoM3 || [null,null,null,null,null]; _bbbData.myPhotoM3[spotIdx] = base64; if (res.rewarded) _bbbData.m3Rewarded = true; }
+          if (_bbbData) { _bbbData.myPhotoM3 = _bbbData.myPhotoM3 || [null,null,null,null,null,null,null]; _bbbData.myPhotoM3[spotIdx] = base64; if (res.rewarded) _bbbData.m3Rewarded = true; }
           _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], res.rewarded || (_bbbData && _bbbData.m3Rewarded));
           stopAnimDots(dotsTimer, statusEl, '');
           if (res.rewarded) { loadUserStatus(); }
