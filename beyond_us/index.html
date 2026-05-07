@@ -5218,6 +5218,7 @@
 
     function renderInquiries(inquiries) {
       const list = document.getElementById('inquiryList');
+      inquiries = inquiries.filter(inq => !inq.content.startsWith('[H&P 힌트 요청]'));
       if (!inquiries.length) {
         list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 문의가 없어요.</p>';
         return;
