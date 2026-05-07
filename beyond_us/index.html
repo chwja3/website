@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507q';
+    const APP_VERSION = '20260507r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4020,6 +4020,18 @@
         loadingDotsTimer = null;
       }
     }
+
+    function animDots(el, baseText) {
+      const steps = [baseText + '.', baseText + '..', baseText + '...'];
+      let i = 0;
+      el.textContent = steps[0];
+      return setInterval(function() { i = (i + 1) % 3; el.textContent = steps[i]; }, 400);
+    }
+    function stopAnimDots(timerId, el, finalText) {
+      clearInterval(timerId);
+      if (el && finalText !== undefined) el.textContent = finalText;
+    }
+
     var carouselCenter = 1; // 현재 가운데 팩 인덱스 (0,1,2)
 
     function applyCarouselPositions() {
@@ -5149,7 +5161,7 @@
       const password = document.getElementById(`inqDelPw_${id}`).value;
       const statusEl = document.getElementById(`inqDelStatus_${id}`);
       if (!password) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
-      statusEl.textContent = '삭제 중...';
+      const dotsTimer = animDots(statusEl, '삭제 중');
       statusEl.style.color = 'var(--sub)';
       try {
         const res = await fetch(API_BASE, {
@@ -5159,16 +5171,17 @@
         });
         const data = await res.json();
         if (data.ok) {
+          stopAnimDots(dotsTimer, statusEl, '');
           loadInquiries();
         } else if (data.error === 'wrong_password') {
-          statusEl.textContent = '비밀번호가 틀렸어요.';
+          stopAnimDots(dotsTimer, statusEl, '비밀번호가 틀렸어요.');
           statusEl.style.color = 'var(--danger)';
         } else {
-          statusEl.textContent = '오류가 발생했어요.';
+          stopAnimDots(dotsTimer, statusEl, '오류가 발생했어요.');
           statusEl.style.color = 'var(--danger)';
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        stopAnimDots(dotsTimer, statusEl, '연결 오류');
         statusEl.style.color = 'var(--danger)';
       }
     }
@@ -5275,7 +5288,8 @@
       closeBbbPhotoModal();
       const nickname = localStorage.getItem('beyondus_nickname') || '';
       const statusEl = document.getElementById('bbbPhotoStatus');
-      if (statusEl) { statusEl.textContent = '삭제 중...'; statusEl.style.color = 'var(--sub)'; statusEl.style.fontWeight = '500'; }
+      let dotsTimer = null;
+      if (statusEl) { dotsTimer = animDots(statusEl, '삭제 중'); statusEl.style.color = 'var(--sub)'; statusEl.style.fontWeight = '500'; }
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
@@ -5291,10 +5305,10 @@
           document.getElementById('bbbPhotoPlaceholder').style.display = '';
           document.getElementById('bbbPhotoPlaceholderText').style.display = '';
           document.getElementById('bbbPhotoLabel').style.border = '1.5px dashed var(--line)';
-          if (statusEl) statusEl.textContent = '';
+          if (statusEl) stopAnimDots(dotsTimer, statusEl, '');
         }
       } catch(e) {
-        if (statusEl) statusEl.textContent = '';
+        if (statusEl) stopAnimDots(dotsTimer, statusEl, '');
         alert('삭제 중 오류가 발생했어요.');
       }
     }
@@ -5339,7 +5353,7 @@
           if (!file) return;
           const statusEl = document.getElementById('bbbPhotoStatus');
           const label = document.getElementById('bbbPhotoLabel');
-          statusEl.textContent = '업로드 중...';
+          const dotsTimer = animDots(statusEl, '업로드 중');
           label.style.pointerEvents = 'none';
           try {
             const base64 = await _compressImage(file, 400, 0.55);
@@ -5352,14 +5366,14 @@
             const res = await REDIRECT.json();
             if (res.ok) {
               _bbbShowPhoto(base64);
-              statusEl.textContent = res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료';
+              stopAnimDots(dotsTimer, statusEl, res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료');
               statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
               statusEl.style.fontWeight = res.rewarded ? '600' : '500';
             } else {
-              statusEl.textContent = res.error || '업로드 실패';
+              stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패');
             }
           } catch(e) {
-            statusEl.textContent = '오류: ' + e.message;
+            stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message);
           } finally {
             label.style.pointerEvents = '';
           }
@@ -5428,22 +5442,23 @@
       if (!guess) { msgEl.style.color = '#f87171'; msgEl.textContent = '닉네임 또는 이름을 입력해주세요.'; return; }
 
       if (btn) btn.disabled = true;
-      msgEl.style.color = 'var(--sub)'; msgEl.textContent = '확인 중...';
+      msgEl.style.color = 'var(--sub)';
+      const dotsTimer = animDots(msgEl, '확인 중');
       try {
         const res = await post({ action: 'guessBBBSecret', userId: nickname, guess });
-        if (res.error) { msgEl.style.color = '#f87171'; msgEl.textContent = res.error; return; }
+        if (res.error) { stopAnimDots(dotsTimer, msgEl, res.error); msgEl.style.color = '#f87171'; return; }
         if (res.correct) {
+          stopAnimDots(dotsTimer, msgEl, '정답이에요! 🎉');
           msgEl.style.color = '#4ade80';
-          msgEl.textContent = '정답이에요! 🎉';
           document.getElementById('bbbSecretName').textContent = res.secretName || res.secretNickname;
           document.getElementById('bbbSecretRevealed').style.display = '';
           document.getElementById('bbbSecretGuess').style.display = 'none';
         } else {
+          stopAnimDots(dotsTimer, msgEl, '아니에요. 다시 생각해봐요!');
           msgEl.style.color = '#f87171';
-          msgEl.textContent = '아니에요. 다시 생각해봐요!';
           document.getElementById('bbbGuessInput').value = '';
         }
-      } catch(e) { msgEl.style.color = '#f87171'; msgEl.textContent = '연결 오류'; }
+      } catch(e) { stopAnimDots(dotsTimer, msgEl, '연결 오류'); msgEl.style.color = '#f87171'; }
       finally { if (btn) btn.disabled = false; }
     }
 
