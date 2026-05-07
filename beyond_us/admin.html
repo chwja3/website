@@ -1624,12 +1624,40 @@
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = '저장됐어요!';
-          setTimeout(loadAdminInquiries, 800);
+          _updateInqSaveUI(id, reply);
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
         statusEl.textContent = '연결 오류';
+      }
+    }
+
+    function _updateInqSaveUI(id, reply) {
+      const itemEl = document.getElementById(`inqAdmin_${id}`);
+      if (!itemEl) return;
+      for (const s of itemEl.querySelectorAll('span')) {
+        if (s.textContent.trim() === '미답변') {
+          s.textContent = '답변완료';
+          s.style.color = 'var(--success)';
+          s.style.background = '#dcfce7';
+          break;
+        }
+      }
+      const ta = document.getElementById(`replyInput_${id}`);
+      if (ta) ta.placeholder = '답변을 수정하세요...';
+      const btnRow = document.getElementById(`replyStatus_${id}`)?.previousElementSibling;
+      if (!btnRow) return;
+      const saveBtn = btnRow.querySelector(`button[onclick="submitReply('${id}')"]`);
+      if (saveBtn && saveBtn.textContent.trim() === '저장') {
+        saveBtn.textContent = '수정';
+        if (!btnRow.querySelector(`button[onclick="deleteReply('${id}')"]`)) {
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-ghost btn-sm';
+          delBtn.setAttribute('onclick', `deleteReply('${id}')`);
+          delBtn.textContent = '답변삭제';
+          btnRow.insertBefore(delBtn, saveBtn);
+        }
       }
     }
 
