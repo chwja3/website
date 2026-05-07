@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507m';
+    const APP_VERSION = '20260507n';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5732,6 +5732,11 @@
           if (data.ticketAwarded) {
             _hpTicketAlreadyAwarded = true;
             updateHpBadge();
+            const ticketBadge = document.getElementById('ticketBadge');
+            if (ticketBadge) {
+              const cur = parseInt(ticketBadge.textContent.replace(/\D/g, '')) || 0;
+              ticketBadge.textContent = `🎫 ${cur + 1}`;
+            }
             if (slot) {
               const toast = document.createElement('button');
               toast.className = 'hp-ticket-notice';
@@ -5739,7 +5744,7 @@
               toast.onclick = () => switchSection('mission');
               (slot.querySelector('.hp-guess-box') || slot.querySelector('.hp-bottom-area'))?.appendChild(toast);
             }
-            loadUserStatus(); // 홈 뽑기권 뱃지 즉시 갱신
+            loadUserStatus();
           }
         } else {
           if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }
