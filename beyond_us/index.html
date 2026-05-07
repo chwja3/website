@@ -2663,7 +2663,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507g';
+    const APP_VERSION = '20260507h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5508,8 +5508,14 @@
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
           if (saved) _hpCorrectMap[i] = saved;
         });
-        // 서버 correctMap으로 덮어씀 (크로스-기기 동기화 — 서버 우선)
+        // 서버 correctMap으로 교체 (서버가 확인 안 한 localStorage 항목 제거 — stale 방지)
         if (data.correctMap) {
+          _hpCards.forEach((_, i) => {
+            if (!(String(i) in data.correctMap)) {
+              delete _hpCorrectMap[i];
+              localStorage.removeItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+            }
+          });
           Object.keys(data.correctMap).forEach(k => {
             const i = Number(k);
             _hpCorrectMap[i] = data.correctMap[k];
