@@ -1469,8 +1469,9 @@
     .hp-inline-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
     .hp-inline-input {
       flex: 1; background: transparent; border: none; border-bottom: 1.5px solid var(--line);
-      color: var(--text); font-size: 13px; padding: 2px 4px; outline: none; max-width: 140px;
+      color: var(--text); font-size: 16px; padding: 2px 4px; outline: none; max-width: 140px;
       font-family: inherit; text-align: center;
+      transform: scale(0.8125); transform-origin: center;
     }
     .hp-inline-input::placeholder { color: var(--sub); opacity: 0.6; }
     .hp-inline-input:focus { border-bottom-color: var(--primary); }
@@ -1536,8 +1537,12 @@
       font-size: 11px; background: rgba(var(--accent-rgb,255,183,110),0.18);
       color: var(--accent); border-radius: 8px; padding: 2px 8px; font-weight: 600;
     }
-    .hp-carousel-wrap { position: relative; cursor: grab; }
+    .hp-carousel-wrap { position: relative; cursor: grab; overflow: hidden; }
     .hp-carousel-wrap:active { cursor: grabbing; }
+    @keyframes hpSlideFromRight { from { transform: translateX(50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes hpSlideFromLeft  { from { transform: translateX(-50px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .hp-slide-from-right { animation: hpSlideFromRight 0.22s ease-out both; }
+    .hp-slide-from-left  { animation: hpSlideFromLeft  0.22s ease-out both; }
     .hp-slide-counter { text-align: center; font-size: 11px; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.03em; }
     .hp-card-frame { position: relative; }
     .hp-dots { display: flex; justify-content: center; gap: 6px; align-items: center; margin-top: 10px; }
@@ -2663,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507h';
+    const APP_VERSION = '20260507j';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5594,10 +5599,13 @@
       const correctName = _hpCorrectMap[idx];
 
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
-      const ticketFooter = isTicketWeek
-        ? (_hpTicketAlreadyAwarded
-            ? `<p class="hp-ticket-done">✓ 뽑기권 획득 완료</p>`
-            : `<p class="hp-ticket-reward">🎫 정답 시 뽑기권이 지급돼요</p>`)
+      // 정답 맞춘 카드에만 "획득 완료" 표시
+      const ticketFooterCorrect = isTicketWeek
+        ? `<p class="hp-ticket-done">✓ 뽑기권 획득 완료</p>`
+        : '';
+      // 미답 카드는 아직 미획득일 때만 "지급 예고" 표시
+      const ticketFooterGuess = (isTicketWeek && !_hpTicketAlreadyAwarded)
+        ? `<p class="hp-ticket-reward">🎫 정답 시 뽑기권이 지급돼요</p>`
         : '';
       const boxClass = `hp-guess-box${isTicketWeek ? ' ticket-week' : ''}`;
 
@@ -5611,7 +5619,7 @@
               <span class="hp-inline-label">이름 :</span>
               <span class="hp-inline-name">${escHtml(correctName)}</span>
             </div>
-            ${ticketFooter}
+            ${ticketFooterCorrect}
           </div>`;
       } else {
         let hintHtml;
@@ -5635,7 +5643,7 @@
             </div>
             ${hintHtml}
             <p class="hp-result-inline" id="hpResult" style="display:none;"></p>
-            ${ticketFooter}
+            ${ticketFooterGuess}
           </div>`;
       }
 
@@ -5670,8 +5678,15 @@
     function hpGoTo(idx) {
       const total = _hpCards.length;
       if (idx < 0 || idx >= total) return;
+      const dir = idx > _hpCurrentIdx ? 'right' : 'left';
       _hpCurrentIdx = idx;
       renderHpCard(idx);
+      const slot = document.getElementById('hpCardSlot');
+      if (slot) {
+        slot.classList.remove('hp-slide-from-right', 'hp-slide-from-left');
+        void slot.offsetWidth;
+        slot.classList.add(dir === 'right' ? 'hp-slide-from-right' : 'hp-slide-from-left');
+      }
     }
 
     async function guessHoldPray(cardIdx) {
