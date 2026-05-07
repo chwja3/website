@@ -2734,7 +2734,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zv';
+    const APP_VERSION = '20260507zw';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3822,7 +3822,7 @@
         }
 
         const isIncomingPending = isPending && !isMine;
-        const labelMap = { pending: isMine ? '대기중' : `${escHtml(otherNick)}님의 교환요청`, rejected: '거절됨', cancelled: '취소됨' };
+        const labelMap = { pending: isMine ? '대기중' : `${escHtml(otherNick)}님의 교환요청`, rejected: '거절됨', cancelled: '취소됨', '실패 (시간 초과)': '만료됨' };
         const label = labelMap[t.status] || t.status;
         const labelColor = isPending ? 'var(--text)' : 'var(--sub)';
         const actions = isPending

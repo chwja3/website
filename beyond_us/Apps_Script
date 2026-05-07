@@ -2035,7 +2035,7 @@ function _expireOldTrades(sheet) {
   if (last < 2) return;
   const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
   const now  = Date.now();
-  const TIMEOUT_MS = 5 * 60 * 1000; // 5분
+  const TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7일
   rows.forEach((row, i) => {
     if (String(row[7]) !== 'pending') return;
     const createdAt = new Date(String(row[8])).getTime();
