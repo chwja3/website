@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507o';
+    const APP_VERSION = '20260507p';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3024,9 +3024,6 @@
 
     /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
     async function autoLogin() {
-      // GAS cold-start warm-up: 실제 fetch 전에 인스턴스 깨우기
-      fetch(API_BASE + '?action=dashboard&t=' + Date.now(), { cache: 'no-store' }).catch(() => {});
-
       const savedNickname = localStorage.getItem('beyondus_nickname');
       const savedPassword = localStorage.getItem('beyondus_password');
       const savedParish   = localStorage.getItem('beyondus_parish');
@@ -4986,18 +4983,27 @@
 
     async function loadNotices() {
       const list = document.getElementById('noticeList');
+      const noticeCacheKey = 'beyondus_cache_notices';
+      const noticeCached = JSON.parse(localStorage.getItem(noticeCacheKey) || 'null');
+      if (noticeCached && noticeCached.ok && noticeCached.notices?.length) {
+        cachedNotices = noticeCached.notices;
+        renderNoticeList(cachedNotices, getSeenIds());
+        updateNoticeDot();
+      }
       try {
         const res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
-        if (!res.ok || !res.notices.length) {
+        if (!res.ok || !res.notices?.length) {
           cachedNotices = [];
+          localStorage.removeItem(noticeCacheKey);
           list.innerHTML = '<p class="notice-empty">등록된 공지사항이 없어요.</p>';
           return;
         }
+        localStorage.setItem(noticeCacheKey, JSON.stringify(res));
         cachedNotices = res.notices;
         renderNoticeList(cachedNotices, getSeenIds());
         updateNoticeDot();
       } catch(e) {
-        list.innerHTML = '<p class="notice-empty">불러오기 실패. 잠시 후 다시 시도해주세요.</p>';
+        if (!noticeCached) list.innerHTML = '<p class="notice-empty">불러오기 실패. 잠시 후 다시 시도해주세요.</p>';
       }
     }
 
@@ -5496,35 +5502,57 @@
         return;
       }
 
-      el.innerHTML = `
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 0;gap:20px;">
-          <img src="images/hc_logo_png2.png" style="width:120px;height:auto;" alt="Beyond Us" />
-          <div style="display:flex;gap:8px;align-items:center;">
-            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
-          </div>
-        </div>`;
+      const nick = localStorage.getItem('beyondus_nickname') || '';
+      const hpCacheKey = 'beyondus_cache_hp_' + nick;
+      const hpCached = JSON.parse(localStorage.getItem(hpCacheKey) || 'null');
+      let hpHasCache = false;
+
+      if (hpCached && hpCached.ok) {
+        _hpCards = hpCached.cards || [];
+        _hpWeekKey = hpCached.weekKey || '';
+        _hpCurrentIdx = 0;
+        _hpCorrectMap = {};
+        _hpTicketAlreadyAwarded = hpCached.ticketAlreadyAwarded || false;
+        _hpHintReplies = hpCached.hintReplies || {};
+        _hpCards.forEach((_, i) => {
+          const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+          if (saved) _hpCorrectMap[i] = saved;
+        });
+        renderHoldPray();
+        updatePrayerDot();
+        hpHasCache = true;
+      } else {
+        el.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 0;gap:20px;">
+            <img src="images/hc_logo_png2.png" style="width:120px;height:auto;" alt="Beyond Us" />
+            <div style="display:flex;gap:8px;align-items:center;">
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
+              <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
+            </div>
+          </div>`;
+      }
+
       try {
-        const nick = localStorage.getItem('beyondus_nickname') || '';
         const [res] = await Promise.all([
           fetch(`${API_BASE}?action=getHoldPray&weekKey=&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
+        localStorage.setItem(hpCacheKey, JSON.stringify(data));
+        const sameWeek = hpCached && hpCached.weekKey === data.weekKey;
+        const prevIdx = _hpCurrentIdx;
         _hpCards = data.cards || [];
         _hpWeekKey = data.weekKey || '';
-        _hpCurrentIdx = 0;
+        _hpCurrentIdx = (hpHasCache && sameWeek) ? prevIdx : 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
         _hpHintReplies = data.hintReplies || {};
-        // localStorage 먼저 로드 (오프라인 fallback)
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
           if (saved) _hpCorrectMap[i] = saved;
         });
-        // 서버 correctMap으로 교체 (서버가 확인 안 한 localStorage 항목 제거 — stale 방지)
         if (data.correctMap) {
           _hpCards.forEach((_, i) => {
             if (!(String(i) in data.correctMap)) {
@@ -5541,7 +5569,7 @@
         renderHoldPray();
         updatePrayerDot();
       } catch(e) {
-        el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
+        if (!hpHasCache) el.innerHTML = '<div class="hp-loading">불러오지 못했어요. 잠시 후 다시 시도해주세요.</div>';
       }
     }
 
