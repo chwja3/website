@@ -2631,8 +2631,9 @@
               <!-- MISSION 3: 필그림하우스 스팟 5곳 -->
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
-                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">필그림하우스 스팟 5곳 인증</p>
-                <p style="font-size:12px;color:var(--sub);margin:0 0 8px;">5곳 모두 채우면 뽑기권 +1</p>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 5스팟 인증</p>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">5곳 모두 채우면 뽑기권 +1</p>
+                <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 8px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
                 <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0 0 10px;min-height:16px;font-weight:600;"></p>
                 <!-- 지도 + 스팟 오버레이 -->
                 <div id="bbbM3Map" style="position:relative;width:100%;padding-top:66%;border-radius:12px;overflow:visible;">
@@ -2722,7 +2723,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zd';
+    const APP_VERSION = '20260507ze';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
