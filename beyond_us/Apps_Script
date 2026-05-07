@@ -1382,9 +1382,33 @@ function postHpHint(body) {
   const weekKey   = String(body.weekKey   || '').trim();
   const cardIndex = Number(body.cardIndex) || 0;
   if (!nickname || !weekKey) return { error: 'missing_fields' };
+
+  // getHoldPray와 동일한 로직으로 해당 카드의 실제 정답 확인
+  const entries = getYouthHpEntries();
+  const n = entries.length;
+  const picked = [];
+  const usedIdx = new Set();
+  for (let i = 0; i < 3; i++) {
+    const seed = weekKey + nickname + String(i);
+    let idx = hashStr(seed) % n;
+    let attempts = 0;
+    while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
+    usedIdx.add(idx);
+    picked.push(entries[idx]);
+  }
+  if (picked.every(function(e) { return e.a; })) {
+    for (let j = 0; j < n; j++) {
+      if (!usedIdx.has(j) && !entries[j].a) { picked[2] = entries[j]; break; }
+    }
+  }
+  const target = picked[cardIndex];
+  const answerInfo = target
+    ? (target.a ? '(익명)' : target.n + ' (' + target.p + ')')
+    : '(확인불가)';
+
   const sheet = getOrCreateInquirySheet();
   const id = new Date().getTime();
-  const content = '[H&P 힌트 요청] 주차: ' + weekKey + ', 카드: ' + (cardIndex + 1) + '번';
+  const content = '[H&P 힌트 요청] 주차: ' + weekKey + ', 카드: ' + (cardIndex + 1) + '번 | 정답: ' + answerInfo;
   sheet.appendRow([id, nickname, content, new Date().toISOString(), '', '']);
   return { ok: true, id: String(id) };
 }
