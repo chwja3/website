@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507k';
+    const APP_VERSION = '20260507l';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5573,15 +5573,17 @@
 
       const wrap = document.getElementById('hpCarouselWrap');
       if (wrap) {
-        let touchStartX = 0, touchStartY = 0;
+        let touchStartX = 0, touchStartY = 0, touchLocked = false;
         wrap.addEventListener('touchstart', e => {
           touchStartX = e.touches[0].clientX;
           touchStartY = e.touches[0].clientY;
-        }, { passive: true });
+          touchLocked = false;
+        }, { passive: false });
         wrap.addEventListener('touchmove', e => {
           const dx = Math.abs(e.touches[0].clientX - touchStartX);
           const dy = Math.abs(e.touches[0].clientY - touchStartY);
-          if (dx > dy && dx > 6) e.preventDefault();
+          if (!touchLocked) touchLocked = dx > dy ? 'h' : 'v';
+          if (touchLocked === 'h') e.preventDefault();
         }, { passive: false });
         wrap.addEventListener('touchend', e => {
           const dx = e.changedTouches[0].clientX - touchStartX;
