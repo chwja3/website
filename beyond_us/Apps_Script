@@ -59,6 +59,10 @@ function doGet(e) {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getCardStats());
   }
+  if (action === 'getTicketStats') {
+    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(getTicketStats());
+  }
   if (action === 'getPublicCollection') {
     const uid = e.parameter.userId || '';
     if (!uid) return jsonOutput({ error: 'missing_userId' });
@@ -1564,6 +1568,26 @@ function getCollectionTickets(userId) {
 
 // delta: +1 추가, -1 제거
 // cardId 1~9 → col 5~13(idx 4~12), 히든(10) → col 15(idx 14), 총카드수 = col 14(idx 13)
+function getTicketStats() {
+  const sheet = getOrCreateCollectionSheet();
+  const last = sheet.getLastRow();
+  if (last < 2) return { ok: true, users: [], totalRemaining: 0 };
+  const rows = sheet.getRange(2, 1, last - 1, 4).getValues();
+  const users = rows
+    .filter(function(r) { return String(r[0]).trim(); })
+    .map(function(r) {
+      return {
+        nickname:     String(r[0]),
+        totalEarned:  Number(r[1]) || 0,
+        totalDrawn:   Number(r[2]) || 0,
+        remaining:    Number(r[3]) || 0
+      };
+    })
+    .sort(function(a, b) { return b.remaining - a.remaining; });
+  const totalRemaining = users.reduce(function(s, u) { return s + u.remaining; }, 0);
+  return { ok: true, users: users, totalRemaining: totalRemaining };
+}
+
 function updateCollectionSheet(userId, cardId, delta) {
   const sheet = getOrCreateCollectionSheet();
   const last = sheet.getLastRow();
