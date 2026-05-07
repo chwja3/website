@@ -768,6 +768,7 @@ function getHoldPray(weekKey, nickname) {
 
   // 이번 주 뽑기권 이미 수령 여부 확인 (w3/w6)
   let ticketAlreadyAwarded = false;
+  let ticketCardIdx = -1;
   if (nickname && (weekKey === 'w3' || weekKey === 'w6')) {
     const bonusSheet = getOrCreateBonusDrawsSheet();
     const last = bonusSheet.getLastRow();
@@ -777,6 +778,20 @@ function getHoldPray(weekKey, nickname) {
       ticketAlreadyAwarded = rows.some(function(r) {
         return String(r[0]) === nickname && String(r[1]) === source;
       });
+    }
+    if (ticketAlreadyAwarded) {
+      const guessSheet = getOrCreateHPGuessesSheet();
+      const gLast = guessSheet.getLastRow();
+      if (gLast >= 2) {
+        const gRows = guessSheet.getRange(2, 1, gLast - 1, 5).getValues();
+        const myRows = gRows.filter(function(r) {
+          return String(r[0]) === nickname && String(r[1]) === weekKey;
+        });
+        if (myRows.length > 0) {
+          myRows.sort(function(a, b) { return new Date(a[4]) - new Date(b[4]); });
+          ticketCardIdx = Number(myRows[0][2]);
+        }
+      }
     }
   }
 
@@ -799,7 +814,7 @@ function getHoldPray(weekKey, nickname) {
     }
   }
 
-  return { ok: true, weekKey, cards, correctMap, ticketAlreadyAwarded, hintReplies };
+  return { ok: true, weekKey, cards, correctMap, ticketAlreadyAwarded, ticketCardIdx, hintReplies };
 }
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {

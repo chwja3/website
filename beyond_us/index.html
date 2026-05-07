@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507x';
+    const APP_VERSION = '20260507y';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5503,6 +5503,7 @@
     let _hpWeekKey = '';
     let _hpCorrectMap = {}; // {cardIndex: name} — per week, loaded from localStorage
     let _hpTicketAlreadyAwarded = false;
+    let _hpTicketCardIdx = -1;
     let _hpHintReplies = {};
 
     function fitHpText(textEl, boxEl, opts = {}) {
@@ -5549,6 +5550,7 @@
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = hpCached.ticketAlreadyAwarded || false;
+        _hpTicketCardIdx = hpCached.ticketCardIdx ?? -1;
         _hpHintReplies = hpCached.hintReplies || {};
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
@@ -5584,6 +5586,7 @@
         _hpCurrentIdx = (hpHasCache && sameWeek) ? prevIdx : 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
+        _hpTicketCardIdx = data.ticketCardIdx ?? -1;
         _hpHintReplies = data.hintReplies || {};
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
@@ -5684,9 +5687,10 @@
       const correctName = _hpCorrectMap[idx];
 
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
-      const ticketFooterCorrect = (isTicketWeek && _hpTicketAlreadyAwarded)
-        ? `<p class="hp-ticket-done">뽑기권 1장 넣어드렸어요~ 🎫</p>`
-        : '';
+      const ticketFooterCorrect = !isTicketWeek ? ''
+        : (idx === _hpTicketCardIdx && _hpTicketCardIdx !== -1)
+          ? `<p class="hp-ticket-done">공동체를 위해 기도해 주셔서 감사합니다.<br>뽑기권 1장 넣어드렸어요~ 🎫</p>`
+          : `<p class="hp-ticket-done">공동체를 위해 기도해 주셔서 감사합니다.</p>`;
       // 미답 카드는 아직 미획득일 때만 "지급 예고" 표시
       const ticketFooterGuess = (isTicketWeek && !_hpTicketAlreadyAwarded)
         ? `<p class="hp-ticket-reward">🎫 정답 시 뽑기권이 지급돼요</p>`
@@ -5805,6 +5809,7 @@
           }
           if (data.ticketAwarded) {
             _hpTicketAlreadyAwarded = true;
+            _hpTicketCardIdx = cardIdx;
             updateHpBadge();
             const ticketBadge = document.getElementById('ticketBadge');
             if (ticketBadge) {
