@@ -2728,7 +2728,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zl';
+    const APP_VERSION = '20260507zm';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5556,13 +5556,13 @@
 
     /* ── MISSION 3 ── */
     const BBB_M3_SPOTS = [
-      { label: '좁은문',               top: 60, left: 40 }, // #6
-      { label: '십자가',               top: 45, left: 60 }, // #14
-      { label: '뷰티풀하우스',         top: 70, left: 57 }, // #20~23
-      { label: '사망의 음침한 골짜기',  top: 63, left: 72 }, // #25
-      { label: '기쁨의 산',            top: 22, left: 68 }, // #33~34
-      { label: '뿔라의 땅',            top: 18, left: 41 }, // #36
-      { label: '천성',                 top: 52, left: 18 }, // #39
+      { label: '좁은문',               top: 62, left: 40 }, // #6  — 순례길 초입, 중앙하단 좌
+      { label: '십자가',               top: 48, left: 62 }, // #14 — 중앙우 중단
+      { label: '뷰티풀하우스',         top: 70, left: 58 }, // #20~23 — 중앙 하단
+      { label: '사망의 음침한 골짜기',  top: 63, left: 73 }, // #25 — 우측 하단
+      { label: '기쁨의 산',            top: 25, left: 66 }, // #31 — 우측 상단
+      { label: '뿔라의 땅',            top: 20, left: 41 }, // #36 — 상단 중앙좌
+      { label: '천성',                 top: 42, left: 13 }, // #39 — 좌측 건물 (최종 목적지)
     ];
 
     function _bbbRenderM3Spots(photos, m3Rewarded) {
