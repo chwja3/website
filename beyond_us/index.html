@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507r';
+    const APP_VERSION = '20260507s';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3100,7 +3100,7 @@
 
       const btn = document.getElementById('registerBtn');
       btn.disabled = true;
-      statusEl.textContent = '가입 중...';
+      const dotsTimerReg = animDots(statusEl, '가입 중');
 
       try {
         const res = await fetch(API_BASE, {
@@ -3110,6 +3110,7 @@
         });
         const data = await res.json();
         if (data.ok) {
+          stopAnimDots(dotsTimerReg, statusEl, '');
           saveAuth(nickname, password, parish);
           localStorage.setItem('beyondus_is_staff', 'false');
           const aod = localStorage.getItem('beyondus_app_open_date') || '';
@@ -3120,12 +3121,12 @@
             showComingSoon();
           }
         } else if (data.error === 'duplicate') {
-          statusEl.textContent = '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.';
+          stopAnimDots(dotsTimerReg, statusEl, '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.');
         } else {
-          statusEl.textContent = '오류가 발생했어요. 다시 시도해주세요.';
+          stopAnimDots(dotsTimerReg, statusEl, '오류가 발생했어요. 다시 시도해주세요.');
         }
       } catch(e) {
-        statusEl.textContent = '연결에 실패했어요. 잠시 후 다시 시도해주세요.';
+        stopAnimDots(dotsTimerReg, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
       } finally {
         btn.disabled = false;
       }
@@ -3141,7 +3142,7 @@
 
       const btn = document.getElementById('loginBtn');
       btn.disabled = true;
-      statusEl.textContent = '로그인 중...';
+      const dotsTimerLogin = animDots(statusEl, '로그인 중');
 
       try {
         const res = await fetch(API_BASE, {
@@ -3151,6 +3152,7 @@
         });
         const data = await res.json();
         if (data.ok) {
+          stopAnimDots(dotsTimerLogin, statusEl, '');
           saveAuth(nickname, password, data.parish || '');
           localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
           localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
@@ -3162,14 +3164,14 @@
             showComingSoon();
           }
         } else if (data.error === 'not_found') {
-          statusEl.textContent = '닉네임을 찾을 수 없어요.';
+          stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
         } else if (data.error === 'wrong_password') {
-          statusEl.textContent = '비밀번호가 틀렸어요.';
+          stopAnimDots(dotsTimerLogin, statusEl, '비밀번호가 틀렸어요.');
         } else {
-          statusEl.textContent = '오류가 발생했어요.';
+          stopAnimDots(dotsTimerLogin, statusEl, '오류가 발생했어요.');
         }
       } catch(e) {
-        statusEl.textContent = '연결에 실패했어요. 잠시 후 다시 시도해주세요.';
+        stopAnimDots(dotsTimerLogin, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
       } finally {
         btn.disabled = false;
       }
@@ -3185,7 +3187,7 @@
 
       btn.disabled = true;
       statusEl.className = 'auth-status';
-      statusEl.textContent = '확인 중...';
+      const dotsTimerReset = animDots(statusEl, '확인 중');
 
       try {
         const res = await fetch(API_BASE, {
@@ -3195,25 +3197,25 @@
         });
         const data = await res.json();
         if (data.ok) {
+          stopAnimDots(dotsTimerReset, statusEl, '비밀번호가 변경됐어요! 로그인해주세요.');
           statusEl.className = 'auth-status success';
-          statusEl.textContent = '비밀번호가 변경됐어요! 로그인해주세요.';
           document.getElementById('resetDuplicates').style.display = 'none';
           setTimeout(() => switchAuthPane('login'), 1500);
         } else if (data.duplicates) {
+          stopAnimDots(dotsTimerReset, statusEl, '');
           const dupWrap = document.getElementById('resetDuplicates');
           const dupList = document.getElementById('resetDuplicateList');
           dupList.innerHTML = data.duplicates.map(n =>
             `<button class="btn btn-secondary" style="flex:none;font-size:13px;padding:6px 14px;" onclick="doResetPassword('${escHtml(n)}')">${escHtml(n)}</button>`
           ).join('');
           dupWrap.style.display = 'block';
-          statusEl.textContent = '';
         } else if (data.error === 'not_found') {
-          statusEl.textContent = '입력한 정보와 일치하는 계정이 없어요.';
+          stopAnimDots(dotsTimerReset, statusEl, '입력한 정보와 일치하는 계정이 없어요.');
         } else {
-          statusEl.textContent = '오류가 발생했어요.';
+          stopAnimDots(dotsTimerReset, statusEl, '오류가 발생했어요.');
         }
       } catch(e) {
-        statusEl.textContent = '연결에 실패했어요.';
+        stopAnimDots(dotsTimerReset, statusEl, '연결에 실패했어요.');
       } finally {
         btn.disabled = false;
       }
@@ -3246,20 +3248,21 @@
 
       const btn = document.getElementById('findNicknameBtn');
       btn.disabled = true;
-      statusEl.textContent = '찾는 중...';
       statusEl.className = 'auth-status';
+      const dotsTimerFind = animDots(statusEl, '찾는 중');
 
       try {
         const res = await fetch(`${API_BASE}?action=findNickname&name=${encodeURIComponent(name)}&parish=${encodeURIComponent(parish)}&t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
         if (data.ok && data.nicknames && data.nicknames.length) {
+          stopAnimDots(dotsTimerFind, statusEl, '');
           statusEl.className = 'auth-status success';
           statusEl.innerHTML = `찾았어요! 닉네임: <strong>${data.nicknames.map(n => escHtml(n)).join(', ')}</strong>`;
         } else {
-          statusEl.textContent = '일치하는 계정을 찾지 못했어요. 이름·소속을 다시 확인해주세요.';
+          stopAnimDots(dotsTimerFind, statusEl, '일치하는 계정을 찾지 못했어요. 이름·소속을 다시 확인해주세요.');
         }
       } catch(e) {
-        statusEl.textContent = '연결에 실패했어요.';
+        stopAnimDots(dotsTimerFind, statusEl, '연결에 실패했어요.');
       } finally {
         btn.disabled = false;
       }
@@ -3515,20 +3518,21 @@
       const el = document.getElementById('tradeSearchResult');
       if (!nick) { el.textContent = '닉네임을 입력해주세요.'; return; }
       if (nick === currentNickname) { el.textContent = '자기 자신과는 교환할 수 없어요.'; return; }
-      el.textContent = '검색 중...';
+      const dotsTimerSearch = animDots(el, '검색 중');
       try {
         const res = await fetch(`${API_BASE}?action=getPublicCollection&userId=${encodeURIComponent(nick)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
-        if (!res.ok) { el.textContent = '찾을 수 없는 닉네임이에요.'; return; }
+        if (!res.ok) { stopAnimDots(dotsTimerSearch, el, '찾을 수 없는 닉네임이에요.'); return; }
         const hasCards = Object.values(res.collection || {}).some(v => v > 0);
-        if (!hasCards) { el.textContent = `${nick}님은 보유 카드가 없어요.`; return; }
+        if (!hasCards) { stopAnimDots(dotsTimerSearch, el, `${nick}님은 보유 카드가 없어요.`); return; }
         _tradeTargetNickname = nick;
         _tradeTargetColl = res.collection || {};
+        stopAnimDots(dotsTimerSearch, el, '');
         el.innerHTML = `<span style="color:#4ade80;font-weight:700;">✓ ${nick}님을 찾았어요!</span>`;
         setTimeout(() => {
           if (_tradeMyCardId) _tradeShowStep(3), _renderTheirCards();
           else _tradeShowStep(2), _renderMyCards();
         }, 600);
-      } catch(e) { el.textContent = '검색 실패. 다시 시도해주세요.'; }
+      } catch(e) { stopAnimDots(dotsTimerSearch, el, '검색 실패. 다시 시도해주세요.'); }
     }
 
     function _renderMyCards() {
@@ -3604,7 +3608,7 @@
       const btn = document.getElementById('tradeSubmitBtn');
       const statusEl = document.getElementById('tradeSubmitStatus');
       btn.disabled = true;
-      statusEl.textContent = '전송 중...';
+      const dotsTimerTrade = animDots(statusEl, '전송 중');
       try {
         const res = await post({
           action: 'requestTrade',
@@ -3614,15 +3618,15 @@
           targetCardId: _tradeTheirCardId
         });
         if (res.ok) {
+          stopAnimDots(dotsTimerTrade, statusEl, '✓ 교환 신청이 전송됐어요!');
           statusEl.style.color = '#4ade80';
-          statusEl.textContent = '✓ 교환 신청이 전송됐어요!';
           setTimeout(() => { closeTradeModal(); loadTrades(); }, 1200);
         } else {
+          stopAnimDots(dotsTimerTrade, statusEl, res.error || '오류가 발생했어요.');
           statusEl.style.color = 'var(--danger)';
-          statusEl.textContent = res.error || '오류가 발생했어요.';
           btn.disabled = false;
         }
-      } catch(e) { statusEl.textContent = '연결 오류'; btn.disabled = false; }
+      } catch(e) { stopAnimDots(dotsTimerTrade, statusEl, '연결 오류'); btn.disabled = false; }
     }
 
     async function loadTrades() {
@@ -5192,7 +5196,7 @@
       const statusEl = document.getElementById(`inqEditStatus_${id}`);
       if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
       if (!password) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
-      statusEl.textContent = '저장 중...';
+      const dotsTimerSave = animDots(statusEl, '저장 중');
       statusEl.style.color = 'var(--sub)';
       try {
         const res = await fetch(API_BASE, {
@@ -5202,16 +5206,17 @@
         });
         const data = await res.json();
         if (data.ok) {
+          stopAnimDots(dotsTimerSave, statusEl, '');
           loadInquiries();
         } else if (data.error === 'wrong_password') {
-          statusEl.textContent = '비밀번호가 틀렸어요.';
+          stopAnimDots(dotsTimerSave, statusEl, '비밀번호가 틀렸어요.');
           statusEl.style.color = 'var(--danger)';
         } else {
-          statusEl.textContent = '오류가 발생했어요.';
+          stopAnimDots(dotsTimerSave, statusEl, '오류가 발생했어요.');
           statusEl.style.color = 'var(--danger)';
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        stopAnimDots(dotsTimerSave, statusEl, '연결 오류');
         statusEl.style.color = 'var(--danger)';
       }
     }
@@ -5225,7 +5230,7 @@
       const password = localStorage.getItem('beyondus_password') || '';
       const btn = document.getElementById('inquiryQuickBtn');
       btn.disabled = true;
-      statusEl.textContent = '등록 중...';
+      const dotsTimerPost = animDots(statusEl, '등록 중');
       statusEl.style.color = 'var(--sub)';
       try {
         const res = await fetch(API_BASE, {
@@ -5236,18 +5241,18 @@
         const data = await res.json();
         if (data.ok) {
           input.value = '';
-          statusEl.textContent = '등록됐어요!';
+          stopAnimDots(dotsTimerPost, statusEl, '등록됐어요!');
           statusEl.style.color = 'var(--success)';
           setTimeout(() => { statusEl.textContent = ''; }, 2000);
         } else if (data.error === 'wrong_password') {
-          statusEl.textContent = '인증 오류. 다시 로그인해주세요.';
+          stopAnimDots(dotsTimerPost, statusEl, '인증 오류. 다시 로그인해주세요.');
           statusEl.style.color = 'var(--danger)';
         } else {
-          statusEl.textContent = '오류가 발생했어요.';
+          stopAnimDots(dotsTimerPost, statusEl, '오류가 발생했어요.');
           statusEl.style.color = 'var(--danger)';
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        stopAnimDots(dotsTimerPost, statusEl, '연결 오류');
         statusEl.style.color = 'var(--danger)';
       } finally {
         btn.disabled = false;
