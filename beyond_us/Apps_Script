@@ -2230,60 +2230,81 @@ function getOrCreateBBBPhotosSheet() {
   return sheet;
 }
 
-// ─ BBB 사진 업로드 (최초 1회만 뽑기권 지급)
+// ─ BBB 사진 업로드 (missionType: 'm1'|'m2'|'m3_0'~'m3_4', 최초 1회만 뽑기권 지급)
 function uploadBBBPhoto(body) {
-  const userId = String(body.userId || '').trim();
-  const photo  = String(body.photo  || '').trim();
+  const userId      = String(body.userId      || '').trim();
+  const photo       = String(body.photo       || '').trim();
+  const missionType = String(body.missionType || 'm1').trim();
   if (!userId || !photo) return { error: '필수 항목 누락.' };
 
   const photoSheet = getOrCreateBBBPhotosSheet();
   const last = photoSheet.getLastRow();
   let existingRow = -1;
   if (last >= 2) {
-    const rows = photoSheet.getRange(2, 1, last - 1, 1).getValues();
+    const rows = photoSheet.getRange(2, 1, last - 1, 4).getValues();
     for (let i = 0; i < rows.length; i++) {
-      if (String(rows[i][0]) === userId) { existingRow = i + 2; break; }
+      const mt = String(rows[i][3] || 'm1');
+      if (String(rows[i][0]) === userId && mt === missionType) { existingRow = i + 2; break; }
     }
   }
 
   const now = new Date().toISOString();
-
   if (existingRow === -1) {
-    photoSheet.appendRow([userId, photo, now]);
+    photoSheet.appendRow([userId, photo, now, missionType]);
   } else {
     photoSheet.getRange(existingRow, 2, 1, 2).setValues([[photo, now]]);
   }
 
-  // BonusDraws 이력 기준으로 최초 여부 판단 (삭제 후 재업로드 중복 지급 방지)
+  // BonusDraws 이력 기준 중복 지급 방지
+  const bonusSource = missionType === 'm1' ? 'bbb_photo' : 'bbb_' + missionType.split('_')[0];
   const bonusSheet = getOrCreateBonusDrawsSheet();
   const bLast = bonusSheet.getLastRow();
   let alreadyRewarded = false;
   if (bLast >= 2) {
     const bRows = bonusSheet.getRange(2, 1, bLast - 1, 2).getValues();
-    for (let i = 0; i < bRows.length; i++) {
-      if (String(bRows[i][0]) === userId && String(bRows[i][1]) === 'bbb_photo') {
-        alreadyRewarded = true; break;
+    alreadyRewarded = bRows.some(function(r) { return String(r[0]) === userId && String(r[1]) === bonusSource; });
+  }
+
+  let rewarded = false;
+  if (!alreadyRewarded) {
+    // m3는 5개 스팟 모두 채워야 지급
+    if (missionType.startsWith('m3_')) {
+      const pSheet = getOrCreateBBBPhotosSheet();
+      const pLast = pSheet.getLastRow();
+      let filledSpots = 0;
+      if (pLast >= 2) {
+        const pRows = pSheet.getRange(2, 1, pLast - 1, 4).getValues();
+        for (let s = 0; s < 5; s++) {
+          const found = pRows.some(function(r) { return String(r[0]) === userId && String(r[3]) === 'm3_' + s && String(r[1]); });
+          if (found) filledSpots++;
+        }
       }
+      if (filledSpots >= 5) {
+        bonusSheet.appendRow([userId, bonusSource, now]);
+        try { updateTicketCols(userId); } catch(e) {}
+        rewarded = true;
+      }
+    } else {
+      bonusSheet.appendRow([userId, bonusSource, now]);
+      try { updateTicketCols(userId); } catch(e) {}
+      rewarded = true;
     }
   }
 
-  if (!alreadyRewarded) {
-    bonusSheet.appendRow([userId, 'bbb_photo', now]);
-    try { updateTicketCols(userId); } catch(e) {}
-  }
-
-  return { ok: true, rewarded: !alreadyRewarded };
+  return { ok: true, rewarded };
 }
 
 function deleteBBBPhoto(body) {
-  const userId = String(body.userId || '').trim();
+  const userId      = String(body.userId      || '').trim();
+  const missionType = String(body.missionType || 'm1').trim();
   if (!userId) return { error: '필수 항목 누락.' };
   const photoSheet = getOrCreateBBBPhotosSheet();
   const last = photoSheet.getLastRow();
   if (last < 2) return { ok: true };
-  const rows = photoSheet.getRange(2, 1, last - 1, 1).getValues();
+  const rows = photoSheet.getRange(2, 1, last - 1, 4).getValues();
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === userId) {
+    const mt = String(rows[i][3] || 'm1');
+    if (String(rows[i][0]) === userId && mt === missionType) {
       photoSheet.deleteRow(i + 2);
       break;
     }
@@ -2374,21 +2395,50 @@ function getBBB(userId) {
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const msgOpen = configSheet.getRange('C1').getValue() === true;
 
-  // 내 사진
-  let myPhoto = null;
+  // 내 사진 (M1 / M2 / M3 스팟 5개)
+  let myPhoto = null, myPhotoM2 = null;
+  const myPhotoM3 = [null, null, null, null, null];
   try {
     const photoSheet = getOrCreateBBBPhotosSheet();
     const pLast = photoSheet.getLastRow();
     if (pLast >= 2) {
-      const pRows = photoSheet.getRange(2, 1, pLast - 1, 2).getValues();
-      const pRow = pRows.find(r => String(r[0]) === userId);
-      if (pRow) myPhoto = String(pRow[1]);
+      const pRows = photoSheet.getRange(2, 1, pLast - 1, 4).getValues();
+      pRows.forEach(function(r) {
+        if (String(r[0]) !== userId) return;
+        const mt = String(r[3] || 'm1');
+        const src = String(r[1]);
+        if (mt === 'm1') myPhoto = src;
+        else if (mt === 'm2') myPhotoM2 = src;
+        else if (mt.startsWith('m3_')) {
+          const idx = Number(mt.split('_')[1]);
+          if (idx >= 0 && idx < 5) myPhotoM3[idx] = src;
+        }
+      });
+    }
+  } catch(e) {}
+
+  // M2/M3 뽑기권 수령 여부
+  let m2Rewarded = false, m3Rewarded = false;
+  try {
+    const bonusSheet = getOrCreateBonusDrawsSheet();
+    const bLast = bonusSheet.getLastRow();
+    if (bLast >= 2) {
+      const bRows = bonusSheet.getRange(2, 1, bLast - 1, 2).getValues();
+      bRows.forEach(function(r) {
+        if (String(r[0]) !== userId) return;
+        if (String(r[1]) === 'bbb_m2') m2Rewarded = true;
+        if (String(r[1]) === 'bbb_m3') m3Rewarded = true;
+      });
     }
   } catch(e) {}
 
   return {
     ok: true,
     myPhoto,
+    myPhotoM2,
+    myPhotoM3,
+    m2Rewarded,
+    m3Rewarded,
     careBuddy: {
       nickname: careBuddyId,
       name:     String(myRow[2])

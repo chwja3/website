@@ -2601,6 +2601,56 @@
                 </div>
               </div>
 
+              <!-- MISSION 2: H&P 카드 기도 인증 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+                <div style="display:flex;align-items:flex-start;gap:14px;">
+                  <div style="flex:1;min-width:0;">
+                    <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 2</span>
+                    <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">H&amp;P 카드에 손 얹고 기도 인증</p>
+                    <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
+                    <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
+                  </div>
+                  <label id="bbbM2Label" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                    <input type="file" id="bbbM2Input" accept="image/*" style="display:none;" />
+                    <img id="bbbM2Img" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbM2Modal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
+                    <span id="bbbM2Placeholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
+                    <span id="bbbM2PlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
+                  </label>
+                  <div id="bbbM2Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM2Modal()">
+                    <img id="bbbM2ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                    <div style="display:flex;gap:12px;margin-top:20px;">
+                      <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM2Input()">수정</label>
+                      <button onclick="deleteBbbM2Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                    </div>
+                    <button onclick="closeBbbM2Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- MISSION 3: 필그림하우스 스팟 5곳 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">필그림하우스 스팟 5곳 인증</p>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 12px;">5곳 모두 채우면 뽑기권 +1</p>
+                <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0 0 10px;min-height:16px;font-weight:600;"></p>
+                <!-- 지도 영역 -->
+                <div id="bbbM3Map" style="position:relative;width:100%;background:#e8e4dc;border-radius:12px;overflow:hidden;min-height:200px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                  <img id="bbbM3MapImg" src="" alt="필그림하우스 지도" style="display:none;width:100%;height:auto;border-radius:12px;" />
+                  <p id="bbbM3MapPlaceholder" style="font-size:12px;color:var(--sub);margin:0;text-align:center;padding:24px;">🗺️ 지도 준비 중</p>
+                </div>
+                <!-- 스팟 5개 그리드 -->
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;" id="bbbM3Spots"></div>
+                <!-- M3 사진 확대 모달 -->
+                <div id="bbbM3Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM3Modal()">
+                  <img id="bbbM3ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                  <div style="display:flex;gap:12px;margin-top:20px;">
+                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM3Input()">수정</label>
+                    <button onclick="deleteBbbM3Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                  </div>
+                  <button onclick="closeBbbM3Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                </div>
+              </div>
+
               <!-- 시크릿버디 -->
               <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
@@ -2668,7 +2718,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507y';
+    const APP_VERSION = '20260507z';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5367,7 +5417,7 @@
             const REDIRECT = await fetch(API_BASE, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ action: 'uploadBBBPhoto', userId: nickname, photo: base64 }),
+              body: JSON.stringify({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm1' }),
               redirect: 'follow'
             });
             const res = await REDIRECT.json();
@@ -5385,6 +5435,12 @@
             label.style.pointerEvents = '';
           }
         };
+
+        // MISSION 2
+        _bbbInitMission2(bbbRes);
+
+        // MISSION 3
+        _bbbInitMission3(bbbRes);
 
         // 시크릿버디
         if (bbbRes.secretBuddy) {
@@ -5413,6 +5469,151 @@
       } catch(e) {
         document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
       }
+    }
+
+    /* ── MISSION 2 ── */
+    function _bbbShowM2Photo(src) {
+      const img = document.getElementById('bbbM2Img');
+      const modalImg = document.getElementById('bbbM2ModalImg');
+      img.src = src; img.style.display = '';
+      if (modalImg) modalImg.src = src;
+      document.getElementById('bbbM2Placeholder').style.display = 'none';
+      document.getElementById('bbbM2PlaceholderText').style.display = 'none';
+      document.getElementById('bbbM2Label').style.border = '1px solid #1a1a1a';
+    }
+    function openBbbM2Modal() {
+      const modal = document.getElementById('bbbM2Modal');
+      modal.style.display = 'flex';
+    }
+    function closeBbbM2Modal() {
+      document.getElementById('bbbM2Modal').style.display = 'none';
+    }
+    function reopenBbbM2Input() {
+      closeBbbM2Modal();
+      document.getElementById('bbbM2Input').click();
+    }
+    async function deleteBbbM2Photo() {
+      const statusEl = document.getElementById('bbbM2Status');
+      const dotsTimer = animDots(statusEl, '삭제 중');
+      closeBbbM2Modal();
+      try {
+        const nickname = localStorage.getItem('beyondus_nickname') || '';
+        const res = await fetch(API_BASE, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm2' }),
+          redirect: 'follow'
+        });
+        const data = await res.json();
+        if (data.ok) {
+          const img = document.getElementById('bbbM2Img');
+          img.src = ''; img.style.display = 'none';
+          document.getElementById('bbbM2Placeholder').style.display = '';
+          document.getElementById('bbbM2PlaceholderText').style.display = '';
+          document.getElementById('bbbM2Label').style.border = '1.5px dashed var(--line)';
+          stopAnimDots(dotsTimer, statusEl, '');
+        } else {
+          stopAnimDots(dotsTimer, statusEl, '삭제 실패');
+        }
+      } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류'); }
+    }
+    function _bbbInitMission2(bbbRes) {
+      const statusEl = document.getElementById('bbbM2Status');
+      if (bbbRes.myPhotoM2) {
+        _bbbShowM2Photo(bbbRes.myPhotoM2);
+        if (statusEl) { statusEl.textContent = bbbRes.m2Rewarded ? '✓ 뽑기권 획득 완료' : ''; statusEl.style.color = 'var(--sub)'; statusEl.style.fontWeight = '500'; }
+      }
+      document.getElementById('bbbM2Input').onchange = async function() {
+        const file = this.files[0];
+        if (!file) return;
+        const label = document.getElementById('bbbM2Label');
+        const dotsTimer = animDots(statusEl, '업로드 중');
+        label.style.pointerEvents = 'none';
+        try {
+          const nickname = localStorage.getItem('beyondus_nickname') || '';
+          const base64 = await _compressImage(file, 400, 0.55);
+          const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm2' }), redirect: 'follow' })).json();
+          if (res.ok) {
+            _bbbShowM2Photo(base64);
+            stopAnimDots(dotsTimer, statusEl, res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료');
+            statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
+            statusEl.style.fontWeight = res.rewarded ? '600' : '500';
+            if (res.rewarded) loadUserStatus();
+          } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
+        } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
+        finally { label.style.pointerEvents = ''; }
+      };
+    }
+
+    /* ── MISSION 3 ── */
+    const BBB_M3_SPOTS = ['입구', '예배당', '기도실', '카페', '야외'];
+
+    function _bbbRenderM3Spots(photos, m3Rewarded) {
+      const container = document.getElementById('bbbM3Spots');
+      if (!container) return;
+      container.innerHTML = BBB_M3_SPOTS.map((label, i) => {
+        const src = photos[i];
+        return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="width:100%;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1.5px dashed var(--line);background:var(--card);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;"
+                 onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}">
+              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:22px;color:var(--line);font-weight:300;">+</span>`}
+              <input type="file" id="bbbM3Input${i}" accept="image/*" style="display:none;" onchange="bbbM3Upload(${i}, this)" />
+            </div>
+            <span style="font-size:10px;color:var(--sub);font-weight:600;">${label}</span>
+          </div>`;
+      }).join('');
+      const filled = photos.filter(Boolean).length;
+      const statusEl = document.getElementById('bbbM3Status');
+      if (statusEl) {
+        statusEl.textContent = m3Rewarded ? '✓ 뽑기권 획득 완료' : filled > 0 ? `${filled}/5 완료` : '';
+        statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
+      }
+    }
+    function _bbbInitMission3(bbbRes) {
+      _bbbRenderM3Spots(bbbRes.myPhotoM3 || [null,null,null,null,null], bbbRes.m3Rewarded);
+    }
+    async function bbbM3Upload(spotIdx, input) {
+      const file = input.files[0];
+      if (!file) return;
+      const statusEl = document.getElementById('bbbM3Status');
+      const dotsTimer = animDots(statusEl, '업로드 중');
+      try {
+        const nickname = localStorage.getItem('beyondus_nickname') || '';
+        const base64 = await _compressImage(file, 400, 0.55);
+        const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm3_' + spotIdx }), redirect: 'follow' })).json();
+        if (res.ok) {
+          if (_bbbData) { _bbbData.myPhotoM3 = _bbbData.myPhotoM3 || [null,null,null,null,null]; _bbbData.myPhotoM3[spotIdx] = base64; if (res.rewarded) _bbbData.m3Rewarded = true; }
+          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], res.rewarded || (_bbbData && _bbbData.m3Rewarded));
+          stopAnimDots(dotsTimer, statusEl, '');
+          if (res.rewarded) { loadUserStatus(); }
+        } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
+      } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
+    }
+    function openBbbM3Modal(spotIdx) {
+      const src = _bbbData && _bbbData.myPhotoM3 && _bbbData.myPhotoM3[spotIdx];
+      if (!src) return;
+      const modal = document.getElementById('bbbM3Modal');
+      if (!modal) return;
+      document.getElementById('bbbM3ModalImg').src = src;
+      modal.dataset.spot = spotIdx;
+      modal.style.display = 'flex';
+    }
+    function closeBbbM3Modal() { const m = document.getElementById('bbbM3Modal'); if (m) m.style.display = 'none'; }
+    function reopenBbbM3Input() { const spot = Number(document.getElementById('bbbM3Modal').dataset.spot); closeBbbM3Modal(); document.getElementById('bbbM3Input' + spot)?.click(); }
+    async function deleteBbbM3Photo() {
+      const spotIdx = Number(document.getElementById('bbbM3Modal').dataset.spot);
+      const statusEl = document.getElementById('bbbM3Status');
+      closeBbbM3Modal();
+      const dotsTimer = animDots(statusEl, '삭제 중');
+      try {
+        const nickname = localStorage.getItem('beyondus_nickname') || '';
+        const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm3_' + spotIdx }), redirect: 'follow' })).json();
+        if (res.ok) {
+          if (_bbbData && _bbbData.myPhotoM3) _bbbData.myPhotoM3[spotIdx] = null;
+          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded);
+          stopAnimDots(dotsTimer, statusEl, '');
+        } else { stopAnimDots(dotsTimer, statusEl, '삭제 실패'); }
+      } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류'); }
     }
 
     function _renderBBBMessages(messages) {
