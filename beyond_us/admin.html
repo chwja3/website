@@ -1546,6 +1546,8 @@
       });
       listEl.innerHTML = sorted.map(inq => {
         const isHint = inq.content.startsWith('[H&P 힌트 요청]');
+        const hintAnswer = isHint ? (inq.content.match(/\| 정답: (.+)$/) || [])[1] : null;
+        const hintMeta   = isHint ? (inq.content.match(/주차: ([^,]+), 카드: (\d+)번/) || []) : [];
         return `
         <div id="inqAdmin_${inq.id}" style="padding:16px 0; border-bottom:1px solid var(--line);">
 
@@ -1556,7 +1558,11 @@
                 ${isHint ? '<span style="font-size:10px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);border:1px solid rgba(200,160,60,0.35);border-radius:999px;padding:1px 7px;white-space:nowrap;">H&P 힌트</span>' : ''}
                 <span style="font-size:12px; color:var(--sub);">${esc(inq.nickname)} · ${formatDate(inq.createdAt)}</span>
               </div>
-              <div style="font-size:14px; font-weight:600; line-height:1.6;">${esc(inq.content)}</div>
+              ${isHint && hintMeta[1]
+                ? `<div style="font-size:13px;color:var(--sub);margin-bottom:6px;">${hintMeta[1]}주차 · ${hintMeta[2]}번 카드 힌트 요청</div>
+                   ${hintAnswer ? `<div style="font-size:13px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.12);border:1px solid rgba(200,160,60,0.3);border-radius:8px;padding:6px 12px;display:inline-block;margin-bottom:4px;">정답: ${esc(hintAnswer)}</div>` : ''}`
+                : `<div style="font-size:14px; font-weight:600; line-height:1.6;">${esc(inq.content)}</div>`
+              }
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
               ${!inq.reply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>' : '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변완료</span>'}
