@@ -2303,7 +2303,7 @@
           <div id="tradeStep1">
             <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">교환할 상대방 닉네임을 입력해주세요.</p>
             <div style="display:flex;gap:8px;">
-              <input id="tradeTargetInput" class="input" placeholder="닉네임" style="flex:1;font-size:14px;" onkeydown="if(event.key==='Enter')tradeSearchUser()" />
+              <input id="tradeTargetInput" class="input" placeholder="닉네임" style="flex:1;font-size:16px;" onkeydown="if(event.key==='Enter')tradeSearchUser()" />
               <button class="btn btn-primary" style="flex:none;font-size:13px;padding:0 14px;" onclick="tradeSearchUser()">검색</button>
             </div>
             <div id="tradeSearchResult" style="margin-top:10px;font-size:13px;min-height:24px;"></div>
@@ -2736,7 +2736,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zz';
+    const APP_VERSION = '20260507zzb';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3570,7 +3570,9 @@
         return;
       }
       _tradeTargetNickname = ''; _tradeTargetColl = {};
-      _tradeMyCardId = preCardId || null; _tradeTheirCardId = null;
+      // preCardId가 1장짜리면 무시 (step2에서 다시 선택)
+      _tradeMyCardId = (preCardId && (counts[preCardId] || 0) >= 2) ? preCardId : null;
+      _tradeTheirCardId = null;
       _tradeStep = 1;
       document.getElementById('tradeTargetInput').value = '';
       document.getElementById('tradeSearchResult').innerHTML = '';
@@ -3602,8 +3604,8 @@
       try {
         const res = await fetch(`${API_BASE}?action=getPublicCollection&userId=${encodeURIComponent(nick)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
         if (!res.ok) { stopAnimDots(dotsTimerSearch, el, '찾을 수 없는 닉네임이에요.'); return; }
-        const hasCards = Object.values(res.collection || {}).some(v => v > 0);
-        if (!hasCards) { stopAnimDots(dotsTimerSearch, el, `${nick}님은 보유 카드가 없어요.`); return; }
+        const hasCards = Object.values(res.collection || {}).some(v => v >= 2);
+        if (!hasCards) { stopAnimDots(dotsTimerSearch, el, `${nick}님은 교환 가능한 중복 카드가 없어요.`); return; }
         _tradeTargetNickname = nick;
         _tradeTargetColl = res.collection || {};
         stopAnimDots(dotsTimerSearch, el, '');
@@ -3652,7 +3654,7 @@
       const container = document.getElementById('tradeTheirCards');
       container.innerHTML = SPIRIT_CARDS.map(card => {
         const cnt = _tradeTargetColl[card.id] || 0;
-        if (cnt === 0) return '';
+        if (cnt < 2) return '';
         const sel = _tradeTheirCardId === card.id ? 'outline:2.5px solid #7c3aed;' : '';
         return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectTheirCard(${card.id})">
           <div class="mini-card mini-card-img" style="${sel}">
@@ -3661,7 +3663,7 @@
           <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name}</div>
         </div>`;
       }).join('');
-      if (!container.innerHTML.trim()) container.innerHTML = '<p style="color:var(--sub);font-size:13px;">상대방이 보유한 카드가 없어요.</p>';
+      if (!container.innerHTML.trim()) container.innerHTML = '<p style="color:var(--sub);font-size:13px;">상대방이 교환 가능한 중복 카드가 없어요.</p>';
     }
 
     function tradeSelectTheirCard(cardId) {
@@ -3687,6 +3689,14 @@
     async function submitTradeRequest() {
       const btn = document.getElementById('tradeSubmitBtn');
       const statusEl = document.getElementById('tradeSubmitStatus');
+      // 최종 제출 전 내 카드 중복 재검증
+      const counts = {};
+      (userStatus?.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
+      if (!_tradeMyCardId || (counts[_tradeMyCardId] || 0) < 2) {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = '같은 카드 2장 이상인 경우만 교환할 수 있어요.';
+        return;
+      }
       btn.disabled = true;
       const dotsTimerTrade = animDots(statusEl, '전송 중');
       try {
