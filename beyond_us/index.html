@@ -1429,7 +1429,7 @@
       position: relative; border-radius: 16px; overflow: hidden;
       margin: 16px 0; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     }
-    .hp-card-img { width: 100%; display: block; border-radius: 16px; }
+    .hp-card-img { width: 100%; display: block; border-radius: 16px; aspect-ratio: 1677 / 2382; }
     .hp-overlay {
       position: absolute;
       top: 49%; bottom: 20%; left: 50%;
@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507l';
+    const APP_VERSION = '20260507m';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
