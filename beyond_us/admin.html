@@ -690,33 +690,24 @@
       filterCardUsers(document.getElementById('cardUserSearch').value);
     }
 
-    function tradeBadges(outList, inList) {
-      // 중복 이름 집계
-      function countArr(arr) {
-        const m = {};
-        arr.forEach(n => { m[n] = (m[n]||0)+1; });
-        return Object.entries(m).map(([n,c]) => c>1 ? `${esc(n)} x${c}` : esc(n)).join(', ');
-      }
-      let html = '';
-      if (outList && outList.length) html += `<span style="font-size:10px;color:#f59e0b;background:rgba(245,158,11,0.12);padding:1px 5px;border-radius:4px;margin-left:5px;">양도→${countArr(outList)}</span>`;
-      if (inList  && inList.length)  html += `<span style="font-size:10px;color:#8b5cf6;background:rgba(139,92,246,0.12);padding:1px 5px;border-radius:4px;margin-left:3px;">취득←${countArr(inList)}</span>`;
-      return html;
-    }
-
     function renderCardUserRows(stats) {
       const tbody = document.getElementById('cardUserTableBody');
       if (!stats.length) {
         tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">해당하는 유저가 없어요.</td></tr>';
         return;
       }
+      function countNames(arr) {
+        const m = {};
+        arr.forEach(n => { m[n] = (m[n]||0)+1; });
+        return Object.entries(m).map(([n,c]) => c>1 ? `${esc(n)} x${c}` : esc(n)).join(', ');
+      }
       let html = '';
       stats.forEach(u => {
-        const totalDrew     = u.cards.reduce((s, c) => s + c.drew, 0);
-        const totalReceived = u.cards.reduce((s, c) => s + c.received, 0);
-        const totalNeeded   = u.cards.reduce((s, c) => s + c.needed, 0);
-        const ticketInfo    = _ticketStatsAll.find(t => t.nickname === u.nickname);
-        const remaining     = ticketInfo ? ticketInfo.remaining : null;
-        const ticketBadge   = remaining === null ? ''
+        const totalDrew   = u.cards.reduce((s, c) => s + c.drew, 0);
+        const totalNeeded = u.cards.reduce((s, c) => s + c.needed, 0);
+        const ticketInfo  = _ticketStatsAll.find(t => t.nickname === u.nickname);
+        const remaining   = ticketInfo ? ticketInfo.remaining : null;
+        const ticketBadge = remaining === null ? ''
           : remaining >= 3 ? `<span style="font-size:10px;color:#dc2626;background:#fee2e2;border-radius:999px;padding:1px 7px;margin-left:6px;">🎫 ${remaining}장</span>`
           : remaining >= 1 ? `<span style="font-size:10px;color:#b8860b;background:rgba(200,160,60,0.15);border-radius:999px;padding:1px 7px;margin-left:6px;">🎫 ${remaining}장</span>`
           : `<span style="font-size:10px;color:var(--sub);margin-left:6px;">🎫 0</span>`;
@@ -732,40 +723,52 @@
           </td>
         </tr>`;
         u.cards.forEach(c => {
-          const badges = tradeBadges(c.tradeOutTo, c.tradeInFrom);
-          if (c.drew > 0) {
-            // TF 배부 책임 있는 행
-            const done    = c.received >= c.drew;
-            const partial = c.received > 0 && c.received < c.drew;
+          const details       = c.tradeInFromDetails || (c.tradeInFrom || []).map(f => ({from: f, partnerReceived: false}));
+          const tfNeedDirect  = details.filter(d => !d.partnerReceived); // TF가 직접 줘야 하는 교환취득
+          const tfFromPartner = details.filter(d => d.partnerReceived);  // 파트너에게 받아야 하는 교환취득
+          const tfTarget      = Math.max(0, c.drew - c.tradeOut) + tfNeedDirect.length;
+
+          // ── TF 배부 필요 행 (뽑기 취득 or 파트너미수령 교환취득) ──
+          if (tfTarget > 0) {
+            const done    = c.received >= tfTarget;
+            const partial = c.received > 0 && !done;
             const btnStyle = done    ? 'background:#22c55e;color:#fff;border:none;'
                            : partial ? 'background:#f59e0b;color:#fff;border:none;'
                            :           'background:var(--line);color:var(--sub);border:none;';
             const rowId = `cardRow_${esc(u.nickname)}_${c.cardId}`;
+            let badges = '';
+            if (c.tradeOut > 0)
+              badges += `<span style="font-size:10px;color:#f59e0b;background:rgba(245,158,11,0.12);padding:1px 5px;border-radius:4px;margin-left:4px;">양도→${countNames(c.tradeOutTo)}</span>`;
+            if (tfNeedDirect.length > 0)
+              badges += `<span style="font-size:10px;color:#ef4444;background:rgba(239,68,68,0.1);padding:1px 5px;border-radius:4px;margin-left:4px;">TF배부←${countNames(tfNeedDirect.map(d => d.from))}</span>`;
+            const tfNeededDisplay = tfTarget - c.received;
             html += `<tr id="${rowId}">
               <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)}${c.drew>1?`<span style="color:var(--sub);font-size:11px;margin-left:3px;">x${c.drew}</span>`:''}${badges}</td>
-              <td style="color:var(--sub);font-size:12px;text-align:center;">${c.drew}</td>
+              <td style="color:var(--sub);font-size:12px;text-align:center;">${c.drew > 0 ? c.drew : '-'}</td>
               <td style="color:#22c55e;font-size:12px;text-align:center;">${c.received}</td>
-              <td style="color:#ef4444;font-size:12px;text-align:center;font-weight:${c.needed>0?700:400};">${c.needed>0?c.needed:'-'}</td>
+              <td style="color:#ef4444;font-size:12px;text-align:center;font-weight:${tfNeededDisplay>0?700:400};">${tfNeededDisplay>0?tfNeededDisplay:'-'}</td>
               <td style="text-align:center;">
                 ${done
-                  ? `<span style="color:#22c55e;font-size:11px;font-weight:700;">✓${c.received}/${c.drew}</span>
-                     <button onclick="setCardReceived('${esc(u.nickname)}',${c.cardId},${c.drew},0)"
+                  ? `<span style="color:#22c55e;font-size:11px;font-weight:700;">✓${c.received}/${tfTarget}</span>
+                     <button onclick="setCardReceived('${esc(u.nickname)}',${c.cardId},${tfTarget},0)"
                        style="margin-left:4px;padding:2px 6px;border-radius:5px;font-size:10px;background:none;border:1px solid var(--line);color:var(--sub);cursor:pointer;">되돌리기</button>`
-                  : `<button onclick="setCardReceived('${esc(u.nickname)}',${c.cardId},${c.drew},${c.received+1})"
+                  : `<button onclick="setCardReceived('${esc(u.nickname)}',${c.cardId},${tfTarget},${c.received+1})"
                        style="padding:4px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}">
-                       ${c.received}/${c.drew} +1
+                       ${c.received}/${tfTarget} +1
                      </button>`}
               </td>
             </tr>`;
-          } else if (c.tradeIn > 0) {
-            // 교환 취득만 있는 행 (TF 배부 불필요)
-            html += `<tr style="opacity:0.55;">
-              <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)}${badges}</td>
-              <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
-              <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
-              <td colspan="2" style="color:var(--sub);font-size:11px;text-align:center;">교환취득 · TF 배부 불필요</td>
-            </tr>`;
           }
+
+          // ── 파트너에게 받아야 하는 행 (파트너 수령 완료 교환취득) ──
+          tfFromPartner.forEach(d => {
+            html += `<tr style="opacity:0.55;">
+              <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)} <span style="font-size:10px;color:#8b5cf6;background:rgba(139,92,246,0.12);padding:1px 5px;border-radius:4px;">취득←${esc(d.from)}</span></td>
+              <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
+              <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
+              <td colspan="2" style="color:#8b5cf6;font-size:11px;text-align:center;">TF 배부 불필요 · ${esc(d.from)}에게 받으세요</td>
+            </tr>`;
+          });
         });
       });
       tbody.innerHTML = html;
@@ -780,19 +783,25 @@
       renderCardUserRows(filtered);
     }
 
-    async function setCardReceived(nickname, cardId, drew, newQty) {
+    async function setCardReceived(nickname, cardId, tfTarget, newQty) {
       const rowId = `cardRow_${nickname}_${cardId}`;
       const row = document.getElementById(rowId);
       const btns = row ? row.querySelectorAll('button') : [];
       btns.forEach(b => { b.disabled = true; });
       try {
-        const qty = Math.min(newQty, drew); // 뽑기 수 초과 불가
+        const qty = Math.min(newQty, tfTarget);
         const res = await post({ action: 'setCardReceivedQty', adminPw, nickname, cardId, qty });
         if (res.ok) {
           const u = _cardUserStats.find(x => x.nickname === nickname);
           if (u) {
             const cd = u.cards.find(x => x.cardId === cardId);
-            if (cd) { cd.received = qty; cd.needed = Math.max(0, cd.drew - qty); }
+            if (cd) {
+              const details = cd.tradeInFromDetails || (cd.tradeInFrom || []).map(f => ({from: f, partnerReceived: false}));
+              const tfNeedDirectCount = details.filter(d => !d.partnerReceived).length;
+              const target = Math.max(0, cd.drew - cd.tradeOut) + tfNeedDirectCount;
+              cd.received = qty;
+              cd.needed = Math.max(0, target - qty);
+            }
           }
           filterCardUsers(document.getElementById('cardUserSearch').value);
         } else {
