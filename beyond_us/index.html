@@ -2728,7 +2728,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zm';
+    const APP_VERSION = '20260507zn';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5556,7 +5556,7 @@
 
     /* ── MISSION 3 ── */
     const BBB_M3_SPOTS = [
-      { label: '좁은문',               top: 62, left: 40 }, // #6  — 순례길 초입, 중앙하단 좌
+      { label: '좁은문',               top: 62, left: 27 }, // #6  — 순례길 초입 (2~5번 근처)
       { label: '십자가',               top: 48, left: 62 }, // #14 — 중앙우 중단
       { label: '뷰티풀하우스',         top: 70, left: 58 }, // #20~23 — 중앙 하단
       { label: '사망의 음침한 골짜기',  top: 63, left: 73 }, // #25 — 우측 하단
