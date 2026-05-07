@@ -2668,7 +2668,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507v';
+    const APP_VERSION = '20260507w';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5687,12 +5687,9 @@
       const correctName = _hpCorrectMap[idx];
 
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
-      const ticketFooterCorrect = !isTicketWeek ? ''
-        : idx === _hpTicketCardIdx
-          ? `<p class="hp-ticket-done">뽑기권 1장 넣어드렸어요~ 🎫</p>`
-          : _hpTicketAlreadyAwarded
-            ? `<p class="hp-ticket-done">이미 뽑기권을 넣어드렸어요 🎫</p>`
-            : '';
+      const ticketFooterCorrect = (isTicketWeek && _hpTicketAlreadyAwarded)
+        ? `<p class="hp-ticket-done">뽑기권 1장 넣어드렸어요~ 🎫</p>`
+        : '';
       // 미답 카드는 아직 미획득일 때만 "지급 예고" 표시
       const ticketFooterGuess = (isTicketWeek && !_hpTicketAlreadyAwarded)
         ? `<p class="hp-ticket-reward">🎫 정답 시 뽑기권이 지급돼요</p>`
