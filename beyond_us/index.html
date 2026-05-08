@@ -2016,6 +2016,7 @@
   <div id="drawOverlay" class="draw-overlay hidden">
     <div id="starBg"></div>
     <button class="draw-close-btn" id="drawCloseBtn">✕</button>
+    <button class="draw-close-btn" id="drawMuteBtn" style="right:64px;font-size:16px;" title="음소거">🔊</button>
 
     <div id="sceneWrap">
       <div id="sceneGlow"></div>
@@ -2736,7 +2737,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260507zzb';
+    const APP_VERSION = '20260507zzc';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2764,6 +2765,98 @@
 
     /* ── 카드 이미지 프리로드 ── */
     SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
+
+    /* ── 카드 뽑기 사운드 ── */
+    const SFX_FILES = {
+      bgm:          'music/카드 Main BGM.mp3',
+      packClick:    'music/포장지 클릭.mp3',
+      packOpen:     'music/포장지 개봉.mp3',
+      cardAppear:   'music/카드 등장.mp3',
+      tapToFlip:    'music/tap to flip.mp3',
+      mouseClick:   'music/마우스 클릭.mp3',
+      cardSpin:     'music/카드회전.mp3',
+      cardSparkle:  'music/카드 깜빡.mp3',
+      revealNormal: 'music/일반 카드 공개.mp3',
+      revealHidden: 'music/히든 카드 공개.mp3',
+    };
+    const SFX_VOLUME = {
+      bgm: 0.32, packClick: 0.7, packOpen: 0.75, cardAppear: 0.7,
+      tapToFlip: 0.6, mouseClick: 0.55, cardSpin: 0.7, cardSparkle: 0.75,
+      revealNormal: 0.85, revealHidden: 0.95,
+    };
+    let _sfxMuted = localStorage.getItem('beyondus_sfx_muted') === '1';
+    let _bgmAudio = null;
+    let _activeSfx = []; // 일회성 효과음 트래킹 (정지용)
+    const _sfxPreload = {};
+
+    // 첫 사용자 인터랙션 시 프리로드
+    function preloadSfx() {
+      Object.keys(SFX_FILES).forEach(function(k) {
+        if (_sfxPreload[k]) return;
+        var a = new Audio(SFX_FILES[k]);
+        a.preload = 'auto';
+        _sfxPreload[k] = a;
+      });
+    }
+
+    function playSfx(key) {
+      if (_sfxMuted) return null;
+      var src = SFX_FILES[key];
+      if (!src) return null;
+      var a = new Audio(src);
+      a.volume = SFX_VOLUME[key] != null ? SFX_VOLUME[key] : 0.7;
+      a.play().catch(function(){});
+      _activeSfx.push(a);
+      a.addEventListener('ended', function() {
+        var idx = _activeSfx.indexOf(a);
+        if (idx >= 0) _activeSfx.splice(idx, 1);
+      });
+      return a;
+    }
+
+    function startBgm() {
+      if (_sfxMuted) return;
+      if (_bgmAudio) { _bgmAudio.currentTime = 0; _bgmAudio.play().catch(function(){}); return; }
+      _bgmAudio = new Audio(SFX_FILES.bgm);
+      _bgmAudio.loop = true;
+      _bgmAudio.volume = SFX_VOLUME.bgm;
+      _bgmAudio.play().catch(function(){});
+    }
+
+    function stopBgm() {
+      if (!_bgmAudio) return;
+      var a = _bgmAudio;
+      // 페이드 아웃
+      var step = a.volume / 8;
+      var t = setInterval(function() {
+        if (a.volume - step <= 0) { a.pause(); a.currentTime = 0; clearInterval(t); }
+        else { a.volume -= step; }
+      }, 60);
+    }
+
+    function stopAllSfx() {
+      _activeSfx.forEach(function(a) { try { a.pause(); a.currentTime = 0; } catch(e){} });
+      _activeSfx = [];
+    }
+
+    function toggleSfxMute() {
+      _sfxMuted = !_sfxMuted;
+      localStorage.setItem('beyondus_sfx_muted', _sfxMuted ? '1' : '0');
+      updateMuteBtnUI();
+      if (_sfxMuted) {
+        if (_bgmAudio) { _bgmAudio.pause(); }
+        stopAllSfx();
+      } else {
+        // 뽑기 오버레이 열려있으면 BGM 재개
+        var ov = document.getElementById('drawOverlay');
+        if (ov && !ov.classList.contains('hidden')) startBgm();
+      }
+    }
+
+    function updateMuteBtnUI() {
+      var btn = document.getElementById('drawMuteBtn');
+      if (btn) btn.textContent = _sfxMuted ? '🔇' : '🔊';
+    }
 
     /* ── 주차 키 (ISO week) ── */
     function getWeekKey() {
@@ -4171,6 +4264,9 @@
       pendingCard = null;
       carouselCenter = 1;
 
+      preloadSfx();
+      startBgm();
+
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
       resetRevealSparks();
 
@@ -4251,6 +4347,8 @@
     }
 
     function closeDrawOverlay() {
+      stopBgm();
+      stopAllSfx();
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
       document.getElementById('drawOverlay').classList.add('hidden');
       // glow 클래스 + 무지개 회전 초기화 (다음 뽑기를 위해)
@@ -4280,6 +4378,8 @@
 
     document.getElementById('drawCloseBtn').onclick = closeDrawOverlay;
     document.getElementById('revealDoneBtn').onclick = closeDrawOverlay;
+    document.getElementById('drawMuteBtn').onclick = toggleSfxMute;
+    updateMuteBtnUI();
 
     /* ════ 캐러셀 ════ */
     (function() {
@@ -4323,6 +4423,7 @@
       function selectCenterPack() {
         if (drawState !== 'carousel') return;
         drawState = 'pack_zoom';
+        playSfx('packClick');
         gsap.set('#carouselLayer', { pointerEvents: 'none' });
 
         gsap.timeline({ onComplete: function() {
@@ -4361,6 +4462,7 @@
       function completeTear() {
         if (drawState !== 'pack_tear_slide') return;
         drawState = 'tearing_pack';
+        playSfx('packOpen');
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
         // DEV 환경: fetch interceptor가 devMode=true 자동 추가 → DEV 시트에 기록
@@ -4405,6 +4507,7 @@
         gsap.timeline({
           onComplete: function() {
             drawState = 'card_back_rise';
+            playSfx('cardAppear');
             gsap.set('#packLayer', { opacity: 0, pointerEvents: 'none' });
 
             var tlB = gsap.timeline();
@@ -4494,6 +4597,7 @@
       document.getElementById('cardTrigger').classList.add('clickable');
       document.getElementById('flipHint').innerHTML = '<em>Tap to flip the card open</em>';
 
+      playSfx('tapToFlip');
       gsap.to('#flipHint', { opacity: 1, y: 0, duration: 0.34, ease: 'power2.out' });
       stopLoadingDots();
       document.getElementById('cardLoadingHint').textContent = '두 근 두 근 . . . !';
@@ -4514,6 +4618,9 @@
       revealClickEnabled = false;
       drawState = 'card_flip_reveal';
       isFlipping = true;
+
+      playSfx('mouseClick');
+      playSfx('cardSpin');
 
       if (spinAutoRevealTimer) { clearTimeout(spinAutoRevealTimer); spinAutoRevealTimer = null; }
       gsap.killTweensOf('#cardTrigger');
@@ -4549,12 +4656,14 @@
         onComplete: function() {
           gsap.set('#cardTrigger', { rotateY: 0 }); // 깔끔하게 0°로 스냅
 
+          playSfx('cardSparkle');
           burstRevealSparks(drawIsNew ? 1.3 : 0.5);
 
           var tlC = gsap.timeline({
             onComplete: function() {
               drawState = 'card_front_settle';
               isFlipping = false;
+              playSfx(drawIsNew ? 'revealHidden' : 'revealNormal');
 
               gsap.set('#settleActions', { display: 'flex' });
               gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
