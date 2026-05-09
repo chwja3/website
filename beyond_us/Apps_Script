@@ -27,7 +27,7 @@ function doGet(e) {
   _devMode = (e && e.parameter && e.parameter.devMode === 'true');
   const action = (e && e.parameter && e.parameter.action) || 'dashboard';
 
-  if (action === 'dashboard') return jsonOutput(getDashboardData());
+  if (action === 'dashboard') return jsonOutput(getDashboardDataCached_());
   if (action === 'userStatus') {
     const userId  = e.parameter.userId  || '';
     const weekKey = e.parameter.weekKey || '';
@@ -120,7 +120,7 @@ function doPost(e) {
     if (action === 'submit') {
       const auth = requireSessionForUser_(body, body.userId || '');
       if (auth) return jsonOutput(auth);
-      return jsonOutput(saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0));
+      return jsonOutput(saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0, body.requestId || ''));
     }
     if (action === 'drawCard') {
       const auth = requireSessionForUser_(body, body.userId || '');
@@ -167,6 +167,7 @@ function doPost(e) {
       if (!week || week < 1 || week > 6) return jsonOutput({ error: 'invalid_week' });
       const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
       sheet.getRange('B1').setValue(week);
+      clearHotCaches_();
       return jsonOutput({ ok: true, week });
     }
     if (action === 'setMissionConfig') {
@@ -385,6 +386,57 @@ function hasValidUserAuth_(body, nickname) {
          verifyUserPassword(nickname, body && body.password);
 }
 
+function cacheKey_(name) {
+  return (_devMode ? 'dev__' : 'prod__') + name;
+}
+
+function cacheGetJson_(key) {
+  try {
+    const raw = CacheService.getScriptCache().get(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) {
+    return null;
+  }
+}
+
+function cachePutJson_(key, value, seconds) {
+  try {
+    CacheService.getScriptCache().put(key, JSON.stringify(value), seconds);
+  } catch(e) {}
+}
+
+function cacheRemove_(key) {
+  try {
+    CacheService.getScriptCache().remove(key);
+  } catch(e) {}
+}
+
+function cleanRequestId_(requestId) {
+  return String(requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
+}
+
+function getDashboardDataCached_() {
+  const key = cacheKey_('dashboard_v1');
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getDashboardData();
+  cachePutJson_(key, data, 15);
+  return data;
+}
+
+function clearHotCaches_() {
+  cacheRemove_(cacheKey_('dashboard_v1'));
+  cacheRemove_(cacheKey_('notices_v1'));
+}
+
+function clearDashboardCache_() {
+  cacheRemove_(cacheKey_('dashboard_v1'));
+}
+
+function clearNoticesCache_() {
+  cacheRemove_(cacheKey_('notices_v1'));
+}
+
 function getConfig() {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
@@ -412,28 +464,44 @@ function getConfig() {
 // [0] timestamp  [1] weekTitle  [2] items_json
 // [3] userId     [4] weekKey    [5] dateKey  [6] score
 
-function saveCheckin(items, userId, weekKey, dateKey, score) {
+function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!cleanItems.length) throw new Error('No items selected');
+
+  const today = dateKey || Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+  const cleanRequestId = cleanRequestId_(requestId);
+  const requestCacheKey = cleanRequestId
+    ? cacheKey_('submit_' + hashStr(String(userId || '') + '\x00' + weekKey + '\x00' + today + '\x00' + cleanRequestId))
+    : '';
+  if (requestCacheKey) {
+    const cached = cacheGetJson_(requestCacheKey);
+    if (cached) return cached;
+  }
 
   const lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
   try {
+  if (requestCacheKey) {
+    const cachedAfterWait = cacheGetJson_(requestCacheKey);
+    if (cachedAfterWait) return cachedAfterWait;
+  }
   const ss       = getSpreadsheet();
   const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
 
-  const today = dateKey || Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
-
   // 서버사이드 중복 제출 방지: 텍스트 + 인덱스 둘 다 체크
   const submittedToday   = new Set();
   const submittedIndices = new Set();
   const lastRow = rawSheet.getLastRow();
+  const allRows = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 10).getValues() : [];
+  let prevWeekScore = 0;
   if (lastRow >= 2) {
-    const rows = rawSheet.getRange(2, 1, lastRow - 1, 8).getValues();
-    for (const row of rows) {
+    for (const row of allRows) {
+      if (String(row[3]) === userId && String(row[1]) === config.weekTitle) {
+        prevWeekScore += Number(row[6]) || 0;
+      }
       const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
       if (String(row[3]) === userId && rowDate === today) {
         try { JSON.parse(row[2] || '[]').forEach(item => {
@@ -451,15 +519,9 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
     const idx = config.items.indexOf(item);
     return !(idx >= 0 && submittedIndices.has(idx));
   });
-  const existingRows = (lastRow >= 2)
-    ? rawSheet.getRange(2, 1, lastRow - 1, 7).getValues()
-    : [];
-  const prevWeekScore = existingRows
-    .filter(r => String(r[3]) === userId && String(r[1]) === config.weekTitle)
-    .reduce((s, r) => s + (Number(r[6]) || 0), 0);
 
   if (!newItems.length) {
-    return {
+    const duplicateResult = {
       ok: true,
       savedItems: [],
       savedIndices: [],
@@ -468,6 +530,8 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
       ticketEarned: false,
       duplicate: true
     };
+    if (requestCacheKey) cachePutJson_(requestCacheKey, duplicateResult, 600);
+    return duplicateResult;
   }
 
   // 점수 서버에서 재계산
@@ -484,7 +548,8 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
 
   rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
   try { updateTicketCols(userId); } catch(e) {}
-  return {
+  clearDashboardCache_();
+  const result = {
     ok: true,
     savedItems: newItems,
     savedIndices: newIndices,
@@ -493,6 +558,8 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
     ticketEarned: ticketEarned === 1,
     duplicate: false
   };
+  if (requestCacheKey) cachePutJson_(requestCacheKey, result, 600);
+  return result;
   } finally {
     lock.releaseLock();
   }
@@ -1285,6 +1352,7 @@ function setTabSettings(body) {
       bbbRange.setValues(bbbRows);
     }
   }
+  clearHotCaches_();
   return { ok: true };
 }
 
@@ -1489,9 +1557,17 @@ function uploadMultipleImages(imageFiles) {
 }
 
 function getNotices() {
+  const cacheKey = cacheKey_('notices_v1');
+  const cached = cacheGetJson_(cacheKey);
+  if (cached) return cached;
+
   const sheet = getOrCreateNoticeSheet();
   const last = sheet.getLastRow();
-  if (last < 2) return { ok: true, notices: [] };
+  if (last < 2) {
+    const emptyResult = { ok: true, notices: [] };
+    cachePutJson_(cacheKey, emptyResult, 30);
+    return emptyResult;
+  }
   const rows = sheet.getRange(2, 1, last - 1, 6).getValues();
   const notices = rows
     .filter(r => r[0])
@@ -1505,7 +1581,9 @@ function getNotices() {
       updatedAt: r[5] || r[3]
     }))
     .reverse();
-  return { ok: true, notices };
+  const result = { ok: true, notices };
+  cachePutJson_(cacheKey, result, 30);
+  return result;
 }
 
 function postNotice(body) {
@@ -1527,6 +1605,7 @@ function postNotice(body) {
   const sheet = getOrCreateNoticeSheet();
   const now = new Date().toISOString();
   sheet.appendRow([new Date().getTime(), title, content, now, imageUrl, now]);
+  clearNoticesCache_();
   return { ok: true };
 }
 
@@ -1537,6 +1616,7 @@ function deleteNotice(body) {
   const imageUrl = String(sheet.getRange(rowIndex, 5).getValue() || '');
   sheet.deleteRow(rowIndex);
   deleteDriveImages(imageUrl);
+  clearNoticesCache_();
   return { ok: true };
 }
 
@@ -1575,6 +1655,7 @@ function editNotice(body) {
   if (imageUrl !== null) sheet.getRange(rowIndex, 5).setValue(imageUrl);
   sheet.getRange(rowIndex, 6).setValue(new Date().toISOString());
 
+  clearNoticesCache_();
   return { ok: true };
 }
 
@@ -1843,6 +1924,7 @@ function setupAllWeeks() {
     });
   });
 
+  clearHotCaches_();
   Logger.log('전체 주차 세팅 완료');
 }
 
@@ -1910,6 +1992,7 @@ function setMissionConfig(body) {
     rows[i] = [String(it.item), Number(it.score) || 1, String(it.cat || 'L')];
   }
   sheet.getRange(startRow + 1, 1, 6, 3).setValues(rows);
+  clearHotCaches_();
   return { ok: true };
 }
 
@@ -3116,6 +3199,7 @@ function adminSetBBBMessageOpen(body) {
     });
   }
   if (!updated) bbbSheet.appendRow(['msgOpen', open, '']);
+  clearHotCaches_();
   return { ok: true, messageOpen: open };
 }
 
