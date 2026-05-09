@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510g';
+    const APP_VERSION = '20260510h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5636,11 +5636,17 @@
           }
         });
 
+        // 메시지 보내기/받기 창 — 어드민 토글 기준 (스태프는 항상 오픈)
+        const _msgOpen = _bbbSections.msgOpen?.open || _isStaff;
+        document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
+        document.getElementById('bbbMsgInboxWrap').style.display = _msgOpen ? '' : 'none';
+
         // 섹션 중 하나라도 잠금이면 bbbContent 표시 (매칭 없어도)
         const anyLocked = Object.values(_bbbSections).some(s => !s.open);
         if (!bbbRes.ok) {
-          if (anyLocked) {
+          if (anyLocked || _isStaff) {
             document.getElementById('bbbContent').style.display = 'flex';
+            if (_isStaff) _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
           }
@@ -5714,11 +5720,6 @@
         } else {
           document.getElementById('bbbSecretLive').style.display = 'none';
         }
-
-        // 메시지 보내기/받기 창 — 어드민 토글 기준 (스태프는 항상 오픈)
-        const _msgOpen = _bbbSections.msgOpen?.open || _isStaff;
-        document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
-        document.getElementById('bbbMsgInboxWrap').style.display = _msgOpen ? '' : 'none';
 
         // 받은 메시지
         _renderBBBMessages(msgRes.messages || []);
