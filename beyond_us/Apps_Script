@@ -892,6 +892,8 @@ var BBB_SECTIONS_DEFAULT = {
   m2:          { open: false, text: 'Coming Soon!\n6/20 Open' },
   m3:          { open: false, text: 'Coming Soon!\n6/21 Open' },
   secretBuddy: { open: false, text: 'Coming Soon!\n6/20 Open' },
+  msgSend:     { open: false },
+  msgInbox:    { open: false },
 };
 
 function getTabSettings() {

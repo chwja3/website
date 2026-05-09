@@ -1503,7 +1503,10 @@
       m2:          'MISSION 2 (기도 인증)',
       m3:          'MISSION 3 (천로역정 맵)',
       secretBuddy: 'SECRET BUDDY',
+      msgSend:     'To. CARE BUDDY.. (익명 메시지 보내기)',
+      msgInbox:    'from. SECRET BUDDY.. (받은 메시지함)',
     };
+    const BBB_SECTION_HAS_CS_TEXT = new Set(['careBuddy', 'm1', 'm2', 'm3', 'secretBuddy']);
     let _bbbSectionsData = {};
 
     function renderBBBSectionRows(sections) {
@@ -1511,20 +1514,20 @@
       const container = document.getElementById('bbbSectionRows');
       if (!container) return;
       container.innerHTML = Object.entries(BBB_SECTION_LABELS).map(([key, label]) => {
-        const sec = sections[key] || { open: false, text: '' };
-        const lines = (sec.text || '').split('\n');
+        const sec    = sections[key] || { open: false, text: '' };
+        const hasCSText = BBB_SECTION_HAS_CS_TEXT.has(key);
         return `<div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;${hasCSText ? 'margin-bottom:10px;' : ''}">
             <span style="font-size:14px;font-weight:700;">${label}</span>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
               <span id="bbbSecLabel_${key}" style="font-size:12px;font-weight:700;color:${sec.open ? '#4ade80' : '#f87171'};">${sec.open ? '🟢 오픈' : '🔴 잠금'}</span>
               <input type="checkbox" id="bbbSecToggle_${key}" ${sec.open ? 'checked' : ''} onchange="onBBBSectionToggle('${key}')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
             </label>
           </div>
-          <div id="bbbSecCSWrap_${key}" style="display:${sec.open ? 'none' : ''};">
+          ${hasCSText ? `<div id="bbbSecCSWrap_${key}" style="display:${sec.open ? 'none' : ''};">
             <p style="font-size:11px;color:var(--sub);margin:0 0 6px;">Coming Soon 텍스트 (줄바꿈으로 2줄 분리)</p>
             <textarea id="bbbSecText_${key}" rows="2" style="width:100%;box-sizing:border-box;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);resize:none;font-family:inherit;outline:none;">${escHtml(sec.text || '')}</textarea>
-          </div>
+          </div>` : ''}
         </div>`;
       }).join('');
     }
@@ -1533,20 +1536,21 @@
       const checked = document.getElementById('bbbSecToggle_' + key).checked;
       const label   = document.getElementById('bbbSecLabel_'  + key);
       const csWrap  = document.getElementById('bbbSecCSWrap_' + key);
-      label.textContent  = checked ? '🟢 오픈' : '🔴 잠금';
-      label.style.color  = checked ? '#4ade80' : '#f87171';
-      csWrap.style.display = checked ? 'none' : '';
+      label.textContent = checked ? '🟢 오픈' : '🔴 잠금';
+      label.style.color = checked ? '#4ade80' : '#f87171';
+      if (csWrap) csWrap.style.display = checked ? 'none' : '';
     }
 
     async function saveBBBSections() {
       const sections = {};
       Object.keys(BBB_SECTION_LABELS).forEach(key => {
-        const toggle  = document.getElementById('bbbSecToggle_' + key);
-        const textEl  = document.getElementById('bbbSecText_'   + key);
-        sections[key] = {
-          open: toggle ? toggle.checked : false,
-          text: textEl ? textEl.value : '',
-        };
+        const toggle = document.getElementById('bbbSecToggle_' + key);
+        const entry  = { open: toggle ? toggle.checked : false };
+        if (BBB_SECTION_HAS_CS_TEXT.has(key)) {
+          const textEl = document.getElementById('bbbSecText_' + key);
+          entry.text = textEl ? textEl.value : '';
+        }
+        sections[key] = entry;
       });
       const statusEl = document.getElementById('bbbSectionSaveStatus');
       statusEl.textContent = '저장 중...';
