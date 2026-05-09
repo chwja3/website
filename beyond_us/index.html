@@ -324,7 +324,7 @@
     .card-face {
       position: absolute;
       inset: 0;
-      border-radius: 22px;
+      border-radius: 12px;
       overflow: visible;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
@@ -356,9 +356,9 @@
       height: 100%;
       position: relative;
       overflow: hidden;
-      border-radius: 22px;
-      -webkit-clip-path: inset(0 round 22px);
-      clip-path: inset(0 round 22px);
+      border-radius: 12px;
+      -webkit-clip-path: inset(0 round 12px);
+      clip-path: inset(0 round 12px);
       transform: translateZ(0.1px);
       background-image: url('images/앤카드뒷면최최종.png');
       background-repeat: no-repeat;
@@ -384,7 +384,7 @@
       left: -135%;
       width: 62%;
       height: 120%;
-      border-radius: 24px;
+      border-radius: 12px;
       background: linear-gradient(
         105deg,
         transparent 10%,
@@ -426,12 +426,32 @@
     /* ── 성령의 열매 카드 ── */
     .spirit-card {
       width: 100%; height: 100%;
-      border-radius: 22px;
+      border-radius: 12px;
       border: 2.5px solid rgba(255,255,255,0.35);
       display: flex; flex-direction: column;
       position: relative; overflow: hidden;
       box-shadow: 0 8px 24px rgba(0,0,0,0.3);
       color: white;
+    }
+    .draw-card-clip {
+      width: 100%;
+      height: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      -webkit-clip-path: inset(0 round 12px);
+      clip-path: inset(0 round 12px);
+      transform: translateZ(0.6px);
+      -webkit-transform: translateZ(0.6px);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .draw-card-clip img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
     .spirit-card::before {
       content: '';
@@ -772,14 +792,15 @@
     }
     #cardGlow {
       position: absolute;
-      width: 320px;
-      height: 400px;
+      width: min(92vmax, 720px);
+      height: min(112vmax, 820px);
       border-radius: 999px;
       background:
         radial-gradient(circle at 50% 50%, rgba(255,237,176,0.82) 0%, rgba(255,165,84,0.72) 22%, rgba(255,105,220,0.52) 42%, rgba(88,148,255,0.40) 58%, transparent 74%);
       filter: blur(32px);
       opacity: 0;
       pointer-events: none;
+      will-change: opacity, transform;
     }
 
     #cardTrigger {
@@ -810,7 +831,7 @@
       inset: 0;
       overflow: hidden;
       pointer-events: none;
-      border-radius: 22px;
+      border-radius: 12px;
       transform: translateZ(1px);
       -webkit-transform: translateZ(1px);
       backface-visibility: hidden;
@@ -2842,7 +2863,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510q';
+    const APP_VERSION = '20260510r';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2896,6 +2917,7 @@
     };
     let _sfxMuted = localStorage.getItem('beyondus_sfx_muted') === '1';
     let _bgmAudio = null;
+    let _bgmFadeTimer = null;
     let _activeSfx = []; // 일회성 효과음 트래킹 (정지용)
     const _sfxPreload = {};
 
@@ -2911,6 +2933,7 @@
 
     function playSfx(key) {
       if (_sfxMuted) return null;
+      if (!drawOverlayActive) return null;
       var src = SFX_FILES[key];
       if (!src) return null;
       var a = _sfxPreload[key] ? _sfxPreload[key].cloneNode(true) : new Audio(src);
@@ -2926,6 +2949,7 @@
 
     function startBgm() {
       if (_sfxMuted) return;
+      if (_bgmFadeTimer) { clearInterval(_bgmFadeTimer); _bgmFadeTimer = null; }
       if (_bgmAudio) { _bgmAudio.currentTime = 0; _bgmAudio.play().catch(function(){}); return; }
       _bgmAudio = new Audio(SFX_FILES.bgm);
       _bgmAudio.loop = true;
@@ -2936,12 +2960,13 @@
     function stopBgm() {
       if (!_bgmAudio) return;
       var a = _bgmAudio;
-      // 페이드 아웃
-      var step = a.volume / 8;
-      var t = setInterval(function() {
-        if (a.volume - step <= 0) { a.pause(); a.currentTime = 0; clearInterval(t); }
-        else { a.volume -= step; }
-      }, 60);
+      if (_bgmFadeTimer) { clearInterval(_bgmFadeTimer); _bgmFadeTimer = null; }
+      try {
+        a.pause();
+        a.currentTime = 0;
+        a.volume = SFX_VOLUME.bgm;
+      } catch(e) {}
+      _bgmAudio = null;
     }
 
     function stopAllSfx() {
@@ -2954,7 +2979,7 @@
       localStorage.setItem('beyondus_sfx_muted', _sfxMuted ? '1' : '0');
       updateMuteBtnUI();
       if (_sfxMuted) {
-        if (_bgmAudio) { _bgmAudio.pause(); }
+        stopBgm();
         stopAllSfx();
       } else {
         // 뽑기 오버레이 열려있으면 BGM 재개
@@ -3719,8 +3744,10 @@
     /* ════ 카드 HTML 생성 ════ */
     function makeCardHTML(card) {
       return `
-        <div class="spirit-card" style="background:transparent; border-radius:0; overflow:visible; border:none; box-shadow:none;">
-          <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+        <div class="spirit-card" style="background:transparent; border:none; box-shadow:none;">
+          <div class="draw-card-clip">
+            <img src="${card.img}" alt="">
+          </div>
         </div>`;
     }
 
@@ -4373,6 +4400,24 @@
     let loadingDotsTimer = null;
     let rainbowRaysTween = null; // 무지개 회전 tween (cleanup용)
     let spinAutoRevealTimer = null; // 10초 후 자동 공개 타이머
+    let drawOverlayActive = false;
+    let drawScheduledTimers = [];
+
+    function scheduleDrawTimer(fn, delay) {
+      var id = setTimeout(function() {
+        drawScheduledTimers = drawScheduledTimers.filter(function(t) { return t !== id; });
+        if (!drawOverlayActive) return;
+        fn();
+      }, delay);
+      drawScheduledTimers.push(id);
+      return id;
+    }
+
+    function clearDrawTimers() {
+      drawScheduledTimers.forEach(function(id) { clearTimeout(id); });
+      drawScheduledTimers = [];
+      if (spinAutoRevealTimer) { clearTimeout(spinAutoRevealTimer); spinAutoRevealTimer = null; }
+    }
 
     /* 파티클 생성 (lazy) */
     const STAR_COUNT = 50;
@@ -4471,6 +4516,7 @@
     }
 
     function openDrawOverlay() {
+      drawOverlayActive = true;
       drawState = 'carousel';
       drawResult = null;
       drawIsNew = true;
@@ -4541,7 +4587,7 @@
       document.getElementById('cardGlow').classList.remove('glow-new', 'glow-dup');
       document.getElementById('sceneGlow').classList.remove('glow-new', 'glow-dup');
       if (rainbowRaysTween) { rainbowRaysTween.kill(); rainbowRaysTween = null; }
-      if (spinAutoRevealTimer) { clearTimeout(spinAutoRevealTimer); spinAutoRevealTimer = null; }
+      clearDrawTimers();
       resetDrawParticles();
 
       document.getElementById('cardFace').innerHTML = '';
@@ -4563,6 +4609,9 @@
     }
 
     function closeDrawOverlay() {
+      drawOverlayActive = false;
+      clearDrawTimers();
+      stopLoadingDots();
       stopBgm();
       stopAllSfx();
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
@@ -4864,7 +4913,7 @@
         cardGlowEl.classList.add('glow-new');
         sceneGlowEl.classList.add('glow-new');
         // 금색 별은 스핀 중 배경에서 반짝임 — 빔은 카드 공개 시점(tlC)에 연출
-        setTimeout(twinkleGoldStars, 60);
+        scheduleDrawTimer(twinkleGoldStars, 60);
       } else {
         cardGlowEl.classList.add('glow-dup');
         sceneGlowEl.classList.add('glow-dup');
@@ -4876,6 +4925,7 @@
         duration: 3.0,
         ease: 'power3.out',
         onComplete: function() {
+          if (!drawOverlayActive) return;
           gsap.set('#cardTrigger', { rotateY: 0 }); // 깔끔하게 0°로 스냅
 
           playSfx('cardSparkle');
@@ -4883,6 +4933,7 @@
 
           var tlC = gsap.timeline({
             onComplete: function() {
+              if (!drawOverlayActive) return;
               drawState = 'card_front_settle';
               isFlipping = false;
               playSfx(drawIsNew ? 'revealHidden' : 'revealNormal');
@@ -4981,9 +5032,9 @@
               .to('#cardBeamV', { opacity: 0, duration: 1.4,  ease: 'power2.in' }, 0.90);
           }
 
-          setTimeout(function() { burstRevealSparks(drawIsNew ? 1.4 : 0.45); }, 120);
+          scheduleDrawTimer(function() { burstRevealSparks(drawIsNew ? 1.4 : 0.45); }, 120);
           if (drawIsNew) {
-            setTimeout(function() { burstRevealSparks(0.9); }, 720);
+            scheduleDrawTimer(function() { burstRevealSparks(0.9); }, 720);
           }
         }
       });
