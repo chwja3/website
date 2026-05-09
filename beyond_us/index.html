@@ -3073,7 +3073,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510u';
+    const APP_VERSION = '20260510v';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3589,15 +3589,16 @@
       // 30초마다 교환 현황 폴링 (실시간 알림)
       if (!window._tradePollingTimer) {
         window._tradePollingTimer = setInterval(() => {
-          if (currentNickname && !document.hidden) loadUserStatus().then(() => loadTrades()).catch(() => {});
+          if (currentNickname && !document.hidden) loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {});
         }, 30000);
       }
     }
 
-    function syncInitialData() {
+    function syncInitialData(options) {
+      const opts = options || {};
       return Promise.all([
-        loadAll(),
-        currentNickname ? loadUserStatus().then(() => loadTrades()) : Promise.resolve()
+        loadAll({ silent: opts.silent === true }),
+        currentNickname ? loadUserStatus({ silent: opts.silent === true }).then(() => loadTrades()) : Promise.resolve()
       ]);
     }
 
@@ -3653,11 +3654,11 @@
         if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
         const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
         if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
-        try { await syncInitialData(); } catch(e) {}
+        hideSplash();
+        syncInitialData({ silent: true }).catch(() => {});
       } else {
         showComingSoon();
       }
-      hideSplash();
 
       // 백그라운드에서 서버 검증 (isStaff·appOpenDate 갱신 포함)
       try {
@@ -4089,6 +4090,7 @@
     let _tradeTheirCardId = null;
     let _tradeStep = 1;
     let _cachedTrades = null;
+    let _lastTradeCollectionRenderSig = '';
 
     function switchCollTab(tab) {
       const isGrid = tab === 'grid';
@@ -4316,7 +4318,17 @@
         if (grandTotal > 0) menuDot.classList.add('visible');
         else menuDot.classList.remove('visible');
         renderTrades(res);
-        if (newCardCount > 0) renderCollection();
+        const tradeCollectionSig = [
+          currentAccepts.join('|'),
+          newCardCount,
+          getUserStatusRenderSignature(userStatus)
+        ].join('::');
+        if (newCardCount > 0 && tradeCollectionSig !== _lastTradeCollectionRenderSig) {
+          _lastTradeCollectionRenderSig = tradeCollectionSig;
+          renderCollection();
+        } else if (newCardCount === 0) {
+          _lastTradeCollectionRenderSig = '';
+        }
       } catch(e) {}
       finally { _loadTradesPromise = null; }
       })();
@@ -4510,9 +4522,29 @@
     }
 
     /* ════ userStatus API ════ */
-    async function loadUserStatus() {
+    function getUserStatusRenderSignature(status) {
+      if (!status || status.error) return 'empty';
+      const counts = {};
+      (status.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
+      const collectionSig = SPIRIT_CARDS.concat([HIDDEN_CARD])
+        .map(c => `${c.id}:${counts[c.id] || 0}`)
+        .join('|');
+      return [
+        status.weekScore || 0,
+        status.pendingDraws || 0,
+        status.earnedTicketThisWeek ? 1 : 0,
+        status.drawnThisWeek ? 1 : 0,
+        (status.todayIndices || []).join(','),
+        (status.weekDates || []).join(','),
+        collectionSig
+      ].join('::');
+    }
+
+    async function loadUserStatus(options) {
+      const opts = options || {};
       if (!currentNickname) { renderDrawSection(); return; }
-      renderDrawSection(); // 로딩 상태
+      const prevSig = getUserStatusRenderSignature(userStatus);
+      if (!opts.silent) renderDrawSection(); // 로딩 상태
       try {
         const res = await fetch(
           `${API_BASE}?action=userStatus&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}&t=${Date.now()}`,
@@ -4538,10 +4570,14 @@
       } catch(e) {
         userStatus = { error: true };
       }
-      renderDrawSection();
-      renderCollection();
-      updateScoreProgress();
-      if (lastConfigData) renderConfig(lastConfigData);
+      const nextSig = getUserStatusRenderSignature(userStatus);
+      const changed = prevSig !== nextSig;
+      if (!opts.silent || changed) {
+        renderDrawSection();
+        renderCollection();
+        updateScoreProgress();
+        if (lastConfigData) renderConfig(lastConfigData);
+      }
     }
 
     function ensureRevealSparks() {
@@ -5541,7 +5577,7 @@
       _serverSyncPromise = Promise.all([
         loadAll({ silent: true }).catch(() => {}),
         loadNotices().catch(() => {}),
-        loadUserStatus().then(() => loadTrades()).catch(() => {}),
+        loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {}),
         _currentSection === 'secret' ? loadBBB().catch(() => {}) : Promise.resolve(),
         (_currentSection === 'prayer'
           ? loadHoldPray(true).then(markHoldPraySeen)
@@ -7195,8 +7231,8 @@
     });
     updateMainInstallGuide();
     renderWeekCal();
-    loadNotices();
     autoLogin();
+    setTimeout(() => { loadNotices().catch(() => {}); }, 900);
 
     window.addEventListener('focus', () => {
       syncServerChanges(false).catch(() => {});
