@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510f';
+    const APP_VERSION = '20260510g';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5614,11 +5614,12 @@
           ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        '', true ],
           ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretLive',    '', true ],
         ];
+        const _isStaff = localStorage.getItem('beyondus_is_staff') === 'true';
         _sectionMap.forEach(([key, csId, liveId, csDisplay, updateText]) => {
           const sec  = _bbbSections[key] || {};
           const cs   = document.getElementById(csId);
           const live = document.getElementById(liveId);
-          if (!sec.open) {
+          if (!sec.open && !_isStaff) {
             if (cs) {
               cs.style.display = csDisplay || '';
               if (updateText) {
@@ -5714,8 +5715,8 @@
           document.getElementById('bbbSecretLive').style.display = 'none';
         }
 
-        // 메시지 보내기/받기 창 — 어드민 토글 기준 (세트)
-        const _msgOpen = _bbbSections.msgOpen?.open;
+        // 메시지 보내기/받기 창 — 어드민 토글 기준 (스태프는 항상 오픈)
+        const _msgOpen = _bbbSections.msgOpen?.open || _isStaff;
         document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
         document.getElementById('bbbMsgInboxWrap').style.display = _msgOpen ? '' : 'none';
 
