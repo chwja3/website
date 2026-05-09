@@ -628,14 +628,24 @@
 
     #revealCross::before {
       width: 100%;
-      height: 18%;
+      height: 15%;
       transform: translate(-50%, -50%);
     }
 
     #revealCross::after {
-      width: 18%;
+      width: 15%;
       height: 100%;
-      transform: translate(-50%, -50%) rotate(90deg);
+      transform: translate(-50%, -50%);
+      background:
+        linear-gradient(180deg,
+          transparent 0%,
+          rgba(255,224,120,0.14) 12%,
+          rgba(255,248,205,0.86) 43%,
+          rgba(255,255,255,1) 50%,
+          rgba(255,248,205,0.86) 57%,
+          rgba(255,224,120,0.14) 88%,
+          transparent 100%);
+      filter: blur(12px);
     }
 
     .cross-core {
@@ -653,6 +663,82 @@
           rgba(255,165,80,0.28) 48%,
           transparent 72%);
       filter: blur(10px);
+    }
+
+    #crossAfterglow {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(150vmax, 1180px);
+      height: min(150vmax, 1180px);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 4;
+      mix-blend-mode: screen;
+      transform-origin: 50% 50%;
+      will-change: opacity, transform;
+    }
+
+    #crossAfterglow::before,
+    #crossAfterglow::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border-radius: 999px;
+    }
+
+    #crossAfterglow::before {
+      width: 104%;
+      height: 14%;
+      transform: translate(-50%, -50%);
+      background:
+        linear-gradient(90deg,
+          transparent 0%,
+          rgba(255,188,92,0.02) 8%,
+          rgba(255,207,118,0.10) 24%,
+          rgba(255,230,164,0.24) 44%,
+          rgba(255,242,190,0.30) 50%,
+          rgba(255,230,164,0.24) 56%,
+          rgba(255,207,118,0.10) 76%,
+          rgba(255,188,92,0.02) 92%,
+          transparent 100%);
+      filter: blur(38px);
+    }
+
+    #crossAfterglow::after {
+      width: 14%;
+      height: 104%;
+      transform: translate(-50%, -50%);
+      background:
+        linear-gradient(180deg,
+          transparent 0%,
+          rgba(255,188,92,0.03) 8%,
+          rgba(255,207,118,0.12) 24%,
+          rgba(255,230,164,0.27) 44%,
+          rgba(255,242,190,0.34) 50%,
+          rgba(255,230,164,0.27) 56%,
+          rgba(255,207,118,0.12) 76%,
+          rgba(255,188,92,0.03) 92%,
+          transparent 100%);
+      filter: blur(34px);
+    }
+
+    .cross-haze {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 42%;
+      height: 42%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle,
+          rgba(255,244,200,0.38) 0%,
+          rgba(255,202,112,0.20) 32%,
+          rgba(255,122,190,0.08) 58%,
+          transparent 80%);
+      filter: blur(42px);
     }
 
     #flashEl {
@@ -802,20 +888,20 @@
     /* 세로 광선 */
     #cardBeamV {
       position: absolute;
-      width: min(18vmax, 140px); height: min(180vmax, 1600px);
+      width: min(22vmax, 176px); height: min(180vmax, 1600px);
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(180deg,
         transparent 0%,
-        rgba(255,180,40,0) 3%,
-        rgba(255,210,80,0.42) 16%,
-        rgba(255,235,130,0.70) 32%,
-        rgba(255,250,190,0.88) 50%,
-        rgba(255,235,130,0.70) 68%,
-        rgba(255,210,80,0.42) 84%,
-        rgba(255,180,40,0) 97%,
+        rgba(255,180,40,0) 2%,
+        rgba(255,210,80,0.52) 15%,
+        rgba(255,235,130,0.82) 32%,
+        rgba(255,250,190,0.96) 50%,
+        rgba(255,235,130,0.82) 68%,
+        rgba(255,210,80,0.52) 85%,
+        rgba(255,180,40,0) 98%,
         transparent 100%);
-      filter: blur(18px);
+      filter: blur(16px);
       opacity: 0;
       pointer-events: none;
       z-index: 5;
@@ -2233,6 +2319,7 @@
       <!-- 이펙트 레이어 -->
       <div id="effectsLayer">
         <div id="spinHalo"></div>
+        <div id="crossAfterglow"><div class="cross-haze"></div></div>
         <div id="revealCross"><div class="cross-core"></div></div>
         <div id="flashEl"></div>
         <div id="ringEl"></div>
@@ -2986,7 +3073,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510t';
+    const APP_VERSION = '20260510u';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4705,6 +4792,7 @@
       gsap.set('#sceneGlow', { opacity: 0, scale: 0.8 });
       gsap.set('#starBg', { opacity: 0 });
       gsap.set('#spinHalo', { opacity: 0, scale: 0.72, rotate: 0, xPercent: -50, yPercent: -50 });
+      gsap.set('#crossAfterglow', { opacity: 0, scale: 0.86, rotate: 0, xPercent: -50, yPercent: -50 });
       gsap.set('#revealCross', { opacity: 0, scale: 0.78, rotate: 0, xPercent: -50, yPercent: -50 });
       gsap.set('#flashEl', { opacity: 0 });
       gsap.set('#ringEl',  { opacity: 0, scale: 0.42 });
@@ -4752,6 +4840,7 @@
       if (rainbowRaysTween) { rainbowRaysTween.kill(); rainbowRaysTween = null; }
       gsap.set('#rainbowRays', { opacity: 0, rotate: 0 });
       gsap.set('#spinHalo', { opacity: 0, rotate: 0 });
+      gsap.set('#crossAfterglow', { opacity: 0, rotate: 0 });
       gsap.set('#revealCross', { opacity: 0, rotate: 0 });
       gsap.set('#cardBeam',     { opacity: 0 });
       gsap.set('#cardBeamCore', { opacity: 0 });
@@ -5035,6 +5124,7 @@
       gsap.killTweensOf('#cardInner');
       gsap.killTweensOf('#cardGlow');
       gsap.killTweensOf('#spinHalo');
+      gsap.killTweensOf('#crossAfterglow');
       gsap.killTweensOf('#revealCross');
       stopLoadingDots();
       gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.15 });
@@ -5151,13 +5241,22 @@
             .to('#flashEl',   { opacity: drawIsNew ? 0.96 : 0.40, duration: 0.05, ease: 'none' }, 0.06)
             .to('#flashEl',   { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
             .fromTo('#revealCross',
-              { opacity: 0, scale: 0.72, rotate: drawIsNew ? -5 : -2 },
-              { opacity: drawIsNew ? 0.92 : 0.38, scale: drawIsNew ? 1.04 : 0.88, rotate: drawIsNew ? 2 : 0, duration: 0.22, ease: 'power3.out' },
+              { opacity: 0, scale: 0.70, rotate: drawIsNew ? -3 : -1 },
+              { opacity: drawIsNew ? 0.94 : 0.40, scale: drawIsNew ? 1.02 : 0.90, rotate: drawIsNew ? 1 : 0, duration: 0.20, ease: 'power3.out' },
               0.56
             )
+            .fromTo('#crossAfterglow',
+              { opacity: 0, scale: 0.82, rotate: drawIsNew ? -3 : -1 },
+              { opacity: drawIsNew ? 0.34 : 0.12, scale: drawIsNew ? 1.10 : 0.98, rotate: 0, duration: 0.42, ease: 'power2.out' },
+              0.64
+            )
             .to('#revealCross',
-              { opacity: 0, scale: drawIsNew ? 1.32 : 1.02, duration: drawIsNew ? 1.15 : 0.58, ease: 'power2.out' },
-              0.80
+              { opacity: 0, scale: drawIsNew ? 1.20 : 1.00, duration: drawIsNew ? 0.72 : 0.45, ease: 'power2.out' },
+              0.78
+            )
+            .to('#crossAfterglow',
+              { opacity: 0, scale: drawIsNew ? 1.42 : 1.14, duration: drawIsNew ? 1.75 : 1.0, ease: 'sine.out' },
+              0.96
             )
             .fromTo('#ringEl',
               { opacity: drawIsNew ? 0.95 : 0.42, scale: 0.42 },
@@ -5203,12 +5302,12 @@
               .to('#cardBeamCore', { opacity: 0, duration: 0.40, ease: 'power2.in' }, 0.70)
               // 수직 빔
               .fromTo('#cardBeamV',
-                { opacity: 0, scaleY: 0.15, scaleX: 0.6 },
-                { opacity: 0.70, scaleY: 1, scaleX: 1, duration: 0.10, ease: 'power4.out' },
+                { opacity: 0, scaleY: 0.10, scaleX: 0.64 },
+                { opacity: 0.92, scaleY: 1, scaleX: 1, duration: 0.12, ease: 'power4.out' },
                 0.62
               )
-              .to('#cardBeamV', { opacity: 0.35, duration: 0.18, ease: 'power1.in' }, 0.72)
-              .to('#cardBeamV', { opacity: 0, duration: 1.4,  ease: 'power2.in' }, 0.90);
+              .to('#cardBeamV', { opacity: 0.46, duration: 0.28, ease: 'power1.in' }, 0.74)
+              .to('#cardBeamV', { opacity: 0, duration: 1.55,  ease: 'power2.in' }, 0.98);
           }
 
           scheduleDrawTimer(function() { burstRevealSparks(drawIsNew ? 1.4 : 0.45); }, 120);
