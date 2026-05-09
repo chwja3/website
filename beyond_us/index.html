@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510k';
+    const APP_VERSION = '20260510m';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3199,8 +3199,17 @@
       }
       // 30초마다 교환 현황 폴링 (실시간 알림)
       if (!window._tradePollingTimer) {
-        window._tradePollingTimer = setInterval(() => { if (currentNickname) loadTrades(); }, 30000);
+        window._tradePollingTimer = setInterval(() => {
+          if (currentNickname && !document.hidden) loadUserStatus().then(() => loadTrades()).catch(() => {});
+        }, 30000);
       }
+    }
+
+    function syncInitialData() {
+      return Promise.all([
+        loadAll(),
+        currentNickname ? loadUserStatus().then(() => loadTrades()) : Promise.resolve()
+      ]);
     }
 
     /* ════ Auth 패인 전환 ════ */
@@ -3255,7 +3264,7 @@
         if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
         const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
         if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
-        try { await Promise.all([loadAll(), loadUserStatus(), loadTrades()]); } catch(e) {}
+        try { await syncInitialData(); } catch(e) {}
       } else {
         showComingSoon();
       }
@@ -3285,7 +3294,7 @@
           const onApp        = !document.getElementById('appScreen').classList.contains('hidden');
           if (canEnter && onComingSoon) {
             showApp();
-            try { await Promise.all([loadAll(), loadUserStatus(), loadTrades()]); } catch(e) {}
+            try { await syncInitialData(); } catch(e) {}
           } else if (!canEnter && onApp) {
             showComingSoon();
           }
@@ -3326,7 +3335,7 @@
           const aod = localStorage.getItem('beyondus_app_open_date') || '';
           updateUserBadge();
           if (shouldEnterApp(false, aod)) {
-            showApp(); Promise.all([loadAll(), loadUserStatus(), loadTrades()]).catch(() => {});
+            showApp(); syncInitialData().catch(() => {});
           } else {
             showComingSoon();
           }
@@ -3370,7 +3379,7 @@
           updateUserBadge();
           if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
             showApp();
-            Promise.all([loadAll(), loadUserStatus(), loadTrades()]).catch(() => {});
+            syncInitialData().catch(() => {});
           } else {
             showComingSoon();
           }
@@ -5029,16 +5038,38 @@
       }
     }
 
-    async function loadAll() {
-      setStatus('현황을 불러오고 있어요...');
+    async function loadAll(options) {
+      const silent = options && options.silent === true;
+      if (!silent) setStatus('현황을 불러오고 있어요...');
       const data = await fetchDashboard();
       localStorage.setItem('beyondus_cache_config', JSON.stringify(data));
       renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
       applyTabSettings(data);
       updatePrayerDot();
-      setStatus('최신 현황으로 업데이트되었어요.', 'success');
+      if (!silent) setStatus('최신 현황으로 업데이트되었어요.', 'success');
       return data;
+    }
+
+    let _serverSyncPromise = null;
+    let _lastServerSyncAt = 0;
+    function syncServerChanges(force) {
+      if (!currentNickname) return Promise.resolve();
+      const now = Date.now();
+      if (!force && now - _lastServerSyncAt < 15000) return _serverSyncPromise || Promise.resolve();
+      if (_serverSyncPromise) return _serverSyncPromise;
+      _lastServerSyncAt = now;
+      _serverSyncPromise = Promise.all([
+        loadAll({ silent: true }).catch(() => {}),
+        loadNotices().catch(() => {}),
+        loadUserStatus().then(() => loadTrades()).catch(() => {}),
+        _currentSection === 'secret' ? loadBBB().catch(() => {}) : Promise.resolve(),
+        (_currentSection === 'prayer'
+          ? loadHoldPray(true).then(markHoldPraySeen)
+          : loadHoldPray(true)
+        ).catch(() => {})
+      ]).finally(() => { _serverSyncPromise = null; });
+      return _serverSyncPromise;
     }
 
     checkForm.addEventListener('submit', async e => {
@@ -5087,8 +5118,8 @@
         setStatus(savedItems.length ? '실천이 저장되었어요!' : '이미 저장된 실천이에요. 최신 상태로 맞췄어요.', 'success');
 
         // 백그라운드에서 서버 데이터 동기화
-        fetchDashboard().then(data => renderCounts(data)).catch(() => {});
-        loadUserStatus().catch(() => {});
+        loadAll({ silent: true }).catch(() => {});
+        loadUserStatus().then(() => loadTrades()).catch(() => {});
       } catch(err) {
         setStatus(err.message || '오류가 발생했습니다.', 'error');
         submitBtn.disabled = false;
@@ -5174,9 +5205,8 @@
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
       if (name === 'prayer') {
-        if (lastConfigData?.weekTitle) localStorage.setItem('beyondus_hp_last_seen_week', lastConfigData.weekTitle);
-        document.getElementById('drawerPrayerDot')?.classList.remove('visible');
-        loadHoldPray();
+        markHoldPraySeen();
+        loadHoldPray(true).then(markHoldPraySeen).catch(() => {});
       }
       if (name === 'secret') { loadBBB(); }
       if (name === 'chat') initChat();
@@ -5256,6 +5286,17 @@
     function saveSeenIds(ids) {
       localStorage.setItem('beyondus_seen_notices', JSON.stringify(ids));
     }
+    function noticeSeenKey(n) {
+      const id = String(n?.id || '');
+      const updatedAt = String(n?.updatedAt || '');
+      const createdAt = String(n?.createdAt || '');
+      return (updatedAt && createdAt && updatedAt !== createdAt) ? `${id}:${updatedAt}` : id;
+    }
+    function markHoldPraySeen() {
+      if (lastConfigData?.weekTitle) localStorage.setItem('beyondus_hp_last_seen_week', lastConfigData.weekTitle);
+      if (_hpWeekKey && _hpRevision) localStorage.setItem('beyondus_hp_seen_revision_' + _hpWeekKey, _hpRevision);
+      document.getElementById('drawerPrayerDot')?.classList.remove('visible');
+    }
     function updatePrayerDot() {
       const dot = document.getElementById('drawerPrayerDot');
       if (!dot) return;
@@ -5263,17 +5304,19 @@
       const isNewWeek = weekTitle && weekTitle !== (localStorage.getItem('beyondus_hp_last_seen_week') || '');
       const isTicketWeek = (_hpWeekKey === 'w3' || _hpWeekKey === 'w6');
       const ticketNotSeen = isTicketWeek && !localStorage.getItem('beyondus_hp_ticket_seen_' + _hpWeekKey);
-      dot.classList.toggle('visible', !!(isNewWeek || ticketNotSeen));
+      const hpRevisionSeen = _hpWeekKey && _hpRevision && localStorage.getItem('beyondus_hp_seen_revision_' + _hpWeekKey) === _hpRevision;
+      const hpContentChanged = _hpWeekKey && _hpRevision && !hpRevisionSeen;
+      dot.classList.toggle('visible', !!(isNewWeek || ticketNotSeen || hpContentChanged));
     }
 
     function updateNoticeDot() {
       const seen = getSeenIds();
-      const hasNew = cachedNotices.some(n => !seen.includes(n.id));
+      const hasNew = cachedNotices.some(n => !seen.includes(noticeSeenKey(n)));
       document.getElementById('noticeDot').classList.toggle('visible', hasNew);
       document.getElementById('drawerNoticeDot').classList.toggle('visible', hasNew);
     }
     function markAllSeen() {
-      const ids = cachedNotices.map(n => n.id);
+      const ids = cachedNotices.map(n => noticeSeenKey(n));
       saveSeenIds(ids);
       document.getElementById('noticeDot').classList.remove('visible');
       document.getElementById('drawerNoticeDot').classList.remove('visible');
@@ -5291,7 +5334,7 @@
         return [imageUrl];
       }
       list.innerHTML = notices.map(n => {
-        const isNew = !seen.includes(n.id);
+        const isNew = !seen.includes(noticeSeenKey(n));
         const imgs = parseNoticeImgs(n.imageUrl);
         const imgHtml = imgs.length
           ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">${imgs.map(u => `<img src="${u}" loading="lazy" onclick="openLightbox('${u}')" style="max-width:100%;max-height:260px;object-fit:contain;border-radius:8px;flex:1 1 auto;cursor:pointer;">`).join('')}</div>`
@@ -6017,6 +6060,7 @@
     let _hpTicketAlreadyAwarded = false;
     let _hpTicketCardIdx = -1;
     let _hpHintReplies = {};
+    let _hpRevision = '';
 
     function fitHpText(textEl, boxEl, opts = {}) {
       if (!textEl || !boxEl) return;
@@ -6042,11 +6086,11 @@
       textEl.style.visibility = '';
     }
 
-    async function loadHoldPray() {
+    async function loadHoldPray(forceRefresh) {
       const el = document.getElementById('hpContent');
       if (!el) return;
 
-      if (_hpCards.length === 3) {
+      if (_hpCards.length === 3 && !forceRefresh) {
         renderHoldPray();
         return;
       }
@@ -6059,6 +6103,7 @@
       if (hpCached && hpCached.ok) {
         _hpCards = hpCached.cards || [];
         _hpWeekKey = hpCached.weekKey || '';
+        _hpRevision = hpCached.hpRevision || '';
         _hpCurrentIdx = 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = hpCached.ticketAlreadyAwarded || false;
@@ -6095,6 +6140,7 @@
         const prevIdx = _hpCurrentIdx;
         _hpCards = data.cards || [];
         _hpWeekKey = data.weekKey || '';
+        _hpRevision = data.hpRevision || '';
         _hpCurrentIdx = (hpHasCache && sameWeek) ? prevIdx : 0;
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
@@ -6566,6 +6612,16 @@
     renderWeekCal();
     loadNotices();
     autoLogin();
+
+    window.addEventListener('focus', () => {
+      syncServerChanges(false).catch(() => {});
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) syncServerChanges(false).catch(() => {});
+    });
+    setInterval(() => {
+      if (!document.hidden) syncServerChanges(false).catch(() => {});
+    }, 60000);
 
     let _fitResizeTimer;
     window.addEventListener('resize', () => {

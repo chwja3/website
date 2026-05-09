@@ -759,6 +759,9 @@ function fixHoldPrayBlankNames() {
 function getHoldPray(weekKey, nickname) {
   if (!weekKey) weekKey = 'w' + (getConfig().currentWeek);
   const entries = getYouthHpEntries();
+  const hpRevision = String(hashStr(JSON.stringify(entries.map(function(e) {
+    return [e.n, e.p, e.c, e.a === true, e.nick || ''];
+  }))));
   const n = entries.length;
   const cards = [];
   const pickedEntries = [];
@@ -858,7 +861,7 @@ function getHoldPray(weekKey, nickname) {
     }
   }
 
-  return { ok: true, weekKey, cards, correctMap, ticketAlreadyAwarded, ticketCardIdx, hintReplies };
+  return { ok: true, weekKey, hpRevision, cards, correctMap, ticketAlreadyAwarded, ticketCardIdx, hintReplies };
 }
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
@@ -1274,7 +1277,9 @@ function getOrCreateNoticeSheet() {
   let sheet = ss.getSheetByName('Notices');
   if (!sheet) {
     sheet = ss.insertSheet('Notices');
-    sheet.appendRow(['id','title','content','createdAt','imageUrl']);
+    sheet.appendRow(['id','title','content','createdAt','imageUrl','updatedAt']);
+  } else if (sheet.getLastColumn() < 6 || String(sheet.getRange(1, 6).getValue() || '') !== 'updatedAt') {
+    sheet.getRange(1, 6).setValue('updatedAt');
   }
   return sheet;
 }
@@ -1314,7 +1319,7 @@ function getNotices() {
   const sheet = getOrCreateNoticeSheet();
   const last = sheet.getLastRow();
   if (last < 2) return { ok: true, notices: [] };
-  const rows = sheet.getRange(2, 1, last - 1, 5).getValues();
+  const rows = sheet.getRange(2, 1, last - 1, 6).getValues();
   const notices = rows
     .filter(r => r[0])
     .map((r, i) => ({
@@ -1323,7 +1328,8 @@ function getNotices() {
       title: r[1],
       content: r[2],
       createdAt: r[3],
-      imageUrl: r[4] || ''
+      imageUrl: r[4] || '',
+      updatedAt: r[5] || r[3]
     }))
     .reverse();
   return { ok: true, notices };
@@ -1346,7 +1352,8 @@ function postNotice(body) {
   }
 
   const sheet = getOrCreateNoticeSheet();
-  sheet.appendRow([new Date().getTime(), title, content, new Date().toISOString(), imageUrl]);
+  const now = new Date().toISOString();
+  sheet.appendRow([new Date().getTime(), title, content, now, imageUrl, now]);
   return { ok: true };
 }
 
@@ -1393,6 +1400,7 @@ function editNotice(body) {
     }
   }
   if (imageUrl !== null) sheet.getRange(rowIndex, 5).setValue(imageUrl);
+  sheet.getRange(rowIndex, 6).setValue(new Date().toISOString());
 
   return { ok: true };
 }
