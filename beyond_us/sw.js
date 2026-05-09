@@ -1,8 +1,14 @@
-const CACHE = 'beyondus-20260428n';
+const CACHE = 'beyondus-20260510a';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './images/pabicon.png',
+  './images/pabicon_180.png',
+  './images/pabicon_192.png',
+  './images/pabicon_512.png',
+  './images/pabicon_maskable_192.png',
+  './images/pabicon_maskable_512.png',
   './images/hc_illust1.png',
   './images/hc_logo_png2.png',
   './images/BEYONDUS2.png',
