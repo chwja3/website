@@ -2567,18 +2567,19 @@
             <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
               <!-- 케어버디 -->
-              <div id="bbbCareBuddyComingSoon" style="display:none;background:#e4e4e4;border-radius:14px;padding:18px 20px;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
-                <span style="font-size:15px;font-weight:800;color:var(--primary);margin-top:6px;">Coming Soon!</span>
-                <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
-              </div>
-              <div id="bbbCareBuddyCard" style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
+              <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                   <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
                   <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
                 </div>
-                <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbCareBuddyName">—</p>
-                <p style="font-size:12px;color:var(--sub);margin:0;display:flex;align-items:center;gap:5px;">내가 몰래 챙겨야 할 사람<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:15px;height:15px;font-size:9px;">?</button><span class="help-tooltip tip-right">내 섬김을 케어버디는 모르지만 하나님은 아십니다. 케어버디가 눈치채지 못하게 선행과 도움을 다른 모두에게 아낌없이 베풀면 케어버디에게 들킬 확률이 줄어듭니다.</span></span></p>
+                <div id="bbbCareBuddyComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbCareBuddyLive">
+                  <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbCareBuddyName">—</p>
+                  <p style="font-size:12px;color:var(--sub);margin:0;display:flex;align-items:center;gap:5px;">내가 몰래 챙겨야 할 사람<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:15px;height:15px;font-size:9px;">?</button><span class="help-tooltip tip-right">내 섬김을 케어버디는 모르지만 하나님은 아십니다. 케어버디가 눈치채지 못하게 선행과 도움을 다른 모두에게 아낌없이 베풀면 케어버디에게 들킬 확률이 줄어듭니다.</span></span></p>
+                </div>
               </div>
 
               <!-- 사진 미션 -->
@@ -2693,24 +2694,25 @@
               </div>
 
               <!-- 시크릿버디 -->
-              <div id="bbbSecretComingSoon" style="display:none;background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #facc15;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;">
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
-                <span style="font-size:15px;font-weight:800;color:var(--primary);margin-top:6px;">Coming Soon!</span>
-                <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
-              </div>
-              <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
-                <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
-                  <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbSecretName">—</p>
-                  <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있었어요.</p>
+                <div id="bbbSecretComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
                 </div>
-                <div id="bbbSecretGuess" style="margin-top:10px;">
-                  <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
-                  <div style="display:flex;gap:8px;">
-                    <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
-                    <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                <div id="bbbSecretLive">
+                  <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
+                    <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbSecretName">—</p>
+                    <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있었어요.</p>
                   </div>
-                  <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
+                  <div id="bbbSecretGuess" style="margin-top:10px;">
+                    <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
+                    <div style="display:flex;gap:8px;">
+                      <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
+                      <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                    </div>
+                    <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
+                  </div>
                 </div>
               </div>
 
@@ -5593,11 +5595,11 @@
         // 섹션별 Coming Soon / 오픈 토글 — 매칭 여부와 무관하게 먼저 적용
         // [key, csId, liveId, csDisplay, updateText]
         const _sectionMap = [
-          ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyCard', 'flex', false],
-          ['m1',          'bbbM1ComingSoon',         'bbbM1Live',        '',     true ],
-          ['m2',          'bbbM2ComingSoon',         'bbbM2Live',        '',     true ],
-          ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        '',     true ],
-          ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretWrap',    'flex', false],
+          ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyLive', '', true ],
+          ['m1',          'bbbM1ComingSoon',         'bbbM1Live',        '', true ],
+          ['m2',          'bbbM2ComingSoon',         'bbbM2Live',        '', true ],
+          ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        '', true ],
+          ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretLive',    '', true ],
         ];
         _sectionMap.forEach(([key, csId, liveId, csDisplay, updateText]) => {
           const sec  = _bbbSections[key] || {};
@@ -5684,7 +5686,6 @@
 
         // 시크릿버디
         if (bbbRes.secretBuddy) {
-          document.getElementById('bbbSecretWrap').style.display = '';
           if (bbbRes.secretBuddy.revealed) {
             document.getElementById('bbbSecretRevealed').style.display = '';
             document.getElementById('bbbSecretGuess').style.display = 'none';
@@ -5697,7 +5698,7 @@
               '나를 몰래 챙겨주는 사람이 있어요. 누구일까요?';
           }
         } else {
-          document.getElementById('bbbSecretWrap').style.display = 'none';
+          document.getElementById('bbbSecretLive').style.display = 'none';
         }
 
         // 메시지 보내기 창
