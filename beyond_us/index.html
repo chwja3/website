@@ -2765,7 +2765,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510b';
+    const APP_VERSION = '20260510c';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5591,30 +5591,32 @@
         document.getElementById('bbbLoading').style.display = 'none';
 
         // 섹션별 Coming Soon / 오픈 토글 — 매칭 여부와 무관하게 먼저 적용
+        // [key, csId, liveId, csDisplay, updateText]
         const _sectionMap = [
-          ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyCard', ''],
-          ['m1',          'bbbM1ComingSoon',         'bbbM1Live',        ''],
-          ['m2',          'bbbM2ComingSoon',         'bbbM2Live',        ''],
-          ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        ''],
-          ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretWrap',    ''],
+          ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyCard', 'flex', false],
+          ['m1',          'bbbM1ComingSoon',         'bbbM1Live',        '',     true ],
+          ['m2',          'bbbM2ComingSoon',         'bbbM2Live',        '',     true ],
+          ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        '',     true ],
+          ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretWrap',    'flex', false],
         ];
-        _sectionMap.forEach(([key, csId, liveId, openDisplay]) => {
+        _sectionMap.forEach(([key, csId, liveId, csDisplay, updateText]) => {
           const sec  = _bbbSections[key] || {};
           const cs   = document.getElementById(csId);
           const live = document.getElementById(liveId);
           if (!sec.open) {
             if (cs) {
-              cs.style.display = 'flex';
-              // Coming Soon 텍스트 업데이트
-              const lines = (sec.text || 'Coming Soon!').split('\n');
-              const spans = cs.querySelectorAll('span');
-              if (spans[0]) spans[0].textContent = lines[0] || '';
-              if (spans[1]) spans[1].textContent = lines[1] || '';
+              cs.style.display = csDisplay || '';
+              if (updateText) {
+                const lines = (sec.text || 'Coming Soon!').split('\n');
+                const spans = cs.querySelectorAll('span');
+                if (spans[0]) spans[0].textContent = lines[0] || '';
+                if (spans[1]) spans[1].textContent = lines[1] || '';
+              }
             }
             if (live) live.style.display = 'none';
           } else {
-            if (cs)   cs.style.display   = 'none';
-            if (live) live.style.display = openDisplay || '';
+            if (cs)   cs.style.display = 'none';
+            if (live) live.style.display = '';
           }
         });
 
