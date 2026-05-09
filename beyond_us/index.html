@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510i';
+    const APP_VERSION = '20260510j';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5163,8 +5163,14 @@
     function toggleHelpTip(btn) {
       const tip = btn.nextElementSibling;
       const isOpen = tip.classList.contains('show');
-      document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
-      if (!isOpen) tip.classList.add('show');
+      document.querySelectorAll('.help-tooltip.show').forEach(t => { t.classList.remove('show'); t.style.marginLeft = ''; });
+      if (!isOpen) {
+        tip.style.marginLeft = '';
+        tip.classList.add('show');
+        const r = tip.getBoundingClientRect();
+        if (r.left < 8) tip.style.marginLeft = (8 - r.left) + 'px';
+        else if (r.right > window.innerWidth - 8) tip.style.marginLeft = -(r.right - window.innerWidth + 8) + 'px';
+      }
     }
     document.addEventListener('click', e => {
       if (!e.target.closest('.help-wrap')) {
