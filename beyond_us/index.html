@@ -5115,7 +5115,7 @@
       faq:        'sectionFaq',
     };
     let _currentSection = 'mission';
-    let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, msgSend:{open:false}, msgInbox:{open:false} };
+    let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, msgOpen:{open:false} };
     function switchSection(name) {
       const prev = _currentSection;
       Object.values(SECTION_IDS).forEach(id => {
@@ -5701,9 +5701,10 @@
           document.getElementById('bbbSecretLive').style.display = 'none';
         }
 
-        // 메시지 보내기/받기 창 — 어드민 토글 기준
-        document.getElementById('bbbMsgSendWrap').style.display  = _bbbSections.msgSend?.open  ? '' : 'none';
-        document.getElementById('bbbMsgInboxWrap').style.display = _bbbSections.msgInbox?.open ? '' : 'none';
+        // 메시지 보내기/받기 창 — 어드민 토글 기준 (세트)
+        const _msgOpen = _bbbSections.msgOpen?.open;
+        document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
+        document.getElementById('bbbMsgInboxWrap').style.display = _msgOpen ? '' : 'none';
 
         // 받은 메시지
         _renderBBBMessages(msgRes.messages || []);
