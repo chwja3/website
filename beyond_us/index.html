@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510c';
+    const APP_VERSION = '20260510d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4099,14 +4099,19 @@
         if (!res.ok) throw new Error();
         userStatus = await res.json();
         if (currentNickname) localStorage.setItem('beyondus_cache_userStatus_' + currentNickname, JSON.stringify(userStatus));
-        // 서버 이번 주 제출 날짜로 로컬 캘린더 복원 (재설치 후에도 스탬프 유지)
-        if (userStatus.weekDates?.length) {
+        // 서버 기준으로 이번 주 스탬프 동기화 (서버가 비어있으면 로컬도 지움)
+        {
+          const mon = new Date(); const dow = mon.getDay() || 7;
+          mon.setDate(mon.getDate() - (dow - 1)); mon.setHours(0,0,0,0);
+          const thisWeekKeys = Array.from({length:7}, (_,i) => {
+            const d = new Date(mon); d.setDate(mon.getDate()+i);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          });
           const stored = JSON.parse(localStorage.getItem('beyondus_check_dates') || '[]');
-          const merged = [...new Set([...stored, ...userStatus.weekDates])];
-          localStorage.setItem('beyondus_check_dates', JSON.stringify(merged));
+          const other  = stored.filter(d => !thisWeekKeys.includes(d));
+          const synced = [...new Set([...other, ...(userStatus.weekDates || [])])];
+          localStorage.setItem('beyondus_check_dates', JSON.stringify(synced));
           renderWeekCal();
-        } else if ((userStatus.todayItems && userStatus.todayItems.length > 0) || (userStatus.todayIndices && userStatus.todayIndices.length > 0)) {
-          saveCheckDate();
         }
       } catch(e) {
         userStatus = { error: true };
