@@ -886,16 +886,30 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
 }
 
 // ── 탭 설정 ──────────────────────────────────────
+var BBB_SECTIONS_DEFAULT = {
+  careBuddy:   { open: false, text: 'Coming Soon!\n6/20 Open' },
+  m1:          { open: false, text: 'Coming Soon!\n6/20 Open' },
+  m2:          { open: false, text: 'Coming Soon!\n6/20 Open' },
+  m3:          { open: false, text: 'Coming Soon!\n6/21 Open' },
+  secretBuddy: { open: false, text: 'Coming Soon!\n6/20 Open' },
+};
+
 function getTabSettings() {
   const sheet  = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const prayer = sheet.getRange('B2').getValue();
   const secret = sheet.getRange('B3').getValue();
   const chat   = sheet.getRange('B5').getValue();
+  const bbbRaw = sheet.getRange('B6').getValue();
+
+  var bbbSections = JSON.parse(JSON.stringify(BBB_SECTIONS_DEFAULT));
+  try { if (bbbRaw) { var saved = JSON.parse(bbbRaw); Object.keys(saved).forEach(function(k){ bbbSections[k] = saved[k]; }); } } catch(e) {}
+
   return {
-    ok:     true,
-    prayer: prayer === '' ? true : Boolean(prayer),
-    secret: secret === '' ? true : Boolean(secret),
-    chat:   chat   === '' ? true : Boolean(chat)
+    ok:          true,
+    prayer:      prayer === '' ? true : Boolean(prayer),
+    secret:      secret === '' ? true : Boolean(secret),
+    chat:        chat   === '' ? true : Boolean(chat),
+    bbbSections: bbbSections
   };
 }
 
@@ -905,6 +919,7 @@ function setTabSettings(body) {
   sheet.getRange('B2').setValue(body.prayer !== false);
   sheet.getRange('B3').setValue(body.secret !== false);
   sheet.getRange('B5').setValue(body.chat   !== false);
+  if (body.bbbSections) sheet.getRange('B6').setValue(JSON.stringify(body.bbbSections));
   return { ok: true };
 }
 

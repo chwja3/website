@@ -350,6 +350,15 @@
           <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 실행 후 결과가 표시됩니다.</p></div>
         </div>
 
+        <!-- 섹션별 오픈/커밍순 설정 -->
+        <div class="card" style="margin-top:16px;">
+          <h2 class="card-title" style="margin:0 0 4px;">섹션 오픈 설정</h2>
+          <p style="font-size:12px;color:var(--sub);margin:0 0 16px;">OFF 시 Coming Soon 박스가 표시돼요. 텍스트 첫 줄/둘째 줄로 나뉘어 표시됩니다.</p>
+          <div id="bbbSectionRows" style="display:flex;flex-direction:column;gap:12px;"></div>
+          <div id="bbbSectionSaveStatus" style="font-size:12px;color:var(--sub);margin-top:8px;min-height:16px;"></div>
+          <button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="saveBBBSections()">저장</button>
+        </div>
+
         <!-- 메시지 오픈 토글 -->
         <div class="card" style="margin-top:16px;">
           <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1401,6 +1410,10 @@
         label.textContent   = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
         label.style.color   = _bbbMessageOpen ? '#4ade80' : '#f87171';
 
+        // 섹션 오픈 설정 로드
+        const tabRes = await get({ action: 'getTabSettings', adminPw });
+        if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
+
         // 매칭 테이블
         const matches = res.matches || [];
         if (!matches.length) {
@@ -1481,6 +1494,74 @@
         el.textContent = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
         el.style.color = _bbbMessageOpen ? '#4ade80' : '#f87171';
       } catch(e) { alert('연결 오류'); }
+    }
+
+    /* ── BBB 섹션 오픈 설정 ── */
+    const BBB_SECTION_LABELS = {
+      careBuddy:   'CARE BUDDY',
+      m1:          'MISSION 1 (사진 찍기)',
+      m2:          'MISSION 2 (기도 인증)',
+      m3:          'MISSION 3 (천로역정 맵)',
+      secretBuddy: 'SECRET BUDDY',
+    };
+    let _bbbSectionsData = {};
+
+    function renderBBBSectionRows(sections) {
+      _bbbSectionsData = sections;
+      const container = document.getElementById('bbbSectionRows');
+      if (!container) return;
+      container.innerHTML = Object.entries(BBB_SECTION_LABELS).map(([key, label]) => {
+        const sec = sections[key] || { open: false, text: '' };
+        const lines = (sec.text || '').split('\n');
+        return `<div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-size:14px;font-weight:700;">${label}</span>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <span id="bbbSecLabel_${key}" style="font-size:12px;font-weight:700;color:${sec.open ? '#4ade80' : '#f87171'};">${sec.open ? '🟢 오픈' : '🔴 잠금'}</span>
+              <input type="checkbox" id="bbbSecToggle_${key}" ${sec.open ? 'checked' : ''} onchange="onBBBSectionToggle('${key}')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
+            </label>
+          </div>
+          <div id="bbbSecCSWrap_${key}" style="display:${sec.open ? 'none' : ''};">
+            <p style="font-size:11px;color:var(--sub);margin:0 0 6px;">Coming Soon 텍스트 (줄바꿈으로 2줄 분리)</p>
+            <textarea id="bbbSecText_${key}" rows="2" style="width:100%;box-sizing:border-box;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);resize:none;font-family:inherit;outline:none;">${escHtml(sec.text || '')}</textarea>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function onBBBSectionToggle(key) {
+      const checked = document.getElementById('bbbSecToggle_' + key).checked;
+      const label   = document.getElementById('bbbSecLabel_'  + key);
+      const csWrap  = document.getElementById('bbbSecCSWrap_' + key);
+      label.textContent  = checked ? '🟢 오픈' : '🔴 잠금';
+      label.style.color  = checked ? '#4ade80' : '#f87171';
+      csWrap.style.display = checked ? 'none' : '';
+    }
+
+    async function saveBBBSections() {
+      const sections = {};
+      Object.keys(BBB_SECTION_LABELS).forEach(key => {
+        const toggle  = document.getElementById('bbbSecToggle_' + key);
+        const textEl  = document.getElementById('bbbSecText_'   + key);
+        sections[key] = {
+          open: toggle ? toggle.checked : false,
+          text: textEl ? textEl.value : '',
+        };
+      });
+      const statusEl = document.getElementById('bbbSectionSaveStatus');
+      statusEl.textContent = '저장 중...';
+      try {
+        const res = await post({ action: 'setTabSettings', adminPw,
+          prayer: document.getElementById('togglePrayer')?.checked !== false,
+          secret: document.getElementById('toggleSecret')?.checked !== false,
+          chat:   document.getElementById('toggleChat')?.checked   !== false,
+          bbbSections: sections,
+        });
+        if (!res.ok) { statusEl.textContent = '오류: ' + (res.error || ''); return; }
+        _bbbSectionsData = sections;
+        statusEl.textContent = '✅ 저장 완료';
+        setTimeout(() => { statusEl.textContent = ''; }, 2000);
+      } catch(e) { statusEl.textContent = '연결 오류'; }
     }
 
     /* ── Collection 재계산 ── */

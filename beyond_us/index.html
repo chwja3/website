@@ -2761,7 +2761,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260509c';
+    const APP_VERSION = '20260509d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4815,7 +4815,7 @@
       const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
       const chatItem   = document.querySelector('.drawer-item[data-section="chat"]');
       if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
-      _secretTabLocked = (secret === false);
+      if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
       if (secretItem) secretItem.style.display = '';
       if (chatItem)   chatItem.style.display   = (chat   === false) ? 'none' : '';
     }
@@ -5109,7 +5109,7 @@
       faq:        'sectionFaq',
     };
     let _currentSection = 'mission';
-    let _secretTabLocked = false;
+    let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'} };
     function switchSection(name) {
       const prev = _currentSection;
       Object.values(SECTION_IDS).forEach(id => {
@@ -5595,17 +5595,27 @@
         document.getElementById('bbbContent').style.display = 'flex';
 
         // 현장미션 오픈/커밍순 토글 (어드민 현장미션 토글 연동)
-        [
-          ['bbbCareBuddyComingSoon', 'bbbCareBuddyCard', ''],
-          ['bbbM1ComingSoon',        'bbbPhotoLabel',    'flex'],
-          ['bbbM2ComingSoon',        'bbbM2Label',       'flex'],
-          ['bbbM3ComingSoon',        'bbbM3Map',         ''],
-          ['bbbSecretComingSoon',    'bbbSecretWrap',    ''],
-        ].forEach(([csId, liveId, openDisplay]) => {
+        // 섹션별 Coming Soon / 오픈 토글
+        const _sectionMap = [
+          ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyCard', ''],
+          ['m1',          'bbbM1ComingSoon',         'bbbPhotoLabel',    'flex'],
+          ['m2',          'bbbM2ComingSoon',         'bbbM2Label',       'flex'],
+          ['m3',          'bbbM3ComingSoon',         'bbbM3Map',         ''],
+          ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretWrap',    ''],
+        ];
+        _sectionMap.forEach(([key, csId, liveId, openDisplay]) => {
+          const sec  = _bbbSections[key] || {};
           const cs   = document.getElementById(csId);
           const live = document.getElementById(liveId);
-          if (_secretTabLocked) {
-            if (cs)   cs.style.display   = 'flex';
+          if (!sec.open) {
+            if (cs) {
+              cs.style.display = 'flex';
+              // Coming Soon 텍스트 업데이트
+              const lines = (sec.text || 'Coming Soon!').split('\n');
+              const spans = cs.querySelectorAll('span');
+              if (spans[0]) spans[0].textContent = lines[0] || '';
+              if (spans[1]) spans[1].textContent = lines[1] || '';
+            }
             if (live) live.style.display = 'none';
           } else {
             if (cs)   cs.style.display   = 'none';
