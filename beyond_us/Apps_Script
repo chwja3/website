@@ -724,13 +724,18 @@ function getHoldPray(weekKey, nickname) {
   const cards = [];
   const pickedEntries = [];
   const usedIdx = new Set();
+  // Rendezvous hashing: 각 슬롯마다 entry별 점수를 매겨 가장 높은 항목 선택
+  // n(행 수)에 의존하지 않으므로 시트에 행 추가/삭제 시 영향 최소화
   for (let i = 0; i < 3; i++) {
     const seed = weekKey + (nickname || '') + String(i);
-    let idx = hashStr(seed) % n;
-    let attempts = 0;
-    while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
-    usedIdx.add(idx);
-    const entry = entries[idx];
+    let bestScore = -1, bestIdx = 0;
+    entries.forEach(function(e, idx) {
+      if (usedIdx.has(idx)) return;
+      const score = hashStr(seed + '\x00' + e.n + '\x00' + e.p);
+      if (score > bestScore) { bestScore = score; bestIdx = idx; }
+    });
+    usedIdx.add(bestIdx);
+    const entry = entries[bestIdx];
     pickedEntries.push(entry);
     cards.push({ cardIndex: i, parish: entry.p, content: entry.c, anon: entry.a });
   }
@@ -825,14 +830,17 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
   const usedIdx = new Set();
   const allEntryIdxs = [];
 
-  // getHoldPray와 동일하게 3장 전체 선택
+  // getHoldPray와 동일하게 3장 전체 선택 (Rendezvous hashing)
   for (let i = 0; i < 3; i++) {
     const seed = weekKey + (nickname || '') + String(i);
-    let idx = hashStr(seed) % n;
-    let attempts = 0;
-    while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
-    usedIdx.add(idx);
-    allEntryIdxs.push(idx);
+    let bestScore = -1, bestIdx = 0;
+    entries.forEach(function(e, idx) {
+      if (usedIdx.has(idx)) return;
+      const score = hashStr(seed + '\x00' + e.n + '\x00' + e.p);
+      if (score > bestScore) { bestScore = score; bestIdx = idx; }
+    });
+    usedIdx.add(bestIdx);
+    allEntryIdxs.push(bestIdx);
   }
 
   let entryIdx = allEntryIdxs[ci];
@@ -966,6 +974,7 @@ function loginUser(body) {
           ok:          true,
           parish:      data[i][3],
           isStaff:     data[i][5] === true,
+          isDev:       data[i][6] === true,
           appOpenDate: getAppOpenDate()
         };
       }
@@ -1520,18 +1529,20 @@ function postHpHint(body) {
   const cardIndex = Number(body.cardIndex) || 0;
   if (!nickname || !weekKey) return { error: 'missing_fields' };
 
-  // getHoldPray와 동일한 로직으로 해당 카드의 실제 정답 확인
+  // getHoldPray와 동일한 로직으로 해당 카드의 실제 정답 확인 (Rendezvous hashing)
   const entries = getYouthHpEntries();
-  const n = entries.length;
   const picked = [];
   const usedIdx = new Set();
   for (let i = 0; i < 3; i++) {
     const seed = weekKey + nickname + String(i);
-    let idx = hashStr(seed) % n;
-    let attempts = 0;
-    while (usedIdx.has(idx) && attempts < n) { idx = (idx + 1) % n; attempts++; }
-    usedIdx.add(idx);
-    picked.push(entries[idx]);
+    let bestScore = -1, bestIdx = 0;
+    entries.forEach(function(e, idx) {
+      if (usedIdx.has(idx)) return;
+      const score = hashStr(seed + '\x00' + e.n + '\x00' + e.p);
+      if (score > bestScore) { bestScore = score; bestIdx = idx; }
+    });
+    usedIdx.add(bestIdx);
+    picked.push(entries[bestIdx]);
   }
   if (picked.every(function(e) { return e.a; })) {
     for (let j = 0; j < n; j++) {

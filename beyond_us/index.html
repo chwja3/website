@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510h';
+    const APP_VERSION = '20260510i';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3273,6 +3273,7 @@
           showAuth('login');
         } else {
           localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
+          localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
           localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
           const canEnter = shouldEnterApp(data.isStaff, data.appOpenDate);
           const onComingSoon = !document.getElementById('comingSoonScreen').classList.contains('hidden');
@@ -3316,6 +3317,7 @@
           stopAnimDots(dotsTimerReg, statusEl, '');
           saveAuth(nickname, password, parish);
           localStorage.setItem('beyondus_is_staff', 'false');
+          localStorage.setItem('beyondus_is_dev',   'false');
           const aod = localStorage.getItem('beyondus_app_open_date') || '';
           updateUserBadge();
           if (shouldEnterApp(false, aod)) {
@@ -3358,6 +3360,7 @@
           stopAnimDots(dotsTimerLogin, statusEl, '');
           saveAuth(nickname, password, data.parish || '');
           localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
+          localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
           localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
           updateUserBadge();
           if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
@@ -5614,12 +5617,12 @@
           ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        '', true ],
           ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretLive',    '', true ],
         ];
-        const _isStaff = localStorage.getItem('beyondus_is_staff') === 'true';
+        const _isDev = localStorage.getItem('beyondus_is_dev') === 'true';
         _sectionMap.forEach(([key, csId, liveId, csDisplay, updateText]) => {
           const sec  = _bbbSections[key] || {};
           const cs   = document.getElementById(csId);
           const live = document.getElementById(liveId);
-          if (!sec.open && !_isStaff) {
+          if (!sec.open && !_isDev) {
             if (cs) {
               cs.style.display = csDisplay || '';
               if (updateText) {
@@ -5637,16 +5640,16 @@
         });
 
         // 메시지 보내기/받기 창 — 어드민 토글 기준 (스태프는 항상 오픈)
-        const _msgOpen = _bbbSections.msgOpen?.open || _isStaff;
+        const _msgOpen = _bbbSections.msgOpen?.open || _isDev;
         document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
         document.getElementById('bbbMsgInboxWrap').style.display = _msgOpen ? '' : 'none';
 
         // 섹션 중 하나라도 잠금이면 bbbContent 표시 (매칭 없어도)
         const anyLocked = Object.values(_bbbSections).some(s => !s.open);
         if (!bbbRes.ok) {
-          if (anyLocked || _isStaff) {
+          if (anyLocked || _isDev) {
             document.getElementById('bbbContent').style.display = 'flex';
-            if (_isStaff) _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
+            if (_isDev) _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
           }
