@@ -2532,7 +2532,7 @@
       <!-- ⑥ 단톡방 -->
       <div id="sectionChat" class="section hidden">
         <div class="chat-wrap">
-          <div class="chat-header" style="display:flex;align-items:center;justify-content:center;gap:6px;position:relative;">💬 단톡방<span class="help-wrap" style="position:absolute;right:12px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="background:rgba(255,255,255,0.2);color:#fff;">?</button><span class="help-tooltip tip-right">로그인하면 청년교구 공동체와 실시간으로 대화할 수 있어요.<br><br>내 메시지는 오른쪽, 다른 분의 메시지는 왼쪽에 표시돼요. 교구 뱃지도 함께 보여요.</span></span></div>
+          <div class="chat-header" style="display:flex;align-items:center;justify-content:center;gap:6px;position:relative;">💬 채팅방<span class="help-wrap" style="position:absolute;right:12px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="background:rgba(255,255,255,0.2);color:#fff;">?</button><span class="help-tooltip tip-right">로그인하면 청년교구 공동체와 실시간으로 대화할 수 있어요.<br><br>내 메시지는 오른쪽, 다른 분의 메시지는 왼쪽에 표시돼요. 교구 뱃지도 함께 보여요.</span></span></div>
           <div class="chat-messages" id="chatMessages">
             <div class="chat-notice" id="chatNotice">
               <span>불러오는 중...</span>
@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510e';
+    const APP_VERSION = '20260510f';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
