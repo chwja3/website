@@ -3034,7 +3034,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510z';
+    const APP_VERSION = '20260510aa';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3451,6 +3451,20 @@
       document.getElementById('appScreen').classList.add('hidden');
       switchAuthPane(pane || 'register');
     }
+
+    function scheduleTradePolling() {
+      if (window._tradePollingTimer) return;
+      const delay = 35000 + Math.floor(Math.random() * 25000);
+      window._tradePollingTimer = setTimeout(() => {
+        window._tradePollingTimer = null;
+        const appVisible = !document.getElementById('appScreen').classList.contains('hidden');
+        if (currentNickname && appVisible && !document.hidden) {
+          loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {});
+        }
+        if (currentNickname && appVisible) scheduleTradePolling();
+      }, delay);
+    }
+
     function showApp() {
       document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.add('hidden');
@@ -3460,12 +3474,8 @@
         document.getElementById('tradeMenuDot').classList.add('visible');
         document.getElementById('drawerTradeDot').style.display = 'inline-block';
       }
-      // 30초마다 교환 현황 폴링 (실시간 알림)
-      if (!window._tradePollingTimer) {
-        window._tradePollingTimer = setInterval(() => {
-          if (currentNickname && !document.hidden) loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {});
-        }, 30000);
-      }
+      // 접속자가 몰려도 같은 순간에 서버를 때리지 않도록 지터를 둔 폴링.
+      scheduleTradePolling();
     }
 
     function syncInitialData(options) {
@@ -4421,7 +4431,10 @@
       ].join('::');
     }
 
+    let _loadUserStatusPromise = null;
     async function loadUserStatus(options) {
+      if (_loadUserStatusPromise) return _loadUserStatusPromise;
+      _loadUserStatusPromise = (async () => {
       const opts = options || {};
       if (!currentNickname) { renderDrawSection(); return; }
       const prevSig = getUserStatusRenderSignature(userStatus);
@@ -4459,6 +4472,8 @@
         updateScoreProgress();
         if (lastConfigData) renderConfig(lastConfigData);
       }
+      })().finally(() => { _loadUserStatusPromise = null; });
+      return _loadUserStatusPromise;
     }
 
     function ensureRevealSparks() {
@@ -5495,12 +5510,13 @@
       submitBtn.disabled = true;
       refreshBtn.disabled = true;
       setStatus('저장하고 있어요...');
+      const submitRequestId = 'submit_' + getTodayKey() + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0) }))
+          body: JSON.stringify(withSession({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0), requestId: submitRequestId }))
         });
         if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
         const saved = await res.json();
@@ -5581,6 +5597,10 @@
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
+      if (window._tradePollingTimer) {
+        clearTimeout(window._tradePollingTimer);
+        window._tradePollingTimer = null;
+      }
       Object.keys(localStorage)
         .filter(k => k.startsWith('beyondus_'))
         .forEach(k => localStorage.removeItem(k));
@@ -7123,9 +7143,14 @@
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) syncServerChanges(false).catch(() => {});
     });
-    setInterval(() => {
-      if (!document.hidden) syncServerChanges(false).catch(() => {});
-    }, 60000);
+    function schedulePeriodicSync() {
+      const delay = 55000 + Math.floor(Math.random() * 30000);
+      setTimeout(() => {
+        if (!document.hidden) syncServerChanges(false).catch(() => {});
+        schedulePeriodicSync();
+      }, delay);
+    }
+    schedulePeriodicSync();
 
     let _fitResizeTimer;
     window.addEventListener('resize', () => {
