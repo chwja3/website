@@ -222,16 +222,15 @@ function adminGrantHiddenCard(body) {
 
 // ── config 시트 구조 ──────────────────────────────
 // B1: 현재 주차 번호 (1~6) ← 어드민에서 변경
-// B2: prayer 탭 on/off
-// B3: secret 탭 on/off
 // B4: app_open_date
-// D1: chat 탭 on/off  ← 주의: B5/B6은 1주차 mission data와 충돌하므로 D열 사용
-// D2: bbbSections JSON
 //
 // 주차별 데이터 (8행 단위 블록):
 // startRow = (week - 1) * 8 + 5
 // startRow+0: B=주차 제목, C=drawThreshold
 // startRow+1~6: A=항목 텍스트, B=점수, C=카테고리
+//
+// 탭 on/off → TabSettings 시트 (tab_key / label / enabled)
+// 현장미션 섹션 → BBBSettings 시트 (key / open / text)
 
 function getSpreadsheet() {
   return SpreadsheetApp.openById(_devMode ? DEV_SPREADSHEET_ID : SPREADSHEET_ID);
@@ -897,6 +896,11 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
 }
 
 // ── 탭 설정 ──────────────────────────────────────
+// TabSettings 시트 구조:
+// A열: tab_key (holdpray / secret / chat)
+// B열: label   (Hold & Pray / 현장미션 / 채팅방)
+// C열: enabled (TRUE/FALSE)
+//
 // BBBSettings 시트 구조:
 // A열: key (careBuddy / m1 / m2 / m3 / secretBuddy / msgOpen)
 // B열: open (TRUE/FALSE)
@@ -910,6 +914,39 @@ var BBB_SECTIONS_DEFAULT = {
   secretBuddy: { open: false, text: 'Coming Soon!\n6/14 Open' },
   msgOpen:     { open: false },
 };
+
+function getOrCreateTabSettingsSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName('TabSettings');
+  if (sheet) return sheet;
+
+  sheet = ss.insertSheet('TabSettings');
+  sheet.getRange(1, 1, 1, 3).setValues([['tab_key', 'label', 'enabled']]);
+  sheet.setFrozenRows(1);
+
+  // config B2/B3/D1에서 마이그레이션 (최초 1회)
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  var holdprayVal = true, secretVal = true, chatVal = false;
+  if (configSheet) {
+    const b2 = configSheet.getRange('B2').getValue();
+    const b3 = configSheet.getRange('B3').getValue();
+    const d1 = configSheet.getRange('D1').getValue();
+    holdprayVal = (b2 === '') ? true : Boolean(b2);
+    secretVal   = (b3 === '') ? true : Boolean(b3);
+    chatVal     = (typeof d1 === 'boolean') ? d1 : false; // '1주차' 같은 문자열은 false로 처리
+    // 마이그레이션 후 config 시트에서 제거
+    configSheet.getRange('B2').clearContent();
+    configSheet.getRange('B3').clearContent();
+    configSheet.getRange('D1').clearContent();
+  }
+
+  sheet.getRange(2, 1, 3, 3).setValues([
+    ['holdpray', 'Hold & Pray', holdprayVal],
+    ['secret',   '현장미션',    secretVal],
+    ['chat',     '채팅방',      chatVal],
+  ]);
+  return sheet;
+}
 
 function getOrCreateBBBSettingsSheet() {
   const ss = getSpreadsheet();
@@ -938,17 +975,23 @@ function getOrCreateBBBSettingsSheet() {
 }
 
 function getTabSettings() {
-  const sheet  = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const prayer = sheet.getRange('B2').getValue();
-  const secret = sheet.getRange('B3').getValue();
-  const chat   = sheet.getRange('D1').getValue();
+  // TabSettings 시트에서 holdpray/secret/chat 읽기
+  const tabSheet = getOrCreateTabSettingsSheet();
+  const tabLastRow = tabSheet.getLastRow();
+  const tabMap = { holdpray: true, secret: true, chat: false };
+  if (tabLastRow >= 2) {
+    tabSheet.getRange(2, 1, tabLastRow - 1, 3).getValues().forEach(function(r) {
+      const key = String(r[0]).trim();
+      if (tabMap.hasOwnProperty(key)) tabMap[key] = r[2] === true;
+    });
+  }
 
-  // BBBSettings 시트에서 섹션 오픈 설정 읽기
+  // BBBSettings 시트에서 현장미션 섹션 오픈 설정 읽기
   const bbbSections = JSON.parse(JSON.stringify(BBB_SECTIONS_DEFAULT));
   const bbbSheet = getOrCreateBBBSettingsSheet();
-  const lastRow  = bbbSheet.getLastRow();
-  if (lastRow >= 2) {
-    bbbSheet.getRange(2, 1, lastRow - 1, 3).getValues().forEach(function(r) {
+  const bbbLastRow = bbbSheet.getLastRow();
+  if (bbbLastRow >= 2) {
+    bbbSheet.getRange(2, 1, bbbLastRow - 1, 3).getValues().forEach(function(r) {
       const key = String(r[0]).trim();
       if (!key || !bbbSections.hasOwnProperty(key)) return;
       bbbSections[key] = { open: r[1] === true, text: String(r[2] || '') };
@@ -958,25 +1001,34 @@ function getTabSettings() {
 
   return {
     ok:          true,
-    prayer:      prayer === '' ? true : Boolean(prayer),
-    secret:      secret === '' ? true : Boolean(secret),
-    chat:        chat   === '' ? true : Boolean(chat),
+    prayer:      tabMap.holdpray, // API 키는 'prayer' 유지 (index.html/admin.html 호환)
+    secret:      tabMap.secret,
+    chat:        tabMap.chat,
     bbbSections: bbbSections
   };
 }
 
 function setTabSettings(body) {
   if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  sheet.getRange('B2').setValue(body.prayer !== false);
-  sheet.getRange('B3').setValue(body.secret !== false);
-  sheet.getRange('D1').setValue(body.chat   !== false);
 
+  // TabSettings 시트 업데이트
+  const tabSheet = getOrCreateTabSettingsSheet();
+  const tabLastRow = tabSheet.getLastRow();
+  if (tabLastRow >= 2) {
+    tabSheet.getRange(2, 1, tabLastRow - 1, 3).getValues().forEach(function(r, i) {
+      const key = String(r[0]).trim();
+      if (key === 'holdpray' && body.prayer !== undefined) tabSheet.getRange(i + 2, 3).setValue(body.prayer !== false);
+      if (key === 'secret'   && body.secret !== undefined) tabSheet.getRange(i + 2, 3).setValue(body.secret  !== false);
+      if (key === 'chat'     && body.chat   !== undefined) tabSheet.getRange(i + 2, 3).setValue(body.chat    !== false);
+    });
+  }
+
+  // BBBSettings 시트 업데이트
   if (body.bbbSections) {
     const bbbSheet = getOrCreateBBBSettingsSheet();
-    const lastRow  = bbbSheet.getLastRow();
-    if (lastRow >= 2) {
-      bbbSheet.getRange(2, 1, lastRow - 1, 1).getValues().forEach(function(r, i) {
+    const bbbLastRow = bbbSheet.getLastRow();
+    if (bbbLastRow >= 2) {
+      bbbSheet.getRange(2, 1, bbbLastRow - 1, 1).getValues().forEach(function(r, i) {
         const key = String(r[0]).trim();
         if (!key || !body.bbbSections.hasOwnProperty(key)) return;
         const sec = body.bbbSections[key];
@@ -1510,7 +1562,7 @@ function setupAllWeeks() {
   // 헤더 세팅 (첫 실행 시)
   sheet.getRange('A1').setValue('current_week');
   if (!sheet.getRange('B1').getValue()) sheet.getRange('B1').setValue(1);
-  // B2(prayer), B3(secret) 기존 값 유지 — 건드리지 않음
+  // 탭 on/off → TabSettings 시트, 현장미션 섹션 → BBBSettings 시트
 
   // 기존 주차 데이터 영역 초기화
   sheet.getRange('A5:C200').clearContent();
@@ -1535,13 +1587,7 @@ function fixConfigSheetConflict() {
   const ss          = getSpreadsheet();
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
 
-  // 1) 기존 B5(chat), B6(bbbSections) → D1, D2로 이전
-  const chatVal = configSheet.getRange('B5').getValue();
-  const bbbVal  = configSheet.getRange('B6').getValue();
-  configSheet.getRange('D1').setValue(chatVal !== '' ? chatVal : false);
-  if (bbbVal && typeof bbbVal === 'string') configSheet.getRange('D2').setValue(bbbVal);
-
-  // 2) 1주차 config 복원 (B5: weekTitle, C5: threshold, A6:C11: items)
+  // 1) 1주차 config 복원 (B5: weekTitle, C5: threshold, A6:C11: items)
   configSheet.getRange('B5').setValue('1주차');
   configSheet.getRange('C5').setValue(9);
   const w1items = [
