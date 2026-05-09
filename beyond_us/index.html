@@ -2423,7 +2423,7 @@
                 <span>앱은 어떻게 설치하나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
-              <div class="faq-a">Safari(iOS) 또는 Chrome(Android)으로 앱에 접속한 뒤, 공유 버튼 → "홈 화면에 추가"를 눌러주세요. 앱처럼 바탕화면에 아이콘이 생겨요!</div>
+              <div class="faq-a">iPhone은 Safari에서 공유 버튼 → "홈 화면에 추가"를 눌러주세요. 갤럭시는 Chrome 메뉴(⋮) 또는 삼성인터넷 메뉴(≡)에서 "앱 설치", "홈 화면에 추가", "현재 페이지 추가" 중 보이는 메뉴를 선택하면 돼요.</div>
             </div>
 
             <div class="faq-item">
@@ -2810,7 +2810,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510o';
+    const APP_VERSION = '20260510p';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -6605,45 +6605,147 @@
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                         || window.navigator.standalone === true;
       if (isStandalone) return;
-      if (localStorage.getItem('beyondus_install_dismissed')) return;
+      const installDismissKey = 'beyondus_install_dismissed_v2';
+      if (localStorage.getItem(installDismissKey)) return;
 
       const banner  = document.getElementById('installBanner');
       const btn     = document.getElementById('installBannerBtn');
       const close   = document.getElementById('installBannerClose');
       const desc    = document.getElementById('installBannerDesc');
+      const title   = banner.querySelector('strong');
+      const env     = detectBrowser();
+      const ua      = navigator.userAgent;
+      const isKakao = /kakaotalk/i.test(ua);
+      const isNaver = /naver/i.test(ua);
+      const isLine  = /line/i.test(ua);
+      const inAppBrowser = isKakao || isNaver || isLine;
+      let deferredPrompt = null;
+
+      function setBanner(copy) {
+        title.textContent = copy.title;
+        desc.textContent = copy.desc;
+        btn.textContent = copy.btn;
+        btn.style.display = copy.btn ? '' : 'none';
+        banner.classList.remove('hidden');
+      }
+
+      function copyCurrentUrl() {
+        const url = location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).catch(() => {});
+        }
+      }
+
+      function getManualGuide() {
+        if (env.os === 'ios') {
+          if (env.browser === 'safari') {
+            return 'Safari 아래 공유 버튼을 누른 뒤 "홈 화면에 추가"를 선택하고, 오른쪽 위 "추가"를 누르면 돼요.';
+          }
+          return 'iPhone은 Safari에서 여는 게 가장 안정적이에요. 링크를 복사한 뒤 Safari 주소창에 붙여넣고, 공유 버튼 → "홈 화면에 추가"를 눌러주세요.';
+        }
+        if (env.browser === 'samsung') {
+          return '삼성인터넷 하단 메뉴(≡)에서 "현재 페이지 추가" 또는 "추가"를 누른 뒤 "홈 화면"을 선택해주세요.';
+        }
+        if (env.browser === 'chrome') {
+          return 'Chrome 오른쪽 위 메뉴(⋮)에서 "앱 설치"가 보이면 누르고, 없으면 "홈 화면에 추가"를 선택해주세요.';
+        }
+        return '브라우저 메뉴에서 "앱 설치", "홈 화면에 추가", "현재 페이지 추가" 중 보이는 메뉴를 선택해주세요.';
+      }
+
+      function showManualGuide(copyFirst) {
+        if (copyFirst) copyCurrentUrl();
+        alert(getManualGuide() + (copyFirst ? '\n\n링크도 복사해두었어요.' : ''));
+      }
 
       close.addEventListener('click', () => {
         banner.classList.add('hidden');
-        localStorage.setItem('beyondus_install_dismissed', '1');
+        localStorage.setItem(installDismissKey, '1');
       });
 
-      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-      if (isIOS) {
-        desc.textContent = 'Safari 하단 공유(□↑) → "홈 화면에 추가" 탭하세요.';
-        btn.style.display = 'none';
-        banner.classList.remove('hidden');
+      if (inAppBrowser) {
+        setBanner({
+          title: '브라우저에서 열기',
+          desc: '홈 화면 추가는 Safari, Chrome, 삼성인터넷에서 가장 안정적이에요.',
+          btn: '링크 복사'
+        });
+        btn.addEventListener('click', () => showManualGuide(true));
         return;
       }
 
-      let deferredPrompt = null;
+      if (env.os === 'ios') {
+        setBanner({
+          title: env.browser === 'safari' ? '홈 화면에 추가하기' : 'Safari로 열기',
+          desc: env.browser === 'safari'
+            ? '공유 버튼에서 "홈 화면에 추가"를 누르면 앱처럼 열 수 있어요.'
+            : 'iPhone은 Safari에서 홈 화면 추가가 가장 안정적이에요.',
+          btn: env.browser === 'safari' ? '방법 보기' : '링크 복사'
+        });
+        btn.addEventListener('click', () => showManualGuide(env.browser !== 'safari'));
+        return;
+      }
+
+      if (env.browser === 'samsung') {
+        setBanner({
+          title: '홈 화면에 추가하기',
+          desc: '삼성인터넷 메뉴에서 직접 추가하면 오류가 적어요.',
+          btn: '방법 보기'
+        });
+        btn.addEventListener('click', () => showManualGuide(false));
+        return;
+      }
+
+      if (env.os === 'android') {
+        setBanner({
+          title: '홈 화면에 추가하기',
+          desc: '설치 버튼이 안 되면 브라우저 메뉴에서 직접 추가할 수 있어요.',
+          btn: '방법 보기'
+        });
+      }
+
       window.addEventListener('beforeinstallprompt', e => {
         e.preventDefault();
         deferredPrompt = e;
-        banner.classList.remove('hidden');
+        if (env.os === 'android' && env.browser === 'chrome') {
+          setBanner({
+            title: '앱처럼 설치하기',
+            desc: '설치가 가능해요. 막히면 메뉴(⋮)에서 "홈 화면에 추가"를 눌러주세요.',
+            btn: '설치'
+          });
+        }
       });
 
       btn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        banner.classList.add('hidden');
-        if (outcome === 'accepted') localStorage.setItem('beyondus_install_dismissed', '1');
+        if (!deferredPrompt) {
+          showManualGuide(false);
+          return;
+        }
+        try {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          deferredPrompt = null;
+          if (outcome === 'accepted') {
+            banner.classList.add('hidden');
+            localStorage.setItem(installDismissKey, '1');
+          } else {
+            setBanner({
+              title: '홈 화면에 추가하기',
+              desc: '설치창이 닫혔어요. 메뉴에서 직접 추가하면 더 안정적이에요.',
+              btn: '방법 보기'
+            });
+          }
+        } catch(e) {
+          deferredPrompt = null;
+          setBanner({
+            title: '홈 화면에 추가하기',
+            desc: '설치 버튼 대신 브라우저 메뉴에서 직접 추가해주세요.',
+            btn: '방법 보기'
+          });
+        }
       });
 
       window.addEventListener('appinstalled', () => {
         banner.classList.add('hidden');
-        localStorage.setItem('beyondus_install_dismissed', '1');
+        localStorage.setItem(installDismissKey, '1');
       });
     })();
 
