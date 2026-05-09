@@ -2583,85 +2583,88 @@
 
               <!-- 사진 미션 -->
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
-                <div style="display:flex;align-items:flex-start;gap:14px;">
-                  <div style="flex:1;min-width:0;">
-                    <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 1</span>
-                    <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">케어버디와 사진 찍기</p>
-                    <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
-                    <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
-                  </div>
-                  <div id="bbbM1ComingSoon" style="display:none;margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);flex-direction:column;align-items:center;justify-content:center;gap:3px;">
-                    <span style="font-size:12px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming<br>Soon!</span>
-                    <span style="font-size:9px;color:var(--sub);font-weight:700;">6/20 Open</span>
-                  </div>
-                  <label id="bbbPhotoLabel" style="margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
-                    <input type="file" id="bbbPhotoInput" accept="image/*" style="display:none;" />
-                    <img id="bbbPhotoImg" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbPhotoModal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
-                    <span id="bbbPhotoPlaceholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
-                    <span id="bbbPhotoPlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
-                  </label>
-
-                  <!-- 사진 확대 모달 -->
-                  <div id="bbbPhotoModal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbPhotoModal()">
-                    <img id="bbbPhotoModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
-                    <div style="display:flex;gap:12px;margin-top:20px;">
-                      <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbPhotoInput()">수정</label>
-                      <button onclick="deleteBbbPhoto()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 1</span>
+                <div id="bbbM1ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbM1Live">
+                  <div style="display:flex;align-items:flex-start;gap:14px;margin-top:8px;">
+                    <div style="flex:1;min-width:0;">
+                      <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">케어버디와 사진 찍기</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
+                      <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                     </div>
-                    <button onclick="closeBbbPhotoModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                    <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                      <input type="file" id="bbbPhotoInput" accept="image/*" style="display:none;" />
+                      <img id="bbbPhotoImg" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbPhotoModal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
+                      <span id="bbbPhotoPlaceholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
+                      <span id="bbbPhotoPlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
+                    </label>
                   </div>
+                </div>
+                <!-- 사진 확대 모달 -->
+                <div id="bbbPhotoModal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbPhotoModal()">
+                  <img id="bbbPhotoModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                  <div style="display:flex;gap:12px;margin-top:20px;">
+                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbPhotoInput()">수정</label>
+                    <button onclick="deleteBbbPhoto()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                  </div>
+                  <button onclick="closeBbbPhotoModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
                 </div>
               </div>
 
               <!-- MISSION 2: H&P 카드 기도 인증 -->
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
-                <div style="display:flex;align-items:flex-start;gap:14px;">
-                  <div style="flex:1;min-width:0;">
-                    <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 2</span>
-                    <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">H&amp;P 카드에 손 얹고 기도 인증</p>
-                    <p style="font-size:12px;color:var(--sub);margin:0 0 2px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
-                    <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
-                    <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
-                  </div>
-                  <div id="bbbM2ComingSoon" style="display:none;margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);flex-direction:column;align-items:center;justify-content:center;gap:3px;">
-                    <span style="font-size:12px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming<br>Soon!</span>
-                    <span style="font-size:9px;color:var(--sub);font-weight:700;">6/20 Open</span>
-                  </div>
-                  <label id="bbbM2Label" style="margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
-                    <input type="file" id="bbbM2Input" accept="image/*" style="display:none;" />
-                    <img id="bbbM2Img" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbM2Modal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
-                    <span id="bbbM2Placeholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
-                    <span id="bbbM2PlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
-                  </label>
-                  <div id="bbbM2Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM2Modal()">
-                    <img id="bbbM2ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
-                    <div style="display:flex;gap:12px;margin-top:20px;">
-                      <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM2Input()">수정</label>
-                      <button onclick="deleteBbbM2Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 2</span>
+                <div id="bbbM2ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbM2Live">
+                  <div style="display:flex;align-items:flex-start;gap:14px;margin-top:8px;">
+                    <div style="flex:1;min-width:0;">
+                      <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">H&amp;P 카드에 손 얹고 기도 인증</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 2px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
+                      <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                     </div>
-                    <button onclick="closeBbbM2Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                    <label id="bbbM2Label" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                      <input type="file" id="bbbM2Input" accept="image/*" style="display:none;" />
+                      <img id="bbbM2Img" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbM2Modal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
+                      <span id="bbbM2Placeholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
+                      <span id="bbbM2PlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
+                    </label>
                   </div>
+                </div>
+                <div id="bbbM2Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM2Modal()">
+                  <img id="bbbM2ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                  <div style="display:flex;gap:12px;margin-top:20px;">
+                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM2Input()">수정</label>
+                    <button onclick="deleteBbbM2Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                  </div>
+                  <button onclick="closeBbbM2Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
                 </div>
               </div>
 
               <!-- MISSION 3: 필그림하우스 스팟 7곳 -->
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
-                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
-                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
-                <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
-                  <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
-                  <span class="help-wrap" style="transform:translate(-3px,-3px); z-index:1;">
-                    <button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:16px;height:16px;font-size:9px;opacity:0.7;">?</button>
-                    <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
-                  </span>
-                </div>
-                <!-- 커밍순 (잠금 시) -->
-                <div id="bbbM3ComingSoon" style="display:none;width:100%;padding:28px 0;border-radius:12px;background:var(--card);border:1.5px dashed var(--line);flex-direction:column;align-items:center;justify-content:center;gap:4px;margin-top:8px;">
-                  <span style="font-size:15px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming Soon!</span>
+                <div id="bbbM3ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
                   <span style="font-size:11px;color:var(--sub);font-weight:700;">6/21 Open</span>
                 </div>
+                <div id="bbbM3Live">
+                  <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
+                  <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
+                  <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
+                    <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
+                    <span class="help-wrap" style="transform:translate(-3px,-3px); z-index:1;">
+                      <button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:16px;height:16px;font-size:9px;opacity:0.7;">?</button>
+                      <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
+                    </span>
+                  </div>
                 <!-- 지도 + 스팟 오버레이 -->
                 <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
                   <!-- 지도 이미지 -->
@@ -2686,6 +2689,7 @@
                   </div>
                   <button onclick="closeBbbM3Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
                 </div>
+                </div><!-- /bbbM3Live -->
               </div>
 
               <!-- 시크릿버디 -->
@@ -2761,7 +2765,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510';
+    const APP_VERSION = '20260510b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5589,9 +5593,9 @@
         // 섹션별 Coming Soon / 오픈 토글 — 매칭 여부와 무관하게 먼저 적용
         const _sectionMap = [
           ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyCard', ''],
-          ['m1',          'bbbM1ComingSoon',         'bbbPhotoLabel',    'flex'],
-          ['m2',          'bbbM2ComingSoon',         'bbbM2Label',       'flex'],
-          ['m3',          'bbbM3ComingSoon',         'bbbM3Map',         ''],
+          ['m1',          'bbbM1ComingSoon',         'bbbM1Live',        ''],
+          ['m2',          'bbbM2ComingSoon',         'bbbM2Live',        ''],
+          ['m3',          'bbbM3ComingSoon',         'bbbM3Live',        ''],
           ['secretBuddy', 'bbbSecretComingSoon',     'bbbSecretWrap',    ''],
         ];
         _sectionMap.forEach(([key, csId, liveId, openDisplay]) => {
