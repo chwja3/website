@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510j';
+    const APP_VERSION = '20260510k';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2794,7 +2794,12 @@
     const HIDDEN_CARD = { id:10, name:'히든', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
 
     /* ── 카드 이미지 프리로드 ── */
-    SPIRIT_CARDS.forEach(function(c) { if (c.img) { var i = new Image(); i.src = c.img; } });
+    function preloadCardImages() {
+      SPIRIT_CARDS.concat([HIDDEN_CARD]).forEach(function(c) {
+        if (c.img) { var i = new Image(); i.src = c.img; }
+      });
+    }
+    (window.requestIdleCallback || function(cb) { setTimeout(cb, 1200); })(preloadCardImages);
 
     /* ── 카드 뽑기 사운드 ── */
     const SFX_FILES = {
@@ -2833,7 +2838,7 @@
       if (_sfxMuted) return null;
       var src = SFX_FILES[key];
       if (!src) return null;
-      var a = new Audio(src);
+      var a = _sfxPreload[key] ? _sfxPreload[key].cloneNode(true) : new Audio(src);
       a.volume = SFX_VOLUME[key] != null ? SFX_VOLUME[key] : 0.7;
       a.play().catch(function(){});
       _activeSfx.push(a);
@@ -3853,8 +3858,11 @@
       } catch(e) { stopAnimDots(dotsTimerTrade, statusEl, '연결 오류'); btn.disabled = false; }
     }
 
+    let _loadTradesPromise = null;
     async function loadTrades() {
       if (!currentNickname) return;
+      if (_loadTradesPromise) return _loadTradesPromise;
+      _loadTradesPromise = (async () => {
       try {
         const res = await fetch(`${API_BASE}?action=getTrades&userId=${encodeURIComponent(currentNickname)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
         if (!res.ok) return;
@@ -3910,6 +3918,9 @@
         renderTrades(res);
         if (newCardCount > 0) renderCollection();
       } catch(e) {}
+      finally { _loadTradesPromise = null; }
+      })();
+      return _loadTradesPromise;
     }
 
     async function markPrayed(tradeId, btn) {
@@ -4525,8 +4536,13 @@
             pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
             drawIsNew = (result.isNew !== false); // false 명시 시만 중복, undefined/true → 신규
           } else {
-            pendingCard = SPIRIT_CARDS[Math.floor(Math.random() * SPIRIT_CARDS.length)];
-            drawIsNew = true; // 오류 fallback — 신규로 처리
+            pendingCard = null;
+            drawResult = null;
+            drawState = 'draw_failed';
+            alert((result && (result.error || result.message)) || '카드 뽑기 저장에 실패했어요. 뽑기권은 사용되지 않았으니 다시 시도해주세요.');
+            closeDrawOverlay();
+            loadUserStatus().catch(() => {});
+            return;
           }
           drawResult = pendingCard;
           document.getElementById('cardFace').innerHTML = makeCardHTML(drawResult);
@@ -4552,6 +4568,7 @@
 
         gsap.timeline({
           onComplete: function() {
+            if (drawState === 'draw_failed') return;
             drawState = 'card_back_rise';
             playSfx('cardAppear');
             gsap.set('#packLayer', { opacity: 0, pointerEvents: 'none' });
@@ -4824,10 +4841,16 @@
       document.getElementById('progressBar').style.width = `${pct}%`;
     }
 
+    let _dashboardPromise = null;
     async function fetchDashboard() {
-      const res = await fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
-      return res.json();
+      if (_dashboardPromise) return _dashboardPromise;
+      _dashboardPromise = fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' })
+        .then(res => {
+          if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
+          return res.json();
+        })
+        .finally(() => { _dashboardPromise = null; });
+      return _dashboardPromise;
     }
 
     function applyTabSettings(data) {
@@ -5039,22 +5062,29 @@
           body: JSON.stringify({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0) })
         });
         if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
-        await res.json();
+        const saved = await res.json();
+        if (saved && saved.ok === false) throw new Error(saved.error || saved.message || '체크 저장에 실패했습니다.');
+        const savedItems = Array.isArray(saved?.savedItems) ? saved.savedItems : checked;
+        const savedIndices = Array.isArray(saved?.savedIndices) ? saved.savedIndices : savedItems.map(item => lastConfigData?.items?.indexOf(item)).filter(i => i >= 0);
 
-        saveSubmittedItems(checked);
-        saveCheckDate();
+        if (savedItems.length) {
+          saveSubmittedItems(savedItems);
+          saveCheckDate();
+        }
 
-        // 즉시 로컬 반영 (서버 응답 대기 없이)
+        // 서버가 실제 저장한 항목만 로컬 반영
         if (userStatus) {
-          const addedScore = checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0);
-          userStatus.weekScore = (userStatus.weekScore || 0) + addedScore;
-          userStatus.todayItems = [...new Set([...(userStatus.todayItems || []), ...checked])];
+          const addedScore = Number(saved?.newScore);
+          userStatus.weekScore = Number(saved?.weekScore) || ((userStatus.weekScore || 0) + (isNaN(addedScore) ? 0 : addedScore));
+          userStatus.todayItems = [...new Set([...(userStatus.todayItems || []), ...savedItems])];
+          userStatus.todayIndices = [...new Set([...(userStatus.todayIndices || []), ...savedIndices])];
+          if (saved?.ticketEarned) userStatus.earnedTicketThisWeek = true;
         }
         if (lastConfigData) renderConfig(lastConfigData);
         updateScoreProgress();
         renderWeekCal();
 
-        setStatus('실천이 저장되었어요!', 'success');
+        setStatus(savedItems.length ? '실천이 저장되었어요!' : '이미 저장된 실천이에요. 최신 상태로 맞췄어요.', 'success');
 
         // 백그라운드에서 서버 데이터 동기화
         fetchDashboard().then(data => renderCounts(data)).catch(() => {});
@@ -6405,6 +6435,7 @@
     }
 
     function initChat() {
+      if (_chatUnsub) return;
       const msgs   = document.getElementById('chatMessages');
       const input  = document.getElementById('chatInput');
       const sendBtn= document.getElementById('chatSendBtn');

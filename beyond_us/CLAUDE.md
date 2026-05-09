@@ -321,9 +321,17 @@ git checkout -b feature/작업-이름
 git add 파일명
 git commit -m "feat: 작업 내용"
 git fetch origin main
-git rebase origin/main   # 충돌 여기서 해결
+git stash && git rebase origin/main && git stash pop   # unstaged 파일 있으면 stash 필수
 git push origin feature/작업-이름
-# PR은 GitHub 웹에서 생성
+# PR 생성 — gh CLI 미설치, GitHub API + keychain 토큰 사용:
+TOKEN=$(git credential fill <<< $'protocol=https\nhost=github.com' | grep password | cut -d= -f2)
+BODY=$(python3 -c "import json; print(json.dumps({'title': 'PR제목', 'body': '내용', 'head': '브랜치명', 'base': 'main'}))")
+curl -s -X POST \
+  -H "Authorization: token $TOKEN" \
+  -H "Accept: application/vnd.github.v3+json" \
+  -H "Content-Type: application/json" \
+  https://api.github.com/repos/chwja3/website/pulls \
+  -d "$BODY" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('html_url') or d)"
 ```
 
 ### 머지 충돌 주의

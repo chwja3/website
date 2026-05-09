@@ -107,8 +107,7 @@ function doPost(e) {
     const action = body.action;
 
     if (action === 'submit') {
-      saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0);
-      return jsonOutput({ ok: true });
+      return jsonOutput(saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0));
     }
     if (action === 'drawCard') {
       return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false));
@@ -216,8 +215,16 @@ function adminGrantHiddenCard(body) {
   if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
   const userId = String(body.userId || '').trim();
   if (!userId) return { error: 'missing_userId' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   updateCollectionSheet(userId, 10, 1);
   return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── config 시트 구조 ──────────────────────────────
@@ -267,6 +274,10 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   const cleanItems = Array.isArray(items) ? items.filter(Boolean) : [];
   if (!cleanItems.length) throw new Error('No items selected');
 
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const ss       = getSpreadsheet();
   const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
@@ -298,7 +309,24 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
     const idx = config.items.indexOf(item);
     return !(idx >= 0 && submittedIndices.has(idx));
   });
-  if (!newItems.length) return; // 모두 이미 제출됨
+  const existingRows = (lastRow >= 2)
+    ? rawSheet.getRange(2, 1, lastRow - 1, 7).getValues()
+    : [];
+  const prevWeekScore = existingRows
+    .filter(r => String(r[3]) === userId && String(r[1]) === config.weekTitle)
+    .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+
+  if (!newItems.length) {
+    return {
+      ok: true,
+      savedItems: [],
+      savedIndices: [],
+      newScore: 0,
+      weekScore: prevWeekScore,
+      ticketEarned: false,
+      duplicate: true
+    };
+  }
 
   // 점수 서버에서 재계산
   const newScore = newItems.reduce((s, item) => s + (config.scores[item] || 1), 0);
@@ -307,12 +335,6 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
   const newIndices = newItems.map(item => config.items.indexOf(item));
 
   // I열: 해당 주차 누적 점수 (기존 rows 재사용)
-  const existingRows = (lastRow >= 2)
-    ? rawSheet.getRange(2, 1, lastRow - 1, 7).getValues()
-    : [];
-  const prevWeekScore = existingRows
-    .filter(r => String(r[3]) === userId && String(r[1]) === config.weekTitle)
-    .reduce((s, r) => s + (Number(r[6]) || 0), 0);
   const weekCumScore = prevWeekScore + newScore;
 
   // J열: 이 제출로 처음 threshold 달성하면 1, 아니면 0
@@ -320,6 +342,18 @@ function saveCheckin(items, userId, weekKey, dateKey, score) {
 
   rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
   try { updateTicketCols(userId); } catch(e) {}
+  return {
+    ok: true,
+    savedItems: newItems,
+    savedIndices: newIndices,
+    newScore,
+    weekScore: weekCumScore,
+    ticketEarned: ticketEarned === 1,
+    duplicate: false
+  };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── raw_checkins 헤더 설정 ────────────────────────────────────────────────────
@@ -392,11 +426,11 @@ function backfillRawCheckinsCols() {
   }
 
   // I·J열 일괄 쓰기
+  const ijValues = allData.map(function(row) { return [row[8], row[9]]; });
   for (const u of updates) {
-    const sheetRow = dataStart + u.i;
-    rawSheet.getRange(sheetRow, 9).setValue(u.weekCumScore);
-    rawSheet.getRange(sheetRow, 10).setValue(u.ticketEarned);
+    ijValues[u.i] = [u.weekCumScore, u.ticketEarned];
   }
+  rawSheet.getRange(dataStart, 9, dataCount, 2).setValues(ijValues);
 
   return { ok: true, message: `${updates.length}행 재계산 완료` };
 }
@@ -829,6 +863,11 @@ function getHoldPray(weekKey, nickname) {
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
   if (!weekKey || !guess) return { ok: false, error: 'missing params' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const entries = getYouthHpEntries();
   const n = entries.length;
   const ci = Number(cardIndex) || 0;
@@ -896,6 +935,9 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
     }
   }
   return { ok: true, correct, ticketAwarded };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── 탭 설정 ──────────────────────────────────────
@@ -1051,12 +1093,15 @@ function setTabSettings(body) {
   const tabSheet = getOrCreateTabSettingsSheet();
   const tabLastRow = tabSheet.getLastRow();
   if (tabLastRow >= 2) {
-    tabSheet.getRange(2, 1, tabLastRow - 1, 3).getValues().forEach(function(r, i) {
+    const tabRange = tabSheet.getRange(2, 1, tabLastRow - 1, 3);
+    const tabRows = tabRange.getValues();
+    tabRows.forEach(function(r) {
       const key = String(r[0]).trim();
-      if (key === 'holdpray' && body.prayer !== undefined) tabSheet.getRange(i + 2, 3).setValue(body.prayer !== false);
-      if (key === 'secret'   && body.secret !== undefined) tabSheet.getRange(i + 2, 3).setValue(body.secret  !== false);
-      if (key === 'chat'     && body.chat   !== undefined) tabSheet.getRange(i + 2, 3).setValue(body.chat    !== false);
+      if (key === 'holdpray' && body.prayer !== undefined) r[2] = body.prayer !== false;
+      if (key === 'secret'   && body.secret !== undefined) r[2] = body.secret  !== false;
+      if (key === 'chat'     && body.chat   !== undefined) r[2] = body.chat    !== false;
     });
+    tabRange.setValues(tabRows);
   }
 
   // BBBSettings 시트 업데이트
@@ -1064,13 +1109,16 @@ function setTabSettings(body) {
     const bbbSheet = getOrCreateBBBSettingsSheet();
     const bbbLastRow = bbbSheet.getLastRow();
     if (bbbLastRow >= 2) {
-      bbbSheet.getRange(2, 1, bbbLastRow - 1, 1).getValues().forEach(function(r, i) {
+      const bbbRange = bbbSheet.getRange(2, 1, bbbLastRow - 1, 3);
+      const bbbRows = bbbRange.getValues();
+      bbbRows.forEach(function(r) {
         const key = String(r[0]).trim();
         if (!key || !body.bbbSections.hasOwnProperty(key)) return;
         const sec = body.bbbSections[key];
-        bbbSheet.getRange(i + 2, 2).setValue(sec.open === true);
-        if (sec.text !== undefined) bbbSheet.getRange(i + 2, 3).setValue(sec.text);
+        r[1] = sec.open === true;
+        if (sec.text !== undefined) r[2] = sec.text;
       });
+      bbbRange.setValues(bbbRows);
     }
   }
   return { ok: true };
@@ -1672,16 +1720,15 @@ function setMissionConfig(body) {
   if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
   const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const startRow = (week - 1) * 8 + 5;
-  sheet.getRange(startRow, 2).setValue(String(body.title || ''));
-  sheet.getRange(startRow, 3).setValue(Number(body.threshold) || 6);
+  sheet.getRange(startRow, 2, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
   const items = Array.isArray(body.items) ? body.items : [];
+  const rows = sheet.getRange(startRow + 1, 1, 6, 3).getValues();
   for (let i = 0; i < 6; i++) {
     const it = items[i] || {};
     if (!String(it.item || '').trim()) continue; // 빈 항목은 기존 값 유지
-    sheet.getRange(startRow + 1 + i, 1).setValue(String(it.item));
-    sheet.getRange(startRow + 1 + i, 2).setValue(Number(it.score) || 1);
-    sheet.getRange(startRow + 1 + i, 3).setValue(String(it.cat || 'L'));
+    rows[i] = [String(it.item), Number(it.score) || 1, String(it.cat || 'L')];
   }
+  sheet.getRange(startRow + 1, 1, 6, 3).setValues(rows);
   return { ok: true };
 }
 
@@ -2163,16 +2210,22 @@ function requestTrade(body) {
     return { error: '필수 항목이 누락됐어요.' };
   if (requester === target)
     return { error: '자기 자신과 교환할 수 없어요.' };
+  if (requesterCardId === 10 || targetCardId === 10)
+    return { error: '히든 카드는 교환할 수 없어요.' };
 
   const reqCard = SPIRIT_CARDS.find(c => c.id === requesterCardId);
   const tgtCard = SPIRIT_CARDS.find(c => c.id === targetCardId);
   if (!reqCard || !tgtCard) return { error: '유효하지 않은 카드예요.' };
 
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   // 보유 확인
   const reqColl = getUserCollection(requester);
   if (!(reqColl[requesterCardId] >= 2)) return { error: '중복 보유한 카드(2장 이상)만 교환할 수 있어요.' };
   const tgtColl = getUserCollection(target);
-  if (!(tgtColl[targetCardId] > 0)) return { error: '상대방이 해당 카드를 보유하고 있지 않아요.' };
+  if (!(tgtColl[targetCardId] >= 2)) return { error: '상대방이 해당 카드를 중복 보유하고 있지 않아요.' };
 
   const id = String(new Date().getTime());
   getOrCreateTradesSheet().appendRow([
@@ -2181,6 +2234,9 @@ function requestTrade(body) {
     'pending', new Date().toISOString(), ''
   ]);
   return { ok: true, tradeId: id };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function acceptTrade(body) {
@@ -2188,6 +2244,10 @@ function acceptTrade(body) {
   const nickname = String(body.nickname  || '').trim();
   if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
 
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
@@ -2204,15 +2264,15 @@ function acceptTrade(body) {
     const targetCardId    = Number(rows[i][5]);
 
     // 카드 보유 재확인
-    if (!(getUserCollection(requester)[requesterCardId] > 0)) {
+    if (!(getUserCollection(requester)[requesterCardId] >= 2)) {
       sheet.getRange(i + 2, 8).setValue('실패 (카드 없음)');
       sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
-      return { error: '상대방이 더 이상 해당 카드를 보유하지 않아요.' };
+      return { error: '상대방이 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
-    if (!(getUserCollection(nickname)[targetCardId] > 0)) {
+    if (!(getUserCollection(nickname)[targetCardId] >= 2)) {
       sheet.getRange(i + 2, 8).setValue('실패 (카드 없음)');
       sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
-      return { error: '내가 더 이상 해당 카드를 보유하지 않아요.' };
+      return { error: '내가 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
 
     // 양쪽 컬렉션 업데이트
@@ -2226,6 +2286,9 @@ function acceptTrade(body) {
     return { ok: true };
   }
   return { error: 'not_found' };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function rejectTrade(body) {
@@ -2233,6 +2296,10 @@ function rejectTrade(body) {
   const nickname = String(body.nickname || '').trim();
   if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
 
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
@@ -2248,6 +2315,9 @@ function rejectTrade(body) {
     return { ok: true };
   }
   return { error: 'not_found' };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function cancelTrade(body) {
@@ -2255,6 +2325,10 @@ function cancelTrade(body) {
   const nickname = String(body.nickname || '').trim();
   if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
 
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
@@ -2270,6 +2344,9 @@ function cancelTrade(body) {
     return { ok: true };
   }
   return { error: 'not_found' };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // pending 상태에서 5분(300초) 초과 시 자동 만료
@@ -2278,17 +2355,28 @@ function _expireOldTrades(sheet) {
   if (last < 2) return;
   const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
   const now  = Date.now();
-  const TIMEOUT_MS = 7 * 24 * 60 * 60 * 1000; // 7일
+  const TIMEOUT_MS = 5 * 60 * 1000; // 5분
+  let changed = false;
   rows.forEach((row, i) => {
     if (String(row[7]) !== 'pending') return;
     const createdAt = new Date(String(row[8])).getTime();
     if (isNaN(createdAt) || now - createdAt < TIMEOUT_MS) return;
-    sheet.getRange(i + 2, 8).setValue('실패 (시간 초과)');
-    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    row[7] = '실패 (시간 초과)';
+    row[9] = new Date().toISOString();
+    changed = true;
   });
+  if (changed) {
+    sheet.getRange(2, 8, rows.length, 3).setValues(rows.map(function(r) {
+      return [r[7], r[8], r[9]];
+    }));
+  }
 }
 
 function getTrades(userId) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return { ok: true, incoming: [], outgoing: [] };
@@ -2333,6 +2421,9 @@ function getTrades(userId) {
   }
 
   return { ok: true, incoming, outgoing };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function prayForTrade(body) {
@@ -2363,6 +2454,10 @@ function prayForTrade(body) {
 }
 
 function getAdminTrades() {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
   if (last < 2) return { ok: true, trades: [] };
@@ -2380,6 +2475,9 @@ function getAdminTrades() {
     }));
   trades.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return { ok: true, trades };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ── 자동 백업 ─────────────────────────────────────
@@ -2484,6 +2582,10 @@ function uploadBBBPhoto(body) {
   const missionType = String(body.missionType || 'm1').trim();
   if (!userId || !photo) return { error: '필수 항목 누락.' };
 
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
   const photoSheet = getOrCreateBBBPhotosSheet();
   const last = photoSheet.getLastRow();
   let existingRow = -1;
@@ -2539,6 +2641,9 @@ function uploadBBBPhoto(body) {
   }
 
   return { ok: true, rewarded };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function deleteBBBPhoto(body) {
