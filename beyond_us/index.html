@@ -256,6 +256,16 @@
       color: rgba(255,246,239,0.8); font-size: 16px;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
     }
+    .draw-close-btn svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
 
     .draw-stage { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
     .draw-hint { color: rgba(255,246,239,0.85); font-size: 14px; font-weight: 600; text-align: center; }
@@ -2103,7 +2113,7 @@
   <div id="drawOverlay" class="draw-overlay hidden">
     <div id="starBg"></div>
     <button class="draw-close-btn" id="drawCloseBtn">✕</button>
-    <button class="draw-close-btn" id="drawMuteBtn" style="right:64px;font-size:16px;" title="음소거">🔊</button>
+    <button class="draw-close-btn" id="drawMuteBtn" style="right:64px;" title="음소거" aria-label="음소거"></button>
 
     <div id="sceneWrap">
       <div id="sceneGlow"></div>
@@ -2863,7 +2873,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510r';
+    const APP_VERSION = '20260510s';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2990,7 +3000,12 @@
 
     function updateMuteBtnUI() {
       var btn = document.getElementById('drawMuteBtn');
-      if (btn) btn.textContent = _sfxMuted ? '🔇' : '🔊';
+      if (!btn) return;
+      btn.title = _sfxMuted ? '소리 켜기' : '음소거';
+      btn.setAttribute('aria-label', _sfxMuted ? '소리 켜기' : '음소거');
+      btn.innerHTML = _sfxMuted
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M18 9l4 4"></path><path d="M22 9l-4 4"></path></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M17 9.5a4 4 0 0 1 0 5"></path><path d="M19.5 7a7.5 7.5 0 0 1 0 10"></path></svg>';
     }
 
     /* ── 주차 키 (ISO week) ── */
