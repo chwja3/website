@@ -1455,6 +1455,29 @@
       flex-shrink: 0; background: none; border: none; color: rgba(255,246,239,0.6);
       font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;
     }
+    .install-guide-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px !important;
+      background: linear-gradient(135deg, rgba(232,133,74,0.12), rgba(255,199,116,0.14)) !important;
+    }
+    .install-guide-card.hidden { display: none; }
+    .install-guide-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      background: rgba(255,255,255,0.62);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; overflow: hidden;
+      border: 1px solid rgba(232,133,74,0.20);
+    }
+    .install-guide-icon img { width: 30px; height: auto; display: block; }
+    .install-guide-copy { flex: 1; min-width: 0; }
+    .install-guide-title { font-size: 13.5px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+    .install-guide-desc { font-size: 12px; color: var(--sub); line-height: 1.45; }
+    .install-guide-btn {
+      flex-shrink: 0; border: none; border-radius: 9px;
+      background: var(--primary); color: #fffaf2;
+      font-size: 12px; font-weight: 800;
+      padding: 7px 10px; cursor: pointer;
+    }
 
     /* ── Hold & Pray ── */
     #sectionPrayer .wrap { padding: 8px 16px 32px; }
@@ -2224,6 +2247,15 @@
             <img src="images/BEYONDUS2.png" alt="Beyond Us" style="width:220px;max-width:70%;height:auto;display:block;margin:0 auto 4px;" />
           </div>
 
+          <section class="card install-guide-card hidden" id="mainInstallGuide">
+            <div class="install-guide-icon"><img src="images/pabicon.png" alt="" /></div>
+            <div class="install-guide-copy">
+              <div class="install-guide-title" id="mainInstallGuideTitle">홈 화면에 추가하기</div>
+              <div class="install-guide-desc" id="mainInstallGuideDesc">앱처럼 바로 열 수 있어요.</div>
+            </div>
+            <button class="install-guide-btn" type="button" onclick="showInstallGuide(false)">방법 보기</button>
+          </section>
+
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
             <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>주간 목표 점수를 달성하면 앤 카드 뽑기권이 생겨요.</span></span></h2>
@@ -2810,7 +2842,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510p';
+    const APP_VERSION = '20260510q';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3182,6 +3214,80 @@
       }
       const label = os === 'ios' ? 'iPhone (Safari)' : browser === 'samsung' ? 'Android (삼성인터넷)' : 'Android (Chrome)';
       el.innerHTML = `<span style="font-weight:700;color:var(--text);font-size:11px;">${label}</span><br><span>${steps.map((s, i) => `${i + 1}. ${s}`).join(' &nbsp;›&nbsp; ')}</span>`;
+    }
+
+    function isStandaloneApp() {
+      return window.matchMedia('(display-mode: standalone)').matches
+          || window.navigator.standalone === true;
+    }
+
+    function copyCurrentUrl() {
+      const url = location.href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).catch(() => {});
+      }
+    }
+
+    function getInstallGuideText() {
+      const env = detectBrowser();
+      if (env.os === 'ios') {
+        if (env.browser === 'safari') {
+          return 'Safari 아래 공유 버튼을 누른 뒤 "홈 화면에 추가"를 선택하고, 오른쪽 위 "추가"를 누르면 돼요.';
+        }
+        return 'iPhone은 Safari에서 여는 게 가장 안정적이에요. 링크를 복사한 뒤 Safari 주소창에 붙여넣고, 공유 버튼 → "홈 화면에 추가"를 눌러주세요.';
+      }
+      if (env.browser === 'samsung') {
+        return '삼성인터넷 하단 메뉴(≡)에서 "현재 페이지 추가" 또는 "추가"를 누른 뒤 "홈 화면"을 선택해주세요.';
+      }
+      if (env.browser === 'chrome') {
+        return 'Chrome 오른쪽 위 메뉴(⋮)에서 "앱 설치"가 보이면 누르고, 없으면 "홈 화면에 추가"를 선택해주세요.';
+      }
+      return '브라우저 메뉴에서 "앱 설치", "홈 화면에 추가", "현재 페이지 추가" 중 보이는 메뉴를 선택해주세요.';
+    }
+
+    function showInstallGuide(copyFirst) {
+      if (copyFirst) copyCurrentUrl();
+      alert(getInstallGuideText() + (copyFirst ? '\n\n링크도 복사해두었어요.' : ''));
+    }
+
+    function updateMainInstallGuide() {
+      const card = document.getElementById('mainInstallGuide');
+      if (!card) return;
+      if (isStandaloneApp()) {
+        card.classList.add('hidden');
+        return;
+      }
+      const env = detectBrowser();
+      const ua = navigator.userAgent;
+      const inAppBrowser = /kakaotalk|naver|line/i.test(ua);
+      const title = document.getElementById('mainInstallGuideTitle');
+      const desc = document.getElementById('mainInstallGuideDesc');
+      const btn = card.querySelector('.install-guide-btn');
+
+      if (inAppBrowser) {
+        title.textContent = '브라우저에서 열면 더 편해요';
+        desc.textContent = '홈 화면 추가는 Safari, Chrome, 삼성인터넷에서 가장 안정적이에요.';
+        btn.textContent = '링크 복사';
+        btn.onclick = function() { showInstallGuide(true); };
+      } else if (env.os === 'ios') {
+        title.textContent = env.browser === 'safari' ? 'iPhone 홈 화면에 추가하기' : 'Safari로 열기';
+        desc.textContent = env.browser === 'safari'
+          ? '공유 버튼에서 추가하면 앱처럼 바로 열 수 있어요.'
+          : 'iPhone은 Safari에서 홈 화면 추가가 가장 안정적이에요.';
+        btn.textContent = env.browser === 'safari' ? '방법 보기' : '링크 복사';
+        btn.onclick = function() { showInstallGuide(env.browser !== 'safari'); };
+      } else if (env.browser === 'samsung') {
+        title.textContent = '삼성인터넷 홈 화면에 추가하기';
+        desc.textContent = '하단 메뉴에서 직접 추가하면 오류가 적어요.';
+        btn.textContent = '방법 보기';
+        btn.onclick = function() { showInstallGuide(false); };
+      } else {
+        title.textContent = '홈 화면에 추가하기';
+        desc.textContent = '설치 버튼이 막히면 브라우저 메뉴에서 직접 추가해주세요.';
+        btn.textContent = '방법 보기';
+        btn.onclick = function() { showInstallGuide(false); };
+      }
+      card.classList.remove('hidden');
     }
 
     function showComingSoon() {
@@ -6755,6 +6861,7 @@
     }
 
     /* ════ 초기화 ════ */
+    updateMainInstallGuide();
     renderWeekCal();
     loadNotices();
     autoLogin();
