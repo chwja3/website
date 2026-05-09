@@ -1396,30 +1396,11 @@
         // 섹션 오픈 설정 로드
         if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
 
-        // 매칭 테이블
+        // 매칭 테이블 — 버디 관계는 시트에서 확인
         const matches = res.matches || [];
-        if (!matches.length) {
-          matchEl.innerHTML = '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 매칭 실행 버튼을 눌러주세요.</p>';
-        } else {
-          matchEl.innerHTML = `<div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:13px;">
-              <thead><tr style="color:var(--sub);border-bottom:1px solid var(--line);">
-                <th style="padding:8px 6px;text-align:left;font-weight:600;">닉네임</th>
-                <th style="padding:8px 6px;text-align:left;font-weight:600;">케어버디 (내가 챙기는)</th>
-                <th style="padding:8px 6px;text-align:left;font-weight:600;">시크릿버디 (나를 챙기는)</th>
-                <th style="padding:8px 6px;text-align:left;font-weight:600;">맞춤</th>
-              </tr></thead>
-              <tbody>${matches.map(m => `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <td style="padding:8px 6px;font-weight:600;">${escHtml(m.userId)}</td>
-                  <td style="padding:8px 6px;color:#a78bfa;">${escHtml(m.careBuddyName)} <span style="color:var(--sub);font-size:11px;">(${escHtml(m.careBuddyId)})</span></td>
-                  <td style="padding:8px 6px;color:#fb923c;">${escHtml(m.secretBuddyName)} <span style="color:var(--sub);font-size:11px;">(${escHtml(m.secretBuddyId)})</span></td>
-                  <td style="padding:8px 6px;">${m.secretRevealed ? '✅' : '—'}</td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>`;
-        }
+        matchEl.innerHTML = matches.length
+          ? '<p style="font-size:13px;color:var(--sub);margin:0;">매칭 완료. 버디 관계 상세는 BBB 시트에서 확인하세요.</p>'
+          : '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 매칭 실행 버튼을 눌러주세요.</p>';
 
         // 메시지 로그
         const messages = res.messages || [];
