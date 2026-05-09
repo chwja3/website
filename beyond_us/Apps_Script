@@ -110,7 +110,7 @@ function doPost(e) {
       return jsonOutput(saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0));
     }
     if (action === 'drawCard') {
-      return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false));
+      return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false, body.requestId || ''));
     }
     if (action === 'adminLogin') {
       const ok = body.password === ADMIN_PASSWORD;
@@ -653,13 +653,22 @@ function getUserStatus(userId, weekKey) {
   };
 }
 
-function drawCard(userId, weekKey, testMode) {
+function drawCard(userId, weekKey, testMode, requestId) {
   if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
+  const cleanRequestId = String(requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
+  const requestCacheKey = cleanRequestId ? 'drawCard__' + hashStr(userId + '\x00' + weekKey + '\x00' + cleanRequestId) : '';
 
   const lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
   try {
+    if (requestCacheKey) {
+      const cached = CacheService.getScriptCache().get(requestCacheKey);
+      if (cached) {
+        try { return JSON.parse(cached); } catch(e) {}
+      }
+    }
+
     const config = getConfig();
     const ss     = getSpreadsheet();
 
@@ -667,7 +676,9 @@ function drawCard(userId, weekKey, testMode) {
     if (!_devMode) {
       const pendingDraws = getCollectionTickets(userId).remaining;
       if (pendingDraws <= 0) {
-        return { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
+        const noTicketResult = { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
+        if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(noTicketResult), 600);
+        return noTicketResult;
       }
     }
 
@@ -686,7 +697,15 @@ function drawCard(userId, weekKey, testMode) {
     draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
     updateCollectionSheet(userId, card.id, 1);
     try { updateTicketCols(userId); } catch(e) {}
-    return { ok: true, card, isNew };
+    const result = {
+      ok: true,
+      card,
+      isNew,
+      collection: getUserCollection(userId),
+      tickets: getCollectionTickets(userId)
+    };
+    if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(result), 600);
+    return result;
   } finally {
     lock.releaseLock();
   }
@@ -1992,9 +2011,12 @@ function updateCollectionSheet(userId, cardId, delta) {
     sheet.appendRow(newRow);
   } else {
     const cardCell = sheet.getRange(rowIndex, cardCol);
-    cardCell.setValue(Math.max(0, (Number(cardCell.getValue()) || 0) + delta));
+    const beforeCardCount = Number(cardCell.getValue()) || 0;
+    const afterCardCount = Math.max(0, beforeCardCount + delta);
+    const actualDelta = afterCardCount - beforeCardCount;
+    cardCell.setValue(afterCardCount);
     const totalCell = sheet.getRange(rowIndex, 14);
-    totalCell.setValue(Math.max(0, (Number(totalCell.getValue()) || 0) + delta));
+    totalCell.setValue(Math.max(0, (Number(totalCell.getValue()) || 0) + actualDelta));
   }
 }
 
@@ -2091,6 +2113,10 @@ function rebuildCollectionSheet() {
   const drawLast   = drawSheet.getLastRow();
   const allDraws   = drawLast >= 2 ? drawSheet.getRange(2, 1, drawLast - 1, 5).getValues() : [];
 
+  const tradeSheet = getOrCreateTradesSheet();
+  const tradeLast  = tradeSheet.getLastRow();
+  const allTrades  = tradeLast >= 2 ? tradeSheet.getRange(2, 1, tradeLast - 1, 8).getValues() : [];
+
   const bonusSheet = getOrCreateBonusDrawsSheet();
   const bonusLast  = bonusSheet.getLastRow();
   const allBonus   = bonusLast >= 2 ? bonusSheet.getRange(2, 1, bonusLast - 1, 1).getValues() : [];
@@ -2131,6 +2157,23 @@ function rebuildCollectionSheet() {
       const cid = Number(d[2]);
       if (cid >= 1 && cid <= 9) cardCounts[cid - 1]++;
     }
+
+    // accepted 교환 결과 반영: Collection 시트는 현재 보유 카드 기준이어야 함
+    for (const t of allTrades) {
+      if (String(t[7]) !== 'accepted') continue;
+      const requester = String(t[1]);
+      const reqCardId = Number(t[2]);
+      const target    = String(t[4]);
+      const tgtCardId = Number(t[5]);
+      if (requester === userId) {
+        if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1] = Math.max(0, cardCounts[reqCardId - 1] - 1);
+        if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1]++;
+      } else if (target === userId) {
+        if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1] = Math.max(0, cardCounts[tgtCardId - 1] - 1);
+        if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1]++;
+      }
+    }
+
     const hidden = hiddenMap[userId] || 0;
     const totalCards = cardCounts.reduce((s, n) => s + n, 0) + hidden;
 
@@ -2149,47 +2192,7 @@ function adminRebuildCollection(body) {
 
 // CardDraws → Collection 마이그레이션 (rebuildCollectionSheet로 대체됨 — 하위 호환용 유지)
 function migrateCardDrawsToCollection() {
-  // 데이터 없어도 시트는 항상 생성
-  getOrCreateCollectionSheet();
-  getOrCreateTradesSheet();
-
-  const draws = getOrCreateDrawSheet();
-  const last = draws.getLastRow();
-  if (last < 2) return { ok: true, migrated: 0 };
-
-  const rows = draws.getRange(2, 1, last - 1, 5).getValues();
-  const userCounts = {};
-  for (const row of rows) {
-    const uid = String(row[0]);
-    const cid = Number(row[2]);
-    if (!uid || !cid) continue;
-    if (!userCounts[uid]) userCounts[uid] = {};
-    userCounts[uid][cid] = (userCounts[uid][cid] || 0) + 1;
-  }
-
-  const collSheet = getOrCreateCollectionSheet();
-  const hiddenMap = {};
-  if (collSheet.getLastRow() > 1) {
-    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 15).getValues().forEach(function(r) {
-      const userId = String(r[0]).trim();
-      const hidden = Number(r[14]) || 0;
-      if (userId && hidden > 0) hiddenMap[userId] = hidden;
-    });
-  }
-  if (collSheet.getLastRow() > 1) {
-    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 15).clearContent();
-  }
-  for (const [uid, cards] of Object.entries(userCounts)) {
-    const row = new Array(15).fill(0);
-    row[0] = uid;
-    for (let i = 1; i <= 9; i++) {
-      row[i + 3] = cards[i] || 0; // cardId i → col i+4 → idx i+3
-    }
-    row[14] = hiddenMap[uid] || 0;
-    row[13] = Object.values(cards).reduce((s, n) => s + n, 0) + row[14]; // 총카드수
-    collSheet.appendRow(row);
-  }
-  return { ok: true, migrated: Object.keys(userCounts).length };
+  return rebuildCollectionSheet();
 }
 
 // ── Trades 시트 ───────────────────────────────────
