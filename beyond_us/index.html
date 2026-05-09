@@ -2567,7 +2567,12 @@
             <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
               <!-- 케어버디 -->
-              <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
+              <div id="bbbCareBuddyComingSoon" style="display:none;background:#e4e4e4;border-radius:14px;padding:18px 20px;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
+                <span style="font-size:15px;font-weight:800;color:var(--primary);margin-top:6px;">Coming Soon!</span>
+                <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+              </div>
+              <div id="bbbCareBuddyCard" style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                   <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
                   <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
@@ -2584,6 +2589,10 @@
                     <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">케어버디와 사진 찍기</p>
                     <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
                     <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
+                  </div>
+                  <div id="bbbM1ComingSoon" style="display:none;margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+                    <span style="font-size:12px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming<br>Soon!</span>
+                    <span style="font-size:9px;color:var(--sub);font-weight:700;">6/20 Open</span>
                   </div>
                   <label id="bbbPhotoLabel" style="margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
                     <input type="file" id="bbbPhotoInput" accept="image/*" style="display:none;" />
@@ -2613,6 +2622,10 @@
                     <p style="font-size:12px;color:var(--sub);margin:0 0 2px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
                     <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
                     <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
+                  </div>
+                  <div id="bbbM2ComingSoon" style="display:none;margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+                    <span style="font-size:12px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming<br>Soon!</span>
+                    <span style="font-size:9px;color:var(--sub);font-weight:700;">6/20 Open</span>
                   </div>
                   <label id="bbbM2Label" style="margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
                     <input type="file" id="bbbM2Input" accept="image/*" style="display:none;" />
@@ -2644,6 +2657,11 @@
                     <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
                   </span>
                 </div>
+                <!-- 커밍순 (잠금 시) -->
+                <div id="bbbM3ComingSoon" style="display:none;width:100%;padding:28px 0;border-radius:12px;background:var(--card);border:1.5px dashed var(--line);flex-direction:column;align-items:center;justify-content:center;gap:4px;margin-top:8px;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming Soon!</span>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/21 Open</span>
+                </div>
                 <!-- 지도 + 스팟 오버레이 -->
                 <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
                   <!-- 지도 이미지 -->
@@ -2671,6 +2689,11 @@
               </div>
 
               <!-- 시크릿버디 -->
+              <div id="bbbSecretComingSoon" style="display:none;background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #facc15;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
+                <span style="font-size:15px;font-weight:800;color:var(--primary);margin-top:6px;">Coming Soon!</span>
+                <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+              </div>
               <div id="bbbSecretWrap" style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
                 <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
@@ -2700,7 +2723,7 @@
               </div>
 
               <!-- 받은 메시지 -->
-              <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
+              <div id="bbbMsgInboxWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
                 <div id="bbbMsgList" style="margin-top:4px;">
                   <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
@@ -2713,21 +2736,6 @@
               <p style="font-size:14px;color:var(--sub);margin:0;line-height:1.7;">아직 매칭 정보가 없어요.<br>조금만 기다려주세요.</p>
             </div>
 
-            <div id="bbbComingSoon" style="display:none;flex-direction:column;gap:12px;">
-              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
-                <div style="display:flex;align-items:flex-start;gap:14px;">
-                  <div style="flex:1;min-width:0;">
-                    <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 1</span>
-                    <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">케어버디와 사진 찍기</p>
-                    <p style="font-size:12px;color:var(--sub);margin:0;">업로드하면 뽑기권 +1 (최초 1회)</p>
-                  </div>
-                  <div style="margin-top:22px;flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
-                    <span style="font-size:12px;font-weight:800;color:var(--primary);text-align:center;line-height:1.35;">Coming<br>Soon!</span>
-                    <span style="font-size:9px;color:var(--sub);font-weight:700;">6/20 Open</span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
           </section>
 
@@ -2753,7 +2761,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260509b';
+    const APP_VERSION = '20260509c';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5118,7 +5126,7 @@
         document.getElementById('drawerPrayerDot')?.classList.remove('visible');
         loadHoldPray();
       }
-      if (name === 'secret') { if (_secretTabLocked) showSecretComingSoon(); else loadBBB(); }
+      if (name === 'secret') { loadBBB(); }
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
       _currentSection = name;
@@ -5562,13 +5570,6 @@
       }
     }
 
-    function showSecretComingSoon() {
-      document.getElementById('bbbLoading').style.display = 'none';
-      document.getElementById('bbbContent').style.display = 'none';
-      document.getElementById('bbbNoMatch').style.display = 'none';
-      document.getElementById('bbbComingSoon').style.display = 'flex';
-    }
-
     async function loadBBB() {
       const nickname = localStorage.getItem('beyondus_nickname') || '';
       if (!nickname) return;
@@ -5592,6 +5593,25 @@
 
         _bbbData = bbbRes;
         document.getElementById('bbbContent').style.display = 'flex';
+
+        // 현장미션 오픈/커밍순 토글 (어드민 현장미션 토글 연동)
+        [
+          ['bbbCareBuddyComingSoon', 'bbbCareBuddyCard', ''],
+          ['bbbM1ComingSoon',        'bbbPhotoLabel',    'flex'],
+          ['bbbM2ComingSoon',        'bbbM2Label',       'flex'],
+          ['bbbM3ComingSoon',        'bbbM3Map',         ''],
+          ['bbbSecretComingSoon',    'bbbSecretWrap',    ''],
+        ].forEach(([csId, liveId, openDisplay]) => {
+          const cs   = document.getElementById(csId);
+          const live = document.getElementById(liveId);
+          if (_secretTabLocked) {
+            if (cs)   cs.style.display   = 'flex';
+            if (live) live.style.display = 'none';
+          } else {
+            if (cs)   cs.style.display   = 'none';
+            if (live) live.style.display = openDisplay || '';
+          }
+        });
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name + ' 🗣️👂';
@@ -5660,7 +5680,8 @@
         }
 
         // 메시지 보내기 창
-        document.getElementById('bbbMsgSendWrap').style.display = bbbRes.messageOpen ? '' : 'none';
+        document.getElementById('bbbMsgSendWrap').style.display   = bbbRes.messageOpen ? '' : 'none';
+        document.getElementById('bbbMsgInboxWrap').style.display  = bbbRes.messageOpen ? '' : 'none';
 
         // 받은 메시지
         _renderBBBMessages(msgRes.messages || []);
