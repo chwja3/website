@@ -2761,7 +2761,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260509d';
+    const APP_VERSION = '20260510';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -5586,16 +5586,7 @@
 
         document.getElementById('bbbLoading').style.display = 'none';
 
-        if (!bbbRes.ok) {
-          document.getElementById('bbbNoMatch').style.display = '';
-          return;
-        }
-
-        _bbbData = bbbRes;
-        document.getElementById('bbbContent').style.display = 'flex';
-
-        // 현장미션 오픈/커밍순 토글 (어드민 현장미션 토글 연동)
-        // 섹션별 Coming Soon / 오픈 토글
+        // 섹션별 Coming Soon / 오픈 토글 — 매칭 여부와 무관하게 먼저 적용
         const _sectionMap = [
           ['careBuddy',   'bbbCareBuddyComingSoon', 'bbbCareBuddyCard', ''],
           ['m1',          'bbbM1ComingSoon',         'bbbPhotoLabel',    'flex'],
@@ -5622,6 +5613,20 @@
             if (live) live.style.display = openDisplay || '';
           }
         });
+
+        // 섹션 중 하나라도 잠금이면 bbbContent 표시 (매칭 없어도)
+        const anyLocked = Object.values(_bbbSections).some(s => !s.open);
+        if (!bbbRes.ok) {
+          if (anyLocked) {
+            document.getElementById('bbbContent').style.display = 'flex';
+          } else {
+            document.getElementById('bbbNoMatch').style.display = '';
+          }
+          return;
+        }
+
+        _bbbData = bbbRes;
+        document.getElementById('bbbContent').style.display = 'flex';
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name + ' 🗣️👂';
