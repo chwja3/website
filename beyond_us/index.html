@@ -324,18 +324,31 @@
     .card-face {
       position: absolute;
       inset: 0;
+      border-radius: 22px;
+      overflow: visible;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
+      transform-style: preserve-3d;
+      -webkit-transform-style: preserve-3d;
+      will-change: transform;
     }
 
     .card-back {
-      transform: rotateY(0deg);
+      transform: rotateY(0deg) translateZ(0.2px);
       background: transparent;
     }
 
     .card-front {
-      transform: rotateY(180deg);
+      transform: rotateY(180deg) translateZ(0.2px);
       background: transparent;
+      isolation: isolate;
+    }
+
+    .card-front img {
+      transform: translateZ(0.4px);
+      -webkit-transform: translateZ(0.4px);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
     }
 
     .card-face-back {
@@ -343,6 +356,10 @@
       height: 100%;
       position: relative;
       overflow: hidden;
+      border-radius: 22px;
+      -webkit-clip-path: inset(0 round 22px);
+      clip-path: inset(0 round 22px);
+      transform: translateZ(0.1px);
       background-image: url('images/앤카드뒷면최최종.png');
       background-repeat: no-repeat;
       background-position: center center;
@@ -438,16 +455,21 @@
     }
     #sceneGlow {
       position: absolute;
-      inset: -80px;
+      width: 145vmax;
+      height: 145vmax;
+      left: calc(50% - 72.5vmax);
+      top: calc(50% - 72.5vmax);
+      border-radius: 50%;
       background: radial-gradient(ellipse at 50% 54%,
-        rgba(255, 218, 100, 0.30) 0%,
-        rgba(255, 100, 200, 0.18) 32%,
-        rgba(80, 140, 255, 0.14) 58%,
-        transparent 76%);
-      filter: blur(48px);
+        rgba(255, 218, 100, 0.24) 0%,
+        rgba(255, 100, 200, 0.16) 28%,
+        rgba(80, 140, 255, 0.12) 52%,
+        transparent 74%);
+      filter: blur(54px);
       opacity: 0;
       pointer-events: none;
       z-index: 0;
+      will-change: opacity, transform;
     }
 
     #sceneWrap::before,
@@ -772,6 +794,27 @@
 
     #cardTrigger.clickable {
       cursor: pointer;
+    }
+
+    .card-perspective {
+      width: 150px;
+      height: 239px;
+      perspective: 800px;
+      position: relative;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+
+    .card-shine-clip {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      border-radius: 22px;
+      transform: translateZ(1px);
+      -webkit-transform: translateZ(1px);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
     }
 
     #cardLoadingHint {
@@ -2090,12 +2133,12 @@
         <div id="cardGlow"></div>
         <p class="draw-hint" id="flipHint"></p>
         <div id="cardTrigger">
-          <div style="width:150px;height:239px;perspective:800px;position:relative;">
+          <div class="card-perspective">
             <div id="cardInner" style="width:100%;height:100%;position:relative;transform-style:preserve-3d;">
               <div class="card-face card-back"><div class="card-face-back"></div></div>
               <div class="card-face card-front" id="cardFace"></div>
             </div>
-            <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;border-radius:22px;">
+            <div class="card-shine-clip">
               <div class="card-flip-shine" id="cardFlipShine"></div>
             </div>
           </div>
@@ -2767,7 +2810,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510m';
+    const APP_VERSION = '20260510n';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4364,6 +4407,7 @@
         rotateZ: 0,
         scale: 1,
         y: 0,
+        force3D: true,
         transformPerspective: 1200
       });
       gsap.set('#cardTrigger', {
@@ -4596,10 +4640,10 @@
               .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.28, ease: 'power2.out' }, 0)
               .fromTo('#cardTrigger',
                 { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
-                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.82, duration: 0.42, ease: 'power3.out' },
+                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.78, duration: 0.42, ease: 'power3.out' },
                 0.04
               )
-              .to('#sceneGlow', { opacity: 1, scale: 1.08, duration: 0.28, ease: 'power2.out' }, 0)
+              .to('#sceneGlow', { opacity: 0.72, scale: 1.02, duration: 0.28, ease: 'power2.out' }, 0)
               // 카드가 자리 잡히자마자 바로 클릭 가능
               .call(function() {
                 drawState = 'card_back_wait';
@@ -4742,14 +4786,14 @@
 
               // 후광 펄스 — 신규: 강하게 / 중복: 은은하게
               gsap.to('#cardGlow', {
-                opacity: drawIsNew ? 0.95 : 0.55,
-                scale:   drawIsNew ? 1.80 : 1.04,
+                opacity: drawIsNew ? 0.88 : 0.52,
+                scale:   drawIsNew ? 1.56 : 1.04,
                 duration: drawIsNew ? 1.6 : 2.6,
                 ease: 'sine.inOut', yoyo: true, repeat: -1
               });
               gsap.to('#sceneGlow', {
-                opacity: drawIsNew ? 1.0 : 0.45,
-                scale:   drawIsNew ? 1.55 : 1.06,
+                opacity: drawIsNew ? 0.82 : 0.40,
+                scale:   drawIsNew ? 1.18 : 1.04,
                 duration: drawIsNew ? 2.2 : 3.2,
                 ease: 'sine.inOut', yoyo: true, repeat: -1
               });
@@ -4775,7 +4819,7 @@
           });
 
           tlC
-            .to('#sceneGlow', { opacity: drawIsNew ? 1 : 0.42, scale: drawIsNew ? 1.22 : 1.06, duration: 0.22, ease: 'power2.out' }, 0)
+            .to('#sceneGlow', { opacity: drawIsNew ? 0.82 : 0.38, scale: drawIsNew ? 1.06 : 1.03, duration: 0.22, ease: 'power2.out' }, 0)
             .to('#cardGlow',  { opacity: drawIsNew ? 1 : 0.48, scale: drawIsNew ? 1.12 : 1.02, duration: 0.22, ease: 'power2.out' }, 0)
             .to('#flashEl',   { opacity: drawIsNew ? 0.96 : 0.40, duration: 0.05, ease: 'none' }, 0.06)
             .to('#flashEl',   { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
@@ -4798,9 +4842,9 @@
             .to('#cardFlipShine', { opacity: 0.98, x: '155%', duration: 0.34, ease: 'power2.out' }, 0.26)
             .to('#cardInner', { rotateY: 194, rotateX: -3, rotateZ: 1.6, duration: 0.34, ease: 'power2.out' }, 0.31)
             .to('#cardInner', { rotateY: 180, rotateX: 0, rotateZ: 0, duration: 0.26, ease: 'back.out(1.3)' }, 0.62)
-            .to('#cardTrigger', { scale: 2.00, duration: 0.09, ease: 'power3.out' }, 0.62)
-            .to('#cardTrigger', { scale: 1.82, duration: 0.38, ease: 'elastic.out(1, 0.45)' }, 0.71)
-            .to('#sceneGlow', { opacity: 0.92, scale: 1.08, duration: 0.48, ease: 'power2.out' }, 0.76)
+            .to('#cardTrigger', { scale: 1.94, duration: 0.09, ease: 'power3.out' }, 0.62)
+            .to('#cardTrigger', { scale: 1.78, duration: 0.38, ease: 'elastic.out(1, 0.45)' }, 0.71)
+            .to('#sceneGlow', { opacity: 0.78, scale: 1.04, duration: 0.48, ease: 'power2.out' }, 0.76)
             .to('#cardGlow',  { opacity: 0.86, scale: 1.02, duration: 0.48, ease: 'power2.out' }, 0.82);
 
           // ── 십자 빔 — 신규 카드 공개 순간만 ──
