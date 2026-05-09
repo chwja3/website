@@ -224,6 +224,9 @@ function adminGrantHiddenCard(body) {
 // B1: 현재 주차 번호 (1~6) ← 어드민에서 변경
 // B2: prayer 탭 on/off
 // B3: secret 탭 on/off
+// B4: app_open_date
+// D1: chat 탭 on/off  ← 주의: B5/B6은 1주차 mission data와 충돌하므로 D열 사용
+// D2: bbbSections JSON
 //
 // 주차별 데이터 (8행 단위 블록):
 // startRow = (week - 1) * 8 + 5
@@ -240,7 +243,7 @@ function getConfig() {
 
   const currentWeek   = Number(sheet.getRange('B1').getValue()) || 1;
   const startRow      = (currentWeek - 1) * 8 + 5;
-  const weekTitle     = sheet.getRange(startRow, 2).getValue();
+  const weekTitle     = String(sheet.getRange(startRow, 2).getValue() || (currentWeek + '주차')).trim();
   const drawThreshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
 
   const rawItems = sheet.getRange(startRow + 1, 1, 6, 3).getValues();
@@ -408,7 +411,7 @@ function getDashboardData() {
   const lastRow = rawSheet.getLastRow();
   const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 8).getValues() : [];
 
-  const currentWeekRows = values.filter(row => row[1] === config.weekTitle);
+  const currentWeekRows = values.filter(row => String(row[1]).trim() === config.weekTitle);
   const counts = {};
   config.items.forEach(item => counts[item] = 0);
 
@@ -907,8 +910,8 @@ function getTabSettings() {
   const sheet  = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const prayer = sheet.getRange('B2').getValue();
   const secret = sheet.getRange('B3').getValue();
-  const chat   = sheet.getRange('B5').getValue();
-  const bbbRaw = sheet.getRange('B6').getValue();
+  const chat   = sheet.getRange('D1').getValue(); // B5→D1 (B5는 1주차 weekTitle과 충돌)
+  const bbbRaw = sheet.getRange('D2').getValue(); // B6→D2 (B6는 1주차 항목 점수와 충돌)
 
   var bbbSections = JSON.parse(JSON.stringify(BBB_SECTIONS_DEFAULT));
   try { if (bbbRaw) { var saved = JSON.parse(bbbRaw); Object.keys(saved).forEach(function(k){ bbbSections[k] = saved[k]; }); } } catch(e) {}
@@ -927,8 +930,8 @@ function setTabSettings(body) {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   sheet.getRange('B2').setValue(body.prayer !== false);
   sheet.getRange('B3').setValue(body.secret !== false);
-  sheet.getRange('B5').setValue(body.chat   !== false);
-  if (body.bbbSections) sheet.getRange('B6').setValue(JSON.stringify(body.bbbSections));
+  sheet.getRange('D1').setValue(body.chat   !== false); // B5→D1
+  if (body.bbbSections) sheet.getRange('D2').setValue(JSON.stringify(body.bbbSections)); // B6→D2
   return { ok: true };
 }
 
@@ -1471,6 +1474,50 @@ function setupAllWeeks() {
   });
 
   Logger.log('전체 주차 세팅 완료');
+}
+
+// ── 일회성 config/raw_checkins 복구 (B5/B6 충돌 수정 후 1회 실행) ───────────
+// GAS 에디터에서 직접 실행: fixConfigSheetConflict()
+function fixConfigSheetConflict() {
+  const ss          = getSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+
+  // 1) 기존 B5(chat), B6(bbbSections) → D1, D2로 이전
+  const chatVal = configSheet.getRange('B5').getValue();
+  const bbbVal  = configSheet.getRange('B6').getValue();
+  configSheet.getRange('D1').setValue(chatVal !== '' ? chatVal : false);
+  if (bbbVal && typeof bbbVal === 'string') configSheet.getRange('D2').setValue(bbbVal);
+
+  // 2) 1주차 config 복원 (B5: weekTitle, C5: threshold, A6:C11: items)
+  configSheet.getRange('B5').setValue('1주차');
+  configSheet.getRange('C5').setValue(9);
+  const w1items = [
+    ['자기 전 1분 동안 무릎 꿇고 기도하기', 2, 'L'],
+    ['"하나님, 저는 오늘 ____이 필요합니다." 문장 완성하기', 1, 'L'],
+    ['이번주 예배 송리스트 전체 듣기', 2, 'L'],
+    ['손기도 기도제목 위에 손을 얹고 그 자리에서 중보기도하기', 1, 'L'],
+    ['교회 어른들께 먼저 인사하기', 1, 'MC'],
+    ['밥 먹기 전에 식기도하기', 1, 'MW'],
+  ];
+  configSheet.getRange(6, 1, 6, 3).setValues(w1items);
+
+  // 3) raw_checkins B열: boolean false → '1주차' 마이그레이션
+  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
+  if (rawSheet && rawSheet.getLastRow() >= 2) {
+    const lastRow = rawSheet.getLastRow();
+    const bCol = rawSheet.getRange(2, 2, lastRow - 1, 1).getValues();
+    let fixed = 0;
+    bCol.forEach(function(r, i) {
+      if (r[0] === false || r[0] === '' || String(r[0]).trim() === 'false') {
+        rawSheet.getRange(i + 2, 2).setValue('1주차');
+        fixed++;
+      }
+    });
+    Logger.log('raw_checkins 마이그레이션: ' + fixed + '행 수정');
+  }
+
+  Logger.log('fixConfigSheetConflict 완료');
+  return { ok: true };
 }
 
 // ── 미션 config 읽기/쓰기 ─────────────────────────
