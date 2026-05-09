@@ -3,6 +3,9 @@ const DEV_SPREADSHEET_ID = '19-2XZ3egh8-K3XnE9QmuYVCnz6pkkgo-vf66BPKFS-o'; // DE
 const ADMIN_PASSWORD = 'zmsdmsgP';
 const RAW_SHEET_NAME = 'raw_checkins';
 const CONFIG_SHEET_NAME = 'config';
+const SESSION_TOKEN_COL = 8;
+const SESSION_UPDATED_AT_COL = 9;
+const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
 
 let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
 
@@ -28,6 +31,8 @@ function doGet(e) {
   if (action === 'userStatus') {
     const userId  = e.parameter.userId  || '';
     const weekKey = e.parameter.weekKey || '';
+    const auth = requireSessionForUser_(e.parameter, userId);
+    if (auth) return jsonOutput(auth);
     return jsonOutput(getUserStatus(userId, weekKey));
   }
   if (action === 'getUsers') {
@@ -71,6 +76,8 @@ function doGet(e) {
   if (action === 'getTrades') {
     const uid = e.parameter.userId || '';
     if (!uid) return jsonOutput({ error: 'missing_userId' });
+    const auth = requireSessionForUser_(e.parameter, uid);
+    if (auth) return jsonOutput(auth);
     return jsonOutput(getTrades(uid));
   }
   if (action === 'getAdminTrades') {
@@ -84,11 +91,15 @@ function doGet(e) {
   if (action === 'getBBB') {
     const uid = e.parameter.userId || '';
     if (!uid) return jsonOutput({ error: 'missing_userId' });
+    const auth = requireSessionForUser_(e.parameter, uid);
+    if (auth) return jsonOutput(auth);
     return jsonOutput(getBBB(uid));
   }
   if (action === 'getBBBMessages') {
     const uid = e.parameter.userId || '';
     if (!uid) return jsonOutput({ error: 'missing_userId' });
+    const auth = requireSessionForUser_(e.parameter, uid);
+    if (auth) return jsonOutput(auth);
     return jsonOutput(getBBBMessages(uid));
   }
   if (action === 'adminGetBBB') {
@@ -107,9 +118,13 @@ function doPost(e) {
     const action = body.action;
 
     if (action === 'submit') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
       return jsonOutput(saveCheckin(body.items || [], body.userId || '', body.weekKey || '', body.dateKey || '', body.score || 0));
     }
     if (action === 'drawCard') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
       return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false, body.requestId || ''));
     }
     if (action === 'adminLogin') {
@@ -130,9 +145,15 @@ function doPost(e) {
       return jsonOutput(resetPassword(body));
     }
     if (action === 'submitHoldPrayGuess') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
       return jsonOutput(submitHoldPrayGuess(body.weekKey || '', body.guess || '', body.nickname || '', Number(body.cardIndex) || 0));
     }
-    if (action === 'postHpHint')    return jsonOutput(postHpHint(body));
+    if (action === 'postHpHint') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(postHpHint(body));
+    }
     if (action === 'postInquiry')   return jsonOutput(postInquiry(body));
     if (action === 'editInquiry')   return jsonOutput(editInquiry(body));
     if (action === 'deleteInquiry') return jsonOutput(deleteInquiry(body));
@@ -164,15 +185,51 @@ function doPost(e) {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(editNotice(body));
     }
-    if (action === 'requestTrade') return jsonOutput(requestTrade(body));
-    if (action === 'acceptTrade')  return jsonOutput(acceptTrade(body));
-    if (action === 'rejectTrade')  return jsonOutput(rejectTrade(body));
-    if (action === 'cancelTrade')  return jsonOutput(cancelTrade(body));
-    if (action === 'prayForTrade') return jsonOutput(prayForTrade(body));
-    if (action === 'guessBBBSecret')        return jsonOutput(guessBBBSecret(body));
-    if (action === 'uploadBBBPhoto')        return jsonOutput(uploadBBBPhoto(body));
-    if (action === 'deleteBBBPhoto')        return jsonOutput(deleteBBBPhoto(body));
-    if (action === 'sendBBBMessage')        return jsonOutput(sendBBBMessage(body));
+    if (action === 'requestTrade') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(requestTrade(body));
+    }
+    if (action === 'acceptTrade') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(acceptTrade(body));
+    }
+    if (action === 'rejectTrade') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(rejectTrade(body));
+    }
+    if (action === 'cancelTrade') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(cancelTrade(body));
+    }
+    if (action === 'prayForTrade') {
+      const auth = requireSessionForUser_(body, body.nickname || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(prayForTrade(body));
+    }
+    if (action === 'guessBBBSecret') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(guessBBBSecret(body));
+    }
+    if (action === 'uploadBBBPhoto') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(uploadBBBPhoto(body));
+    }
+    if (action === 'deleteBBBPhoto') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(deleteBBBPhoto(body));
+    }
+    if (action === 'sendBBBMessage') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(sendBBBMessage(body));
+    }
     if (action === 'adminSetBBBMessageOpen') return jsonOutput(adminSetBBBMessageOpen(body));
     if (action === 'adminSetupBBBMatching') {
       if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
@@ -241,6 +298,91 @@ function adminGrantHiddenCard(body) {
 
 function getSpreadsheet() {
   return SpreadsheetApp.openById(_devMode ? DEV_SPREADSHEET_ID : SPREADSHEET_ID);
+}
+
+function getUsersSheet_() {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  if (!sheet) throw new Error('Users 시트를 찾을 수 없습니다.');
+  ensureUserSessionColumns_(sheet);
+  return sheet;
+}
+
+function ensureUserSessionColumns_(sheet) {
+  const maxCol = Math.max(sheet.getLastColumn(), SESSION_UPDATED_AT_COL);
+  const headers = sheet.getRange(1, 1, 1, maxCol).getValues()[0];
+  if (String(headers[SESSION_TOKEN_COL - 1] || '') !== 'sessionToken') {
+    sheet.getRange(1, SESSION_TOKEN_COL).setValue('sessionToken');
+  }
+  if (String(headers[SESSION_UPDATED_AT_COL - 1] || '') !== 'sessionUpdatedAt') {
+    sheet.getRange(1, SESSION_UPDATED_AT_COL).setValue('sessionUpdatedAt');
+  }
+}
+
+function findUserRow_(sheet, nickname) {
+  const clean = String(nickname || '').trim();
+  if (!clean) return -1;
+  const last = sheet.getLastRow();
+  if (last < 2) return -1;
+  const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]).trim() === clean) return i + 2;
+  }
+  return -1;
+}
+
+function makeSessionToken_() {
+  return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+}
+
+function issueSessionToken_(sheet, rowIndex) {
+  ensureUserSessionColumns_(sheet);
+  const token = makeSessionToken_();
+  sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).setValues([[token, new Date().toISOString()]]);
+  return token;
+}
+
+function clearSessionToken_(sheet, rowIndex) {
+  ensureUserSessionColumns_(sheet);
+  sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).clearContent();
+}
+
+function touchSessionToken_(sheet, rowIndex) {
+  ensureUserSessionColumns_(sheet);
+  sheet.getRange(rowIndex, SESSION_UPDATED_AT_COL).setValue(new Date().toISOString());
+}
+
+function verifySession(nickname, sessionToken) {
+  const cleanToken = String(sessionToken || '').trim();
+  if (!String(nickname || '').trim() || !cleanToken) return false;
+  try {
+    const sheet = getUsersSheet_();
+    const rowIndex = findUserRow_(sheet, nickname);
+    if (rowIndex < 2) return false;
+    const row = sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).getValues()[0];
+    const storedToken = String(row[0] || '').trim();
+    if (!storedToken || storedToken !== cleanToken) return false;
+
+    const updatedAt = row[1];
+    const updatedMs = updatedAt instanceof Date ? updatedAt.getTime() : new Date(String(updatedAt || '')).getTime();
+    if (!isNaN(updatedMs) && Date.now() - updatedMs > SESSION_MAX_AGE_MS) return false;
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function requireSessionForUser_(source, userId) {
+  const uid = String(userId || '').trim();
+  if (!uid) return { error: 'missing_userId' };
+  if (!verifySession(uid, source && source.sessionToken)) {
+    return { error: 'unauthorized', authRequired: true };
+  }
+  return null;
+}
+
+function hasValidUserAuth_(body, nickname) {
+  return verifySession(nickname, body && body.sessionToken) ||
+         verifyUserPassword(nickname, body && body.password);
 }
 
 function getConfig() {
@@ -1155,7 +1297,7 @@ function getAppOpenDate() {
 
 // ── 유저 인증 ─────────────────────────────────────
 function registerUser(body) {
-  const sheet    = getSpreadsheet().getSheetByName('Users');
+  const sheet    = getUsersSheet_();
   const nickname = String(body.nickname || '').trim();
   const password = String(body.password || '').trim();
   const name     = String(body.name     || '').trim();
@@ -1168,28 +1310,37 @@ function registerUser(body) {
     if (String(data[i][0]).trim() === nickname) return { error: 'duplicate' };
   }
 
-  sheet.appendRow([nickname, '', name, parish, new Date()]);
-  const pwCell = sheet.getRange(sheet.getLastRow(), 2);
+  sheet.appendRow([nickname, '', name, parish, new Date(), '', '', '', '']);
+  const rowIndex = sheet.getLastRow();
+  const pwCell = sheet.getRange(rowIndex, 2);
   pwCell.setNumberFormat('@');
   pwCell.setValue(password);
-  return { ok: true };
+  const sessionToken = issueSessionToken_(sheet, rowIndex);
+  return { ok: true, sessionToken };
 }
 
 function loginUser(body) {
-  const sheet    = getSpreadsheet().getSheetByName('Users');
+  const sheet    = getUsersSheet_();
   const nickname = String(body.nickname || '').trim();
   const password = String(body.password || '').trim();
+  const sessionToken = String(body.sessionToken || '').trim();
 
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === nickname) {
-      if (String(data[i][1]).trim() === password) {
+      const rowIndex = i + 1;
+      const passwordOk = password && String(data[i][1]).trim() === password;
+      const sessionOk = !password && sessionToken && verifySession(nickname, sessionToken);
+      if (passwordOk || sessionOk) {
+        const token = passwordOk ? issueSessionToken_(sheet, rowIndex) : sessionToken;
+        if (sessionOk) touchSessionToken_(sheet, rowIndex);
         return {
           ok:          true,
           parish:      data[i][3],
           isStaff:     data[i][5] === true,
           isDev:       data[i][6] === true,
-          appOpenDate: getAppOpenDate()
+          appOpenDate: getAppOpenDate(),
+          sessionToken: token
         };
       }
       return { error: 'wrong_password' };
@@ -1199,7 +1350,7 @@ function loginUser(body) {
 }
 
 function resetPassword(body) {
-  const sheet       = getSpreadsheet().getSheetByName('Users');
+  const sheet       = getUsersSheet_();
   const nickname    = String(body.nickname    || '').trim();
   const name        = String(body.name        || '').trim();
   const parish      = String(body.parish      || '').trim();
@@ -1218,6 +1369,7 @@ function resetPassword(body) {
         const cell = sheet.getRange(i + 1, 2);
         cell.setNumberFormat('@');
         cell.setValue(newPassword);
+        clearSessionToken_(sheet, i + 1);
         return { ok: true };
       }
     }
@@ -1244,11 +1396,12 @@ function resetPassword(body) {
   const cell = sheet.getRange(matches[0].row, 2);
   cell.setNumberFormat('@');
   cell.setValue(newPassword);
+  clearSessionToken_(sheet, matches[0].row);
   return { ok: true };
 }
 
 function getUsers() {
-  const sheet = getSpreadsheet().getSheetByName('Users');
+  const sheet = getUsersSheet_();
   const data  = sheet.getDataRange().getValues();
   const users = [];
   for (let i = 1; i < data.length; i++) {
@@ -1259,7 +1412,7 @@ function getUsers() {
 }
 
 function findNickname(name, parish) {
-  const sheet = getSpreadsheet().getSheetByName('Users');
+  const sheet = getUsersSheet_();
   const data  = sheet.getDataRange().getValues();
   const nicknames = [];
   for (let i = 1; i < data.length; i++) {
@@ -1273,7 +1426,7 @@ function findNickname(name, parish) {
 }
 
 function adminResetPassword(body) {
-  const sheet       = getSpreadsheet().getSheetByName('Users');
+  const sheet       = getUsersSheet_();
   const nickname    = String(body.nickname    || '').trim();
   const newPassword = String(body.newPassword || '').trim();
   if (!nickname || !newPassword) return { error: 'missing_fields' };
@@ -1284,6 +1437,7 @@ function adminResetPassword(body) {
       const cell = sheet.getRange(i + 1, 2);
       cell.setNumberFormat('@');
       cell.setValue(newPassword);
+      clearSessionToken_(sheet, i + 1);
       return { ok: true };
     }
   }
@@ -1771,7 +1925,7 @@ function getOrCreateInquirySheet() {
 }
 
 function verifyUserPassword(nickname, password) {
-  const sheet = getSpreadsheet().getSheetByName('Users');
+  const sheet = getUsersSheet_();
   const data  = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === nickname && String(data[i][1]).trim() === password) return true;
@@ -1840,10 +1994,9 @@ function getInquiries() {
 
 function postInquiry(body) {
   const nickname = String(body.nickname || '').trim();
-  const password = String(body.password || '').trim();
   const content  = String(body.content  || '').trim();
-  if (!nickname || !password || !content) return { error: 'missing_fields' };
-  if (!verifyUserPassword(nickname, password)) return { error: 'wrong_password' };
+  if (!nickname || !content) return { error: 'missing_fields' };
+  if (!hasValidUserAuth_(body, nickname)) return { error: 'unauthorized', authRequired: true };
   const sheet = getOrCreateInquirySheet();
   sheet.appendRow([new Date().getTime(), nickname, content, new Date().toISOString(), '', '']);
   return { ok: true };
@@ -1851,11 +2004,10 @@ function postInquiry(body) {
 
 function editInquiry(body) {
   const nickname = String(body.nickname || '').trim();
-  const password = String(body.password || '').trim();
   const id       = String(body.id       || '');
   const content  = String(body.content  || '').trim();
-  if (!nickname || !password || !id || !content) return { error: 'missing_fields' };
-  if (!verifyUserPassword(nickname, password)) return { error: 'wrong_password' };
+  if (!nickname || !id || !content) return { error: 'missing_fields' };
+  if (!hasValidUserAuth_(body, nickname)) return { error: 'unauthorized', authRequired: true };
   const sheet = getOrCreateInquirySheet();
   const last  = sheet.getLastRow();
   if (last < 2) return { error: 'not_found' };
@@ -1883,8 +2035,7 @@ function deleteInquiry(body) {
       return { ok: true };
     }
     const nickname = String(body.nickname || '').trim();
-    const password = String(body.password || '').trim();
-    if (String(rows[i][1]).trim() === nickname && verifyUserPassword(nickname, password)) {
+    if (String(rows[i][1]).trim() === nickname && hasValidUserAuth_(body, nickname)) {
       sheet.deleteRow(i + 2);
       return { ok: true };
     }
