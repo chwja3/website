@@ -508,7 +508,10 @@ function getOrCreateDrawSheet() {
   let sheet = ss.getSheetByName('CardDraws');
   if (!sheet) {
     sheet = ss.insertSheet('CardDraws');
-    sheet.appendRow(['userId','weekKey','cardId','cardName','drawnAt']);
+    sheet.appendRow(['userId','weekKey','cardId','cardName','drawnAt','received']);
+  } else {
+    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 6)).getValues()[0];
+    if (String(header[5] || '') !== 'received') sheet.getRange(1, 6).setValue('received');
   }
   return sheet;
 }
@@ -974,16 +977,49 @@ function getOrCreateBBBSettingsSheet() {
   return sheet;
 }
 
+function isBBBMessageOpen() {
+  try {
+    const bbbSheet = getOrCreateBBBSettingsSheet();
+    const last = bbbSheet.getLastRow();
+    if (last >= 2) {
+      const rows = bbbSheet.getRange(2, 1, last - 1, 2).getValues();
+      for (var i = 0; i < rows.length; i++) {
+        if (String(rows[i][0]).trim() === 'msgOpen') return rows[i][1] === true;
+      }
+    }
+  } catch(e) {}
+
+  // 구버전 config C1 설정 fallback
+  try {
+    const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+    return configSheet.getRange('C1').getValue() === true;
+  } catch(e) {
+    return false;
+  }
+}
+
 function getTabSettings() {
   // TabSettings 시트에서 holdpray/secret/chat 읽기
-  const tabSheet = getOrCreateTabSettingsSheet();
-  const tabLastRow = tabSheet.getLastRow();
+  const ss = getSpreadsheet();
+  const tabSheet = ss.getSheetByName('TabSettings');
   const tabMap = { holdpray: true, secret: true, chat: false };
-  if (tabLastRow >= 2) {
+  if (tabSheet && tabSheet.getLastRow() >= 2) {
+    const tabLastRow = tabSheet.getLastRow();
     tabSheet.getRange(2, 1, tabLastRow - 1, 3).getValues().forEach(function(r) {
       const key = String(r[0]).trim();
       if (tabMap.hasOwnProperty(key)) tabMap[key] = r[2] === true;
     });
+  } else {
+    // TabSettings 생성 전에는 config의 기존 값을 읽기만 한다.
+    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+    if (configSheet) {
+      const b2 = configSheet.getRange('B2').getValue();
+      const b3 = configSheet.getRange('B3').getValue();
+      const d1 = configSheet.getRange('D1').getValue();
+      tabMap.holdpray = (b2 === '') ? true : b2 === true;
+      tabMap.secret   = (b3 === '') ? true : b3 === true;
+      tabMap.chat     = d1 === true;
+    }
   }
 
   // BBBSettings 시트에서 현장미션 섹션 오픈 설정 읽기
@@ -1677,6 +1713,7 @@ function postHpHint(body) {
 
   // getHoldPray와 동일한 로직으로 해당 카드의 실제 정답 확인 (Rendezvous hashing)
   const entries = getYouthHpEntries();
+  const n = entries.length;
   const picked = [];
   const usedIdx = new Set();
   for (let i = 0; i < 3; i++) {
@@ -1953,7 +1990,7 @@ function updateTicketCols(userId) {
       }
     }
     if (rowIndex === -1) {
-      const newRow = new Array(14).fill(0);
+      const newRow = new Array(15).fill(0);
       newRow[0] = userId;
       newRow[1] = totalEarned;
       newRow[2] = totalDraws;
@@ -1973,9 +2010,17 @@ function rebuildCollectionSheet() {
 
   // 시트 헤더 재설정 + 데이터 클리어
   const collSheet = getOrCreateCollectionSheet();
-  collSheet.getRange(1, 1, 1, 14).setValues([['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수']]);
   const collLast = collSheet.getLastRow();
-  if (collLast >= 2) collSheet.getRange(2, 1, collLast - 1, 14).clearContent();
+  const hiddenMap = {};
+  if (collLast >= 2) {
+    collSheet.getRange(2, 1, collLast - 1, 15).getValues().forEach(function(r) {
+      const userId = String(r[0]).trim();
+      const hidden = Number(r[14]) || 0;
+      if (userId && hidden > 0) hiddenMap[userId] = hidden;
+    });
+  }
+  collSheet.getRange(1, 1, 1, 15).setValues([['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수','히든']]);
+  if (collLast >= 2) collSheet.getRange(2, 1, collLast - 1, 15).clearContent();
 
   // 등록된 전체 유저
   const usersSheet = ss.getSheetByName('Users');
@@ -2031,12 +2076,13 @@ function rebuildCollectionSheet() {
       const cid = Number(d[2]);
       if (cid >= 1 && cid <= 9) cardCounts[cid - 1]++;
     }
-    const totalCards = cardCounts.reduce((s, n) => s + n, 0);
+    const hidden = hiddenMap[userId] || 0;
+    const totalCards = cardCounts.reduce((s, n) => s + n, 0) + hidden;
 
-    rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards]);
+    rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards, hidden]);
   }
 
-  if (rows.length) collSheet.getRange(2, 1, rows.length, 14).setValues(rows);
+  if (rows.length) collSheet.getRange(2, 1, rows.length, 15).setValues(rows);
   return { ok: true, rebuilt: rows.length };
 }
 
@@ -2067,16 +2113,25 @@ function migrateCardDrawsToCollection() {
   }
 
   const collSheet = getOrCreateCollectionSheet();
+  const hiddenMap = {};
   if (collSheet.getLastRow() > 1) {
-    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 14).clearContent();
+    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 15).getValues().forEach(function(r) {
+      const userId = String(r[0]).trim();
+      const hidden = Number(r[14]) || 0;
+      if (userId && hidden > 0) hiddenMap[userId] = hidden;
+    });
+  }
+  if (collSheet.getLastRow() > 1) {
+    collSheet.getRange(2, 1, collSheet.getLastRow() - 1, 15).clearContent();
   }
   for (const [uid, cards] of Object.entries(userCounts)) {
-    const row = new Array(14).fill(0);
+    const row = new Array(15).fill(0);
     row[0] = uid;
     for (let i = 1; i <= 9; i++) {
       row[i + 3] = cards[i] || 0; // cardId i → col i+4 → idx i+3
     }
-    row[13] = Object.values(cards).reduce((s, n) => s + n, 0); // 총카드수
+    row[14] = hiddenMap[uid] || 0;
+    row[13] = Object.values(cards).reduce((s, n) => s + n, 0) + row[14]; // 총카드수
     collSheet.appendRow(row);
   }
   return { ok: true, migrated: Object.keys(userCounts).length };
@@ -2088,7 +2143,12 @@ function getOrCreateTradesSheet() {
   let sheet = ss.getSheetByName('Trades');
   if (!sheet) {
     sheet = ss.insertSheet('Trades');
-    sheet.appendRow(['id','requester','requesterCardId','requesterCardName','target','targetCardId','targetCardName','status','createdAt','resolvedAt']);
+    sheet.appendRow(['id','requester','requesterCardId','requesterCardName','target','targetCardId','targetCardName','status','createdAt','resolvedAt','requesterPrayed','targetPrayed']);
+  } else {
+    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 12)).getValues()[0];
+    if (String(header[10] || '') !== 'requesterPrayed' || String(header[11] || '') !== 'targetPrayed') {
+      sheet.getRange(1, 1, 1, 12).setValues([['id','requester','requesterCardId','requesterCardName','target','targetCardId','targetCardName','status','createdAt','resolvedAt','requesterPrayed','targetPrayed']]);
+    }
   }
   return sheet;
 }
@@ -2257,6 +2317,7 @@ function getTrades(userId) {
   const hasAccepted = [...incoming, ...outgoing].some(function(t) { return t.status === 'accepted'; });
   if (hasAccepted) {
     const usersData = getSpreadsheet().getSheetByName('Users').getDataRange().getValues();
+    const hpEntries = getYouthHpEntries();
     const nickToName = {};
     for (var i = 1; i < usersData.length; i++) {
       if (usersData[i][0]) nickToName[String(usersData[i][0])] = String(usersData[i][2]);
@@ -2265,7 +2326,7 @@ function getTrades(userId) {
       if (t.status === 'accepted') {
         const otherNick = (t.target === userId) ? t.requester : t.target;
         const realName = nickToName[otherNick] || '';
-        const entry = realName ? HOLD_PRAY_ENTRIES.find(function(e) { return e.n === realName; }) : null;
+        const entry = realName ? hpEntries.find(function(e) { return e.n === realName; }) : null;
         t.otherPrayer = entry ? entry.c : '';
       }
     });
@@ -2407,8 +2468,11 @@ function getOrCreateBBBPhotosSheet() {
   let sheet = ss.getSheetByName('BBBPhotos');
   if (!sheet) {
     sheet = ss.insertSheet('BBBPhotos');
-    sheet.appendRow(['userId', 'photoBase64', 'uploadedAt']);
+    sheet.appendRow(['userId', 'photoBase64', 'uploadedAt', 'missionType']);
     sheet.setFrozenRows(1);
+  } else {
+    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 4)).getValues()[0];
+    if (String(header[3] || '') !== 'missionType') sheet.getRange(1, 4).setValue('missionType');
   }
   return sheet;
 }
@@ -2575,8 +2639,7 @@ function getBBB(userId) {
   }
 
   // BBB 메시지 오픈 여부
-  const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const msgOpen = configSheet.getRange('C1').getValue() === true;
+  const msgOpen = isBBBMessageOpen();
 
   // 내 사진 (M1 / M2 / M3 스팟 5개)
   let myPhoto = null, myPhotoM2 = null;
@@ -2696,8 +2759,7 @@ function sendBBBMessage(body) {
   if (message.length > 300) return { error: '메시지는 300자 이하로 작성해주세요.' };
 
   // 메시지 오픈 여부 확인
-  const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (configSheet.getRange('C1').getValue() !== true)
+  if (!isBBBMessageOpen())
     return { error: '지금은 메시지를 보낼 수 없어요. 관리자가 오픈할 때 다시 시도해주세요.' };
 
   // 케어버디 찾기
@@ -2745,7 +2807,6 @@ function getBBBMessages(userId) {
 function adminGetBBB() {
   const bbbSheet = getOrCreateBBBSheet();
   const msgSheet = getOrCreateBBBMessagesSheet();
-  const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
 
   const lastB = bbbSheet.getLastRow();
   const matches = lastB < 2 ? [] :
@@ -2765,7 +2826,7 @@ function adminGetBBB() {
       .map(r => ({ id: String(r[0]), from: String(r[1]), to: String(r[2]), message: String(r[3]), createdAt: String(r[4]) }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-  const messageOpen = configSheet.getRange('C1').getValue() === true;
+  const messageOpen = isBBBMessageOpen();
   return { ok: true, matches, messages, messageOpen };
 }
 
@@ -2775,6 +2836,19 @@ function adminSetBBBMessageOpen(body) {
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const open = body.open === true;
   configSheet.getRange('C1').setValue(open);
+  const bbbSheet = getOrCreateBBBSettingsSheet();
+  const last = bbbSheet.getLastRow();
+  var updated = false;
+  if (last >= 2) {
+    const rows = bbbSheet.getRange(2, 1, last - 1, 1).getValues();
+    rows.forEach(function(r, i) {
+      if (String(r[0]).trim() === 'msgOpen') {
+        bbbSheet.getRange(i + 2, 2).setValue(open);
+        updated = true;
+      }
+    });
+  }
+  if (!updated) bbbSheet.appendRow(['msgOpen', open, '']);
   return { ok: true, messageOpen: open };
 }
 
