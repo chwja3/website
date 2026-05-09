@@ -26,6 +26,11 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    img {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
@@ -544,6 +549,112 @@
       justify-content: center;
     }
 
+    #spinHalo {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(132vmax, 980px);
+      height: min(132vmax, 980px);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 50% 50%,
+          rgba(255,255,255,0.18) 0%,
+          rgba(255,228,138,0.30) 14%,
+          rgba(255,160,70,0.18) 30%,
+          transparent 54%),
+        conic-gradient(from 0deg,
+          transparent 0deg,
+          rgba(255,222,118,0.52) 28deg,
+          transparent 58deg,
+          rgba(255,106,204,0.30) 112deg,
+          transparent 156deg,
+          rgba(112,184,255,0.28) 218deg,
+          transparent 274deg,
+          rgba(255,226,120,0.42) 328deg,
+          transparent 360deg);
+      -webkit-mask-image: radial-gradient(circle, transparent 0%, black 23%, black 56%, transparent 76%);
+      mask-image: radial-gradient(circle, transparent 0%, black 23%, black 56%, transparent 76%);
+      filter: blur(13px);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+      mix-blend-mode: screen;
+      will-change: opacity, transform;
+    }
+
+    #spinHalo::after {
+      content: '';
+      position: absolute;
+      inset: 20%;
+      border-radius: 50%;
+      border: 1px solid rgba(255,238,176,0.30);
+      box-shadow:
+        0 0 44px rgba(255,208,100,0.22),
+        0 0 120px rgba(255,126,210,0.13);
+    }
+
+    #revealCross {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(118vmax, 880px);
+      height: min(118vmax, 880px);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 8;
+      mix-blend-mode: screen;
+      transform-origin: 50% 50%;
+      will-change: opacity, transform;
+    }
+
+    #revealCross::before,
+    #revealCross::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      border-radius: 999px;
+      background:
+        linear-gradient(90deg,
+          transparent 0%,
+          rgba(255,224,120,0.10) 14%,
+          rgba(255,248,205,0.78) 46%,
+          rgba(255,255,255,0.95) 50%,
+          rgba(255,248,205,0.78) 54%,
+          rgba(255,224,120,0.10) 86%,
+          transparent 100%);
+      filter: blur(14px);
+    }
+
+    #revealCross::before {
+      width: 100%;
+      height: 18%;
+      transform: translate(-50%, -50%);
+    }
+
+    #revealCross::after {
+      width: 18%;
+      height: 100%;
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+
+    .cross-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34%;
+      height: 34%;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background:
+        radial-gradient(circle,
+          rgba(255,255,255,0.95) 0%,
+          rgba(255,237,164,0.62) 22%,
+          rgba(255,165,80,0.28) 48%,
+          transparent 72%);
+      filter: blur(10px);
+    }
+
     #flashEl {
       position: absolute;
       inset: -260px;
@@ -652,7 +763,7 @@
     /* 수평 광선 — 넓은 황금 잔광 */
     #cardBeam {
       position: absolute;
-      width: 1400px; height: 180px;
+      width: min(180vmax, 1600px); height: min(28vmax, 220px);
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(90deg,
@@ -673,7 +784,7 @@
     /* 수평 광선 — 날카로운 코어 라인 */
     #cardBeamCore {
       position: absolute;
-      width: 1400px; height: 5px;
+      width: min(180vmax, 1600px); height: 5px;
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(90deg,
@@ -691,7 +802,7 @@
     /* 세로 광선 */
     #cardBeamV {
       position: absolute;
-      width: 100px; height: 1400px;
+      width: min(18vmax, 140px); height: min(180vmax, 1600px);
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(180deg,
@@ -2121,6 +2232,8 @@
 
       <!-- 이펙트 레이어 -->
       <div id="effectsLayer">
+        <div id="spinHalo"></div>
+        <div id="revealCross"><div class="cross-core"></div></div>
         <div id="flashEl"></div>
         <div id="ringEl"></div>
         <div id="ringEl2"></div>
@@ -2873,7 +2986,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510s';
+    const APP_VERSION = '20260510t';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -4591,6 +4704,8 @@
 
       gsap.set('#sceneGlow', { opacity: 0, scale: 0.8 });
       gsap.set('#starBg', { opacity: 0 });
+      gsap.set('#spinHalo', { opacity: 0, scale: 0.72, rotate: 0, xPercent: -50, yPercent: -50 });
+      gsap.set('#revealCross', { opacity: 0, scale: 0.78, rotate: 0, xPercent: -50, yPercent: -50 });
       gsap.set('#flashEl', { opacity: 0 });
       gsap.set('#ringEl',  { opacity: 0, scale: 0.42 });
       gsap.set('#ringEl2', { opacity: 0, scale: 0.38 });
@@ -4636,6 +4751,8 @@
       document.getElementById('sceneGlow').classList.remove('glow-new', 'glow-dup');
       if (rainbowRaysTween) { rainbowRaysTween.kill(); rainbowRaysTween = null; }
       gsap.set('#rainbowRays', { opacity: 0, rotate: 0 });
+      gsap.set('#spinHalo', { opacity: 0, rotate: 0 });
+      gsap.set('#revealCross', { opacity: 0, rotate: 0 });
       gsap.set('#cardBeam',     { opacity: 0 });
       gsap.set('#cardBeamCore', { opacity: 0 });
       gsap.set('#cardBeamV',    { opacity: 0 });
@@ -4807,6 +4924,11 @@
             tlB
               .set('#cardLayer', { pointerEvents: 'none' })
               .to('#cardLayer', { opacity: 1, duration: 0.22, ease: 'power2.out' }, 0)
+              .fromTo('#spinHalo',
+                { opacity: 0, scale: 0.72, rotate: -18 },
+                { opacity: 0.54, scale: 1, rotate: 42, duration: 0.55, ease: 'power2.out' },
+                0
+              )
               .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.28, ease: 'power2.out' }, 0)
               .fromTo('#cardTrigger',
                 { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
@@ -4912,6 +5034,8 @@
       gsap.killTweensOf('#cardTrigger');
       gsap.killTweensOf('#cardInner');
       gsap.killTweensOf('#cardGlow');
+      gsap.killTweensOf('#spinHalo');
+      gsap.killTweensOf('#revealCross');
       stopLoadingDots();
       gsap.to('#cardLoadingHint', { opacity: 0, duration: 0.15 });
 
@@ -4935,6 +5059,32 @@
       }
 
       // 클릭 순간 빙글빙글 시작 → 3초에 걸쳐 감속 → 완전히 멈추면 카드 공개
+      if (rainbowRaysTween) { rainbowRaysTween.kill(); rainbowRaysTween = null; }
+      gsap.set('#rainbowRays', { opacity: 0, scale: drawIsNew ? 0.42 : 0.34, rotate: 0 });
+      rainbowRaysTween = gsap.to('#rainbowRays', {
+        rotate: 360,
+        duration: drawIsNew ? 1.35 : 2.1,
+        ease: 'none',
+        repeat: -1
+      });
+      gsap.to('#rainbowRays', {
+        opacity: drawIsNew ? 0.48 : 0.18,
+        scale: drawIsNew ? 0.92 : 0.66,
+        duration: 0.5,
+        ease: 'power2.out'
+      });
+      gsap.fromTo('#spinHalo',
+        { opacity: drawIsNew ? 0.62 : 0.36, scale: 0.94, rotate: 0 },
+        { opacity: drawIsNew ? 0.78 : 0.42, scale: drawIsNew ? 1.08 : 0.98, rotate: 360, duration: 1.15, ease: 'none', repeat: 2 }
+      );
+      gsap.to('#sceneGlow', {
+        opacity: drawIsNew ? 0.74 : 0.38,
+        scale: drawIsNew ? 1.10 : 1.02,
+        duration: 1.2,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: 1
+      });
       gsap.to('#cardTrigger', {
         rotateY: 1800,   // 5바퀴 (duration:0.2 초속으로 시작, power3.out으로 감속)
         duration: 3.0,
@@ -4991,10 +5141,24 @@
           });
 
           tlC
+            .to('#rainbowRays', { opacity: 0, scale: drawIsNew ? 1.12 : 0.78, duration: 0.58, ease: 'power2.out' }, 0)
+            .call(function() {
+              if (rainbowRaysTween) { rainbowRaysTween.kill(); rainbowRaysTween = null; }
+            }, [], 0.62)
+            .to('#spinHalo', { opacity: 0, scale: drawIsNew ? 1.22 : 1.02, rotate: '+=80', duration: 0.72, ease: 'power2.out' }, 0)
             .to('#sceneGlow', { opacity: drawIsNew ? 0.82 : 0.38, scale: drawIsNew ? 1.06 : 1.03, duration: 0.22, ease: 'power2.out' }, 0)
             .to('#cardGlow',  { opacity: drawIsNew ? 1 : 0.48, scale: drawIsNew ? 1.12 : 1.02, duration: 0.22, ease: 'power2.out' }, 0)
             .to('#flashEl',   { opacity: drawIsNew ? 0.96 : 0.40, duration: 0.05, ease: 'none' }, 0.06)
             .to('#flashEl',   { opacity: 0, duration: 0.16, ease: 'power1.out' }, 0.11)
+            .fromTo('#revealCross',
+              { opacity: 0, scale: 0.72, rotate: drawIsNew ? -5 : -2 },
+              { opacity: drawIsNew ? 0.92 : 0.38, scale: drawIsNew ? 1.04 : 0.88, rotate: drawIsNew ? 2 : 0, duration: 0.22, ease: 'power3.out' },
+              0.56
+            )
+            .to('#revealCross',
+              { opacity: 0, scale: drawIsNew ? 1.32 : 1.02, duration: drawIsNew ? 1.15 : 0.58, ease: 'power2.out' },
+              0.80
+            )
             .fromTo('#ringEl',
               { opacity: drawIsNew ? 0.95 : 0.42, scale: 0.42 },
               { opacity: 0, scale: drawIsNew ? 1.62 : 1.18, duration: 0.52, ease: 'power2.out' },
@@ -6927,6 +7091,9 @@
     }
 
     /* ════ 초기화 ════ */
+    document.addEventListener('contextmenu', function(e) {
+      if (e.target.tagName === 'IMG') e.preventDefault();
+    });
     updateMainInstallGuide();
     renderWeekCal();
     loadNotices();
