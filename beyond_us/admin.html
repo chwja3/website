@@ -359,19 +359,6 @@
           <button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="saveBBBSections()">저장</button>
         </div>
 
-        <!-- 메시지 오픈 토글 -->
-        <div class="card" style="margin-top:16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <h2 class="card-title" style="margin:0;">익명 메시지 창</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">열리면 "To. 케어버디" 메시지 보내기 + "from. 시크릿버디" 받은 메시지함이 표시돼요.</p>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <span id="bbbMsgOpenLabel" style="font-size:13px;font-weight:700;color:var(--sub);">-</span>
-              <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="toggleBBBMessageOpen()">전환</button>
-            </div>
-          </div>
-        </div>
 
         <!-- 메시지 로그 -->
         <div class="card" style="margin-top:16px;">
@@ -1396,22 +1383,17 @@
     }
 
     /* ── B.B.B. ── */
-    let _bbbMessageOpen = false;
-
     async function loadAdminBBB() {
       const matchEl = document.getElementById('bbbMatchBody');
       const msgEl   = document.getElementById('bbbMsgBody');
-      const label   = document.getElementById('bbbMsgOpenLabel');
       try {
-        const res = await get({ action: 'adminGetBBB', adminPw });
+        const [res, tabRes] = await Promise.all([
+          get({ action: 'adminGetBBB', adminPw }),
+          get({ action: 'getTabSettings', adminPw }),
+        ]);
         if (!res.ok) { matchEl.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
 
-        _bbbMessageOpen = res.messageOpen;
-        label.textContent   = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
-        label.style.color   = _bbbMessageOpen ? '#4ade80' : '#f87171';
-
         // 섹션 오픈 설정 로드
-        const tabRes = await get({ action: 'getTabSettings', adminPw });
         if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
 
         // 매칭 테이블
@@ -1482,20 +1464,6 @@
       finally { btn.disabled = false; btn.textContent = '🎲 매칭 실행'; }
     }
 
-    async function toggleBBBMessageOpen() {
-      const next = !_bbbMessageOpen;
-      const label = next ? '열기' : '닫기';
-      if (!confirm(`익명 메시지 창을 ${label}할까요?`)) return;
-      try {
-        const res = await post({ action: 'adminSetBBBMessageOpen', adminPw, open: next });
-        if (!res.ok) { alert('오류: ' + (res.error || '')); return; }
-        _bbbMessageOpen = res.messageOpen;
-        const el = document.getElementById('bbbMsgOpenLabel');
-        el.textContent = _bbbMessageOpen ? '🟢 열림' : '🔴 닫힘';
-        el.style.color = _bbbMessageOpen ? '#4ade80' : '#f87171';
-      } catch(e) { alert('연결 오류'); }
-    }
-
     /* ── BBB 섹션 오픈 설정 ── */
     const BBB_SECTION_LABELS = {
       careBuddy:   'CARE BUDDY',
@@ -1503,7 +1471,10 @@
       m2:          'MISSION 2 (기도 인증)',
       m3:          'MISSION 3 (천로역정 맵)',
       secretBuddy: 'SECRET BUDDY',
-      msgOpen:     'To. CARE BUDDY.. / from. SECRET BUDDY.. (익명 메시지 세트)',
+      msgOpen:     '익명 메시지 세트',
+    };
+    const BBB_SECTION_DESCS = {
+      msgOpen: 'To. CARE BUDDY (메시지 보내기) + from. SECRET BUDDY (받은 메시지함)',
     };
     const BBB_SECTION_HAS_CS_TEXT = new Set(['careBuddy', 'm1', 'm2', 'm3', 'secretBuddy']);
     let _bbbSectionsData = {};
@@ -1513,15 +1484,20 @@
       const container = document.getElementById('bbbSectionRows');
       if (!container) return;
       container.innerHTML = Object.entries(BBB_SECTION_LABELS).map(([key, label]) => {
-        const sec    = sections[key] || { open: false, text: '' };
+        const sec       = sections[key] || { open: false, text: '' };
         const hasCSText = BBB_SECTION_HAS_CS_TEXT.has(key);
-        return `<div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;${hasCSText ? 'margin-bottom:10px;' : ''}">
-            <span style="font-size:14px;font-weight:700;">${label}</span>
-            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        const desc      = BBB_SECTION_DESCS[key] || '';
+        const toggle    = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
               <span id="bbbSecLabel_${key}" style="font-size:12px;font-weight:700;color:${sec.open ? '#4ade80' : '#f87171'};">${sec.open ? '🟢 오픈' : '🔴 잠금'}</span>
               <input type="checkbox" id="bbbSecToggle_${key}" ${sec.open ? 'checked' : ''} onchange="onBBBSectionToggle('${key}')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
-            </label>
+            </label>`;
+        return `<div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;${hasCSText ? 'margin-bottom:10px;' : ''}">
+            <div style="flex:1;min-width:0;margin-right:12px;">
+              <div style="font-size:14px;font-weight:700;">${label}</div>
+              ${desc ? `<div style="font-size:11px;color:var(--sub);margin-top:3px;">${desc}</div>` : ''}
+            </div>
+            ${toggle}
           </div>
           ${hasCSText ? `<div id="bbbSecCSWrap_${key}" style="display:${sec.open ? 'none' : ''};">
             <p style="font-size:11px;color:var(--sub);margin:0 0 6px;">Coming Soon 텍스트 (줄바꿈으로 2줄 분리)</p>
