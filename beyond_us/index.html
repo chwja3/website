@@ -584,12 +584,12 @@
 
     #revealCross::before {
       width: 100%;
-      height: 14%;
+      height: 10%;
       transform: translate(-50%, -50%);
     }
 
     #revealCross::after {
-      width: 14%;
+      width: 10%;
       height: 100%;
       transform: translate(-50%, -50%);
       background:
@@ -646,7 +646,7 @@
 
     #crossAfterglow::before {
       width: 104%;
-      height: 10%;
+      height: 7%;
       transform: translate(-50%, -50%);
       background:
         linear-gradient(90deg,
@@ -663,7 +663,7 @@
     }
 
     #crossAfterglow::after {
-      width: 10%;
+      width: 7%;
       height: 104%;
       transform: translate(-50%, -50%);
       background:
@@ -3034,7 +3034,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510aa';
+    const APP_VERSION = '20260510ab';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3895,8 +3895,8 @@
       const ticketBadge = document.getElementById('ticketBadge');
       if (ticketBadge) ticketBadge.textContent = `🎫 ${pending}`;
 
-      if (pending > 0) {
-        el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
+      if (pending > 0 || IS_DEV_ENV) {
+        el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기${IS_DEV_ENV && pending === 0 ? ' (DEV)' : ''}</button>`;
         document.getElementById('openDrawBtn').onclick = openDrawOverlay;
         return;
       }
