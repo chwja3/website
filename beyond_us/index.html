@@ -2767,7 +2767,7 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260510d';
+    const APP_VERSION = '20260510e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2891,12 +2891,20 @@
     /* ── 주차 키 (ISO week) ── */
     function getWeekKey() {
       const now = new Date();
-      const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-      const day = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - day);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-      const wk = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-      return `${d.getUTCFullYear()}-W${String(wk).padStart(2,'0')}`;
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const D = (m, d) => new Date(2026, m - 1, d);
+      const WEEKS = [
+        { key: 'w1', start: D(5,10), end: D(5,17) },
+        { key: 'w2', start: D(5,18), end: D(5,24) },
+        { key: 'w3', start: D(5,25), end: D(5,31) },
+        { key: 'w4', start: D(6, 1), end: D(6, 7) },
+        { key: 'w5', start: D(6, 8), end: D(6,14) },
+        { key: 'w6', start: D(6,15), end: D(6,21) },
+      ];
+      for (const w of WEEKS) {
+        if (today >= w.start && today <= w.end) return w.key;
+      }
+      return today < WEEKS[0].start ? 'w1' : 'w6';
     }
 
     /* ── 테스트 모드: ?test=1 또는 dev URL이면 자동 활성 ── */
