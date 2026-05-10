@@ -3557,12 +3557,17 @@
         });
         const data = await res.json();
         if (!data.ok) {
-          Object.keys(localStorage)
-            .filter(k => k.startsWith('beyondus_'))
-            .forEach(k => localStorage.removeItem(k));
-          currentNickname = null;
-          currentParish   = null;
-          showAuth('login');
+          // GAS 일시 오류(ok:false+message)는 무시하고 캐시 유지
+          // 명확한 인증 실패(잘못된 토큰·없는 닉네임)일 때만 로그아웃
+          const isAuthFail = data.error === 'wrong_password' || data.error === 'not_found';
+          if (isAuthFail) {
+            Object.keys(localStorage)
+              .filter(k => k.startsWith('beyondus_'))
+              .forEach(k => localStorage.removeItem(k));
+            currentNickname = null;
+            currentParish   = null;
+            showAuth('login');
+          }
         } else {
           saveAuth(savedNickname, data.sessionToken || savedToken || '', data.parish || savedParish || '');
           localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
