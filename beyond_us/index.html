@@ -3527,26 +3527,19 @@
         return;
       }
 
-      // 캐시 신뢰 → 즉시 화면 분기 + 스플래시 해제
+      // 캐시 신뢰 → 즉시 앱 진입 + 스플래시 해제
       currentNickname = savedNickname;
       currentParish   = savedParish || '';
       updateUserBadge();
-      const cachedIsStaff     = localStorage.getItem('beyondus_is_staff') === 'true';
-      const cachedAppOpenDate = localStorage.getItem('beyondus_app_open_date') || '';
-      if (shouldEnterApp(cachedIsStaff, cachedAppOpenDate)) {
-        showApp();
-        // stale-while-revalidate: 이전 데이터로 즉시 렌더
-        const cachedConfig = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
-        if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
-        const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
-        if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
-        hideSplash();
-        syncInitialData({ silent: true }).catch(() => {});
-      } else {
-        showComingSoon();
-      }
+      showApp();
+      const cachedConfig = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
+      if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
+      const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
+      if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
+      hideSplash();
+      syncInitialData({ silent: true }).catch(() => {});
 
-      // 백그라운드에서 서버 검증 (isStaff·appOpenDate 갱신 포함)
+      // 백그라운드에서 서버 검증 (세션 갱신 포함)
       try {
         const res  = await fetch(API_BASE, {
           method: 'POST',
@@ -3573,17 +3566,6 @@
           localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
           localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
           localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
-          const canEnter = shouldEnterApp(data.isStaff, data.appOpenDate);
-          const onComingSoon = !document.getElementById('comingSoonScreen').classList.contains('hidden');
-          const onApp        = !document.getElementById('appScreen').classList.contains('hidden');
-          if (canEnter && onComingSoon) {
-            showApp();
-            try { await syncInitialData(); } catch(e) {}
-          } else if (!canEnter && onApp) {
-            showComingSoon();
-          } else if (canEnter) {
-            syncInitialData({ silent: true }).catch(() => {});
-          }
         }
       } catch(e) {}
     }
