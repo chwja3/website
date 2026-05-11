@@ -36,7 +36,8 @@
       "Bash(pkill -f \"npx serve\")",
       "Bash(curl -sL \"https://script.google.com/macros/s/AKfycbzZ1UyKztqrReXIfOICHYbhB0arMnFfuuN5D1_uUJhh8VDa054JRZUOPcstKxlXMap3Hw/exec?action=getUsers&adminPw=zmsdmsgP\" -o /tmp/users.json)",
       "mcp__claude_ai_Google_Drive__read_file_content",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Read(//c/c/Users/jkjk9/OneDrive/Documents/00_Work/01_AGC/AGC/2026_Youth_treat/website/beyond_us/**)"
     ]
   }
 }
