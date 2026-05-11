@@ -360,11 +360,42 @@ function makeSessionToken_() {
   return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
 }
 
+/**
+ * Column H의 sessionToken 셀을 토큰 문자열 배열로 파싱.
+ * 신규 포맷: JSON 배열 ["tokA","tokB",...]
+ * 구버전 포맷: 단일 문자열 → [단일문자열] 로 자동 wrap (backward compat)
+ */
+function parseTokenArray_(cellValue) {
+  const raw = String(cellValue || '').trim();
+  if (!raw) return [];
+  if (raw.charAt(0) === '[') {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return arr.filter(function(t) { return typeof t === 'string' && t.length > 0; });
+    } catch(e) { /* fall through to single-string handling */ }
+  }
+  return [raw]; // 구버전 단일 토큰 호환
+}
+
+function serializeTokenArray_(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return '';
+  return JSON.stringify(arr);
+}
+
+const MAX_TOKENS_PER_USER = 10;
+
 function issueSessionToken_(sheet, rowIndex) {
   ensureUserSessionColumns_(sheet);
-  const token = makeSessionToken_();
-  sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).setValues([[token, new Date().toISOString()]]);
-  return token;
+  const existing = sheet.getRange(rowIndex, SESSION_TOKEN_COL).getValue();
+  const tokens = parseTokenArray_(existing);
+  const newToken = makeSessionToken_();
+  tokens.push(newToken);
+  // 가장 오래된 것부터 evict, 최신 MAX_TOKENS_PER_USER 개 유지
+  const trimmed = tokens.length > MAX_TOKENS_PER_USER
+    ? tokens.slice(tokens.length - MAX_TOKENS_PER_USER)
+    : tokens;
+  sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).setValues([[serializeTokenArray_(trimmed), new Date().toISOString()]]);
+  return newToken;
 }
 
 function clearSessionToken_(sheet, rowIndex) {
@@ -385,8 +416,8 @@ function verifySession(nickname, sessionToken) {
     const rowIndex = findUserRow_(sheet, nickname);
     if (rowIndex < 2) return false;
     const row = sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).getValues()[0];
-    const storedToken = String(row[0] || '').trim();
-    if (!storedToken || storedToken !== cleanToken) return false;
+    const tokens = parseTokenArray_(row[0]);
+    if (tokens.indexOf(cleanToken) === -1) return false;
 
     const updatedAt = row[1];
     const updatedMs = updatedAt instanceof Date ? updatedAt.getTime() : new Date(String(updatedAt || '')).getTime();

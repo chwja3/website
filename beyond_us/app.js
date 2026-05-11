@@ -27,7 +27,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260511g';
+    const APP_VERSION = '20260511h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -583,13 +583,21 @@
           // 명확한 인증 실패(잘못된 토큰·없는 닉네임)일 때만 로그아웃
           const isAuthFail = data.error === 'wrong_password' || data.error === 'not_found';
           if (isAuthFail) {
-            console.warn('[DIAG] autoLogin clearing beyondus_* keys. server response=', data, 'savedNickname=', savedNickname, 'hadToken=', !!savedToken);
-            Object.keys(localStorage)
-              .filter(k => k.startsWith('beyondus_'))
-              .forEach(k => localStorage.removeItem(k));
+            console.warn('[DIAG] autoLogin auth-fail. response=', data, 'savedNickname=', savedNickname, 'hadToken=', !!savedToken);
+            // 부드러운 클리어: 인증 키만 제거, 닉네임/교구/캐시는 유지
+            // (다중 기기 핑퐁으로 일시적 토큰 무효화가 발생해도 사용자 데이터는 보존)
+            localStorage.removeItem('beyondus_session_token');
+            localStorage.removeItem('beyondus_password');
             currentNickname = null;
             currentParish   = null;
             showAuth('login');
+            // 닉네임 자동 입력 — 비번만 다시 치면 됨
+            const loginNickEl = document.getElementById('loginNickname');
+            if (loginNickEl && savedNickname) {
+              loginNickEl.value = savedNickname;
+              const loginPwEl = document.getElementById('loginPassword');
+              if (loginPwEl) setTimeout(() => loginPwEl.focus(), 100);
+            }
           } else {
             console.warn('[DIAG] autoLogin server returned ok:false but not auth-fail. ignoring. response=', data);
           }
