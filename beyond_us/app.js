@@ -27,7 +27,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260511h';
+    const APP_VERSION = '20260511i';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3142,6 +3142,7 @@
         document.getElementById('bbbLoading').style.display = '';
         document.getElementById('bbbContent').style.display = 'none';
         document.getElementById('bbbNoMatch').style.display = 'none';
+        document.getElementById('bbbFieldMissionCard').style.display = 'none';
       }
 
       try {
@@ -3193,6 +3194,7 @@
         if (!bbbRes.ok) {
           if (anyLocked || _isDev) {
             document.getElementById('bbbContent').style.display = 'flex';
+            document.getElementById('bbbFieldMissionCard').style.display = '';
             if (_isDev) _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
@@ -3202,6 +3204,7 @@
 
         _bbbData = bbbRes;
         document.getElementById('bbbContent').style.display = 'flex';
+        document.getElementById('bbbFieldMissionCard').style.display = '';
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name + ' 🗣️👂';
@@ -3455,12 +3458,22 @@
         const h12 = hh % 12 || 12;
         return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
       }
-      el.innerHTML = messages.map((m, i) => `
-        <div style="padding:6px 0 ${i < messages.length - 1 ? '6px' : '2px'};">
-          <p style="font-size:14px;color:var(--text);margin:0 0 5px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
-          <div style="height:0.5px;background:var(--primary);opacity:0.2;margin-bottom:3px;"></div>
-          <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
-        </div>`).join('');
+      // 받은 메시지 = 왼쪽 정렬 (시크릿버디 → 나)
+      function _bubble(m) {
+        return `<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">
+          <div style="max-width:80%;background:var(--primary-soft);border-radius:12px 12px 12px 2px;padding:10px 13px;">
+            <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+            <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
+          </div>
+        </div>`;
+      }
+      const latest = messages[messages.length - 1];
+      const older  = messages.slice(0, messages.length - 1);
+      const olderHtml = older.length
+        ? `<div id="bbbMsgHistoryWrap" style="display:none;max-height:280px;overflow-y:auto;padding-bottom:4px;">${older.map(_bubble).join('')}</div>
+           <button id="bbbMsgHistoryBtn" data-count="${older.length}" onclick="(function(b){var w=document.getElementById('bbbMsgHistoryWrap'),open=w.style.display!=='none';w.style.display=open?'none':'';b.textContent=open?'▾ 이전 메시지 보기 ('+b.dataset.count+'개)':'▴ 접기';})(this)" style="display:block;width:100%;background:none;border:none;font-size:12px;color:var(--sub);padding:4px 0 6px;cursor:pointer;text-align:center;">▾ 이전 메시지 보기 (${older.length}개)</button>`
+        : '';
+      el.innerHTML = olderHtml + _bubble(latest);
     }
 
     async function submitBBBGuess() {

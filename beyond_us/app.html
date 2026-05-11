@@ -763,6 +763,7 @@
       <div id="sectionSecret" class="section hidden">
         <div class="wrap" style="padding-bottom:40px;">
 
+          <!-- ── Box 1: B.B.B. ── -->
           <section class="card" style="margin-top:16px;">
 
             <!-- 헤더 -->
@@ -793,6 +794,49 @@
                 <div id="bbbCareBuddyLive">
                   <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbCareBuddyName">—</p>
                   <p style="font-size:12px;color:var(--sub);margin:0;display:flex;align-items:center;gap:5px;">내가 몰래 챙겨야 할 사람<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:15px;height:15px;font-size:9px;">?</button><span class="help-tooltip tip-right">내 섬김을 케어버디는 모르지만 하나님은 아십니다. 케어버디가 눈치채지 못하게 선행과 도움을 다른 모두에게 아낌없이 베풀면 케어버디에게 들킬 확률이 줄어듭니다.</span></span></p>
+                </div>
+              </div>
+
+              <!-- 익명 메시지 보내기 -->
+              <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">To. CARE BUDDY..</span>
+                <p style="font-size:12px;color:var(--sub);margin:6px 0 10px;line-height:1.6;">오늘 케어버디에게 따뜻한 위로와 칭찬을 전해봐요.<br><span style="font-size:11px;color:var(--line);">(케어버디에게는 익명으로 전달됩니다)</span></p>
+                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;resize:none;height:72px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                  <button id="bbbMsgSendBtn" onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;min-width:64px;">보내기</button>
+                </div>
+                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:4px 0 0;"></p>
+              </div>
+
+              <!-- 시크릿버디 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
+                <div id="bbbSecretComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbSecretLive">
+                  <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
+                    <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbSecretName">—</p>
+                    <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있었어요.</p>
+                  </div>
+                  <div id="bbbSecretGuess" style="margin-top:10px;">
+                    <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
+                    <div style="display:flex;gap:8px;">
+                      <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
+                      <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                    </div>
+                    <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 받은 메시지 -->
+              <div id="bbbMsgInboxWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
+                <div id="bbbMsgList" style="margin-top:8px;">
+                  <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
                 </div>
               </div>
 
@@ -862,100 +906,63 @@
                 </div>
               </div>
 
-              <!-- MISSION 3: 필그림하우스 스팟 7곳 -->
-              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
-                <div id="bbbM3ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
-                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
-                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/21 Open</span>
-                </div>
-                <div id="bbbM3Live">
-                  <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
-                  <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
-                  <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
-                    <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
-                    <span class="help-wrap" style="transform:translate(-3px,-3px); z-index:1;">
-                      <button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:16px;height:16px;font-size:9px;opacity:0.7;">?</button>
-                      <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
-                    </span>
-                  </div>
-                <!-- 지도 + 스팟 오버레이 -->
-                <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
-                  <!-- 지도 이미지 -->
-                  <div style="position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#ddd8cc;">
-                    <img id="bbbM3MapImg" src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openBbbM3MapModal()" />
-                    <div id="bbbM3MapPlaceholder" style="display:none;"></div>
-                  </div>
-                  <!-- 스팟 슬롯 -->
-                  <div id="bbbM3Spots"></div>
-                </div>
-                <!-- 지도 전체화면 모달 -->
-                <div id="bbbM3MapModal" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBbbM3MapModal()">
-                  <img src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;max-height:90vh;object-fit:contain;" />
-                  <button onclick="closeBbbM3MapModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
-                </div>
-                <!-- M3 스팟 사진 확대 모달 -->
-                <div id="bbbM3Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM3Modal()">
-                  <img id="bbbM3ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
-                  <div style="display:flex;gap:12px;margin-top:20px;">
-                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM3Input()">수정</label>
-                    <button onclick="deleteBbbM3Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
-                  </div>
-                  <button onclick="closeBbbM3Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
-                </div>
-                </div><!-- /bbbM3Live -->
-              </div>
-
-              <!-- 시크릿버디 -->
-              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
-                <div id="bbbSecretComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
-                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
-                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
-                </div>
-                <div id="bbbSecretLive">
-                  <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
-                    <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbSecretName">—</p>
-                    <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있었어요.</p>
-                  </div>
-                  <div id="bbbSecretGuess" style="margin-top:10px;">
-                    <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
-                    <div style="display:flex;gap:8px;">
-                      <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
-                      <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
-                    </div>
-                    <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 익명 메시지 보내기 -->
-              <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">To. CARE BUDDY..</span>
-                <p style="font-size:12px;color:var(--sub);margin:6px 0 10px;line-height:1.6;">오늘 케어버디에게 따뜻한 위로와 칭찬을 전해봐요.<br><span style="font-size:11px;color:var(--line);">(케어버디에게는 익명으로 전달됩니다)</span></p>
-                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
-                  style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;resize:none;height:72px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
-                <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-                  <button id="bbbMsgSendBtn" onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;min-width:64px;">보내기</button>
-                </div>
-                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:4px 0 0;"></p>
-              </div>
-
-              <!-- 받은 메시지 -->
-              <div id="bbbMsgInboxWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
-                <div id="bbbMsgList" style="margin-top:4px;">
-                  <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
-                </div>
-              </div>
-
             </div>
 
             <div id="bbbNoMatch" style="display:none;text-align:center;padding:24px 0 8px;">
               <p style="font-size:14px;color:var(--sub);margin:0;line-height:1.7;">아직 매칭 정보가 없어요.<br>조금만 기다려주세요.</p>
             </div>
 
+          </section>
+
+          <!-- ── Box 2: 현장 미션 (Mission 3) ── -->
+          <section class="card" id="bbbFieldMissionCard" style="display:none;margin-top:0;">
+            <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
+            <h2 style="font-size:18px;font-weight:800;color:var(--text);margin:0 0 16px;letter-spacing:-.01em;">현장 미션</h2>
+
+            <!-- MISSION 3: 필그림하우스 스팟 7곳 -->
+            <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+              <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
+              <div id="bbbM3ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                <span style="font-size:11px;color:var(--sub);font-weight:700;">6/21 Open</span>
+              </div>
+              <div id="bbbM3Live">
+                <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
+                <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
+                  <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
+                  <span class="help-wrap" style="transform:translate(-3px,-3px); z-index:1;">
+                    <button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:16px;height:16px;font-size:9px;opacity:0.7;">?</button>
+                    <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
+                  </span>
+                </div>
+              <!-- 지도 + 스팟 오버레이 -->
+              <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
+                <!-- 지도 이미지 -->
+                <div style="position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#ddd8cc;">
+                  <img id="bbbM3MapImg" src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openBbbM3MapModal()" />
+                  <div id="bbbM3MapPlaceholder" style="display:none;"></div>
+                </div>
+                <!-- 스팟 슬롯 -->
+                <div id="bbbM3Spots"></div>
+              </div>
+              <!-- 지도 전체화면 모달 -->
+              <div id="bbbM3MapModal" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBbbM3MapModal()">
+                <img src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;max-height:90vh;object-fit:contain;" />
+                <button onclick="closeBbbM3MapModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+              </div>
+              <!-- M3 스팟 사진 확대 모달 -->
+              <div id="bbbM3Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM3Modal()">
+                <img id="bbbM3ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                <div style="display:flex;gap:12px;margin-top:20px;">
+                  <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM3Input()">수정</label>
+                  <button onclick="deleteBbbM3Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                </div>
+                <button onclick="closeBbbM3Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+              </div>
+              </div><!-- /bbbM3Live -->
+            </div>
 
           </section>
 
