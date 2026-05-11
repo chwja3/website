@@ -5666,6 +5666,10 @@
         markHoldPraySeen();
         loadHoldPray(true).then(markHoldPraySeen).catch(() => {});
       }
+      if (name === 'collection') {
+        renderCollection();
+        loadUserStatus({ silent: true }).then(() => { renderCollection(); loadTrades(); }).catch(() => {});
+      }
       if (name === 'secret') { loadBBB(); }
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
@@ -7222,14 +7226,14 @@
 
       document.addEventListener('touchstart', e => {
         const appHidden = document.getElementById('appScreen').classList.contains('hidden');
-        if (appHidden || window.scrollY > 0 || isRefreshing || _currentSection === 'chat') return;
+        if (appHidden || window.scrollY > 0 || isRefreshing || _currentSection === 'chat' || _currentSection === 'prayer') return;
         startY = e.touches[0].clientY;
         isPulling = false;
       }, { passive: true });
 
       document.addEventListener('touchmove', e => {
         const appHidden = document.getElementById('appScreen').classList.contains('hidden');
-        if (appHidden || isRefreshing || _currentSection === 'chat') {
+        if (appHidden || isRefreshing || _currentSection === 'chat' || _currentSection === 'prayer') {
           isPulling = false;
           indicator.classList.remove('pulling','ready');
           indicator.style.height = '0';
