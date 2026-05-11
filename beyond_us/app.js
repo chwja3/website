@@ -25,12 +25,13 @@
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260511b';
+    const APP_VERSION = '20260511c';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
         .then(remote => {
           if (remote.trim() && remote.trim() !== APP_VERSION) {
+            console.warn('[DIAG] checkVersion reload triggered. local=', APP_VERSION, 'remote=', remote.trim());
             location.reload(true);
           }
         })
@@ -508,6 +509,7 @@
 
     /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
     async function autoLogin() {
+      console.warn('[DIAG] autoLogin() called at', new Date().toISOString());
       const savedNickname = localStorage.getItem('beyondus_nickname');
       const savedToken    = localStorage.getItem('beyondus_session_token');
       const savedPassword = localStorage.getItem('beyondus_password'); // 구버전 캐시 1회 마이그레이션용
@@ -546,12 +548,15 @@
           // 명확한 인증 실패(잘못된 토큰·없는 닉네임)일 때만 로그아웃
           const isAuthFail = data.error === 'wrong_password' || data.error === 'not_found';
           if (isAuthFail) {
+            console.warn('[DIAG] autoLogin clearing beyondus_* keys. server response=', data, 'savedNickname=', savedNickname, 'hadToken=', !!savedToken);
             Object.keys(localStorage)
               .filter(k => k.startsWith('beyondus_'))
               .forEach(k => localStorage.removeItem(k));
             currentNickname = null;
             currentParish   = null;
             showAuth('login');
+          } else {
+            console.warn('[DIAG] autoLogin server returned ok:false but not auth-fail. ignoring. response=', data);
           }
         } else {
           saveAuth(savedNickname, data.sessionToken || savedToken || '', data.parish || savedParish || '');
@@ -559,8 +564,15 @@
           localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
           localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
         }
-      } catch(e) {}
+      } catch(e) {
+        console.warn('[DIAG] autoLogin network/parse error (cache 유지)', e);
+      }
     }
+
+    // [DIAG] 페이지 unload 시점에 어떤 경로로 unload되는지 추적
+    window.addEventListener('beforeunload', () => {
+      console.warn('[DIAG] beforeunload fired. section=', _currentSection, 'time=', new Date().toISOString());
+    });
 
     /* 회원가입 */
     document.getElementById('registerBtn').addEventListener('click', async () => {
@@ -2471,7 +2483,7 @@
         loadAll({ silent: true }).catch(() => {}),
         loadNotices().catch(() => {}),
         loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {}),
-        _currentSection === 'secret' ? loadBBB().catch(() => {}) : Promise.resolve(),
+        _currentSection === 'secret' ? loadBBB(true).catch(() => {}) : Promise.resolve(),
         (_currentSection === 'prayer'
           ? loadHoldPray(true).then(markHoldPraySeen)
           : loadHoldPray(true)
@@ -3078,13 +3090,16 @@
       }
     }
 
-    async function loadBBB() {
+    async function loadBBB(silent = false) {
       const nickname = localStorage.getItem('beyondus_nickname') || '';
       if (!nickname) return;
 
-      document.getElementById('bbbLoading').style.display = '';
-      document.getElementById('bbbContent').style.display = 'none';
-      document.getElementById('bbbNoMatch').style.display = 'none';
+      // 주기 동기화(silent) 시에는 로딩 UI를 띄우지 않아 깜빡임 방지
+      if (!silent) {
+        document.getElementById('bbbLoading').style.display = '';
+        document.getElementById('bbbContent').style.display = 'none';
+        document.getElementById('bbbNoMatch').style.display = 'none';
+      }
 
       try {
         const [bbbRes, msgRes] = await Promise.all([
@@ -3214,7 +3229,9 @@
         _renderBBBMessages(msgRes.messages || []);
 
       } catch(e) {
-        document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
+        if (!silent) {
+          document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
+        }
       }
     }
 
