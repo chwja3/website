@@ -520,7 +520,9 @@
   </div>
 
   <script>
-    const API_BASE  = 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec';
+    const API_BASE  = (location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
+      : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     let adminPw = '';
     let targetNickname = '';
 
