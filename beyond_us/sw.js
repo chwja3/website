@@ -1,7 +1,10 @@
-const CACHE = 'beyondus-20260511a';
+const CACHE = 'beyondus-20260511b';
 const ASSETS = [
   './',
   './index.html',
+  './app.html',
+  './app.css',
+  './app.js',
   './manifest.json',
   './images/pabicon.png',
   './images/pabicon_180.png',
@@ -48,8 +51,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-  // index.html은 항상 네트워크 우선 → 캐시 갱신 보장
-  if (url.pathname.endsWith('/') || url.pathname.endsWith('index.html')) {
+  // 진입점 HTML은 항상 네트워크 우선 → 캐시 갱신 보장
+  if (url.pathname.endsWith('/') || url.pathname.endsWith('index.html') || url.pathname.endsWith('app.html')) {
     e.respondWith(
       fetch(e.request).then(res => {
         const clone = res.clone();

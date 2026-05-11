@@ -12,11 +12,12 @@
 2. **계획 제안 형식**: 변경할 파일, 변경 내용 요약, 예상 동작을 텍스트로 먼저 설명.
 3. **유저가 "해줘" / "OK" / "ㅇㅇ" 등으로 명시적으로 승인한 후에만 수정 시작.**
 4. **수정 전 관련 파일을 반드시 읽고 검토할 것.**
-5. **배포 시 버전 동기화 필수** — `index.html` 변경을 포함한 모든 배포에서 아래 두 값을 **반드시 동일하게** 업데이트할 것.
+5. **배포 시 버전 동기화 필수** — 코드 변경 시 아래 세 값을 **반드시 동일하게** 업데이트할 것.
    - `beyond_us/version.txt` (파일 내용)
-   - `index.html` 스크립트 상단 `const APP_VERSION = '...'` 상수
+   - `beyond_us/app.js` 상단 `const APP_VERSION = '...'` 상수
+   - `beyond_us/sw.js`의 `const CACHE = 'beyondus-...'` (캐시 강제 갱신)
    - 형식: `YYYYMMDD` (예: `20260505`). 같은 날 여러 번 배포 시 `20260505b`, `20260505c` 등 suffix 사용.
-   - **둘 중 하나만 바꾸면 무한 reload 루프 또는 캐시 갱신 불가** → 반드시 함께 수정.
+   - **하나라도 어긋나면 무한 reload 루프 또는 캐시 갱신 불가** → 반드시 함께 수정.
 6. **Git 워크플로우 준수** — 절대 main 브랜치에서 직접 작업 금지 (8장 참고).
 
 ---
@@ -56,9 +57,11 @@
 ```
 website/
 ├── index.html               # 루트 — beyond_us/로 리다이렉트
-├── wrangler.jsonc           # Cloudflare Workers/Pages 설정
 └── beyond_us/
-    ├── index.html           # 앱 전체 (HTML + CSS + JS)
+    ├── index.html           # 작은 진입 페이지 — app.html로 리다이렉트
+    ├── app.html             # 앱 골격 (HTML body, ~70KB)
+    ├── app.css              # 스타일 (~80KB)
+    ├── app.js               # 메인 스크립트 (~200KB) — APP_VERSION 포함
     ├── admin.html           # 관리자 페이지
     ├── manifest.json        # PWA 홈화면 추가 설정
     ├── sw.js                # 서비스 워커 (오프라인 캐시 + 네트워크 우선)
@@ -67,9 +70,25 @@ website/
     ├── config_sheets/       # 주차별 미션 TSV (w1~w6.tsv)
     ├── 사전미션*.txt        # 사전미션 텍스트
     ├── preview_draw.html    # 카드 이펙트 미리보기 (개발용)
+    ├── music/               # 카드 뽑기 BGM·효과음 mp3
     ├── CLAUDE.md            # ← 이 문서
     └── images/
 ```
+
+### ⚠️ HTML/CSS/JS 분할 (절대 다시 합치지 말 것)
+
+**배경:** Cloudflare Pages가 ~300KB 이상 HTML을 디렉토리 인덱스로 서빙 시 500 반환하는
+인프라 결함이 있어, `index.html`에 모든 내용을 인라인하는 단일 파일 구조를 유지할 수 없음.
+
+**현 구조:**
+- `app.html` (~20KB): HTML 골격 + `<link href="app.css">` + `<script src="app.js" defer>`
+- `app.css`: 스타일 외부 추출
+- `app.js`: 인라인 스크립트 외부 추출. `APP_VERSION` 상수는 여기에 있음
+- GSAP CDN과 `app.js` 모두 `defer` 속성 → 로드 순서 보장 (GSAP 먼저, app.js 다음)
+
+**`beyond_us/index.html`은 단순 redirect 파일로 유지** (구버전 PWA 캐시 / 직접 진입 호환).
+
+**배포 시:** `version.txt` + `app.js` 안의 `APP_VERSION` + `sw.js`의 `CACHE` 셋 모두 동시 갱신.
 
 ---
 

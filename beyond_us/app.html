@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyond Us Check — 청년교구 수련회 실천 체크</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" as="style" onload="this.rel='stylesheet'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet" /></noscript>
+  <link rel="icon" type="image/png" sizes="192x192" href="images/pabicon_192.png" />
+  <link rel="apple-touch-icon" href="images/pabicon.png" />
+  <link id="pwaManifest" rel="manifest" href="manifest.json" />
+  <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
+  <meta name="theme-color" content="#2c2417" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+  <!-- ▣ 오프라인 배너 -->
+  <div id="offlineBanner">📡 네트워크 연결이 없어요. 일부 기능이 제한될 수 있어요.</div>
+
+  <!-- ▣ 스플래시 화면 -->
+  <div id="splashScreen" style="position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;">
+    <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:140px;max-width:55vw;height:auto;margin-bottom:32px;" />
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
+      <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
+    </div>
+  </div>
+
+  <!-- ▣ PWA 설치 배너 -->
+  <div id="installBanner" class="hidden">
+    <div class="install-banner-text">
+      <strong>앱으로 설치하기</strong>
+      <span id="installBannerDesc">홈 화면에 추가하면 더 편하게 이용할 수 있어요.</span>
+    </div>
+    <button class="install-banner-btn" id="installBannerBtn">설치</button>
+    <button class="install-banner-close" id="installBannerClose">✕</button>
+  </div>
+
+  <!-- ▣ Coming Soon 화면 -->
+  <div id="comingSoonScreen" class="hidden">
+
+    <!-- H&P 메인 -->
+    <div class="cs-hp-main">
+      <div class="cs-hp-header">
+        <p class="cs-install-eyebrow">🕊️ Hold &amp; Pray 🕊️</p>
+        <p class="cs-hp-sub">우리 청년교구 공동체 중 한 명의 간절한 기도제목이에요.<br>이번 한 주는 이 형제/자매를 위해 중보기도해 주세요.</p>
+      </div>
+      <div class="cs-hp-card-wrap">
+        <img src="images/h&p익명.jpeg" class="cs-hp-img" alt="Hold &amp; Pray" />
+        <div class="cs-hp-overlay" id="csHpOverlay" style="display:none;">
+          <p class="cs-hp-content" id="csHpContent"></p>
+        </div>
+        <div id="csHpLoading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(237,227,208,0.85);">
+          <img src="images/hc_logo_png2.png" style="width:90px;height:auto;" alt="Beyond Us" />
+          <div style="display:flex;gap:7px;align-items:center;">
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
+            <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 하단 배너 캐러셀 -->
+    <div class="cs-banner-area">
+      <div class="cs-banner-wrap" id="csBannerWrap">
+        <div class="cs-banner-track" id="csBannerTrack">
+
+          <!-- 배너 1: Coming Soon -->
+          <div class="cs-banner-card" style="gap:0;padding:12px 16px;">
+            <span style="display:inline-block;align-self:flex-start;background:var(--primary-soft);color:var(--sub);font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:6px;">앱 오픈 안내</span>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.02em;margin-bottom:6px;">5월 10일 (일) 오픈!</p>
+            <p style="font-size:11px;color:var(--sub);line-height:1.6;">위 기도제목으로 함께 기도하면서<br>5월 10일 오픈을 기다려주세요 🙏</p>
+          </div>
+
+          <!-- 배너 2: 설치 가이드 (자동감지) -->
+          <div class="cs-banner-card" id="csBannerInstall" style="gap:0;padding:12px 16px;">
+            <span style="display:inline-block;align-self:flex-start;background:var(--primary-soft);color:var(--sub);font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:6px;">앱 설치 안내</span>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.02em;margin-bottom:8px;">홈 화면에 추가하기</p>
+            <div id="csBannerInstallContent" style="font-size:11px;color:var(--sub);line-height:1.8;">감지 중...</div>
+          </div>
+
+          <!-- 배너 3: 수련회 신청 -->
+          <div class="cs-banner-card" style="gap:0;padding:12px 16px;">
+            <span style="display:inline-block;align-self:flex-start;background:#f5c842;color:#2c2417;font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;margin-bottom:6px;">청년교구 수련회 신청 안내</span>
+            <p style="font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.02em;margin-bottom:6px;">BEYOND US</p>
+            <p style="font-size:11px;color:var(--sub);line-height:1.6;font-style:italic;margin-bottom:6px;">"너희는 세상의 빛이라. 산 위에 있는 동네가 숨겨지지 못할 것이요" — 마태복음 5:14</p>
+            <p style="font-size:11px;color:var(--sub);margin-bottom:6px;">📅 6.20(토)~6.22(월) &nbsp;📍 가평 필그림하우스</p>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="background:#dc2626;color:#fff;font-size:8px;font-weight:800;padding:2px 6px;border-radius:999px;flex-shrink:0;">EARLY BIRD</span>
+              <span style="font-size:11px;font-weight:700;color:#dc2626;">~ 5/3(일) 마감 · 이후 일반 신청</span>
+              <span style="font-size:11px;color:var(--sub);">→</span>
+              <a href="https://walla.my/a/2026.AGC.BeyondUs" target="_blank" rel="noopener"
+                style="font-size:11px;font-weight:800;color:var(--text);text-decoration:underline;">신청 바로가기</a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="cs-dots" id="csDots">
+        <div class="cs-dot active" onclick="csGoTo(0)"></div>
+        <div class="cs-dot" onclick="csGoTo(1)"></div>
+        <div class="cs-dot" onclick="csGoTo(2)"></div>
+      </div>
+    </div>
+
+    <div class="cs-footer">
+      <div class="cs-login-link">
+        <button onclick="showAuth('login')">다른 계정으로 로그인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ▣ Auth 화면 -->
+  <div id="authScreen" class="hidden">
+    <div class="auth-page-box">
+
+      <!-- 공통 로고 -->
+      <div style="text-align:center; margin-bottom:16px;">
+        <img src="images/hc_logo_png2.png" alt="Beyond Us 로고" style="width:160px; max-width:55vw; height:auto;" />
+        <p style="font-size:14px; font-weight:400; color:var(--sub); margin-top:10px;">청년교구 수련회에 오신 것을 환영해요</p>
+      </div>
+
+      <!-- 회원가입 -->
+      <div id="registerPane">
+        <input type="text" id="regName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
+        <select id="regParish" class="modal-input">
+          <option value="">소속 선택</option>
+          <option value="1청">1청</option>
+          <option value="2청">2청</option>
+          <option value="3청">3청</option>
+          <option value="4청">4청</option>
+          <option value="VIP">VIP</option>
+          <option value="장년">장년</option>
+        </select>
+        <input type="text" id="regNickname" class="modal-input" placeholder="닉네임 (로그인 ID, 2~10자)" maxlength="10" autocomplete="username" />
+        <input type="password" id="regPassword" class="modal-input" placeholder="비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
+        <p class="auth-notice" style="text-align:center;">페이지 내에서는 닉네임이 사용됩니다. 💬</p>
+        <div class="auth-status" id="registerStatus"></div>
+        <button class="btn btn-primary modal-btn" id="registerBtn">들어가기</button>
+        <p class="auth-switch">이미 계정이 있어요 → <button class="auth-link" onclick="switchAuthPane('login')">로그인</button></p>
+      </div>
+
+      <!-- 로그인 -->
+      <div id="loginPane" class="hidden">
+        <h2 class="modal-title">안녕하세요?</h2>
+        <p class="modal-desc">닉네임과 비밀번호를 입력해주세요.</p>
+        <input type="text" id="loginNickname" class="modal-input" placeholder="닉네임" autocomplete="username" />
+        <input type="password" id="loginPassword" class="modal-input" placeholder="비밀번호" autocomplete="current-password" />
+        <div class="auth-status" id="loginStatus"></div>
+        <button class="btn btn-primary modal-btn" id="loginBtn">로그인</button>
+        <p class="auth-switch">
+          <button class="auth-link" onclick="switchAuthPane('register')">뒤로가기</button>
+          &nbsp;·&nbsp;
+          <button class="auth-link" onclick="switchAuthPane('findNickname')">닉네임을 잊었어요</button>
+          &nbsp;·&nbsp;
+          <button class="auth-link" onclick="switchAuthPane('reset')">비밀번호를 잊었어요</button>
+        </p>
+      </div>
+
+      <!-- 닉네임 찾기 -->
+      <div id="findNicknamePane" class="hidden">
+        <h2 class="modal-title">닉네임 찾기</h2>
+        <p class="modal-desc">가입할 때 입력한 이름과 소속으로 닉네임을 찾아요.</p>
+        <input type="text" id="findName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
+        <select id="findParish" class="modal-input">
+          <option value="">소속 선택</option>
+          <option value="1청">1청</option>
+          <option value="2청">2청</option>
+          <option value="3청">3청</option>
+          <option value="4청">4청</option>
+          <option value="VIP">VIP</option>
+          <option value="장년">장년</option>
+        </select>
+        <div class="auth-status" id="findNicknameStatus"></div>
+        <button class="btn btn-primary modal-btn" id="findNicknameBtn">닉네임 찾기</button>
+        <p class="auth-switch"><button class="auth-link" onclick="switchAuthPane('login')">← 로그인으로 돌아가기</button></p>
+      </div>
+
+      <!-- 비밀번호 재설정 -->
+      <div id="resetPane" class="hidden">
+        <h2 class="modal-title">비밀번호 재설정</h2>
+        <p class="modal-desc">가입할 때 입력한 이름과 교구로 확인해요.</p>
+        <input type="text" id="resetName" class="modal-input" placeholder="이름 (본명)" maxlength="10" autocomplete="name" />
+        <select id="resetParish" class="modal-input">
+          <option value="">소속 선택</option>
+          <option value="1청">1청</option>
+          <option value="2청">2청</option>
+          <option value="3청">3청</option>
+          <option value="4청">4청</option>
+          <option value="VIP">VIP</option>
+          <option value="장년">장년</option>
+        </select>
+        <input type="password" id="resetPassword" class="modal-input" placeholder="새 비밀번호 (4자 이상)" maxlength="20" autocomplete="new-password" />
+        <div id="resetDuplicates" style="display:none; margin-bottom:8px;">
+          <p style="font-size:13px; color:var(--sub); margin:0 0 8px;">같은 이름의 계정이 여러 개예요. 내 닉네임을 선택해주세요.</p>
+          <div id="resetDuplicateList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+        <div class="auth-status" id="resetStatus"></div>
+        <button class="btn btn-primary modal-btn" id="resetBtn">비밀번호 변경</button>
+        <p class="auth-switch"><button class="auth-link" onclick="switchAuthPane('login')">← 로그인으로 돌아가기</button></p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ▣ 카드 뽑기 오버레이 -->
+  <div id="drawOverlay" class="draw-overlay hidden">
+    <div id="starBg"></div>
+    <button class="draw-close-btn" id="drawCloseBtn">✕</button>
+    <button class="draw-close-btn" id="drawMuteBtn" style="right:64px;" title="음소거" aria-label="음소거"></button>
+
+    <div id="sceneWrap">
+      <div id="sceneGlow"></div>
+
+      <!-- 이펙트 레이어 -->
+      <div id="effectsLayer">
+        <div id="crossAfterglow"><div class="cross-haze"></div></div>
+        <div id="revealCross"><div class="cross-core"></div></div>
+        <div id="flashEl"></div>
+        <div id="ringEl"></div>
+        <div id="ringEl2"></div>
+        <div id="ringEl3"></div>
+        <div id="cardBeam"></div>
+        <div id="cardBeamCore"></div>
+        <div id="cardBeamV"></div>
+        <div id="particleLayer" style="position:absolute;inset:0;pointer-events:none;overflow:visible;"></div>
+      </div>
+
+      <!-- Phase 1: 캐러셀 -->
+      <div id="carouselLayer">
+        <p class="draw-hint" id="carouselHint">Choose your pack ↓</p>
+        <div id="carouselTrack">
+          <div class="c-pack-wrap" id="cpack0">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
+          </div>
+          <div class="c-pack-wrap" id="cpack1">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
+          </div>
+          <div class="c-pack-wrap" id="cpack2">
+            <div class="c-pack">
+              <div class="pack-shine"></div>
+              <div class="pack-top-area">2026 · BEYOND US</div>
+              <div class="pack-tear"></div>
+              <div class="pack-center">🃏</div>
+              <div class="pack-bottom-area">성령의 열매</div>
+            </div>
+          </div>
+        </div>
+        <p class="draw-hint" id="carouselSub"><em>Swipe to select</em> ☞</p>
+      </div>
+
+      <!-- Phase 2: 팩 줌 + 가로 찢기 -->
+      <div id="packLayer">
+        <p class="draw-hint" id="packHint"><em>Slide to open</em> ☞</p>
+        <div id="packInnerGlow"></div>
+        <div id="packCardPreview"></div>
+        <div class="pack" id="drawPack">
+          <div class="pack-shine"></div>
+          <div class="pack-top-area">2026 · BEYOND US</div>
+          <div id="packTearZone">
+            <div id="packTearLine"></div>
+            <div id="packTearLight"></div>
+          </div>
+          <div class="pack-center">🃏</div>
+          <div class="pack-bottom-area">성령의 열매</div>
+        </div>
+        <div id="packTopPiece"></div>
+      </div>
+
+      <!-- Phase 3: 카드 -->
+      <div id="cardLayer">
+        <div id="cardGlow"></div>
+        <p class="draw-hint" id="flipHint"></p>
+        <div id="cardTrigger">
+          <div class="card-perspective">
+            <div id="cardInner" style="width:100%;height:100%;position:relative;transform-style:preserve-3d;">
+              <div class="card-face card-back"><div class="card-face-back"></div></div>
+              <div class="card-face card-front" id="cardFace"></div>
+            </div>
+            <div class="card-shine-clip">
+              <div class="card-flip-shine" id="cardFlipShine"></div>
+            </div>
+          </div>
+        </div>
+        <p id="cardLoadingHint">두 근 두 근 . . . !</p>
+      </div>
+    </div>
+    <div id="settleActions">
+      <button class="btn" id="revealDoneBtn" style="width:160px;flex:none;background:rgba(255,255,255,0.15);color:rgba(255,246,239,0.9);border:1px solid rgba(255,255,255,0.25);box-shadow:none;font-size:14px;">컬렉션 확인하기</button>
+    </div>
+  </div>
+
+  <!-- ▣ 카드 상세 오버레이 -->
+  <div id="cardDetailOverlay" class="draw-overlay hidden" onclick="closeCardDetail()">
+    <button class="draw-close-btn" onclick="closeCardDetail()">✕</button>
+    <div class="draw-stage" onclick="event.stopPropagation()">
+      <div id="cardDetailWrap" style="width:200px;"></div>
+      <p id="cardDetailCnt" style="color:rgba(255,246,239,0.7); font-size:13px; font-weight:600;"></p>
+      <div id="cardDetailActions" style="margin-top:16px;"></div>
+    </div>
+  </div>
+
+  <!-- ▣ 앱 화면 -->
+  <div id="appScreen" class="hidden">
+
+    <!-- 상단 바 -->
+    <div class="top-bar">
+      <div class="menu-btn-wrap">
+        <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
+        <span id="noticeDot" class="notice-dot"></span>
+        <span id="tradeMenuDot" class="notice-dot" style="background:#e05a5a;right:2px;top:2px;"></span>
+      </div>
+      <img src="images/hc_logo_png1.png" alt="홈" onclick="switchSection('mission')" style="height:30px; width:auto; margin-left:-6px; cursor:pointer;" />
+      <span style="flex:1;"></span>
+      <span id="topBarUser" class="top-bar-user"></span>
+    </div>
+
+    <!-- 드로어 오버레이 -->
+    <div id="drawerOverlay" class="drawer-overlay hidden"></div>
+
+    <!-- 좌측 드로어 -->
+    <nav id="navDrawer" class="nav-drawer">
+      <div class="drawer-header">
+        <img src="images/pabicon.png" alt="Beyond Us 로고" />
+        <span class="drawer-header-title">Beyond Us</span>
+      </div>
+      <ul class="drawer-nav">
+        <li class="drawer-item" data-section="notice"><span class="drawer-label">공지사항</span><span id="drawerNoticeDot" class="drawer-notice-dot"></span></li>
+        <li class="drawer-item active" data-section="mission"><span class="drawer-label">사전미션</span></li>
+        <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span><span id="drawerPrayerDot" class="drawer-notice-dot"></span></li>
+        <li class="drawer-item" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></li>
+        <li class="drawer-item" data-section="secret"><span class="drawer-label">현장미션 B.B.B.</span></li>
+        <li class="drawer-item" data-section="chat"><span class="drawer-label">채팅방</span></li>
+        <li class="drawer-item" data-section="faq"><span class="drawer-label">QnA</span></li>
+        <li class="drawer-item" data-section="inquiry"><span class="drawer-label">개발자 문의</span></li>
+      </ul>
+      <div class="drawer-logout">
+        <button class="drawer-logout-btn" id="logoutBtn">로그아웃</button>
+      </div>
+      <div class="drawer-user" id="drawerUser"></div>
+    </nav>
+
+    <!-- PTR 인디케이터 -->
+    <div id="ptrIndicator"><span class="ptr-arrow">↓</span><span id="ptrText">당겨서 새로고침</span></div>
+
+    <!-- 앱 콘텐츠 -->
+    <div class="app-content">
+
+      <!-- ① 공지사항 -->
+      <div id="sectionNotice" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">공지사항</h2>
+            <input type="search" id="noticeSearch" placeholder="🔍 검색" style="width:100%; padding:10px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--primary-soft); color:var(--text); outline:none; margin-bottom:16px; box-sizing:border-box;" />
+            <div id="noticeList"><p class="notice-empty">불러오는 중...</p></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ② 미션 -->
+      <div id="sectionMission" class="section">
+        <div class="wrap">
+          <div class="mission-hero">
+            <img src="images/hc_illust4.png" class="hero-illust" alt="Beyond Us 일러스트" />
+            <p class="hero-eyebrow">2026 청년교구 수련회</p>
+            <img src="images/BEYONDUS2.png" alt="Beyond Us" style="width:220px;max-width:70%;height:auto;display:block;margin:0 auto 4px;" />
+          </div>
+
+          <section class="card install-guide-card hidden" id="mainInstallGuide">
+            <div class="install-guide-icon"><img src="images/pabicon.png" alt="" /></div>
+            <div class="install-guide-copy">
+              <div class="install-guide-title" id="mainInstallGuideTitle">홈 화면에 추가하기</div>
+              <div class="install-guide-desc" id="mainInstallGuideDesc">앱처럼 바로 열 수 있어요.</div>
+            </div>
+            <button class="install-guide-btn" type="button" onclick="showInstallGuide(false)">방법 보기</button>
+          </section>
+
+          <section class="card">
+            <div class="week-badge" id="weekTitle">불러오는 중...</div>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>주간 목표 점수를 달성하면 앤 카드 뽑기권이 생겨요.</span></span></h2>
+            <div id="scoreProgressWrap" style="display:none; margin-bottom:16px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:13px; font-weight:700; color:var(--text);">이번 주 누적 점수</span>
+                <span style="font-size:13px; font-weight:800;" id="scoreProgressText"></span>
+              </div>
+              <div style="height:8px; background:var(--line); border-radius:999px; overflow:hidden;">
+                <div id="scoreProgressBar" style="height:100%; background:linear-gradient(90deg,#f7971e,#ff758c); border-radius:999px; width:0%; transition:width 0.4s;"></div>
+              </div>
+              <p style="font-size:12px; color:var(--sub); margin-top:6px; margin-bottom:0;" id="scoreProgressHint"></p>
+            </div>
+            <form id="checkForm">
+              <div class="check-list" id="checkList"></div>
+              <div class="actions">
+                <button type="button" class="btn btn-secondary" id="refreshBtn">현황 새로고침</button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">미션 제출하기</button>
+              </div>
+              <div id="statusMessage" class="status"></div>
+            </form>
+          </section>
+
+          <!-- 이번 주 체크 달력 -->
+          <section class="card">
+            <h2 class="card-title" id="weekCalTitle"></h2>
+            <div class="week-cal" id="weekCal"></div>
+          </section>
+
+          <!-- 카드 뽑기 섹션 -->
+          <section class="card" id="drawSection">
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span style="display:flex;align-items:center;gap:6px;flex-shrink:0;"><span id="ticketBadge" style="font-size:12px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);padding:2px 8px;border-radius:999px;">🎫 0</span><button onclick="switchSection('collection')" style="padding:2px 10px;font-size:12px;font-weight:700;background:rgba(200,160,60,0.25);color:#b8860b;border:none;border-radius:999px;cursor:pointer;">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!<br><br>뽑은 카드는 5/17(일)부터 1층 로비 부스에서 실물 카드를 수령할 수 있어요. (TF 팀에게 뽑은 카드를 보여주세요.)</span></span></span></h2>
+            <div id="drawSectionBody">
+              <p class="card-sub" style="margin:0;">로딩 중...</p>
+            </div>
+          </section>
+
+          <section class="card" style="position:relative; overflow:hidden;">
+            <img src="images/hc_illust2.png" alt="" style="position:absolute; top:-8px; right:12px; height:90px; width:auto; opacity:0.85; filter:drop-shadow(0 4px 8px rgba(44,36,23,0.1));" />
+            <h2 class="card-title">이번 주 공동체 미션 현황</h2>
+            <p class="card-sub"><span id="goalText">0</span> / <span id="goalCount">100</span>회 달성 · 진행률 <strong id="progressPercent">0%</strong></p>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressBar" style="width:0%;"></div>
+            </div>
+            <div class="stats-inline">
+              <div class="stats-inline-block">
+                <div class="stats-inline-value" id="totalCount">-</div>
+                <div class="stats-inline-label">누적 실천 수</div>
+              </div>
+              <div class="stats-inline-block">
+                <div class="stats-inline-value" id="submissionCount">-</div>
+                <div class="stats-inline-label">누적 제출 인원</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2 class="card-title">이번 주 실천 현황</h2>
+            <p class="card-sub">공동체 안에 쌓여가는 실천의 흐름을 확인해보세요.</p>
+            <div class="count-list" id="countList"></div>
+          </section>
+
+          <section class="card" style="margin-top:0;">
+            <h2 class="card-title">💬 개발자 문의</h2>
+            <div id="inquiryQuickWrap">
+              <textarea id="inquiryQuickInput" placeholder="등록된 문의는 문의하기 탭에서 확인/수정이 가능해요 (최대 500자)" maxlength="500" rows="4"
+                style="width:100%; padding:12px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:12px; background:var(--primary-soft); color:var(--text); outline:none; font-family:inherit; resize:none; line-height:1.6; display:block;"></textarea>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                <div id="inquiryQuickStatus" style="font-size:13px; font-weight:600; color:var(--danger);"></div>
+                <button class="btn btn-secondary" id="inquiryQuickBtn" style="flex:none; height:auto; font-size:12px; padding:4px 10px; border-radius:8px;">등록</button>
+              </div>
+            </div>
+            <p id="inquiryLoginMsg" style="font-size:14px; color:var(--sub); margin:0; display:none;">로그인 후 문의를 남길 수 있어요.</p>
+          </section>
+
+          <p class="footer-note">"너희는 세상의 빛이라 산 위에 있는 동네가 숨겨지지 못할 것이요"<br>— 마태복음 5:14</p>
+        </div>
+      </div>
+
+      <!-- ② 컬렉션 -->
+      <div id="sectionCollection" class="section hidden">
+        <div class="wrap">
+          <div class="coll-tabs" style="display:flex;align-items:center;">
+            <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
+            <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 엔카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 당일 특별 미션에서 획득할 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟️ 수련회 응모권 혜택<br>참석시 응모권 1장<br>엔카드 3종 → 추가 응모권 1장<br>엔카드 5종 → 추가 응모권 3장<br>엔카드 8종 → 추가 응모권 4장<br>엔카드 10종 → 한정판 굿즈<br><br>※ 보유 <b>종류</b> 기준이에요.<br>같은 카드 여러 장을 가져도 1종으로 계산돼요.<br>※ 수련회 당일 마감 시점에 카드 종류 수를 자동 집계해 응모권이 지급돼요.</span></span>
+          </div>
+          <section class="card coll-card">
+            <!-- 내 컬렉션 패널 -->
+            <div id="collPanelGrid">
+              <p class="card-sub" id="collectionSub">로그인하면 컬렉션을 확인할 수 있어요.</p>
+              <p class="coll-subtitle" id="collSubNormal" style="display:none">일반카드</p>
+              <div class="collection-grid" id="collectionGrid"></div>
+              <div id="hiddenCardSlot"></div>
+            </div>
+            <!-- 교환 현황 패널 -->
+            <div id="collPanelTrades" style="display:none;">
+              <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+                <span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="교환 도움말">?</button><span class="help-tooltip tip-right">실물 카드를 먼저 수령한 뒤 교환하면,<br>교환 상대에게 실물 카드를 직접 전달할 수 있어요.<br><br>교환이 완료되면 상대방의 Hold &amp; Pray 기도제목이 보여요.<br>기도해주고 기도했어요! 버튼을 꼭 눌러주세요.</span></span>
+              </div>
+              <div id="tradesList"><p class="card-sub">교환 내역이 없어요.</p></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+              <button class="btn btn-secondary" style="flex:1; font-size:clamp(11px,3vw,15px); white-space:nowrap;" onclick="switchSection('mission')">← 홈으로 가기</button>
+              <button class="btn btn-primary" style="flex:1; font-size:clamp(11px,3vw,15px); white-space:nowrap;" onclick="switchSection('prayer')">중보기도하러 가기 →</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 교환 신청 모달 -->
+      <div id="tradeOverlay" style="display:none;position:fixed;inset:0;background:rgba(44,36,23,0.7);z-index:500;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+        <div style="max-width:380px;margin:32px auto 60px;padding:24px 20px;background:var(--card);border-radius:20px;position:relative;border:1px solid var(--line);">
+          <button onclick="closeTradeModal()" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--sub);font-size:24px;cursor:pointer;line-height:1;">×</button>
+          <h3 id="tradeModalTitle" style="margin:0 0 4px;font-size:16px;font-weight:700;color:var(--text);">카드 교환 신청</h3>
+          <div id="tradeStepIndicator" style="font-size:11px;color:var(--sub);margin-bottom:10px;"></div>
+          <div style="background:rgba(245,158,11,0.10);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:12px;color:#92600a;line-height:1.5;">
+            실물 카드를 먼저 수령한 뒤 교환하면,<br>교환 상대에게 실물 카드를 직접 전달할 수 있어요.
+          </div>
+          <!-- Step 1: 닉네임 검색 -->
+          <div id="tradeStep1">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 12px;">교환할 상대방 닉네임을 입력해주세요.</p>
+            <div style="display:flex;gap:8px;">
+              <input id="tradeTargetInput" class="input" placeholder="닉네임" style="flex:1;font-size:16px;" onkeydown="if(event.key==='Enter')tradeSearchUser()" />
+              <button class="btn btn-primary" style="flex:none;font-size:13px;padding:0 14px;" onclick="tradeSearchUser()">검색</button>
+            </div>
+            <div id="tradeSearchResult" style="margin-top:10px;font-size:13px;min-height:24px;"></div>
+          </div>
+          <!-- Step 2: 내 카드 선택 -->
+          <div id="tradeStep2" style="display:none;">
+            <p style="font-size:13px;color:var(--sub);margin:0 0 4px;">내가 <strong>줄</strong> 카드를 선택해주세요.</p>
+            <p style="font-size:11px;color:#e07b3a;margin:0 0 12px;">⚠️ 중복 보유한 카드만 교환 가능해요. (같은 카드 2장 이상)</p>
+            <div id="tradeMyCards" class="collection-grid" style="gap:8px;"></div>
+          </div>
+          <!-- Step 3: 상대 카드 선택 -->
+          <div id="tradeStep3" style="display:none;">
+            <!-- 미리보기 -->
+            <div style="display:flex;align-items:center;gap:10px;background:var(--primary-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:10px;font-weight:700;color:var(--sub);margin-bottom:6px;">내가 줄 카드</div>
+                <div id="tradePreviewMine" style="width:56px;height:80px;margin:0 auto;border-radius:8px;overflow:hidden;background:var(--line);display:flex;align-items:center;justify-content:center;"></div>
+              </div>
+              <div style="font-size:20px;color:var(--sub);flex-shrink:0;">↔</div>
+              <div style="flex:1;text-align:center;">
+                <div style="font-size:10px;font-weight:700;color:var(--sub);margin-bottom:6px;">받을 카드</div>
+                <div id="tradePreviewTheirs" style="width:56px;height:80px;margin:0 auto;border-radius:8px;overflow:hidden;background:var(--line);display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:18px;color:var(--sub);">?</span>
+                </div>
+              </div>
+            </div>
+            <p style="font-size:13px;color:var(--sub);margin:0 0 10px;"><strong id="tradeTargetName"></strong>님의 카드를 선택해주세요.</p>
+            <div id="tradeTheirCards" class="collection-grid" style="gap:8px;"></div>
+          </div>
+          <!-- Step 4: 확인 -->
+          <div id="tradeStep4" style="display:none;">
+            <div id="tradeConfirmText" style="font-size:14px;line-height:1.8;background:var(--primary-soft);border-radius:12px;padding:14px;margin-bottom:8px;"></div>
+            <p style="font-size:12px;color:#e25;margin:0 0 10px;text-align:center;">⏱ 상대방이 <b>5분 내</b> 수락해야 교환이 완료돼요</p>
+            <div id="tradeSubmitStatus" style="font-size:13px;color:var(--danger);margin-bottom:8px;min-height:18px;"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost" style="flex:1;" onclick="tradeGoBack()">← 다시 선택</button>
+              <button class="btn btn-primary" style="flex:1;" id="tradeSubmitBtn" onclick="submitTradeRequest()">신청 보내기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ③ Hold & Pray -->
+      <div id="sectionPrayer" class="section hidden">
+        <div class="wrap">
+          <div class="hp-header-area">
+            <div style="position:relative;display:inline-block;width:100%;">
+              <p class="hp-header-title" style="margin-bottom:6px;">🕊️ Hold &amp; Pray 🕊️</p>
+              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>누구인지 궁금하다면 1층 로비 Hold &amp; Pray 현수막에서 이름을 확인할 수 있어요.<br><br>3주차·6주차에는 1명이라도 맞히면 앤 카드 뽑기권 1장을 드려요!</span></span>
+            </div>
+            <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
+          </div>
+          <div id="hpContent">
+            <div class="hp-loading">불러오는 중...</div>
+          </div>
+          <p class="footer-note">"새 계명을 너희에게 주노니 서로 사랑하라 내가 너희를 사랑한 것 같이 너희도 서로 사랑하라 너희가 서로 사랑하면 이로써 모든 사람이 너희가 내 제자인 줄 알리라"<br>— 요한복음 13:34–35</p>
+        </div>
+      </div>
+
+      <!-- QnA -->
+      <div id="sectionFaq" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <h2 class="card-title">❓ QnA</h2>
+            <p class="card-sub" style="margin-bottom:12px;">자주 묻는 질문을 모아뒀어요.</p>
+            <input type="search" id="faqSearch" placeholder="🔍 검색" style="width:100%; padding:10px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--primary-soft); color:var(--text); outline:none; margin-bottom:4px; box-sizing:border-box;" oninput="filterFaq(this.value)" />
+            <div id="faqEmpty" style="display:none; font-size:14px; color:var(--sub); text-align:center; padding:20px 0;">검색 결과가 없어요.</div>
+
+            <div class="faq-category">앱 기본 사용법</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>앱은 어떻게 설치하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">iPhone은 Safari에서 공유 버튼 → "홈 화면에 추가"를 눌러주세요. 갤럭시는 Chrome 메뉴(⋮) 또는 삼성인터넷 메뉴(≡)에서 "앱 설치", "홈 화면에 추가", "현재 페이지 추가" 중 보이는 메뉴를 선택하면 돼요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>닉네임을 잊어버렸어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">로그인 화면에서 "닉네임 찾기"를 눌러 가입 시 등록한 이름과 교구를 입력하면 닉네임을 확인할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>비밀번호를 잊어버렸어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">로그인 화면에서 "비밀번호 재설정"을 눌러주세요. 이름과 교구를 입력하면 비밀번호를 새로 설정할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>여러 기기에서 써도 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">네, 같은 닉네임/비밀번호로 어느 기기에서든 로그인할 수 있어요. 미션 제출 내역은 서버에 저장되니 기기가 바뀌어도 이어서 사용할 수 있어요.</div>
+            </div>
+
+            <div class="faq-category">사전미션</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>미션은 언제까지 제출해야 하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">그날 실천한 항목은 당일 자정(서울 기준) 전까지 제출해야 해요. 자정이 지나면 해당 날짜 항목은 더 이상 제출할 수 없으니 당일에 꼭 체크해주세요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>하루에 여러 번 나눠서 제출할 수 있나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">네! 아침에 일부 항목을 제출하고, 저녁에 추가로 실천한 항목을 다시 제출할 수 있어요. 단, 이미 제출한 항목은 중복 제출이 안 돼요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>미션 항목은 언제 바뀌나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">미션은 주차별로 바뀌며, 매주 월요일 자정(서울 기준)에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해서 그 다음 월요일(5/12)에 초기화돼요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>오늘 실수로 잘못 체크했어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">한 번 제출된 항목은 수정이 어려워요. 실수가 있다면 개발자 문의 탭을 통해 알려주세요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>엔카드 뽑기권은 어떻게 얻나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">이번 주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요. 이번 주에 뽑지 않아도 다음 주로 자동 이월돼요.</div>
+            </div>
+
+            <div class="faq-category">엔카드 &amp; 컬렉션</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>엔카드는 어떻게 뽑나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">미션을 제출하면 뽑기권 1장이 지급돼요. 카드 뽑기 섹션으로 이동 후 팩 열기 버튼을 클릭하고, 뒷면 카드를 탭해서 앞면을 공개해보세요! 컬렉션 메뉴에서 내가 모은 카드를 확인할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>카드 종류가 어떻게 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">온라인 뽑기 카드 9종(성령의 열매), 수련회 현장 지급 레어 카드 1종이 있어요. 총 10종을 모을 수 있어요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>같은 카드가 또 나왔어요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">중복 카드가 나올 수도 있어요. 중복 보유 장수는 컬렉션에서 확인할 수 있고, 카드 교환 기능을 통해 다른 분과 교환할 수 있어요.</div>
+            </div>
+
+            <div class="faq-category">Hold &amp; Pray</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>Hold &amp; Pray가 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">매주 공동체 안의 한 분의 기도제목이 카드로 주어져요. 그 분의 이름을 맞추고 한 주간 중보기도하는 미션이에요. "Hold"는 손에 들고 기도한다는 의미예요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>이름 정답을 맞추면 어떻게 되나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">정답을 맞추면 해당 분의 이름이 카드에 고정돼요. 앞으로도 그분의 이름을 기억하며 기도해주세요!</div>
+            </div>
+
+            <div class="faq-category">B.B.B. (현장미션)</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>B.B.B.가 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">Buddy Beyond Buddy의 약자예요. 수련회 현장에서 진행되는 미션으로, 배정된 케어버디를 몰래 챙겨주는 게임이에요. 누가 나의 버디인지는 맞춰봐야 알 수 있어요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>케어버디 이름이 아직 안 보여요.</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">B.B.B. 배정은 수련회 당일 공개될 예정이에요. 조금만 기다려주세요!</div>
+            </div>
+
+          </section>
+        </div>
+      </div>
+
+      <!-- ⑤ 개발자 문의 -->
+      <div id="sectionInquiry" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <h2 class="card-title" style="margin:0;">💬 개발자 문의</h2>
+              <button class="btn btn-secondary" id="refreshInquiryBtn" style="flex:none; height:auto; font-size:12px; padding:4px 10px; border-radius:8px;">새로고침</button>
+            </div>
+            <p class="card-sub">문의를 남기면 개발자가 답변을 드려요.</p>
+            <div id="inquiryList"><p style="color:var(--sub); text-align:center; padding:16px;">불러오는 중...</p></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ⑥ 단톡방 -->
+      <div id="sectionChat" class="section hidden">
+        <div class="chat-wrap">
+          <div class="chat-header" style="display:flex;align-items:center;justify-content:center;gap:6px;position:relative;">💬 채팅방<span class="help-wrap" style="position:absolute;right:12px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="background:rgba(255,255,255,0.2);color:#fff;">?</button><span class="help-tooltip tip-right">로그인하면 청년교구 공동체와 실시간으로 대화할 수 있어요.<br><br>내 메시지는 오른쪽, 다른 분의 메시지는 왼쪽에 표시돼요. 교구 뱃지도 함께 보여요.</span></span></div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-notice" id="chatNotice">
+              <span>불러오는 중...</span>
+            </div>
+          </div>
+          <div class="chat-input-bar">
+            <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." maxlength="300" autocomplete="off" />
+            <button class="chat-send-btn" id="chatSendBtn" disabled>전송</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ④ B.B.B. -->
+      <div id="sectionSecret" class="section hidden">
+        <div class="wrap" style="padding-bottom:40px;">
+
+          <section class="card" style="margin-top:16px;">
+
+            <!-- 헤더 -->
+            <p style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:0.12em;margin:0 0 4px;text-transform:uppercase;">현장미션</p>
+            <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;"><span style="display:flex;align-items:center;gap:6px;">B.B.B.<span style="font-size:13px;font-weight:500;color:var(--sub);">(Buddy Beyond Buddy)</span></span><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">수련회 현장에서 진행되는 미션이에요.<br><br><b>케어버디</b><br>내가 몰래 챙겨야 할 사람이에요.<br><br><b>시크릿버디</b><br>나를 몰래 챙겨주고 있는 사람이에요.</span></span></h2>
+
+            <div id="bbbLoading" style="text-align:center;padding:32px 0;">
+              <img src="images/hc_logo_png2.png" style="width:100px;height:auto;margin-bottom:16px;" alt="Beyond Us" />
+              <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
+                <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out infinite;"></div>
+                <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .2s infinite;"></div>
+                <div style="width:7px;height:7px;border-radius:50%;background:var(--primary);animation:splashDot 1.2s ease-in-out .4s infinite;"></div>
+              </div>
+            </div>
+
+            <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
+
+              <!-- 케어버디 -->
+              <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">CARE BUDDY</span>
+                  <span id="bbbCaughtBadge" style="display:none;font-size:10px;font-weight:700;background:#fde68a;color:#92400e;padding:2px 9px;border-radius:20px;">들켰어요</span>
+                </div>
+                <div id="bbbCareBuddyComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbCareBuddyLive">
+                  <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbCareBuddyName">—</p>
+                  <p style="font-size:12px;color:var(--sub);margin:0;display:flex;align-items:center;gap:5px;">내가 몰래 챙겨야 할 사람<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:15px;height:15px;font-size:9px;">?</button><span class="help-tooltip tip-right">내 섬김을 케어버디는 모르지만 하나님은 아십니다. 케어버디가 눈치채지 못하게 선행과 도움을 다른 모두에게 아낌없이 베풀면 케어버디에게 들킬 확률이 줄어듭니다.</span></span></p>
+                </div>
+              </div>
+
+              <!-- 사진 미션 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 1</span>
+                <div id="bbbM1ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbM1Live">
+                  <div style="display:flex;align-items:flex-start;gap:14px;margin-top:8px;">
+                    <div style="flex:1;min-width:0;">
+                      <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">케어버디와 사진 찍기</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
+                      <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
+                    </div>
+                    <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                      <input type="file" id="bbbPhotoInput" accept="image/*" style="display:none;" />
+                      <img id="bbbPhotoImg" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbPhotoModal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
+                      <span id="bbbPhotoPlaceholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
+                      <span id="bbbPhotoPlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
+                    </label>
+                  </div>
+                </div>
+                <!-- 사진 확대 모달 -->
+                <div id="bbbPhotoModal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbPhotoModal()">
+                  <img id="bbbPhotoModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                  <div style="display:flex;gap:12px;margin-top:20px;">
+                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbPhotoInput()">수정</label>
+                    <button onclick="deleteBbbPhoto()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                  </div>
+                  <button onclick="closeBbbPhotoModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                </div>
+              </div>
+
+              <!-- MISSION 2: H&P 카드 기도 인증 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 2</span>
+                <div id="bbbM2ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbM2Live">
+                  <div style="display:flex;align-items:flex-start;gap:14px;margin-top:8px;">
+                    <div style="flex:1;min-width:0;">
+                      <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">H&amp;P 카드에 손 얹고 기도 인증</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 2px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">업로드하면 뽑기권 +1 (최초 1회)</p>
+                      <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
+                    </div>
+                    <label id="bbbM2Label" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
+                      <input type="file" id="bbbM2Input" accept="image/*" style="display:none;" />
+                      <img id="bbbM2Img" src="" alt="" onclick="event.preventDefault();event.stopPropagation();openBbbM2Modal()" style="display:none;width:100%;height:100%;object-fit:cover;cursor:pointer;" />
+                      <span id="bbbM2Placeholder" style="font-size:28px;color:var(--line);line-height:1;font-weight:300;">+</span>
+                      <span id="bbbM2PlaceholderText" style="font-size:10px;color:var(--sub);">사진 추가</span>
+                    </label>
+                  </div>
+                </div>
+                <div id="bbbM2Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM2Modal()">
+                  <img id="bbbM2ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                  <div style="display:flex;gap:12px;margin-top:20px;">
+                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM2Input()">수정</label>
+                    <button onclick="deleteBbbM2Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                  </div>
+                  <button onclick="closeBbbM2Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                </div>
+              </div>
+
+              <!-- MISSION 3: 필그림하우스 스팟 7곳 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px;border-left:3px solid #86efac;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">MISSION 3</span>
+                <div id="bbbM3ComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/21 Open</span>
+                </div>
+                <div id="bbbM3Live">
+                  <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
+                  <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 뽑기권 +1</p>
+                  <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
+                    <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
+                    <span class="help-wrap" style="transform:translate(-3px,-3px); z-index:1;">
+                      <button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말" style="width:16px;height:16px;font-size:9px;opacity:0.7;">?</button>
+                      <span class="help-tooltip tip-left">지도를 탭하면 크게 볼 수 있어요.</span>
+                    </span>
+                  </div>
+                <!-- 지도 + 스팟 오버레이 -->
+                <div id="bbbM3Map" style="position:relative;width:100%;padding-top:57.6%;border-radius:12px;overflow:visible;">
+                  <!-- 지도 이미지 -->
+                  <div style="position:absolute;inset:0;border-radius:12px;overflow:hidden;background:#ddd8cc;">
+                    <img id="bbbM3MapImg" src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openBbbM3MapModal()" />
+                    <div id="bbbM3MapPlaceholder" style="display:none;"></div>
+                  </div>
+                  <!-- 스팟 슬롯 -->
+                  <div id="bbbM3Spots"></div>
+                </div>
+                <!-- 지도 전체화면 모달 -->
+                <div id="bbbM3MapModal" style="display:none;position:fixed;inset:0;z-index:700;background:rgba(0,0,0,0.92);flex-direction:column;align-items:center;justify-content:center;" onclick="if(event.target===this)closeBbbM3MapModal()">
+                  <img src="images/천로역정맵.png" alt="필그림하우스 지도" style="width:100%;max-height:90vh;object-fit:contain;" />
+                  <button onclick="closeBbbM3MapModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                </div>
+                <!-- M3 스팟 사진 확대 모달 -->
+                <div id="bbbM3Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM3Modal()">
+                  <img id="bbbM3ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
+                  <div style="display:flex;gap:12px;margin-top:20px;">
+                    <label style="padding:10px 28px;border-radius:12px;background:rgba(255,255,255,0.15);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.25);" onclick="reopenBbbM3Input()">수정</label>
+                    <button onclick="deleteBbbM3Photo()" style="padding:10px 28px;border-radius:12px;background:rgba(220,60,60,0.7);color:#fff;font-size:14px;font-weight:700;cursor:pointer;border:none;">삭제</button>
+                  </div>
+                  <button onclick="closeBbbM3Modal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
+                </div>
+                </div><!-- /bbbM3Live -->
+              </div>
+
+              <!-- 시크릿버디 -->
+              <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
+                <div id="bbbSecretComingSoon" style="display:none;padding:16px 0 4px;text-align:center;">
+                  <span style="font-size:15px;font-weight:800;color:var(--primary);line-height:1.4;">Coming Soon!</span><br>
+                  <span style="font-size:11px;color:var(--sub);font-weight:700;">6/20 Open</span>
+                </div>
+                <div id="bbbSecretLive">
+                  <div id="bbbSecretRevealed" style="display:none;margin-top:10px;">
+                    <p style="font-size:15px;font-weight:700;color:var(--text);margin:0 0 4px;" id="bbbSecretName">—</p>
+                    <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있었어요.</p>
+                  </div>
+                  <div id="bbbSecretGuess" style="margin-top:10px;">
+                    <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
+                    <div style="display:flex;gap:8px;">
+                      <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
+                      <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
+                    </div>
+                    <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 익명 메시지 보내기 -->
+              <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">To. CARE BUDDY..</span>
+                <p style="font-size:12px;color:var(--sub);margin:6px 0 10px;line-height:1.6;">오늘 케어버디에게 따뜻한 위로와 칭찬을 전해봐요.<br><span style="font-size:11px;color:var(--line);">(케어버디에게는 익명으로 전달됩니다)</span></p>
+                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;resize:none;height:72px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                  <button id="bbbMsgSendBtn" onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;min-width:64px;">보내기</button>
+                </div>
+                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:4px 0 0;"></p>
+              </div>
+
+              <!-- 받은 메시지 -->
+              <div id="bbbMsgInboxWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">from. SECRET BUDDY..</span>
+                <div id="bbbMsgList" style="margin-top:4px;">
+                  <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
+                </div>
+              </div>
+
+            </div>
+
+            <div id="bbbNoMatch" style="display:none;text-align:center;padding:24px 0 8px;">
+              <p style="font-size:14px;color:var(--sub);margin:0;line-height:1.7;">아직 매칭 정보가 없어요.<br>조금만 기다려주세요.</p>
+            </div>
+
+
+          </section>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="app.js" defer></script>
+
+  <!-- ▣ 이미지 라이트박스 -->
+  <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
+    <img id="lightboxImg" src="" alt="" style="max-width:100%;max-height:90vh;object-fit:contain;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.6);" />
+    <button onclick="closeLightbox()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+  </div>
+</body>
+</html>
