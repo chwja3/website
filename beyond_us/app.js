@@ -27,7 +27,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260511j';
+    const APP_VERSION = '20260512a';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3505,13 +3505,9 @@
           </div>
         </div>`;
       }
-      const latest = messages[messages.length - 1];
-      const older  = messages.slice(0, messages.length - 1);
-      const olderHtml = older.length
-        ? `<div id="bbbSentHistoryWrap" style="display:none;max-height:280px;overflow-y:auto;padding-bottom:4px;">${older.map(_bubble).join('')}</div>
-           <button id="bbbSentHistoryBtn" data-count="${older.length}" onclick="(function(b){var w=document.getElementById('bbbSentHistoryWrap'),open=w.style.display!=='none';w.style.display=open?'none':'';b.textContent=open?'▾ 이전 메시지 보기 ('+b.dataset.count+'개)':'▴ 접기';})(this)" style="display:block;width:100%;background:none;border:none;font-size:12px;color:var(--sub);padding:4px 0 6px;cursor:pointer;text-align:center;">▾ 이전 메시지 보기 (${older.length}개)</button>`
-        : '';
-      el.innerHTML = olderHtml + _bubble(latest);
+      // 최신 메시지는 기본 미표시 — 버튼 클릭 시 전체 노출
+      el.innerHTML = `<div id="bbbSentHistoryWrap" style="display:none;max-height:280px;overflow-y:auto;padding-bottom:4px;">${messages.map(_bubble).join('')}</div>
+        <button id="bbbSentHistoryBtn" data-count="${messages.length}" onclick="(function(b){var w=document.getElementById('bbbSentHistoryWrap'),open=w.style.display!=='none';w.style.display=open?'none':'';b.textContent=open?'▾ 보낸 메시지 보기 ('+b.dataset.count+'개)':'▴ 접기';})(this)" style="display:block;width:100%;background:none;border:none;font-size:12px;color:var(--sub);padding:4px 0 6px;cursor:pointer;text-align:center;">▾ 보낸 메시지 보기 (${messages.length}개)</button>`;
     }
 
     async function submitBBBGuess() {
