@@ -308,6 +308,31 @@ function getUsersSheet_() {
   return sheet;
 }
 
+/**
+ * Users 시트의 parish 컬럼(D)에서 "장년" → "목양교구" 일괄 치환.
+ * Apps Script 에디터에서 직접 Run으로 실행 (1회성).
+ * PROD/DEV 양쪽에서 _devMode 토글한 뒤 각각 실행해야 함.
+ */
+function migrateParishJangnyeon() {
+  const sheet = getSpreadsheet().getSheetByName('Users');
+  if (!sheet) throw new Error('Users 시트를 찾을 수 없습니다.');
+  const last = sheet.getLastRow();
+  if (last < 2) { Logger.log('Users 시트가 비어있음.'); return; }
+  const range = sheet.getRange(2, 4, last - 1, 1); // 컬럼 D = parish
+  const values = range.getValues();
+  let changed = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === '장년') {
+      values[i][0] = '목양교구';
+      changed++;
+    }
+  }
+  if (changed > 0) {
+    range.setValues(values);
+  }
+  Logger.log('migrateParishJangnyeon 완료. 변경된 행 수: ' + changed + ' / 전체 ' + values.length);
+}
+
 function ensureUserSessionColumns_(sheet) {
   const maxCol = Math.max(sheet.getLastColumn(), SESSION_UPDATED_AT_COL);
   const headers = sheet.getRange(1, 1, 1, maxCol).getValues()[0];
