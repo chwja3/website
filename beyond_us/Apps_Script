@@ -1,10 +1,396 @@
 const SPREADSHEET_ID     = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q'; // PROD
 const DEV_SPREADSHEET_ID = '19-2XZ3egh8-K3XnE9QmuYVCnz6pkkgo-vf66BPKFS-o'; // DEV
 const ADMIN_PASSWORD = 'zmsdmsgP';
-const RAW_SHEET_NAME = 'raw_checkins';
-const CONFIG_SHEET_NAME = 'config';
-const SESSION_TOKEN_COL = 8;
-const SESSION_UPDATED_AT_COL = 9;
+const SHEET_NAMES = Object.freeze({
+  USERS: 'Users',
+  CONFIG: 'config',
+  RAW_CHECKINS: 'raw_checkins',
+  CARD_DRAWS: 'CardDraws',
+  BONUS_DRAWS: 'BonusDraws',
+  COLLECTION: 'Collection',
+  CARD_RECEIVED: 'CardReceived',
+  TRADES: 'Trades',
+  HOLD_PRAY: 'HoldPray',
+  HP_GUESSES: 'HPGuesses',
+  TAB_SETTINGS: 'TabSettings',
+  BBB_SETTINGS: 'BBBSettings',
+  BBB: 'BBB',
+  BBB_MESSAGES: 'BBBMessages',
+  BBB_PHOTOS: 'BBBPhotos',
+  NOTICES: 'Notices',
+  INQUIRIES: 'Inquiries',
+});
+const RAW_SHEET_NAME = SHEET_NAMES.RAW_CHECKINS;
+const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
+const SCHEMA = Object.freeze({
+  USERS: Object.freeze({
+    sheetName: SHEET_NAMES.USERS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      nickname: 'nickname',
+      password: 'password',
+      name: 'name',
+      parish: 'parish',
+      createdAt: 'createdAt',
+      isStaff: 'isStaff',
+      isDev: 'isDev',
+      sessionToken: 'sessionToken',
+      sessionUpdatedAt: 'sessionUpdatedAt',
+    }),
+  }),
+  RAW_CHECKINS: Object.freeze({
+    sheetName: SHEET_NAMES.RAW_CHECKINS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      timestamp: 'timestamp',
+      weekTitle: 'weekTitle',
+      itemsJson: 'items_json',
+      userId: 'userId',
+      weekKey: 'weekKey',
+      dateKey: 'dateKey',
+      score: 'score',
+      indicesJson: 'indices_json',
+      weekCumScore: 'weekCumScore',
+      ticketEarned: 'ticketEarned',
+    }),
+  }),
+  CARD_DRAWS: Object.freeze({
+    sheetName: SHEET_NAMES.CARD_DRAWS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      userId: 'userId',
+      weekKey: 'weekKey',
+      cardId: 'cardId',
+      cardName: 'cardName',
+      drawnAt: 'drawnAt',
+      received: 'received',
+    }),
+  }),
+  BONUS_DRAWS: Object.freeze({
+    sheetName: SHEET_NAMES.BONUS_DRAWS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      userId: 'userId',
+      source: 'source',
+      awardedAt: 'awardedAt',
+    }),
+  }),
+  CARD_RECEIVED: Object.freeze({
+    sheetName: SHEET_NAMES.CARD_RECEIVED,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      nickname: 'nickname',
+      cardId: 'cardId',
+      receivedQty: 'receivedQty',
+      updatedAt: 'updatedAt',
+    }),
+  }),
+  COLLECTION: Object.freeze({
+    sheetName: SHEET_NAMES.COLLECTION,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      userId: 'userId',
+      totalEarned: '누적뽑기권',
+      totalDrawn: '실제뽑은개수',
+      remaining: '남은개수',
+      card1: '사랑',
+      card2: '희락',
+      card3: '화평',
+      card4: '오래참음',
+      card5: '자비',
+      card6: '양선',
+      card7: '충성',
+      card8: '온유',
+      card9: '절제',
+      totalCards: '총카드수',
+      hidden: '히든',
+    }),
+  }),
+  TRADES: Object.freeze({
+    sheetName: SHEET_NAMES.TRADES,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      id: 'id',
+      requester: 'requester',
+      requesterCardId: 'requesterCardId',
+      requesterCardName: 'requesterCardName',
+      target: 'target',
+      targetCardId: 'targetCardId',
+      targetCardName: 'targetCardName',
+      status: 'status',
+      createdAt: 'createdAt',
+      resolvedAt: 'resolvedAt',
+      requesterPrayed: 'requesterPrayed',
+      targetPrayed: 'targetPrayed',
+    }),
+  }),
+  HOLD_PRAY: Object.freeze({
+    sheetName: SHEET_NAMES.HOLD_PRAY,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      name: '이름(n)',
+      parish: '교구(p)',
+      content: '기도제목(c)',
+      anonymous: '익명(a)',
+      nickname: '닉네임(nick)',
+    }),
+  }),
+  HP_GUESSES: Object.freeze({
+    sheetName: SHEET_NAMES.HP_GUESSES,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      nickname: 'nickname',
+      weekKey: 'weekKey',
+      cardIndex: 'cardIndex',
+      guessedName: 'guessedName',
+      answeredAt: 'answeredAt',
+    }),
+  }),
+  TAB_SETTINGS: Object.freeze({
+    sheetName: SHEET_NAMES.TAB_SETTINGS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      key: 'tab_key',
+      label: 'label',
+      enabled: 'enabled',
+    }),
+  }),
+  BBB_SETTINGS: Object.freeze({
+    sheetName: SHEET_NAMES.BBB_SETTINGS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      key: 'key',
+      open: 'open',
+      text: 'text',
+    }),
+  }),
+  NOTICES: Object.freeze({
+    sheetName: SHEET_NAMES.NOTICES,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      id: 'id',
+      title: 'title',
+      content: 'content',
+      createdAt: 'createdAt',
+      imageUrl: 'imageUrl',
+      updatedAt: 'updatedAt',
+    }),
+  }),
+  INQUIRIES: Object.freeze({
+    sheetName: SHEET_NAMES.INQUIRIES,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      id: 'id',
+      nickname: 'nickname',
+      content: 'content',
+      createdAt: 'createdAt',
+      reply: 'reply',
+      repliedAt: 'repliedAt',
+    }),
+  }),
+  BBB: Object.freeze({
+    sheetName: SHEET_NAMES.BBB,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      userId: 'userId',
+      careBuddyId: 'careBuddyId',
+      careBuddyName: 'careBuddyName',
+      secretRevealed: 'secretRevealed',
+      secretBuddyId: 'secretBuddyId',
+      secretBuddyName: 'secretBuddyName',
+    }),
+  }),
+  BBB_MESSAGES: Object.freeze({
+    sheetName: SHEET_NAMES.BBB_MESSAGES,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      msgId: 'msgId',
+      fromUserId: 'fromUserId',
+      toUserId: 'toUserId',
+      message: 'message',
+      createdAt: 'createdAt',
+    }),
+  }),
+  BBB_PHOTOS: Object.freeze({
+    sheetName: SHEET_NAMES.BBB_PHOTOS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      userId: 'userId',
+      photoBase64: 'photoBase64',
+      uploadedAt: 'uploadedAt',
+      missionType: 'missionType',
+    }),
+  }),
+});
+const USER_COLUMN_FALLBACK = Object.freeze({
+  nickname: 0,
+  password: 1,
+  name: 2,
+  parish: 3,
+  createdAt: 4,
+  isStaff: 5,
+  isDev: 6,
+  sessionToken: 7,
+  sessionUpdatedAt: 8,
+});
+const RAW_CHECKINS_COLUMN_FALLBACK = Object.freeze({
+  timestamp: 0,
+  weekTitle: 1,
+  itemsJson: 2,
+  userId: 3,
+  weekKey: 4,
+  dateKey: 5,
+  score: 6,
+  indicesJson: 7,
+  weekCumScore: 8,
+  ticketEarned: 9,
+});
+const CARD_DRAWS_COLUMN_FALLBACK = Object.freeze({
+  userId: 0,
+  weekKey: 1,
+  cardId: 2,
+  cardName: 3,
+  drawnAt: 4,
+  received: 5,
+});
+const BONUS_DRAWS_COLUMN_FALLBACK = Object.freeze({
+  userId: 0,
+  source: 1,
+  awardedAt: 2,
+});
+const CARD_RECEIVED_COLUMN_FALLBACK = Object.freeze({
+  nickname: 0,
+  cardId: 1,
+  receivedQty: 2,
+  updatedAt: 3,
+});
+const COLLECTION_COLUMN_FALLBACK = Object.freeze({
+  userId: 0,
+  totalEarned: 1,
+  totalDrawn: 2,
+  remaining: 3,
+  card1: 4,
+  card2: 5,
+  card3: 6,
+  card4: 7,
+  card5: 8,
+  card6: 9,
+  card7: 10,
+  card8: 11,
+  card9: 12,
+  totalCards: 13,
+  hidden: 14,
+});
+const TRADES_COLUMN_FALLBACK = Object.freeze({
+  id: 0,
+  requester: 1,
+  requesterCardId: 2,
+  requesterCardName: 3,
+  target: 4,
+  targetCardId: 5,
+  targetCardName: 6,
+  status: 7,
+  createdAt: 8,
+  resolvedAt: 9,
+  requesterPrayed: 10,
+  targetPrayed: 11,
+});
+const HOLD_PRAY_COLUMN_FALLBACK = Object.freeze({
+  name: 0,
+  parish: 1,
+  content: 2,
+  anonymous: 3,
+  nickname: 4,
+});
+const HP_GUESSES_COLUMN_FALLBACK = Object.freeze({
+  nickname: 0,
+  weekKey: 1,
+  cardIndex: 2,
+  guessedName: 3,
+  answeredAt: 4,
+});
+const TAB_SETTINGS_COLUMN_FALLBACK = Object.freeze({
+  key: 0,
+  label: 1,
+  enabled: 2,
+});
+const BBB_SETTINGS_COLUMN_FALLBACK = Object.freeze({
+  key: 0,
+  open: 1,
+  text: 2,
+});
+const NOTICES_COLUMN_FALLBACK = Object.freeze({
+  id: 0,
+  title: 1,
+  content: 2,
+  createdAt: 3,
+  imageUrl: 4,
+  updatedAt: 5,
+});
+const INQUIRIES_COLUMN_FALLBACK = Object.freeze({
+  id: 0,
+  nickname: 1,
+  content: 2,
+  createdAt: 3,
+  reply: 4,
+  repliedAt: 5,
+});
+const BBB_COLUMN_FALLBACK = Object.freeze({
+  userId: 0,
+  careBuddyId: 1,
+  careBuddyName: 2,
+  secretRevealed: 3,
+  secretBuddyId: 4,
+  secretBuddyName: 5,
+});
+const BBB_MESSAGES_COLUMN_FALLBACK = Object.freeze({
+  msgId: 0,
+  fromUserId: 1,
+  toUserId: 2,
+  message: 3,
+  createdAt: 4,
+});
+const BBB_PHOTOS_COLUMN_FALLBACK = Object.freeze({
+  userId: 0,
+  photoBase64: 1,
+  uploadedAt: 2,
+  missionType: 3,
+});
+const CONFIG_LAYOUT = Object.freeze({
+  currentWeekLabelCell: 'A1',
+  currentWeekCell: 'B1',
+  appOpenDateCell: 'B4',
+  legacyBbbMessageOpenCell: 'C1',
+  legacyHoldPrayCell: 'B2',
+  legacySecretCell: 'B3',
+  legacyChatCell: 'D1',
+  legacyBbbSectionsCell: 'D2',
+  weekBlockFirstRow: 5,
+  weekBlockSize: 8,
+  missionRowsPerWeek: 6,
+  missionItemCol: 1,
+  missionTitleCol: 2,
+  missionScoreCol: 2,
+  missionThresholdCol: 3,
+  missionCategoryCol: 3,
+  weekBlockClearRange: 'A5:C200',
+});
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
 
 let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
@@ -54,7 +440,7 @@ function doGet(e) {
   if (action === 'getCurrentWeek') {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
     const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return jsonOutput({ ok: true, week: Number(sheet.getRange('B1').getValue()) || 1 });
+    return jsonOutput({ ok: true, week: Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1 });
   }
   if (action === 'getMissionConfig') {
     if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
@@ -166,7 +552,7 @@ function doPost(e) {
       const week = Number(body.week);
       if (!week || week < 1 || week > 6) return jsonOutput({ error: 'invalid_week' });
       const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-      sheet.getRange('B1').setValue(week);
+      sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(week);
       clearHotCaches_();
       return jsonOutput({ ok: true, week });
     }
@@ -301,8 +687,195 @@ function getSpreadsheet() {
   return SpreadsheetApp.openById(_devMode ? DEV_SPREADSHEET_ID : SPREADSHEET_ID);
 }
 
+function getColumns(sheet, schemaOrHeaderRow) {
+  const headerRow = typeof schemaOrHeaderRow === 'number'
+    ? schemaOrHeaderRow
+    : (schemaOrHeaderRow && schemaOrHeaderRow.headerRow) || 1;
+  const headers = sheet.getRange(headerRow, 1, 1, Math.max(sheet.getLastColumn(), 1)).getValues()[0];
+  const map = {};
+  headers.forEach(function(header, index) {
+    const key = String(header || '').trim();
+    if (key) map[key] = index;
+  });
+  return map;
+}
+
+function getResolvedColumns_(sheet, schema, fallback) {
+  const byHeader = getColumns(sheet, schema);
+  const columns = {};
+  Object.keys(schema.columns).forEach(function(key) {
+    const header = schema.columns[key];
+    columns[key] = Object.prototype.hasOwnProperty.call(byHeader, header) ? byHeader[header] : fallback[key];
+  });
+  return columns;
+}
+
+function getSchemaHeaders_(schema) {
+  return Object.keys(schema.columns).map(function(key) {
+    return schema.columns[key];
+  });
+}
+
+function getUserColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.USERS, USER_COLUMN_FALLBACK);
+}
+
+function getUserRows_(sheet) {
+  return getSheetRows(sheet, SCHEMA.USERS);
+}
+
+function getRawColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.RAW_CHECKINS, RAW_CHECKINS_COLUMN_FALLBACK);
+}
+
+function getRawRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.RAW_CHECKINS, maxColumns || 10);
+}
+
+function getCardDrawColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.CARD_DRAWS, CARD_DRAWS_COLUMN_FALLBACK);
+}
+
+function getCardDrawRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.CARD_DRAWS, maxColumns || 6);
+}
+
+function getBonusDrawColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.BONUS_DRAWS, BONUS_DRAWS_COLUMN_FALLBACK);
+}
+
+function getBonusDrawRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.BONUS_DRAWS, maxColumns || 3);
+}
+
+function getCardReceivedColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.CARD_RECEIVED, CARD_RECEIVED_COLUMN_FALLBACK);
+}
+
+function getCardReceivedRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.CARD_RECEIVED, maxColumns || 4);
+}
+
+function getCollectionColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.COLLECTION, COLLECTION_COLUMN_FALLBACK);
+}
+
+function getCollectionRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.COLLECTION, maxColumns || 15);
+}
+
+function getTradesColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.TRADES, TRADES_COLUMN_FALLBACK);
+}
+
+function getTradesRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.TRADES, maxColumns || 12);
+}
+
+function getHoldPrayColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.HOLD_PRAY, HOLD_PRAY_COLUMN_FALLBACK);
+}
+
+function getHoldPrayRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.HOLD_PRAY, maxColumns || 5);
+}
+
+function getHpGuessColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.HP_GUESSES, HP_GUESSES_COLUMN_FALLBACK);
+}
+
+function getHpGuessRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.HP_GUESSES, maxColumns || 5);
+}
+
+function getTabSettingsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.TAB_SETTINGS, TAB_SETTINGS_COLUMN_FALLBACK);
+}
+
+function getTabSettingsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.TAB_SETTINGS, maxColumns || 3);
+}
+
+function getBbbSettingsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.BBB_SETTINGS, BBB_SETTINGS_COLUMN_FALLBACK);
+}
+
+function getBbbSettingsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.BBB_SETTINGS, maxColumns || 3);
+}
+
+function getNoticeColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.NOTICES, NOTICES_COLUMN_FALLBACK);
+}
+
+function getNoticeRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.NOTICES, maxColumns || 6);
+}
+
+function getInquiryColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.INQUIRIES, INQUIRIES_COLUMN_FALLBACK);
+}
+
+function getInquiryRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.INQUIRIES, maxColumns || 6);
+}
+
+function getBbbColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.BBB, BBB_COLUMN_FALLBACK);
+}
+
+function getBbbRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.BBB, maxColumns || 6);
+}
+
+function getBbbMessageColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.BBB_MESSAGES, BBB_MESSAGES_COLUMN_FALLBACK);
+}
+
+function getBbbMessageRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.BBB_MESSAGES, maxColumns || 5);
+}
+
+function getBbbPhotoColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.BBB_PHOTOS, BBB_PHOTOS_COLUMN_FALLBACK);
+}
+
+function getBbbPhotoRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.BBB_PHOTOS, maxColumns || 4);
+}
+
+function getConfigWeekStartRow_(week) {
+  return (week - 1) * CONFIG_LAYOUT.weekBlockSize + CONFIG_LAYOUT.weekBlockFirstRow;
+}
+
+function getCollectionCardIndex_(cardId, col) {
+  return cardId <= 9 ? col['card' + cardId] : col.hidden;
+}
+
+function getUserNameMap_() {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const map = {};
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (nickname) map[nickname] = String(row[col.name] || '');
+  });
+  return map;
+}
+
+function getSheetRows(sheet, schemaOrHeaderRow, maxColumns) {
+  const dataStartRow = typeof schemaOrHeaderRow === 'number'
+    ? schemaOrHeaderRow
+    : (schemaOrHeaderRow && schemaOrHeaderRow.dataStartRow) || 2;
+  const lastRow = sheet.getLastRow();
+  if (lastRow < dataStartRow) return [];
+  const width = maxColumns || sheet.getLastColumn();
+  return sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, width).getValues();
+}
+
 function getUsersSheet_() {
-  const sheet = getSpreadsheet().getSheetByName('Users');
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
   if (!sheet) throw new Error('Users 시트를 찾을 수 없습니다.');
   ensureUserSessionColumns_(sheet);
   return sheet;
@@ -314,11 +887,13 @@ function getUsersSheet_() {
  * PROD/DEV 양쪽에서 _devMode 토글한 뒤 각각 실행해야 함.
  */
 function migrateParishJangnyeon() {
-  const sheet = getSpreadsheet().getSheetByName('Users');
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
   if (!sheet) throw new Error('Users 시트를 찾을 수 없습니다.');
   const last = sheet.getLastRow();
-  if (last < 2) { Logger.log('Users 시트가 비어있음.'); return; }
-  const range = sheet.getRange(2, 4, last - 1, 1); // 컬럼 D = parish
+  const schema = SCHEMA.USERS;
+  if (last < schema.dataStartRow) { Logger.log('Users 시트가 비어있음.'); return; }
+  const col = getUserColumns_(sheet);
+  const range = sheet.getRange(schema.dataStartRow, col.parish + 1, last - schema.dataStartRow + 1, 1);
   const values = range.getValues();
   let changed = 0;
   for (let i = 0; i < values.length; i++) {
@@ -334,13 +909,14 @@ function migrateParishJangnyeon() {
 }
 
 function ensureUserSessionColumns_(sheet) {
-  const maxCol = Math.max(sheet.getLastColumn(), SESSION_UPDATED_AT_COL);
+  const col = getUserColumns_(sheet);
+  const maxCol = Math.max(sheet.getLastColumn(), col.sessionUpdatedAt + 1);
   const headers = sheet.getRange(1, 1, 1, maxCol).getValues()[0];
-  if (String(headers[SESSION_TOKEN_COL - 1] || '') !== 'sessionToken') {
-    sheet.getRange(1, SESSION_TOKEN_COL).setValue('sessionToken');
+  if (String(headers[col.sessionToken] || '') !== SCHEMA.USERS.columns.sessionToken) {
+    sheet.getRange(SCHEMA.USERS.headerRow, col.sessionToken + 1).setValue(SCHEMA.USERS.columns.sessionToken);
   }
-  if (String(headers[SESSION_UPDATED_AT_COL - 1] || '') !== 'sessionUpdatedAt') {
-    sheet.getRange(1, SESSION_UPDATED_AT_COL).setValue('sessionUpdatedAt');
+  if (String(headers[col.sessionUpdatedAt] || '') !== SCHEMA.USERS.columns.sessionUpdatedAt) {
+    sheet.getRange(SCHEMA.USERS.headerRow, col.sessionUpdatedAt + 1).setValue(SCHEMA.USERS.columns.sessionUpdatedAt);
   }
 }
 
@@ -348,10 +924,12 @@ function findUserRow_(sheet, nickname) {
   const clean = String(nickname || '').trim();
   if (!clean) return -1;
   const last = sheet.getLastRow();
-  if (last < 2) return -1;
-  const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+  const schema = SCHEMA.USERS;
+  if (last < schema.dataStartRow) return -1;
+  const col = getUserColumns_(sheet);
+  const ids = sheet.getRange(schema.dataStartRow, col.nickname + 1, last - schema.dataStartRow + 1, 1).getValues();
   for (let i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]).trim() === clean) return i + 2;
+    if (String(ids[i][0]).trim() === clean) return i + schema.dataStartRow;
   }
   return -1;
 }
@@ -386,7 +964,8 @@ const MAX_TOKENS_PER_USER = 10;
 
 function issueSessionToken_(sheet, rowIndex) {
   ensureUserSessionColumns_(sheet);
-  const existing = sheet.getRange(rowIndex, SESSION_TOKEN_COL).getValue();
+  const col = getUserColumns_(sheet);
+  const existing = sheet.getRange(rowIndex, col.sessionToken + 1).getValue();
   const tokens = parseTokenArray_(existing);
   const newToken = makeSessionToken_();
   tokens.push(newToken);
@@ -394,18 +973,22 @@ function issueSessionToken_(sheet, rowIndex) {
   const trimmed = tokens.length > MAX_TOKENS_PER_USER
     ? tokens.slice(tokens.length - MAX_TOKENS_PER_USER)
     : tokens;
-  sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).setValues([[serializeTokenArray_(trimmed), new Date().toISOString()]]);
+  sheet.getRange(rowIndex, col.sessionToken + 1).setValue(serializeTokenArray_(trimmed));
+  sheet.getRange(rowIndex, col.sessionUpdatedAt + 1).setValue(new Date().toISOString());
   return newToken;
 }
 
 function clearSessionToken_(sheet, rowIndex) {
   ensureUserSessionColumns_(sheet);
-  sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).clearContent();
+  const col = getUserColumns_(sheet);
+  sheet.getRange(rowIndex, col.sessionToken + 1).clearContent();
+  sheet.getRange(rowIndex, col.sessionUpdatedAt + 1).clearContent();
 }
 
 function touchSessionToken_(sheet, rowIndex) {
   ensureUserSessionColumns_(sheet);
-  sheet.getRange(rowIndex, SESSION_UPDATED_AT_COL).setValue(new Date().toISOString());
+  const col = getUserColumns_(sheet);
+  sheet.getRange(rowIndex, col.sessionUpdatedAt + 1).setValue(new Date().toISOString());
 }
 
 function verifySession(nickname, sessionToken) {
@@ -415,11 +998,12 @@ function verifySession(nickname, sessionToken) {
     const sheet = getUsersSheet_();
     const rowIndex = findUserRow_(sheet, nickname);
     if (rowIndex < 2) return false;
-    const row = sheet.getRange(rowIndex, SESSION_TOKEN_COL, 1, 2).getValues()[0];
-    const tokens = parseTokenArray_(row[0]);
+    const col = getUserColumns_(sheet);
+    const rawTokens = sheet.getRange(rowIndex, col.sessionToken + 1).getValue();
+    const updatedAt = sheet.getRange(rowIndex, col.sessionUpdatedAt + 1).getValue();
+    const tokens = parseTokenArray_(rawTokens);
     if (tokens.indexOf(cleanToken) === -1) return false;
 
-    const updatedAt = row[1];
     const updatedMs = updatedAt instanceof Date ? updatedAt.getTime() : new Date(String(updatedAt || '')).getTime();
     if (!isNaN(updatedMs) && Date.now() - updatedMs > SESSION_MAX_AGE_MS) return false;
     return true;
@@ -497,12 +1081,12 @@ function getConfig() {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
 
-  const currentWeek   = Number(sheet.getRange('B1').getValue()) || 1;
-  const startRow      = (currentWeek - 1) * 8 + 5;
-  const weekTitle     = String(sheet.getRange(startRow, 2).getValue() || (currentWeek + '주차')).trim();
-  const drawThreshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
+  const currentWeek   = Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
+  const startRow      = getConfigWeekStartRow_(currentWeek);
+  const weekTitle     = String(sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue() || (currentWeek + '주차')).trim();
+  const drawThreshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
 
-  const rawItems = sheet.getRange(startRow + 1, 1, 6, 3).getValues();
+  const rawItems = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
   const items  = [];
   const scores = {};
   const cats   = {};
@@ -546,26 +1130,27 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
+  const rawCol = getRawColumns_(rawSheet);
 
   // 서버사이드 중복 제출 방지: 텍스트 + 인덱스 둘 다 체크
   const submittedToday   = new Set();
   const submittedIndices = new Set();
-  const lastRow = rawSheet.getLastRow();
-  const allRows = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 10).getValues() : [];
+  const allRows = getRawRows_(rawSheet, 10);
   let prevWeekScore = 0;
-  if (lastRow >= 2) {
+  if (allRows.length) {
     for (const row of allRows) {
-      if (String(row[3]) === userId && String(row[1]) === config.weekTitle) {
-        prevWeekScore += Number(row[6]) || 0;
+      if (String(row[rawCol.userId]) === userId && String(row[rawCol.weekTitle]) === config.weekTitle) {
+        prevWeekScore += Number(row[rawCol.score]) || 0;
       }
-      const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
-      if (String(row[3]) === userId && rowDate === today) {
-        try { JSON.parse(row[2] || '[]').forEach(item => {
+      const rowDateValue = row[rawCol.dateKey];
+      const rowDate = rowDateValue instanceof Date ? Utilities.formatDate(rowDateValue, 'Asia/Seoul', 'yyyy-MM-dd') : String(rowDateValue).trim();
+      if (String(row[rawCol.userId]) === userId && rowDate === today) {
+        try { JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
           submittedToday.add(item);
           const idx = config.items.indexOf(item);
           if (idx >= 0) submittedIndices.add(idx);
         }); } catch(e) {}
-        try { JSON.parse(row[7] || '[]').forEach(idx => { if (typeof idx === 'number') submittedIndices.add(idx); }); } catch(e) {}
+        try { JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => { if (typeof idx === 'number') submittedIndices.add(idx); }); } catch(e) {}
       }
     }
   }
@@ -643,6 +1228,7 @@ function backfillRawCheckinsCols() {
   const ss        = getSpreadsheet();
   const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
+  const rawCol = getRawColumns_(rawSheet);
 
   const lastRow = rawSheet.getLastRow();
   if (lastRow < 2) return { ok: true, message: '데이터 없음' };
@@ -660,9 +1246,9 @@ function backfillRawCheckinsCols() {
   const configSheet  = ss.getSheetByName(CONFIG_SHEET_NAME);
   const thresholdMap = {};
   for (let w = 1; w <= 6; w++) {
-    const startRow = (w - 1) * 8 + 5;
-    const title    = String(configSheet.getRange(startRow, 2).getValue()).trim();
-    const thr      = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
+    const startRow = getConfigWeekStartRow_(w);
+    const title    = String(configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue()).trim();
+    const thr      = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
     if (title) thresholdMap[title] = thr;
   }
 
@@ -673,9 +1259,9 @@ function backfillRawCheckinsCols() {
 
   for (let i = 0; i < allData.length; i++) {
     const row       = allData[i];
-    const userId    = String(row[3]).trim();
-    const weekTitle = String(row[1]).trim();
-    const rowScore  = Number(row[6]) || 0;
+    const userId    = String(row[rawCol.userId]).trim();
+    const weekTitle = String(row[rawCol.weekTitle]).trim();
+    const rowScore  = Number(row[rawCol.score]) || 0;
 
     if (!userId || !weekTitle) continue;
 
@@ -691,11 +1277,11 @@ function backfillRawCheckinsCols() {
   }
 
   // I·J열 일괄 쓰기
-  const ijValues = allData.map(function(row) { return [row[8], row[9]]; });
+  const ijValues = allData.map(function(row) { return [row[rawCol.weekCumScore], row[rawCol.ticketEarned]]; });
   for (const u of updates) {
     ijValues[u.i] = [u.weekCumScore, u.ticketEarned];
   }
-  rawSheet.getRange(dataStart, 9, dataCount, 2).setValues(ijValues);
+  rawSheet.getRange(dataStart, rawCol.weekCumScore + 1, dataCount, 2).setValues(ijValues);
 
   return { ok: true, message: `${updates.length}행 재계산 완료` };
 }
@@ -705,11 +1291,11 @@ function getDashboardData() {
   const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
   if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다.');
+  const rawCol = getRawColumns_(rawSheet);
 
-  const lastRow = rawSheet.getLastRow();
-  const values  = lastRow >= 2 ? rawSheet.getRange(2, 1, lastRow - 1, 8).getValues() : [];
+  const values  = getRawRows_(rawSheet, 10);
 
-  const currentWeekRows = values.filter(row => String(row[1]).trim() === config.weekTitle);
+  const currentWeekRows = values.filter(row => String(row[rawCol.weekTitle]).trim() === config.weekTitle);
   const counts = {};
   config.items.forEach(item => counts[item] = 0);
 
@@ -717,13 +1303,13 @@ function getDashboardData() {
     const counted = new Set();
     // 텍스트 기반 카운트
     try {
-      JSON.parse(row[2] || '[]').forEach(item => {
+      JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
         if (counts[item] !== undefined) counted.add(item);
       });
     } catch(e) {}
     // 인덱스 기반 폴백 (텍스트 변경된 구 데이터 보완)
     try {
-      JSON.parse(row[7] || '[]').forEach(idx => {
+      JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => {
         if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
       });
     } catch(e) {}
@@ -747,10 +1333,10 @@ function getDashboardData() {
 // ── H&P 정답 기록 시트 ─────────────────────────────
 function getOrCreateHPGuessesSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('HPGuesses');
+  let sheet = ss.getSheetByName(SHEET_NAMES.HP_GUESSES);
   if (!sheet) {
-    sheet = ss.insertSheet('HPGuesses');
-    sheet.appendRow(['nickname', 'weekKey', 'cardIndex', 'guessedName', 'answeredAt']);
+    sheet = ss.insertSheet(SHEET_NAMES.HP_GUESSES);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.HP_GUESSES));
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -758,10 +1344,10 @@ function getOrCreateHPGuessesSheet() {
 
 function getOrCreateHoldPraySheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('HoldPray');
+  let sheet = ss.getSheetByName(SHEET_NAMES.HOLD_PRAY);
   if (!sheet) {
-    sheet = ss.insertSheet('HoldPray');
-    sheet.getRange(1, 1, 1, 5).setValues([['이름(n)', '교구(p)', '기도제목(c)', '익명(a)', '닉네임(nick)']]);
+    sheet = ss.insertSheet(SHEET_NAMES.HOLD_PRAY);
+    sheet.getRange(SCHEMA.HOLD_PRAY.headerRow, 1, 1, 5).setValues([getSchemaHeaders_(SCHEMA.HOLD_PRAY)]);
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -770,13 +1356,13 @@ function getOrCreateHoldPraySheet() {
 // GAS 에디터에서 1회 실행 — 하드코딩 배열을 HoldPray 시트로 이전
 function migrateHoldPrayToSheet() {
   const sheet = getOrCreateHoldPraySheet();
-  if (sheet.getLastRow() > 1) {
+  if (sheet.getLastRow() >= SCHEMA.HOLD_PRAY.dataStartRow) {
     throw new Error('HoldPray 시트에 이미 데이터가 있습니다. 중복 마이그레이션을 방지하기 위해 중단합니다.');
   }
   const rows = HOLD_PRAY_ENTRIES.map(function(e) {
     return [e.n || '', e.p || '', e.c || '', e.a ? true : false, e.nick || ''];
   });
-  sheet.getRange(2, 1, rows.length, 5).setValues(rows);
+  sheet.getRange(SCHEMA.HOLD_PRAY.dataStartRow, 1, rows.length, 5).setValues(rows);
   Logger.log('마이그레이션 완료: ' + rows.length + '개 항목');
   return { ok: true, migrated: rows.length };
 }
@@ -784,10 +1370,10 @@ function migrateHoldPrayToSheet() {
 // ── 보너스 뽑기권 시트 ──────────────────────────────
 function getOrCreateBonusDrawsSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('BonusDraws');
+  let sheet = ss.getSheetByName(SHEET_NAMES.BONUS_DRAWS);
   if (!sheet) {
-    sheet = ss.insertSheet('BonusDraws');
-    sheet.appendRow(['userId', 'source', 'awardedAt']);
+    sheet = ss.insertSheet(SHEET_NAMES.BONUS_DRAWS);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.BONUS_DRAWS));
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -795,22 +1381,24 @@ function getOrCreateBonusDrawsSheet() {
 
 function getBonusDrawCount(userId) {
   const sheet = getOrCreateBonusDrawsSheet();
-  const last = sheet.getLastRow();
-  if (last < 2) return 0;
-  return sheet.getRange(2, 1, last - 1, 1).getValues()
-    .filter(r => String(r[0]) === userId).length;
+  const col = getBonusDrawColumns_(sheet);
+  return getBonusDrawRows_(sheet)
+    .filter(r => String(r[col.userId]) === userId).length;
 }
 
 // ── 카드 시스템 ───────────────────────────────────
 function getOrCreateDrawSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('CardDraws');
+  let sheet = ss.getSheetByName(SHEET_NAMES.CARD_DRAWS);
   if (!sheet) {
-    sheet = ss.insertSheet('CardDraws');
-    sheet.appendRow(['userId','weekKey','cardId','cardName','drawnAt','received']);
+    sheet = ss.insertSheet(SHEET_NAMES.CARD_DRAWS);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.CARD_DRAWS));
   } else {
     const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 6)).getValues()[0];
-    if (String(header[5] || '') !== 'received') sheet.getRange(1, 6).setValue('received');
+    const col = getCardDrawColumns_(sheet);
+    if (String(header[col.received] || '') !== SCHEMA.CARD_DRAWS.columns.received) {
+      sheet.getRange(SCHEMA.CARD_DRAWS.headerRow, col.received + 1).setValue(SCHEMA.CARD_DRAWS.columns.received);
+    }
   }
   return sheet;
 }
@@ -842,28 +1430,29 @@ function getUserStatus(userId, weekKey) {
   let earnedTicketThisWeek = false;
   try {
     const raw     = ss.getSheetByName(RAW_SHEET_NAME);
-    const lastRow = raw.getLastRow();
-    if (lastRow >= 2) {
-      allRows = raw.getRange(2, 1, lastRow - 1, 10).getValues();
+    const rawCol  = getRawColumns_(raw);
+    allRows = getRawRows_(raw, 10);
+    if (allRows.length) {
       for (const row of allRows) {
-        if (String(row[3]) !== userId) continue;
-        if (String(row[1]) === config.weekTitle) {
-          weekScore += Number(row[6]) || 0;
-          if (Number(row[9]) === 1) earnedTicketThisWeek = true; // J열 ticketEarned
-          const rowDate = row[5] instanceof Date ? Utilities.formatDate(row[5], 'Asia/Seoul', 'yyyy-MM-dd') : String(row[5]).trim();
+        if (String(row[rawCol.userId]) !== userId) continue;
+        if (String(row[rawCol.weekTitle]) === config.weekTitle) {
+          weekScore += Number(row[rawCol.score]) || 0;
+          if (Number(row[rawCol.ticketEarned]) === 1) earnedTicketThisWeek = true;
+          const rowDateValue = row[rawCol.dateKey];
+          const rowDate = rowDateValue instanceof Date ? Utilities.formatDate(rowDateValue, 'Asia/Seoul', 'yyyy-MM-dd') : String(rowDateValue).trim();
           // 이번 주 제출 날짜 수집
           if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
             weekDates.push(rowDate);
           }
           if (rowDate === today) {
-            try { JSON.parse(row[2] || '[]').forEach(item => {
+            try { JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
               todayItems.push(item);
               // 인덱스 미저장 구 데이터: 현재 config 텍스트와 매칭해 인덱스 역추적
               const idx = config.items.indexOf(item);
               if (idx >= 0) todayIndices.push(idx);
             }); } catch(e) {}
             // 신규 데이터: 저장된 인덱스 추가 (텍스트 변경 후에도 유지)
-            try { JSON.parse(row[7] || '[]').forEach(idx => { if (typeof idx === 'number') todayIndices.push(idx); }); } catch(e) {}
+            try { JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => { if (typeof idx === 'number') todayIndices.push(idx); }); } catch(e) {}
           }
         }
       }
@@ -874,15 +1463,15 @@ function getUserStatus(userId, weekKey) {
   let totalDraws = 0;
   try {
     const draws = getOrCreateDrawSheet();
-    const last  = draws.getLastRow();
-    if (last >= 2) {
-      const rows = draws.getRange(2, 1, last - 1, 5).getValues();
+    const drawCol = getCardDrawColumns_(draws);
+    const rows = getCardDrawRows_(draws);
+    if (rows.length) {
       for (const row of rows) {
-        if (String(row[0]) !== userId) continue;
+        if (String(row[drawCol.userId]) !== userId) continue;
         totalDraws++;
-        const card = SPIRIT_CARDS.find(c => c.id === Number(row[2]));
+        const card = SPIRIT_CARDS.find(c => c.id === Number(row[drawCol.cardId]));
         if (!card) continue;
-        if (String(row[1]) === weekKey) { drawnThisWeek = true; weekCard = card; }
+        if (String(row[drawCol.weekKey]) === weekKey) { drawnThisWeek = true; weekCard = card; }
       }
     }
   } catch(e) {}
@@ -988,30 +1577,31 @@ function hashStr(s) {
 function getYouthHpEntries() {
   const sheet = getOrCreateHoldPraySheet();
   const last = sheet.getLastRow();
-  if (last < 2) {
+  if (last < SCHEMA.HOLD_PRAY.dataStartRow) {
     // 시트 마이그레이션 전 fallback
     return HOLD_PRAY_ENTRIES.filter(function(e) {
       return e.p.indexOf('목양') === -1 && e.p.indexOf('초등') === -1;
     });
   }
-  return sheet.getRange(2, 1, last - 1, 5).getValues()
+  const col = getHoldPrayColumns_(sheet);
+  return getHoldPrayRows_(sheet)
     .filter(function(r) {
-      const parish = String(r[1]).trim();
+      const parish = String(r[col.parish]).trim();
       if (!parish) return false;
       if (parish.indexOf('목양') !== -1) return false;
       if (parish.indexOf('초등') !== -1) return false;
-      return String(r[2]).trim() !== ''; // 기도제목 없는 행 제외
+      return String(r[col.content]).trim() !== ''; // 기도제목 없는 행 제외
     })
     .map(function(r) {
-      const name = String(r[0]).trim();
+      const name = String(r[col.name]).trim();
       const isMugimyung = !name || name === '무기명';
-      const anon = isMugimyung || r[3] === true || String(r[3]).toLowerCase() === 'true';
+      const anon = isMugimyung || r[col.anonymous] === true || String(r[col.anonymous]).toLowerCase() === 'true';
       return {
         n: isMugimyung ? '무기명' : name,
-        p: String(r[1]).trim(),
-        c: String(r[2]).trim(),
+        p: String(r[col.parish]).trim(),
+        c: String(r[col.content]).trim(),
         a: anon,
-        nick: String(r[4]).trim()
+        nick: String(r[col.nickname]).trim()
       };
     });
 }
@@ -1020,20 +1610,21 @@ function getYouthHpEntries() {
 function fixHoldPrayBlankNames() {
   const sheet = getOrCreateHoldPraySheet();
   const last = sheet.getLastRow();
-  if (last < 2) return '데이터 없음';
-  const range = sheet.getRange(2, 1, last - 1, 4);
-  const values = range.getValues();
+  if (last < SCHEMA.HOLD_PRAY.dataStartRow) return '데이터 없음';
+  const col = getHoldPrayColumns_(sheet);
+  const values = getHoldPrayRows_(sheet);
   let fixed = 0;
   values.forEach(function(r, i) {
-    const name = String(r[0]).trim();
+    const rowIndex = i + SCHEMA.HOLD_PRAY.dataStartRow;
+    const name = String(r[col.name]).trim();
     if (!name || name === '무기명') {
       if (!name) {
-        sheet.getRange(i + 2, 1).setValue('무기명');
+        sheet.getRange(rowIndex, col.name + 1).setValue('무기명');
         fixed++;
       }
       // 익명 칸도 TRUE 보장
-      if (r[3] !== true && String(r[3]).toLowerCase() !== 'true') {
-        sheet.getRange(i + 2, 4).setValue(true);
+      if (r[col.anonymous] !== true && String(r[col.anonymous]).toLowerCase() !== 'true') {
+        sheet.getRange(rowIndex, col.anonymous + 1).setValue(true);
       }
     }
   });
@@ -1083,12 +1674,13 @@ function getHoldPray(weekKey, nickname) {
   if (nickname) {
     const guessSheet = getOrCreateHPGuessesSheet();
     const last = guessSheet.getLastRow();
-    if (last >= 2) {
-      const rows = guessSheet.getRange(2, 1, last - 1, 4).getValues();
+    if (last >= SCHEMA.HP_GUESSES.dataStartRow) {
+      const guessCol = getHpGuessColumns_(guessSheet);
+      const rows = getHpGuessRows_(guessSheet);
       rows.forEach(function(r) {
-        if (String(r[0]) !== nickname || String(r[1]) !== weekKey) return;
-        const cardIdx = Number(r[2]);
-        const storedGuess = String(r[3]);
+        if (String(r[guessCol.nickname]) !== nickname || String(r[guessCol.weekKey]) !== weekKey) return;
+        const cardIdx = Number(r[guessCol.cardIndex]);
+        const storedGuess = String(r[guessCol.guessedName]);
         const currentEntry = pickedEntries[cardIdx];
         if (currentEntry && !currentEntry.a && currentEntry.n === storedGuess) {
           correctMap[cardIdx] = storedGuess;
@@ -1104,23 +1696,25 @@ function getHoldPray(weekKey, nickname) {
     const bonusSheet = getOrCreateBonusDrawsSheet();
     const last = bonusSheet.getLastRow();
     const source = 'hp_' + weekKey;
-    if (last >= 2) {
-      const rows = bonusSheet.getRange(2, 1, last - 1, 2).getValues();
+    if (last >= SCHEMA.BONUS_DRAWS.dataStartRow) {
+      const bonusCol = getBonusDrawColumns_(bonusSheet);
+      const rows = getBonusDrawRows_(bonusSheet);
       ticketAlreadyAwarded = rows.some(function(r) {
-        return String(r[0]) === nickname && String(r[1]) === source;
+        return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source;
       });
     }
     if (ticketAlreadyAwarded) {
       const guessSheet = getOrCreateHPGuessesSheet();
       const gLast = guessSheet.getLastRow();
-      if (gLast >= 2) {
-        const gRows = guessSheet.getRange(2, 1, gLast - 1, 5).getValues();
+      if (gLast >= SCHEMA.HP_GUESSES.dataStartRow) {
+        const guessCol = getHpGuessColumns_(guessSheet);
+        const gRows = getHpGuessRows_(guessSheet);
         const myRows = gRows.filter(function(r) {
-          return String(r[0]) === nickname && String(r[1]) === weekKey;
+          return String(r[guessCol.nickname]) === nickname && String(r[guessCol.weekKey]) === weekKey;
         });
         if (myRows.length > 0) {
-          myRows.sort(function(a, b) { return new Date(a[4]) - new Date(b[4]); });
-          ticketCardIdx = Number(myRows[0][2]);
+          myRows.sort(function(a, b) { return new Date(a[guessCol.answeredAt]) - new Date(b[guessCol.answeredAt]); });
+          ticketCardIdx = Number(myRows[0][guessCol.cardIndex]);
         }
       }
     }
@@ -1131,13 +1725,14 @@ function getHoldPray(weekKey, nickname) {
   if (nickname) {
     const inqSheet = getOrCreateInquirySheet();
     const inqLast = inqSheet.getLastRow();
-    if (inqLast >= 2) {
-      const inqRows = inqSheet.getRange(2, 1, inqLast - 1, 6).getValues();
+    if (inqLast >= SCHEMA.INQUIRIES.dataStartRow) {
+      const inqCol = getInquiryColumns_(inqSheet);
+      const inqRows = getInquiryRows_(inqSheet);
       inqRows.forEach(function(r) {
-        if (String(r[1]) !== nickname) return;
-        const reply = String(r[4] || '').trim();
+        if (String(r[inqCol.nickname]) !== nickname) return;
+        const reply = String(r[inqCol.reply] || '').trim();
         if (!reply) return;
-        const match = String(r[2]).match(/주차: ([^,]+), 카드: (\d+)번/);
+        const match = String(r[inqCol.content]).match(/주차: ([^,]+), 카드: (\d+)번/);
         if (match && match[1] === weekKey) {
           hintReplies[Number(match[2]) - 1] = reply;
         }
@@ -1195,10 +1790,11 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
     const guessSheet = getOrCreateHPGuessesSheet();
     const last = guessSheet.getLastRow();
     let alreadyRecorded = false;
-    if (last >= 2) {
-      const rows = guessSheet.getRange(2, 1, last - 1, 3).getValues();
+    if (last >= SCHEMA.HP_GUESSES.dataStartRow) {
+      const guessCol = getHpGuessColumns_(guessSheet);
+      const rows = getHpGuessRows_(guessSheet);
       alreadyRecorded = rows.some(function(r) {
-        return String(r[0]) === nickname && String(r[1]) === weekKey && Number(r[2]) === ci;
+        return String(r[guessCol.nickname]) === nickname && String(r[guessCol.weekKey]) === weekKey && Number(r[guessCol.cardIndex]) === ci;
       });
     }
     if (!alreadyRecorded) {
@@ -1211,9 +1807,10 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
     const last = bonusSheet.getLastRow();
     const source = 'hp_' + weekKey;
     let alreadyAwarded = false;
-    if (last >= 2) {
-      const rows = bonusSheet.getRange(2, 1, last - 1, 2).getValues();
-      alreadyAwarded = rows.some(function(r) { return String(r[0]) === nickname && String(r[1]) === source; });
+    if (last >= SCHEMA.BONUS_DRAWS.dataStartRow) {
+      const bonusCol = getBonusDrawColumns_(bonusSheet);
+      const rows = getBonusDrawRows_(bonusSheet);
+      alreadyAwarded = rows.some(function(r) { return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source; });
     }
     if (!alreadyAwarded) {
       bonusSheet.appendRow([nickname, source, new Date().toISOString()]);
@@ -1249,30 +1846,30 @@ var BBB_SECTIONS_DEFAULT = {
 
 function getOrCreateTabSettingsSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('TabSettings');
+  let sheet = ss.getSheetByName(SHEET_NAMES.TAB_SETTINGS);
   if (sheet) return sheet;
 
-  sheet = ss.insertSheet('TabSettings');
-  sheet.getRange(1, 1, 1, 3).setValues([['tab_key', 'label', 'enabled']]);
+  sheet = ss.insertSheet(SHEET_NAMES.TAB_SETTINGS);
+  sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
   // config B2/B3/D1에서 마이그레이션 (최초 1회)
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
   var holdprayVal = true, secretVal = true, chatVal = false;
   if (configSheet) {
-    const b2 = configSheet.getRange('B2').getValue();
-    const b3 = configSheet.getRange('B3').getValue();
-    const d1 = configSheet.getRange('D1').getValue();
+    const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
+    const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
+    const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
     holdprayVal = (b2 === '') ? true : Boolean(b2);
     secretVal   = (b3 === '') ? true : Boolean(b3);
     chatVal     = (typeof d1 === 'boolean') ? d1 : false; // '1주차' 같은 문자열은 false로 처리
     // 마이그레이션 후 config 시트에서 제거
-    configSheet.getRange('B2').clearContent();
-    configSheet.getRange('B3').clearContent();
-    configSheet.getRange('D1').clearContent();
+    configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).clearContent();
+    configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).clearContent();
+    configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).clearContent();
   }
 
-  sheet.getRange(2, 1, 3, 3).setValues([
+  sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, 3, 3).setValues([
     ['holdpray', 'Hold & Pray', holdprayVal],
     ['secret',   '현장미션',    secretVal],
     ['chat',     '채팅방',      chatVal],
@@ -1282,18 +1879,18 @@ function getOrCreateTabSettingsSheet() {
 
 function getOrCreateBBBSettingsSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('BBBSettings');
+  let sheet = ss.getSheetByName(SHEET_NAMES.BBB_SETTINGS);
   if (sheet) return sheet;
 
-  sheet = ss.insertSheet('BBBSettings');
-  sheet.getRange(1, 1, 1, 3).setValues([['key', 'open', 'text']]);
+  sheet = ss.insertSheet(SHEET_NAMES.BBB_SETTINGS);
+  sheet.getRange(SCHEMA.BBB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.BBB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
   // D2 JSON에서 마이그레이션 시도 (이전 저장값 복원)
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
   var saved = {};
   try {
-    const d2val = configSheet ? configSheet.getRange('D2').getValue() : '';
+    const d2val = configSheet ? configSheet.getRange(CONFIG_LAYOUT.legacyBbbSectionsCell).getValue() : '';
     if (d2val) saved = JSON.parse(d2val);
   } catch(e) {}
 
@@ -1302,7 +1899,7 @@ function getOrCreateBBBSettingsSheet() {
     const sv  = saved[key] || {};
     return [key, sv.open === true, sv.text !== undefined ? sv.text : (def.text || '')];
   });
-  sheet.getRange(2, 1, rows.length, 3).setValues(rows);
+  sheet.getRange(SCHEMA.BBB_SETTINGS.dataStartRow, 1, rows.length, 3).setValues(rows);
   return sheet;
 }
 
@@ -1310,10 +1907,11 @@ function isBBBMessageOpen() {
   try {
     const bbbSheet = getOrCreateBBBSettingsSheet();
     const last = bbbSheet.getLastRow();
-    if (last >= 2) {
-      const rows = bbbSheet.getRange(2, 1, last - 1, 2).getValues();
+    if (last >= SCHEMA.BBB_SETTINGS.dataStartRow) {
+      const bbbCol = getBbbSettingsColumns_(bbbSheet);
+      const rows = getBbbSettingsRows_(bbbSheet);
       for (var i = 0; i < rows.length; i++) {
-        if (String(rows[i][0]).trim() === 'msgOpen') return rows[i][1] === true;
+        if (String(rows[i][bbbCol.key]).trim() === 'msgOpen') return rows[i][bbbCol.open] === true;
       }
     }
   } catch(e) {}
@@ -1321,7 +1919,7 @@ function isBBBMessageOpen() {
   // 구버전 config C1 설정 fallback
   try {
     const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return configSheet.getRange('C1').getValue() === true;
+    return configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue() === true;
   } catch(e) {
     return false;
   }
@@ -1330,21 +1928,21 @@ function isBBBMessageOpen() {
 function getTabSettings() {
   // TabSettings 시트에서 holdpray/secret/chat 읽기
   const ss = getSpreadsheet();
-  const tabSheet = ss.getSheetByName('TabSettings');
+  const tabSheet = ss.getSheetByName(SHEET_NAMES.TAB_SETTINGS);
   const tabMap = { holdpray: true, secret: true, chat: false };
-  if (tabSheet && tabSheet.getLastRow() >= 2) {
-    const tabLastRow = tabSheet.getLastRow();
-    tabSheet.getRange(2, 1, tabLastRow - 1, 3).getValues().forEach(function(r) {
-      const key = String(r[0]).trim();
-      if (tabMap.hasOwnProperty(key)) tabMap[key] = r[2] === true;
+  if (tabSheet && tabSheet.getLastRow() >= SCHEMA.TAB_SETTINGS.dataStartRow) {
+    const tabCol = getTabSettingsColumns_(tabSheet);
+    getTabSettingsRows_(tabSheet).forEach(function(r) {
+      const key = String(r[tabCol.key]).trim();
+      if (Object.prototype.hasOwnProperty.call(tabMap, key)) tabMap[key] = r[tabCol.enabled] === true;
     });
   } else {
     // TabSettings 생성 전에는 config의 기존 값을 읽기만 한다.
     const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
     if (configSheet) {
-      const b2 = configSheet.getRange('B2').getValue();
-      const b3 = configSheet.getRange('B3').getValue();
-      const d1 = configSheet.getRange('D1').getValue();
+      const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
+      const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
+      const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
       tabMap.holdpray = (b2 === '') ? true : b2 === true;
       tabMap.secret   = (b3 === '') ? true : b3 === true;
       tabMap.chat     = d1 === true;
@@ -1355,11 +1953,12 @@ function getTabSettings() {
   const bbbSections = JSON.parse(JSON.stringify(BBB_SECTIONS_DEFAULT));
   const bbbSheet = getOrCreateBBBSettingsSheet();
   const bbbLastRow = bbbSheet.getLastRow();
-  if (bbbLastRow >= 2) {
-    bbbSheet.getRange(2, 1, bbbLastRow - 1, 3).getValues().forEach(function(r) {
-      const key = String(r[0]).trim();
-      if (!key || !bbbSections.hasOwnProperty(key)) return;
-      bbbSections[key] = { open: r[1] === true, text: String(r[2] || '') };
+  if (bbbLastRow >= SCHEMA.BBB_SETTINGS.dataStartRow) {
+    const bbbCol = getBbbSettingsColumns_(bbbSheet);
+    getBbbSettingsRows_(bbbSheet).forEach(function(r) {
+      const key = String(r[bbbCol.key]).trim();
+      if (!key || !Object.prototype.hasOwnProperty.call(bbbSections, key)) return;
+      bbbSections[key] = { open: r[bbbCol.open] === true, text: String(r[bbbCol.text] || '') };
       if (!bbbSections[key].text) delete bbbSections[key].text;
     });
   }
@@ -1379,14 +1978,15 @@ function setTabSettings(body) {
   // TabSettings 시트 업데이트
   const tabSheet = getOrCreateTabSettingsSheet();
   const tabLastRow = tabSheet.getLastRow();
-  if (tabLastRow >= 2) {
-    const tabRange = tabSheet.getRange(2, 1, tabLastRow - 1, 3);
+  if (tabLastRow >= SCHEMA.TAB_SETTINGS.dataStartRow) {
+    const tabCol = getTabSettingsColumns_(tabSheet);
+    const tabRange = tabSheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, tabLastRow - SCHEMA.TAB_SETTINGS.dataStartRow + 1, 3);
     const tabRows = tabRange.getValues();
     tabRows.forEach(function(r) {
-      const key = String(r[0]).trim();
-      if (key === 'holdpray' && body.prayer !== undefined) r[2] = body.prayer !== false;
-      if (key === 'secret'   && body.secret !== undefined) r[2] = body.secret  !== false;
-      if (key === 'chat'     && body.chat   !== undefined) r[2] = body.chat    !== false;
+      const key = String(r[tabCol.key]).trim();
+      if (key === 'holdpray' && body.prayer !== undefined) r[tabCol.enabled] = body.prayer !== false;
+      if (key === 'secret'   && body.secret !== undefined) r[tabCol.enabled] = body.secret  !== false;
+      if (key === 'chat'     && body.chat   !== undefined) r[tabCol.enabled] = body.chat    !== false;
     });
     tabRange.setValues(tabRows);
   }
@@ -1395,15 +1995,16 @@ function setTabSettings(body) {
   if (body.bbbSections) {
     const bbbSheet = getOrCreateBBBSettingsSheet();
     const bbbLastRow = bbbSheet.getLastRow();
-    if (bbbLastRow >= 2) {
-      const bbbRange = bbbSheet.getRange(2, 1, bbbLastRow - 1, 3);
+    if (bbbLastRow >= SCHEMA.BBB_SETTINGS.dataStartRow) {
+      const bbbCol = getBbbSettingsColumns_(bbbSheet);
+      const bbbRange = bbbSheet.getRange(SCHEMA.BBB_SETTINGS.dataStartRow, 1, bbbLastRow - SCHEMA.BBB_SETTINGS.dataStartRow + 1, 3);
       const bbbRows = bbbRange.getValues();
       bbbRows.forEach(function(r) {
-        const key = String(r[0]).trim();
-        if (!key || !body.bbbSections.hasOwnProperty(key)) return;
+        const key = String(r[bbbCol.key]).trim();
+        if (!key || !Object.prototype.hasOwnProperty.call(body.bbbSections, key)) return;
         const sec = body.bbbSections[key];
-        r[1] = sec.open === true;
-        if (sec.text !== undefined) r[2] = sec.text;
+        r[bbbCol.open] = sec.open === true;
+        if (sec.text !== undefined) r[bbbCol.text] = sec.text;
       });
       bbbRange.setValues(bbbRows);
     }
@@ -1414,7 +2015,7 @@ function setTabSettings(body) {
 
 function getAppOpenDate() {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const v = sheet.getRange('B4').getValue();
+  const v = sheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue();
   if (v instanceof Date) return Utilities.formatDate(v, 'GMT+9', 'yyyy-MM-dd');
   return String(v || '');
 }
@@ -1422,6 +2023,7 @@ function getAppOpenDate() {
 // ── 유저 인증 ─────────────────────────────────────
 function registerUser(body) {
   const sheet    = getUsersSheet_();
+  const col      = getUserColumns_(sheet);
   const nickname = String(body.nickname || '').trim();
   const password = String(body.password || '').trim();
   const name     = String(body.name     || '').trim();
@@ -1429,14 +2031,14 @@ function registerUser(body) {
 
   if (!nickname || !password || !name || !parish) return { error: 'missing_fields' };
 
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === nickname) return { error: 'duplicate' };
+  const data = getUserRows_(sheet);
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][col.nickname]).trim() === nickname) return { error: 'duplicate' };
   }
 
   sheet.appendRow([nickname, '', name, parish, new Date(), '', '', '', '']);
   const rowIndex = sheet.getLastRow();
-  const pwCell = sheet.getRange(rowIndex, 2);
+  const pwCell = sheet.getRange(rowIndex, col.password + 1);
   pwCell.setNumberFormat('@');
   pwCell.setValue(password);
   const sessionToken = issueSessionToken_(sheet, rowIndex);
@@ -1445,24 +2047,26 @@ function registerUser(body) {
 
 function loginUser(body) {
   const sheet    = getUsersSheet_();
+  const schema   = SCHEMA.USERS;
+  const col      = getUserColumns_(sheet);
   const nickname = String(body.nickname || '').trim();
   const password = String(body.password || '').trim();
   const sessionToken = String(body.sessionToken || '').trim();
 
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === nickname) {
-      const rowIndex = i + 1;
-      const passwordOk = password && String(data[i][1]).trim() === password;
+  const data = getUserRows_(sheet);
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][col.nickname]).trim() === nickname) {
+      const rowIndex = i + schema.dataStartRow;
+      const passwordOk = password && String(data[i][col.password]).trim() === password;
       const sessionOk = !password && sessionToken && verifySession(nickname, sessionToken);
       if (passwordOk || sessionOk) {
         const token = passwordOk ? issueSessionToken_(sheet, rowIndex) : sessionToken;
         if (sessionOk) touchSessionToken_(sheet, rowIndex);
         return {
           ok:          true,
-          parish:      data[i][3],
-          isStaff:     data[i][5] === true,
-          isDev:       data[i][6] === true,
+          parish:      data[i][col.parish],
+          isStaff:     data[i][col.isStaff] === true,
+          isDev:       data[i][col.isDev] === true,
           appOpenDate: getAppOpenDate(),
           sessionToken: token
         };
@@ -1475,6 +2079,8 @@ function loginUser(body) {
 
 function resetPassword(body) {
   const sheet       = getUsersSheet_();
+  const schema      = SCHEMA.USERS;
+  const col         = getUserColumns_(sheet);
   const nickname    = String(body.nickname    || '').trim();
   const name        = String(body.name        || '').trim();
   const parish      = String(body.parish      || '').trim();
@@ -1482,18 +2088,19 @@ function resetPassword(body) {
 
   if (!newPassword || newPassword.length < 4) return { error: 'invalid_password' };
 
-  const data = sheet.getDataRange().getValues();
+  const data = getUserRows_(sheet);
 
   // 닉네임이 명시된 경우: 이름+교구+닉네임 정확히 일치하는 계정 변경
   if (nickname) {
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === nickname &&
-          String(data[i][2]).trim() === name &&
-          String(data[i][3]).trim() === parish) {
-        const cell = sheet.getRange(i + 1, 2);
+    for (let i = 0; i < data.length; i++) {
+      const rowIndex = i + schema.dataStartRow;
+      if (String(data[i][col.nickname]).trim() === nickname &&
+          String(data[i][col.name]).trim() === name &&
+          String(data[i][col.parish]).trim() === parish) {
+        const cell = sheet.getRange(rowIndex, col.password + 1);
         cell.setNumberFormat('@');
         cell.setValue(newPassword);
-        clearSessionToken_(sheet, i + 1);
+        clearSessionToken_(sheet, rowIndex);
         return { ok: true };
       }
     }
@@ -1502,10 +2109,10 @@ function resetPassword(body) {
 
   // 닉네임 없이 이름+교구로 검색
   const matches = [];
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][2]).trim() === name &&
-        String(data[i][3]).trim() === parish) {
-      matches.push({ row: i + 1, nickname: String(data[i][0]).trim() });
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][col.name]).trim() === name &&
+        String(data[i][col.parish]).trim() === parish) {
+      matches.push({ row: i + schema.dataStartRow, nickname: String(data[i][col.nickname]).trim() });
     }
   }
 
@@ -1517,7 +2124,7 @@ function resetPassword(body) {
   }
 
   // 1명: 바로 변경
-  const cell = sheet.getRange(matches[0].row, 2);
+  const cell = sheet.getRange(matches[0].row, col.password + 1);
   cell.setNumberFormat('@');
   cell.setValue(newPassword);
   clearSessionToken_(sheet, matches[0].row);
@@ -1526,23 +2133,25 @@ function resetPassword(body) {
 
 function getUsers() {
   const sheet = getUsersSheet_();
-  const data  = sheet.getDataRange().getValues();
+  const col   = getUserColumns_(sheet);
+  const data  = getUserRows_(sheet);
   const users = [];
-  for (let i = 1; i < data.length; i++) {
-    if (!data[i][0]) continue;
-    users.push({ nickname: data[i][0], name: data[i][2], parish: data[i][3], createdAt: data[i][4] });
+  for (let i = 0; i < data.length; i++) {
+    if (!data[i][col.nickname]) continue;
+    users.push({ nickname: data[i][col.nickname], name: data[i][col.name], parish: data[i][col.parish], createdAt: data[i][col.createdAt] });
   }
   return { ok: true, users };
 }
 
 function findNickname(name, parish) {
   const sheet = getUsersSheet_();
-  const data  = sheet.getDataRange().getValues();
+  const col   = getUserColumns_(sheet);
+  const data  = getUserRows_(sheet);
   const nicknames = [];
-  for (let i = 1; i < data.length; i++) {
-    if (!data[i][0]) continue;
-    if (String(data[i][2]).trim() === name && String(data[i][3]).trim() === parish) {
-      nicknames.push(String(data[i][0]).trim());
+  for (let i = 0; i < data.length; i++) {
+    if (!data[i][col.nickname]) continue;
+    if (String(data[i][col.name]).trim() === name && String(data[i][col.parish]).trim() === parish) {
+      nicknames.push(String(data[i][col.nickname]).trim());
     }
   }
   if (nicknames.length === 0) return { ok: false, error: 'not_found' };
@@ -1551,17 +2160,20 @@ function findNickname(name, parish) {
 
 function adminResetPassword(body) {
   const sheet       = getUsersSheet_();
+  const schema      = SCHEMA.USERS;
+  const col         = getUserColumns_(sheet);
   const nickname    = String(body.nickname    || '').trim();
   const newPassword = String(body.newPassword || '').trim();
   if (!nickname || !newPassword) return { error: 'missing_fields' };
 
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === nickname) {
-      const cell = sheet.getRange(i + 1, 2);
+  const data = getUserRows_(sheet);
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][col.nickname]).trim() === nickname) {
+      const rowIndex = i + schema.dataStartRow;
+      const cell = sheet.getRange(rowIndex, col.password + 1);
       cell.setNumberFormat('@');
       cell.setValue(newPassword);
-      clearSessionToken_(sheet, i + 1);
+      clearSessionToken_(sheet, rowIndex);
       return { ok: true };
     }
   }
@@ -1571,12 +2183,18 @@ function adminResetPassword(body) {
 // ── 공지사항 ──────────────────────────────────────
 function getOrCreateNoticeSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('Notices');
+  let sheet = ss.getSheetByName(SHEET_NAMES.NOTICES);
   if (!sheet) {
-    sheet = ss.insertSheet('Notices');
-    sheet.appendRow(['id','title','content','createdAt','imageUrl','updatedAt']);
-  } else if (sheet.getLastColumn() < 6 || String(sheet.getRange(1, 6).getValue() || '') !== 'updatedAt') {
-    sheet.getRange(1, 6).setValue('updatedAt');
+    sheet = ss.insertSheet(SHEET_NAMES.NOTICES);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.NOTICES));
+  } else {
+    const col = getNoticeColumns_(sheet);
+    if (
+      sheet.getLastColumn() <= col.updatedAt ||
+      String(sheet.getRange(SCHEMA.NOTICES.headerRow, col.updatedAt + 1).getValue() || '') !== SCHEMA.NOTICES.columns.updatedAt
+    ) {
+      sheet.getRange(SCHEMA.NOTICES.headerRow, col.updatedAt + 1).setValue(SCHEMA.NOTICES.columns.updatedAt);
+    }
   }
   return sheet;
 }
@@ -1619,22 +2237,23 @@ function getNotices() {
 
   const sheet = getOrCreateNoticeSheet();
   const last = sheet.getLastRow();
-  if (last < 2) {
+  if (last < SCHEMA.NOTICES.dataStartRow) {
     const emptyResult = { ok: true, notices: [] };
     cachePutJson_(cacheKey, emptyResult, 30);
     return emptyResult;
   }
-  const rows = sheet.getRange(2, 1, last - 1, 6).getValues();
+  const col = getNoticeColumns_(sheet);
+  const rows = getNoticeRows_(sheet);
   const notices = rows
-    .filter(r => r[0])
+    .filter(r => r[col.id])
     .map((r, i) => ({
-      rowIndex: i + 2,
-      id: String(r[0]),
-      title: r[1],
-      content: r[2],
-      createdAt: r[3],
-      imageUrl: r[4] || '',
-      updatedAt: r[5] || r[3]
+      rowIndex: i + SCHEMA.NOTICES.dataStartRow,
+      id: String(r[col.id]),
+      title: r[col.title],
+      content: r[col.content],
+      createdAt: r[col.createdAt],
+      imageUrl: r[col.imageUrl] || '',
+      updatedAt: r[col.updatedAt] || r[col.createdAt]
     }))
     .reverse();
   const result = { ok: true, notices };
@@ -1669,7 +2288,8 @@ function deleteNotice(body) {
   const rowIndex = Number(body.rowIndex);
   if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
   const sheet = getOrCreateNoticeSheet();
-  const imageUrl = String(sheet.getRange(rowIndex, 5).getValue() || '');
+  const col = getNoticeColumns_(sheet);
+  const imageUrl = String(sheet.getRange(rowIndex, col.imageUrl + 1).getValue() || '');
   sheet.deleteRow(rowIndex);
   deleteDriveImages(imageUrl);
   clearNoticesCache_();
@@ -1695,8 +2315,9 @@ function editNotice(body) {
   if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
   if (!title || !content) return { error: 'missing_fields' };
   const sheet = getOrCreateNoticeSheet();
-  sheet.getRange(rowIndex, 2).setValue(title);
-  sheet.getRange(rowIndex, 3).setValue(content);
+  const col = getNoticeColumns_(sheet);
+  sheet.getRange(rowIndex, col.title + 1).setValue(title);
+  sheet.getRange(rowIndex, col.content + 1).setValue(content);
 
   let imageUrl = body.imageUrl !== undefined ? String(body.imageUrl || '').trim() : null;
   if (!imageUrl && body.imageFiles && body.imageFiles.length) {
@@ -1708,8 +2329,8 @@ function editNotice(body) {
       return { error: 'drive_upload_failed', detail: String(e) };
     }
   }
-  if (imageUrl !== null) sheet.getRange(rowIndex, 5).setValue(imageUrl);
-  sheet.getRange(rowIndex, 6).setValue(new Date().toISOString());
+  if (imageUrl !== null) sheet.getRange(rowIndex, col.imageUrl + 1).setValue(imageUrl);
+  sheet.getRange(rowIndex, col.updatedAt + 1).setValue(new Date().toISOString());
 
   clearNoticesCache_();
   return { ok: true };
@@ -1719,17 +2340,18 @@ function editNotice(body) {
 // CardReceived 컬럼: nickname(A) | cardId(B) | receivedQty(C) | updatedAt(D)
 function getOrCreateCardReceivedSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('CardReceived');
+  let sheet = ss.getSheetByName(SHEET_NAMES.CARD_RECEIVED);
   if (!sheet) {
-    sheet = ss.insertSheet('CardReceived');
-    sheet.appendRow(['nickname', 'cardId', 'receivedQty', 'updatedAt']);
+    sheet = ss.insertSheet(SHEET_NAMES.CARD_RECEIVED);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.CARD_RECEIVED));
     sheet.setFrozenRows(1);
   } else {
     // 구버전 헤더(2열) → 4열로 자동 수정
     const lastCol = sheet.getLastColumn();
     const headerRow = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
-    if (lastCol < 4 || headerRow[1] !== 'cardId') {
-      sheet.getRange(1, 1, 1, 4).setValues([['nickname', 'cardId', 'receivedQty', 'updatedAt']]);
+    const col = getCardReceivedColumns_(sheet);
+    if (lastCol < 4 || headerRow[col.cardId] !== SCHEMA.CARD_RECEIVED.columns.cardId) {
+      sheet.getRange(SCHEMA.CARD_RECEIVED.headerRow, 1, 1, 4).setValues([getSchemaHeaders_(SCHEMA.CARD_RECEIVED)]);
     }
   }
   return sheet;
@@ -1742,14 +2364,12 @@ function setCardReceivedQty(body) {
   var qty      = Number(body.qty);
   if (!nickname || !cardId || isNaN(qty) || qty < 0) return { error: 'invalid_params' };
   var sheet = getOrCreateCardReceivedSheet();
-  var last = sheet.getLastRow();
-  if (last >= 2) {
-    var rows = sheet.getRange(2, 1, last - 1, 2).getValues();
-    for (var i = 0; i < rows.length; i++) {
-      if (String(rows[i][0]) === nickname && Number(rows[i][1]) === cardId) {
-        sheet.getRange(i + 2, 3, 1, 2).setValues([[qty, new Date()]]);
-        return { ok: true };
-      }
+  var col = getCardReceivedColumns_(sheet);
+  var rows = getCardReceivedRows_(sheet);
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.nickname]) === nickname && Number(rows[i][col.cardId]) === cardId) {
+      sheet.getRange(i + SCHEMA.CARD_RECEIVED.dataStartRow, col.receivedQty + 1, 1, 2).setValues([[qty, new Date()]]);
+      return { ok: true };
     }
   }
   sheet.appendRow([nickname, cardId, qty, new Date()]);
@@ -1761,7 +2381,8 @@ function setDrawReceived(body) {
   var received = body.received !== false;
   if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
   var sheet = getOrCreateDrawSheet();
-  sheet.getRange(rowIndex, 6).setValue(received ? 'TRUE' : '');
+  var col = getCardDrawColumns_(sheet);
+  sheet.getRange(rowIndex, col.received + 1).setValue(received ? 'TRUE' : '');
   return { ok: true };
 }
 
@@ -1776,12 +2397,12 @@ function getCardStats() {
   SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
   try {
     var drawSheet = getOrCreateDrawSheet();
-    var drawLast = drawSheet.getLastRow();
-    if (drawLast >= 2) {
-      var drawRows = drawSheet.getRange(2, 1, drawLast - 1, 3).getValues();
+    var drawCol = getCardDrawColumns_(drawSheet);
+    var drawRows = getCardDrawRows_(drawSheet);
+    if (drawRows.length) {
       drawRows.forEach(function(row) {
-        var nick = String(row[0]);
-        var cid  = Number(row[2]);
+        var nick = String(row[drawCol.userId]);
+        var cid  = Number(row[drawCol.cardId]);
         if (!nick || !cid) return;
         cardCounts[cid] = (cardCounts[cid] || 0) + 1;
         totalDraws++;
@@ -1797,13 +2418,13 @@ function getCardStats() {
   SPIRIT_CARDS.forEach(function(c) { receivedCounts[c.id] = 0; });
   try {
     var rcvSheet = getOrCreateCardReceivedSheet();
-    var rcvLast = rcvSheet.getLastRow();
-    if (rcvLast >= 2) {
-      var rcvRows = rcvSheet.getRange(2, 1, rcvLast - 1, 3).getValues();
+    var rcvCol = getCardReceivedColumns_(rcvSheet);
+    var rcvRows = getCardReceivedRows_(rcvSheet);
+    if (rcvRows.length) {
       rcvRows.forEach(function(row) {
-        var nick = String(row[0]);
-        var cid  = Number(row[1]);
-        var qty  = Number(row[2]) || 0;
+        var nick = String(row[rcvCol.nickname]);
+        var cid  = Number(row[rcvCol.cardId]);
+        var qty  = Number(row[rcvCol.receivedQty]) || 0;
         if (!nick || !cid) return;
         receivedCounts[cid] = (receivedCounts[cid] || 0) + qty;
         if (!userReceivedMap[nick]) userReceivedMap[nick] = {};
@@ -1817,17 +2438,15 @@ function getCardStats() {
   var tradeInMap  = {}; // nickname → { cardId: [counterpart, ...] }
   try {
     var tradeSheet = getOrCreateTradesSheet();
-    var tradeLast = tradeSheet.getLastRow();
-    if (tradeLast >= 2) {
-      var tradeRows = tradeSheet.getRange(2, 1, tradeLast - 1, 8).getValues();
-      // cols: id(0), requester(1), requesterCardId(2), requesterCardName(3),
-      //       target(4), targetCardId(5), targetCardName(6), status(7)
+    var tradeCol = getTradesColumns_(tradeSheet);
+    var tradeRows = getTradesRows_(tradeSheet);
+    if (tradeRows.length) {
       tradeRows.forEach(function(row) {
-        if (String(row[7]) !== 'accepted') return;
-        var req      = String(row[1]);
-        var reqCard  = Number(row[2]);
-        var tgt      = String(row[4]);
-        var tgtCard  = Number(row[5]);
+        if (String(row[tradeCol.status]) !== 'accepted') return;
+        var req      = String(row[tradeCol.requester]);
+        var reqCard  = Number(row[tradeCol.requesterCardId]);
+        var tgt      = String(row[tradeCol.target]);
+        var tgtCard  = Number(row[tradeCol.targetCardId]);
         // requester: 양도 reqCard → tgt, 취득 tgtCard ← tgt
         if (!tradeOutMap[req]) tradeOutMap[req] = {};
         if (!tradeOutMap[req][reqCard]) tradeOutMap[req][reqCard] = [];
@@ -1849,13 +2468,7 @@ function getCardStats() {
   // 4. 닉네임 → 이름 맵
   var nameMap = {};
   try {
-    var usersSheet = ss.getSheetByName('Users');
-    if (usersSheet) {
-      var uData = usersSheet.getDataRange().getValues();
-      for (var i = 1; i < uData.length; i++) {
-        if (uData[i][0]) nameMap[String(uData[i][0])] = String(uData[i][2] || '');
-      }
-    }
+    nameMap = getUserNameMap_();
   } catch(e) {}
 
   // 5. 유저별 카드 통합 (뽑기 또는 교환이 있는 모든 유저)
@@ -1962,21 +2575,21 @@ function setupAllWeeks() {
   const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
 
   // 헤더 세팅 (첫 실행 시)
-  sheet.getRange('A1').setValue('current_week');
-  if (!sheet.getRange('B1').getValue()) sheet.getRange('B1').setValue(1);
+  sheet.getRange(CONFIG_LAYOUT.currentWeekLabelCell).setValue('current_week');
+  if (!sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(1);
   // 탭 on/off → TabSettings 시트, 현장미션 섹션 → BBBSettings 시트
 
   // 기존 주차 데이터 영역 초기화
-  sheet.getRange('A5:C200').clearContent();
+  sheet.getRange(CONFIG_LAYOUT.weekBlockClearRange).clearContent();
 
   ALL_WEEK_DATA.forEach((w, i) => {
-    const startRow = i * 8 + 5;
-    sheet.getRange(startRow, 2).setValue(w.title);
-    sheet.getRange(startRow, 3).setValue(w.threshold);
+    const startRow = getConfigWeekStartRow_(i + 1);
+    sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).setValue(w.title);
+    sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).setValue(w.threshold);
     w.items.forEach(([item, score, cat], j) => {
-      sheet.getRange(startRow + 1 + j, 1).setValue(item);
-      sheet.getRange(startRow + 1 + j, 2).setValue(score);
-      sheet.getRange(startRow + 1 + j, 3).setValue(cat || 'L');
+      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionItemCol).setValue(item);
+      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionScoreCol).setValue(score);
+      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionCategoryCol).setValue(cat || 'L');
     });
   });
 
@@ -1991,8 +2604,9 @@ function fixConfigSheetConflict() {
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
 
   // 1) 1주차 config 복원 (B5: weekTitle, C5: threshold, A6:C11: items)
-  configSheet.getRange('B5').setValue('1주차');
-  configSheet.getRange('C5').setValue(9);
+  const startRow = getConfigWeekStartRow_(1);
+  configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).setValue('1주차');
+  configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).setValue(9);
   const w1items = [
     ['자기 전 1분 동안 무릎 꿇고 기도하기', 2, 'L'],
     ['"하나님, 저는 오늘 ____이 필요합니다." 문장 완성하기', 1, 'L'],
@@ -2001,17 +2615,20 @@ function fixConfigSheetConflict() {
     ['교회 어른들께 먼저 인사하기', 1, 'MC'],
     ['밥 먹기 전에 식기도하기', 1, 'MW'],
   ];
-  configSheet.getRange(6, 1, 6, 3).setValues(w1items);
+  configSheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(w1items);
 
   // 3) raw_checkins B열: boolean false → '1주차' 마이그레이션
   const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   if (rawSheet && rawSheet.getLastRow() >= 2) {
+    const rawCol = getRawColumns_(rawSheet);
+    const dataStart = SCHEMA.RAW_CHECKINS.dataStartRow;
     const lastRow = rawSheet.getLastRow();
-    const bCol = rawSheet.getRange(2, 2, lastRow - 1, 1).getValues();
+    const bCol = rawSheet.getRange(dataStart, rawCol.weekTitle + 1, lastRow - dataStart + 1, 1).getValues();
     let fixed = 0;
     bCol.forEach(function(r, i) {
-      if (r[0] === false || r[0] === '' || String(r[0]).trim() === 'false') {
-        rawSheet.getRange(i + 2, 2).setValue('1주차');
+      const [weekTitle] = r;
+      if (weekTitle === false || weekTitle === '' || String(weekTitle).trim() === 'false') {
+        rawSheet.getRange(i + dataStart, rawCol.weekTitle + 1).setValue('1주차');
         fixed++;
       }
     });
@@ -2026,10 +2643,10 @@ function fixConfigSheetConflict() {
 function getMissionConfig(week) {
   if (week < 1 || week > 6) return { error: 'invalid_week' };
   const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const startRow = (week - 1) * 8 + 5;
-  const title     = sheet.getRange(startRow, 2).getValue();
-  const threshold = Number(sheet.getRange(startRow, 3).getValue()) || 6;
-  const rawItems  = sheet.getRange(startRow + 1, 1, 6, 3).getValues();
+  const startRow = getConfigWeekStartRow_(week);
+  const title     = sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue();
+  const threshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
+  const rawItems  = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
   const items = rawItems.map(([item, score, cat]) => ({ item: String(item || ''), score: Number(score) || 1, cat: String(cat || 'L') }));
   return { ok: true, week, title, threshold, items };
 }
@@ -2038,16 +2655,16 @@ function setMissionConfig(body) {
   const week = Number(body.week);
   if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
   const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const startRow = (week - 1) * 8 + 5;
-  sheet.getRange(startRow, 2, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
+  const startRow = getConfigWeekStartRow_(week);
+  sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
   const items = Array.isArray(body.items) ? body.items : [];
-  const rows = sheet.getRange(startRow + 1, 1, 6, 3).getValues();
-  for (let i = 0; i < 6; i++) {
+  const rows = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
+  for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
     const it = items[i] || {};
     if (!String(it.item || '').trim()) continue; // 빈 항목은 기존 값 유지
     rows[i] = [String(it.item), Number(it.score) || 1, String(it.cat || 'L')];
   }
-  sheet.getRange(startRow + 1, 1, 6, 3).setValues(rows);
+  sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(rows);
   clearHotCaches_();
   return { ok: true };
 }
@@ -2055,19 +2672,20 @@ function setMissionConfig(body) {
 // ── 문의하기 ──────────────────────────────────────
 function getOrCreateInquirySheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('Inquiries');
+  let sheet = ss.getSheetByName(SHEET_NAMES.INQUIRIES);
   if (!sheet) {
-    sheet = ss.insertSheet('Inquiries');
-    sheet.appendRow(['id','nickname','content','createdAt','reply','repliedAt']);
+    sheet = ss.insertSheet(SHEET_NAMES.INQUIRIES);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.INQUIRIES));
   }
   return sheet;
 }
 
 function verifyUserPassword(nickname, password) {
   const sheet = getUsersSheet_();
-  const data  = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === nickname && String(data[i][1]).trim() === password) return true;
+  const col   = getUserColumns_(sheet);
+  const data  = getUserRows_(sheet);
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][col.nickname]).trim() === nickname && String(data[i][col.password]).trim() === password) return true;
   }
   return false;
 }
@@ -2114,18 +2732,19 @@ function postHpHint(body) {
 function getInquiries() {
   const sheet = getOrCreateInquirySheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { ok: true, inquiries: [] };
-  const rows = sheet.getRange(2, 1, last - 1, 6).getValues();
+  if (last < SCHEMA.INQUIRIES.dataStartRow) return { ok: true, inquiries: [] };
+  const col = getInquiryColumns_(sheet);
+  const rows = getInquiryRows_(sheet);
   const inquiries = rows
-    .filter(r => r[0])
+    .filter(r => r[col.id])
     .map((r, i) => ({
-      rowIndex:  i + 2,
-      id:        String(r[0]),
-      nickname:  String(r[1]),
-      content:   String(r[2]),
-      createdAt: r[3],
-      reply:     String(r[4] || ''),
-      repliedAt: r[5] || ''
+      rowIndex:  i + SCHEMA.INQUIRIES.dataStartRow,
+      id:        String(r[col.id]),
+      nickname:  String(r[col.nickname]),
+      content:   String(r[col.content]),
+      createdAt: r[col.createdAt],
+      reply:     String(r[col.reply] || ''),
+      repliedAt: r[col.repliedAt] || ''
     }))
     .reverse();
   return { ok: true, inquiries };
@@ -2149,11 +2768,12 @@ function editInquiry(body) {
   if (!hasValidUserAuth_(body, nickname)) return { error: 'unauthorized', authRequired: true };
   const sheet = getOrCreateInquirySheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
-  const rows = sheet.getRange(2, 1, last - 1, 2).getValues();
+  if (last < SCHEMA.INQUIRIES.dataStartRow) return { error: 'not_found' };
+  const col = getInquiryColumns_(sheet);
+  const rows = getInquiryRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === id && String(rows[i][1]).trim() === nickname) {
-      sheet.getRange(i + 2, 3).setValue(content);
+    if (String(rows[i][col.id]) === id && String(rows[i][col.nickname]).trim() === nickname) {
+      sheet.getRange(i + SCHEMA.INQUIRIES.dataStartRow, col.content + 1).setValue(content);
       return { ok: true };
     }
   }
@@ -2165,17 +2785,19 @@ function deleteInquiry(body) {
   if (!id) return { error: 'missing_fields' };
   const sheet = getOrCreateInquirySheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
-  const rows = sheet.getRange(2, 1, last - 1, 2).getValues();
+  if (last < SCHEMA.INQUIRIES.dataStartRow) return { error: 'not_found' };
+  const col = getInquiryColumns_(sheet);
+  const rows = getInquiryRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) !== id) continue;
+    const rowIndex = i + SCHEMA.INQUIRIES.dataStartRow;
+    if (String(rows[i][col.id]) !== id) continue;
     if (body.adminPw === ADMIN_PASSWORD) {
-      sheet.deleteRow(i + 2);
+      sheet.deleteRow(rowIndex);
       return { ok: true };
     }
     const nickname = String(body.nickname || '').trim();
-    if (String(rows[i][1]).trim() === nickname && hasValidUserAuth_(body, nickname)) {
-      sheet.deleteRow(i + 2);
+    if (String(rows[i][col.nickname]).trim() === nickname && hasValidUserAuth_(body, nickname)) {
+      sheet.deleteRow(rowIndex);
       return { ok: true };
     }
     return { error: 'unauthorized' };
@@ -2190,12 +2812,14 @@ function replyInquiry(body) {
   if (!id) return { error: 'missing_fields' };
   const sheet = getOrCreateInquirySheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
-  const rows = sheet.getRange(2, 1, last - 1, 1).getValues();
+  if (last < SCHEMA.INQUIRIES.dataStartRow) return { error: 'not_found' };
+  const col = getInquiryColumns_(sheet);
+  const rows = getInquiryRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === id) {
-      sheet.getRange(i + 2, 5).setValue(reply);
-      sheet.getRange(i + 2, 6).setValue(reply ? new Date().toISOString() : '');
+    if (String(rows[i][col.id]) === id) {
+      const rowIndex = i + SCHEMA.INQUIRIES.dataStartRow;
+      sheet.getRange(rowIndex, col.reply + 1).setValue(reply);
+      sheet.getRange(rowIndex, col.repliedAt + 1).setValue(reply ? new Date().toISOString() : '');
       return { ok: true };
     }
   }
@@ -2208,13 +2832,16 @@ function replyInquiry(body) {
 // 5:사랑  6:희락  7:화평  8:오래참음  9:자비  10:양선  11:충성  12:온유  13:절제  14:총카드수  15:히든
 function getOrCreateCollectionSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('Collection');
+  let sheet = ss.getSheetByName(SHEET_NAMES.COLLECTION);
   if (!sheet) {
-    sheet = ss.insertSheet('Collection');
-    sheet.appendRow(['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수','히든']);
+    sheet = ss.insertSheet(SHEET_NAMES.COLLECTION);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.COLLECTION));
     sheet.setFrozenRows(1);
   } else {
-    if (sheet.getLastColumn() < 15) sheet.getRange(1, 15).setValue('히든');
+    const col = getCollectionColumns_(sheet);
+    if (sheet.getLastColumn() <= col.hidden) {
+      sheet.getRange(SCHEMA.COLLECTION.headerRow, col.hidden + 1).setValue(SCHEMA.COLLECTION.columns.hidden);
+    }
   }
   return sheet;
 }
@@ -2222,17 +2849,17 @@ function getOrCreateCollectionSheet() {
 // { cardId: count } 형태로 반환 (카드 1~9: col 5~13 = idx 4~12, 히든(10): col 15 = idx 14)
 function getUserCollection(userId) {
   const sheet = getOrCreateCollectionSheet();
-  const last = sheet.getLastRow();
-  if (last < 2) return {};
-  const rows = sheet.getRange(2, 1, last - 1, 15).getValues();
+  const col = getCollectionColumns_(sheet);
+  const rows = getCollectionRows_(sheet);
+  if (!rows.length) return {};
   for (const row of rows) {
-    if (String(row[0]) !== userId) continue;
+    if (String(row[col.userId]) !== userId) continue;
     const counts = {};
     for (let i = 1; i <= 9; i++) {
-      const cnt = Number(row[i + 3]) || 0;
+      const cnt = Number(row[col['card' + i]]) || 0;
       if (cnt > 0) counts[i] = cnt;
     }
-    const hidden = Number(row[14]) || 0;
+    const hidden = Number(row[col.hidden]) || 0;
     if (hidden > 0) counts[10] = hidden;
     return counts;
   }
@@ -2242,15 +2869,15 @@ function getUserCollection(userId) {
 // Collection 시트에서 뽑기권 현황 읽기 (B=누적, C=뽑은, D=남은)
 function getCollectionTickets(userId) {
   const sheet = getOrCreateCollectionSheet();
-  const last = sheet.getLastRow();
-  if (last < 2) return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
-  const rows = sheet.getRange(2, 1, last - 1, 4).getValues();
+  const col = getCollectionColumns_(sheet);
+  const rows = getCollectionRows_(sheet);
+  if (!rows.length) return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
   for (const row of rows) {
-    if (String(row[0]) === userId) {
+    if (String(row[col.userId]) === userId) {
       return {
-        totalEarned: Number(row[1]) || 0,
-        totalDrawn:  Number(row[2]) || 0,
-        remaining:   Number(row[3]) || 0
+        totalEarned: Number(row[col.totalEarned]) || 0,
+        totalDrawn:  Number(row[col.totalDrawn]) || 0,
+        remaining:   Number(row[col.remaining]) || 0
       };
     }
   }
@@ -2261,17 +2888,17 @@ function getCollectionTickets(userId) {
 // cardId 1~9 → col 5~13(idx 4~12), 히든(10) → col 15(idx 14), 총카드수 = col 14(idx 13)
 function getTicketStats() {
   const sheet = getOrCreateCollectionSheet();
-  const last = sheet.getLastRow();
-  if (last < 2) return { ok: true, users: [], totalRemaining: 0 };
-  const rows = sheet.getRange(2, 1, last - 1, 4).getValues();
+  const col = getCollectionColumns_(sheet);
+  const rows = getCollectionRows_(sheet);
+  if (!rows.length) return { ok: true, users: [], totalRemaining: 0 };
   const users = rows
-    .filter(function(r) { return String(r[0]).trim(); })
+    .filter(function(r) { return String(r[col.userId]).trim(); })
     .map(function(r) {
       return {
-        nickname:     String(r[0]),
-        totalEarned:  Number(r[1]) || 0,
-        totalDrawn:   Number(r[2]) || 0,
-        remaining:    Number(r[3]) || 0
+        nickname:     String(r[col.userId]),
+        totalEarned:  Number(r[col.totalEarned]) || 0,
+        totalDrawn:   Number(r[col.totalDrawn]) || 0,
+        remaining:    Number(r[col.remaining]) || 0
       };
     })
     .sort(function(a, b) { return b.remaining - a.remaining; });
@@ -2281,22 +2908,23 @@ function getTicketStats() {
 
 function updateCollectionSheet(userId, cardId, delta) {
   const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
   const last = sheet.getLastRow();
   let rowIndex = -1;
-  if (last >= 2) {
-    const ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+  if (last >= SCHEMA.COLLECTION.dataStartRow) {
+    const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
     for (let i = 0; i < ids.length; i++) {
-      if (String(ids[i][0]) === userId) { rowIndex = i + 2; break; }
+      if (String(ids[i][0]) === userId) { rowIndex = i + SCHEMA.COLLECTION.dataStartRow; break; }
     }
   }
-  const cardIdx = cardId <= 9 ? cardId + 3 : 14; // 1~9→idx4~12, 10→idx14
-  const cardCol = cardId <= 9 ? cardId + 4 : 15;  // 1~9→col5~13, 10→col15
+  const cardIdx = getCollectionCardIndex_(cardId, col);
+  const cardCol = cardIdx + 1;
   if (rowIndex === -1) {
     const newRow = new Array(15).fill(0);
-    newRow[0] = userId;
+    newRow[col.userId] = userId;
     if (delta > 0) {
       newRow[cardIdx] = delta;
-      newRow[13] = delta; // 총카드수
+      newRow[col.totalCards] = delta;
     }
     sheet.appendRow(newRow);
   } else {
@@ -2305,7 +2933,7 @@ function updateCollectionSheet(userId, cardId, delta) {
     const afterCardCount = Math.max(0, beforeCardCount + delta);
     const actualDelta = afterCardCount - beforeCardCount;
     cardCell.setValue(afterCardCount);
-    const totalCell = sheet.getRange(rowIndex, 14);
+    const totalCell = sheet.getRange(rowIndex, col.totalCards + 1);
     totalCell.setValue(Math.max(0, (Number(totalCell.getValue()) || 0) + actualDelta));
   }
 }
@@ -2315,20 +2943,20 @@ function updateTicketCols(userId) {
   try {
     const ss = getSpreadsheet();
     const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    const currentWeek = Number(configSheet.getRange('B1').getValue()) || 1;
+    const currentWeek = Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
 
     // 자격 주 수 계산
     let qualifiedWeeks = 0;
     const raw = ss.getSheetByName(RAW_SHEET_NAME);
-    const rawLast = raw ? raw.getLastRow() : 0;
-    const allRaw = rawLast >= 2 ? raw.getRange(2, 1, rawLast - 1, 8).getValues() : [];
+    const rawCol = raw ? getRawColumns_(raw) : null;
+    const allRaw = raw ? getRawRows_(raw, 10) : [];
     for (let w = 1; w <= currentWeek; w++) {
       const wTitle     = w + '주차';
-      const startRow   = (w - 1) * 8 + 5;
-      const wThreshold = Number(configSheet.getRange(startRow, 3).getValue()) || 6;
+      const startRow   = getConfigWeekStartRow_(w);
+      const wThreshold = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
       const wScore     = allRaw
-        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
-        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+        .filter(r => String(r[rawCol.userId]) === userId && String(r[rawCol.weekTitle]) === wTitle)
+        .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
       if (wScore >= wThreshold) qualifiedWeeks++;
     }
 
@@ -2338,33 +2966,32 @@ function updateTicketCols(userId) {
     // 실제 뽑은 횟수
     let totalDraws = 0;
     const drawSheet = getOrCreateDrawSheet();
-    const drawLast  = drawSheet.getLastRow();
-    if (drawLast >= 2) {
-      totalDraws = drawSheet.getRange(2, 1, drawLast - 1, 1).getValues()
-        .filter(r => String(r[0]) === userId).length;
-    }
+    const drawCol = getCardDrawColumns_(drawSheet);
+    totalDraws = getCardDrawRows_(drawSheet)
+      .filter(r => String(r[drawCol.userId]) === userId).length;
 
     const remaining = Math.max(0, totalEarned - totalDraws);
 
     // Collection 시트 해당 row 업데이트 (없으면 생성)
     const collSheet = getOrCreateCollectionSheet();
+    const collCol = getCollectionColumns_(collSheet);
     const collLast  = collSheet.getLastRow();
     let rowIndex = -1;
-    if (collLast >= 2) {
-      const ids = collSheet.getRange(2, 1, collLast - 1, 1).getValues();
+    if (collLast >= SCHEMA.COLLECTION.dataStartRow) {
+      const ids = collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, collCol.userId + 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
       for (let i = 0; i < ids.length; i++) {
-        if (String(ids[i][0]) === userId) { rowIndex = i + 2; break; }
+        if (String(ids[i][0]) === userId) { rowIndex = i + SCHEMA.COLLECTION.dataStartRow; break; }
       }
     }
     if (rowIndex === -1) {
       const newRow = new Array(15).fill(0);
-      newRow[0] = userId;
-      newRow[1] = totalEarned;
-      newRow[2] = totalDraws;
-      newRow[3] = remaining;
+      newRow[collCol.userId] = userId;
+      newRow[collCol.totalEarned] = totalEarned;
+      newRow[collCol.totalDrawn] = totalDraws;
+      newRow[collCol.remaining] = remaining;
       collSheet.appendRow(newRow);
     } else {
-      collSheet.getRange(rowIndex, 2, 1, 3).setValues([[totalEarned, totalDraws, remaining]]);
+      collSheet.getRange(rowIndex, collCol.totalEarned + 1, 1, 3).setValues([[totalEarned, totalDraws, remaining]]);
     }
   } catch(e) {
     Logger.log('updateTicketCols error: ' + e);
@@ -2377,49 +3004,51 @@ function rebuildCollectionSheet() {
 
   // 시트 헤더 재설정 + 데이터 클리어
   const collSheet = getOrCreateCollectionSheet();
+  const collCol = getCollectionColumns_(collSheet);
   const collLast = collSheet.getLastRow();
   const hiddenMap = {};
-  if (collLast >= 2) {
-    collSheet.getRange(2, 1, collLast - 1, 15).getValues().forEach(function(r) {
-      const userId = String(r[0]).trim();
-      const hidden = Number(r[14]) || 0;
+  if (collLast >= SCHEMA.COLLECTION.dataStartRow) {
+    getCollectionRows_(collSheet).forEach(function(r) {
+      const userId = String(r[collCol.userId]).trim();
+      const hidden = Number(r[collCol.hidden]) || 0;
       if (userId && hidden > 0) hiddenMap[userId] = hidden;
     });
   }
-  collSheet.getRange(1, 1, 1, 15).setValues([['userId','누적뽑기권','실제뽑은개수','남은개수','사랑','희락','화평','오래참음','자비','양선','충성','온유','절제','총카드수','히든']]);
-  if (collLast >= 2) collSheet.getRange(2, 1, collLast - 1, 15).clearContent();
+  collSheet.getRange(SCHEMA.COLLECTION.headerRow, 1, 1, 15).setValues([getSchemaHeaders_(SCHEMA.COLLECTION)]);
+  if (collLast >= SCHEMA.COLLECTION.dataStartRow) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, 15).clearContent();
 
   // 등록된 전체 유저
-  const usersSheet = ss.getSheetByName('Users');
-  const userData   = usersSheet ? usersSheet.getDataRange().getValues() : [];
+  const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
+  const userCol    = usersSheet ? getUserColumns_(usersSheet) : null;
+  const userData   = usersSheet ? getUserRows_(usersSheet) : [];
   const userIds    = [];
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0]) userIds.push(String(userData[i][0]).trim());
+  for (let i = 0; i < userData.length; i++) {
+    if (userData[i][userCol.nickname]) userIds.push(String(userData[i][userCol.nickname]).trim());
   }
   if (!userIds.length) return { ok: true, rebuilt: 0 };
 
   // 원천 데이터 일괄 로드
   const drawSheet  = getOrCreateDrawSheet();
-  const drawLast   = drawSheet.getLastRow();
-  const allDraws   = drawLast >= 2 ? drawSheet.getRange(2, 1, drawLast - 1, 5).getValues() : [];
+  const drawCol    = getCardDrawColumns_(drawSheet);
+  const allDraws   = getCardDrawRows_(drawSheet);
 
   const tradeSheet = getOrCreateTradesSheet();
-  const tradeLast  = tradeSheet.getLastRow();
-  const allTrades  = tradeLast >= 2 ? tradeSheet.getRange(2, 1, tradeLast - 1, 8).getValues() : [];
+  const tradeCol   = getTradesColumns_(tradeSheet);
+  const allTrades  = getTradesRows_(tradeSheet);
 
   const bonusSheet = getOrCreateBonusDrawsSheet();
-  const bonusLast  = bonusSheet.getLastRow();
-  const allBonus   = bonusLast >= 2 ? bonusSheet.getRange(2, 1, bonusLast - 1, 1).getValues() : [];
+  const bonusCol   = getBonusDrawColumns_(bonusSheet);
+  const allBonus   = getBonusDrawRows_(bonusSheet);
 
   const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
-  const rawLast  = rawSheet ? rawSheet.getLastRow() : 0;
-  const allRaw   = rawLast >= 2 ? rawSheet.getRange(2, 1, rawLast - 1, 8).getValues() : [];
+  const rawCol   = rawSheet ? getRawColumns_(rawSheet) : null;
+  const allRaw   = rawSheet ? getRawRows_(rawSheet, 10) : [];
 
   const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  const currentWeek = Number(configSheet.getRange('B1').getValue()) || 1;
+  const currentWeek = Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
   const thresholds  = [];
   for (let w = 1; w <= 6; w++) {
-    thresholds.push(Number(configSheet.getRange((w - 1) * 8 + 5, 3).getValue()) || 6);
+    thresholds.push(Number(configSheet.getRange(getConfigWeekStartRow_(w), CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6);
   }
 
   // 유저별 행 계산
@@ -2430,31 +3059,31 @@ function rebuildCollectionSheet() {
       const wTitle     = w + '주차';
       const wThreshold = thresholds[w - 1];
       const wScore     = allRaw
-        .filter(r => String(r[3]) === userId && String(r[1]) === wTitle)
-        .reduce((s, r) => s + (Number(r[6]) || 0), 0);
+        .filter(r => String(r[rawCol.userId]) === userId && String(r[rawCol.weekTitle]) === wTitle)
+        .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
       if (wScore >= wThreshold) qualifiedWeeks++;
     }
 
-    const bonusCount  = allBonus.filter(r => String(r[0]) === userId).length;
+    const bonusCount  = allBonus.filter(r => String(r[bonusCol.userId]) === userId).length;
     const totalEarned = qualifiedWeeks + bonusCount;
 
-    const userDraws = allDraws.filter(r => String(r[0]) === userId);
+    const userDraws = allDraws.filter(r => String(r[drawCol.userId]) === userId);
     const totalDraws = userDraws.length;
     const remaining  = Math.max(0, totalEarned - totalDraws);
 
     const cardCounts = new Array(9).fill(0);
     for (const d of userDraws) {
-      const cid = Number(d[2]);
+      const cid = Number(d[drawCol.cardId]);
       if (cid >= 1 && cid <= 9) cardCounts[cid - 1]++;
     }
 
     // accepted 교환 결과 반영: Collection 시트는 현재 보유 카드 기준이어야 함
     for (const t of allTrades) {
-      if (String(t[7]) !== 'accepted') continue;
-      const requester = String(t[1]);
-      const reqCardId = Number(t[2]);
-      const target    = String(t[4]);
-      const tgtCardId = Number(t[5]);
+      if (String(t[tradeCol.status]) !== 'accepted') continue;
+      const requester = String(t[tradeCol.requester]);
+      const reqCardId = Number(t[tradeCol.requesterCardId]);
+      const target    = String(t[tradeCol.target]);
+      const tgtCardId = Number(t[tradeCol.targetCardId]);
       if (requester === userId) {
         if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1] = Math.max(0, cardCounts[reqCardId - 1] - 1);
         if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1]++;
@@ -2470,7 +3099,7 @@ function rebuildCollectionSheet() {
     rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards, hidden]);
   }
 
-  if (rows.length) collSheet.getRange(2, 1, rows.length, 15).setValues(rows);
+  if (rows.length) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, 15).setValues(rows);
   return { ok: true, rebuilt: rows.length };
 }
 
@@ -2488,14 +3117,18 @@ function migrateCardDrawsToCollection() {
 // ── Trades 시트 ───────────────────────────────────
 function getOrCreateTradesSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('Trades');
+  let sheet = ss.getSheetByName(SHEET_NAMES.TRADES);
   if (!sheet) {
-    sheet = ss.insertSheet('Trades');
-    sheet.appendRow(['id','requester','requesterCardId','requesterCardName','target','targetCardId','targetCardName','status','createdAt','resolvedAt','requesterPrayed','targetPrayed']);
+    sheet = ss.insertSheet(SHEET_NAMES.TRADES);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.TRADES));
   } else {
     const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 12)).getValues()[0];
-    if (String(header[10] || '') !== 'requesterPrayed' || String(header[11] || '') !== 'targetPrayed') {
-      sheet.getRange(1, 1, 1, 12).setValues([['id','requester','requesterCardId','requesterCardName','target','targetCardId','targetCardName','status','createdAt','resolvedAt','requesterPrayed','targetPrayed']]);
+    const col = getTradesColumns_(sheet);
+    if (
+      String(header[col.requesterPrayed] || '') !== SCHEMA.TRADES.columns.requesterPrayed ||
+      String(header[col.targetPrayed] || '') !== SCHEMA.TRADES.columns.targetPrayed
+    ) {
+      sheet.getRange(SCHEMA.TRADES.headerRow, 1, 1, 12).setValues([getSchemaHeaders_(SCHEMA.TRADES)]);
     }
   }
   return sheet;
@@ -2551,28 +3184,30 @@ function acceptTrade(body) {
   try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
+  if (last < SCHEMA.TRADES.dataStartRow) return { error: 'not_found' };
+  const col = getTradesColumns_(sheet);
 
   _expireOldTrades(sheet);
-  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const rows = getTradesRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) !== tradeId) continue;
-    if (String(rows[i][4]) !== nickname) return { error: 'unauthorized' };
-    if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
+    const rowIndex = i + SCHEMA.TRADES.dataStartRow;
+    if (String(rows[i][col.id]) !== tradeId) continue;
+    if (String(rows[i][col.target]) !== nickname) return { error: 'unauthorized' };
+    if (String(rows[i][col.status]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
 
-    const requester       = String(rows[i][1]);
-    const requesterCardId = Number(rows[i][2]);
-    const targetCardId    = Number(rows[i][5]);
+    const requester       = String(rows[i][col.requester]);
+    const requesterCardId = Number(rows[i][col.requesterCardId]);
+    const targetCardId    = Number(rows[i][col.targetCardId]);
 
     // 카드 보유 재확인
     if (!(getUserCollection(requester)[requesterCardId] >= 2)) {
-      sheet.getRange(i + 2, 8).setValue('실패 (카드 없음)');
-      sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+      sheet.getRange(rowIndex, col.status + 1).setValue('실패 (카드 없음)');
+      sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
       return { error: '상대방이 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
     if (!(getUserCollection(nickname)[targetCardId] >= 2)) {
-      sheet.getRange(i + 2, 8).setValue('실패 (카드 없음)');
-      sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+      sheet.getRange(rowIndex, col.status + 1).setValue('실패 (카드 없음)');
+      sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
       return { error: '내가 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
 
@@ -2582,8 +3217,8 @@ function acceptTrade(body) {
     updateCollectionSheet(nickname,  targetCardId,    -1);
     updateCollectionSheet(nickname,  requesterCardId, +1);
 
-    sheet.getRange(i + 2, 8).setValue('accepted');
-    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    sheet.getRange(rowIndex, col.status + 1).setValue('accepted');
+    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
     return { ok: true };
   }
   return { error: 'not_found' };
@@ -2603,16 +3238,18 @@ function rejectTrade(body) {
   try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
+  if (last < SCHEMA.TRADES.dataStartRow) return { error: 'not_found' };
+  const col = getTradesColumns_(sheet);
 
   _expireOldTrades(sheet);
-  const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  const rows = getTradesRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) !== tradeId) continue;
-    if (String(rows[i][4]) !== nickname) return { error: 'unauthorized' };
-    if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
-    sheet.getRange(i + 2, 8).setValue('실패 (거절됨)');
-    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    const rowIndex = i + SCHEMA.TRADES.dataStartRow;
+    if (String(rows[i][col.id]) !== tradeId) continue;
+    if (String(rows[i][col.target]) !== nickname) return { error: 'unauthorized' };
+    if (String(rows[i][col.status]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
+    sheet.getRange(rowIndex, col.status + 1).setValue('실패 (거절됨)');
+    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
     return { ok: true };
   }
   return { error: 'not_found' };
@@ -2632,16 +3269,18 @@ function cancelTrade(body) {
   try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
+  if (last < SCHEMA.TRADES.dataStartRow) return { error: 'not_found' };
+  const col = getTradesColumns_(sheet);
 
   _expireOldTrades(sheet);
-  const rows = sheet.getRange(2, 1, last - 1, 8).getValues();
+  const rows = getTradesRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) !== tradeId) continue;
-    if (String(rows[i][1]) !== nickname) return { error: 'unauthorized' };
-    if (String(rows[i][7]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
-    sheet.getRange(i + 2, 8).setValue('실패 (취소됨)');
-    sheet.getRange(i + 2, 10).setValue(new Date().toISOString());
+    const rowIndex = i + SCHEMA.TRADES.dataStartRow;
+    if (String(rows[i][col.id]) !== tradeId) continue;
+    if (String(rows[i][col.requester]) !== nickname) return { error: 'unauthorized' };
+    if (String(rows[i][col.status]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
+    sheet.getRange(rowIndex, col.status + 1).setValue('실패 (취소됨)');
+    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
     return { ok: true };
   }
   return { error: 'not_found' };
@@ -2653,22 +3292,23 @@ function cancelTrade(body) {
 // pending 상태에서 5분(300초) 초과 시 자동 만료
 function _expireOldTrades(sheet) {
   const last = sheet.getLastRow();
-  if (last < 2) return;
-  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  if (last < SCHEMA.TRADES.dataStartRow) return;
+  const col = getTradesColumns_(sheet);
+  const rows = getTradesRows_(sheet);
   const now  = Date.now();
   const TIMEOUT_MS = 5 * 60 * 1000; // 5분
   let changed = false;
   rows.forEach((row, i) => {
-    if (String(row[7]) !== 'pending') return;
-    const createdAt = new Date(String(row[8])).getTime();
+    if (String(row[col.status]) !== 'pending') return;
+    const createdAt = new Date(String(row[col.createdAt])).getTime();
     if (isNaN(createdAt) || now - createdAt < TIMEOUT_MS) return;
-    row[7] = '실패 (시간 초과)';
-    row[9] = new Date().toISOString();
+    row[col.status] = '실패 (시간 초과)';
+    row[col.resolvedAt] = new Date().toISOString();
     changed = true;
   });
   if (changed) {
-    sheet.getRange(2, 8, rows.length, 3).setValues(rows.map(function(r) {
-      return [r[7], r[8], r[9]];
+    sheet.getRange(SCHEMA.TRADES.dataStartRow, col.status + 1, rows.length, 3).setValues(rows.map(function(r) {
+      return [r[col.status], r[col.createdAt], r[col.resolvedAt]];
     }));
   }
 }
@@ -2680,20 +3320,21 @@ function getTrades(userId) {
   try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { ok: true, incoming: [], outgoing: [] };
+  if (last < SCHEMA.TRADES.dataStartRow) return { ok: true, incoming: [], outgoing: [] };
+  const col = getTradesColumns_(sheet);
 
   _expireOldTrades(sheet);
-  const rows = sheet.getRange(2, 1, last - 1, 12).getValues();
+  const rows = getTradesRows_(sheet);
   const incoming = [], outgoing = [];
   rows.forEach(row => {
-    if (!row[0]) return;
+    if (!row[col.id]) return;
     const t = {
-      id: String(row[0]), requester: String(row[1]),
-      requesterCardId: Number(row[2]), requesterCardName: String(row[3]),
-      target: String(row[4]),
-      targetCardId: Number(row[5]), targetCardName: String(row[6]),
-      status: String(row[7]), createdAt: String(row[8]), resolvedAt: String(row[9]),
-      requesterPrayed: !!row[10], targetPrayed: !!row[11]
+      id: String(row[col.id]), requester: String(row[col.requester]),
+      requesterCardId: Number(row[col.requesterCardId]), requesterCardName: String(row[col.requesterCardName]),
+      target: String(row[col.target]),
+      targetCardId: Number(row[col.targetCardId]), targetCardName: String(row[col.targetCardName]),
+      status: String(row[col.status]), createdAt: String(row[col.createdAt]), resolvedAt: String(row[col.resolvedAt]),
+      requesterPrayed: !!row[col.requesterPrayed], targetPrayed: !!row[col.targetPrayed]
     };
     if (t.target   === userId) incoming.push(t);
     if (t.requester === userId) outgoing.push(t);
@@ -2705,12 +3346,8 @@ function getTrades(userId) {
   // Users 시트에서 닉네임→실명 실시간 조회 → 기도제목 매칭
   const hasAccepted = [...incoming, ...outgoing].some(function(t) { return t.status === 'accepted'; });
   if (hasAccepted) {
-    const usersData = getSpreadsheet().getSheetByName('Users').getDataRange().getValues();
     const hpEntries = getYouthHpEntries();
-    const nickToName = {};
-    for (var i = 1; i < usersData.length; i++) {
-      if (usersData[i][0]) nickToName[String(usersData[i][0])] = String(usersData[i][2]);
-    }
+    const nickToName = getUserNameMap_();
     [...incoming, ...outgoing].forEach(function(t) {
       if (t.status === 'accepted') {
         const otherNick = (t.target === userId) ? t.requester : t.target;
@@ -2734,19 +3371,21 @@ function prayForTrade(body) {
 
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { error: 'not_found' };
+  if (last < SCHEMA.TRADES.dataStartRow) return { error: 'not_found' };
+  const col = getTradesColumns_(sheet);
 
-  const rows = sheet.getRange(2, 1, last - 1, 5).getValues();
+  const rows = getTradesRows_(sheet);
   for (var i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) !== tradeId) continue;
-    const requester = String(rows[i][1]);
-    const target    = String(rows[i][4]);
+    const rowIndex = i + SCHEMA.TRADES.dataStartRow;
+    if (String(rows[i][col.id]) !== tradeId) continue;
+    const requester = String(rows[i][col.requester]);
+    const target    = String(rows[i][col.target]);
     if (nickname === requester) {
-      sheet.getRange(i + 2, 11).setValue(new Date().toISOString());
+      sheet.getRange(rowIndex, col.requesterPrayed + 1).setValue(new Date().toISOString());
       return { ok: true };
     }
     if (nickname === target) {
-      sheet.getRange(i + 2, 12).setValue(new Date().toISOString());
+      sheet.getRange(rowIndex, col.targetPrayed + 1).setValue(new Date().toISOString());
       return { ok: true };
     }
     return { error: 'unauthorized' };
@@ -2761,18 +3400,19 @@ function getAdminTrades() {
   try {
   const sheet = getOrCreateTradesSheet();
   const last  = sheet.getLastRow();
-  if (last < 2) return { ok: true, trades: [] };
+  if (last < SCHEMA.TRADES.dataStartRow) return { ok: true, trades: [] };
+  const col = getTradesColumns_(sheet);
 
   _expireOldTrades(sheet);
-  const rows = sheet.getRange(2, 1, last - 1, 10).getValues();
+  const rows = getTradesRows_(sheet);
   const trades = rows
-    .filter(r => r[0])
+    .filter(r => r[col.id])
     .map(row => ({
-      id: String(row[0]), requester: String(row[1]),
-      requesterCardId: Number(row[2]), requesterCardName: String(row[3]),
-      target: String(row[4]),
-      targetCardId: Number(row[5]), targetCardName: String(row[6]),
-      status: String(row[7]), createdAt: String(row[8]), resolvedAt: String(row[9])
+      id: String(row[col.id]), requester: String(row[col.requester]),
+      requesterCardId: Number(row[col.requesterCardId]), requesterCardName: String(row[col.requesterCardName]),
+      target: String(row[col.target]),
+      targetCardId: Number(row[col.targetCardId]), targetCardName: String(row[col.targetCardName]),
+      status: String(row[col.status]), createdAt: String(row[col.createdAt]), resolvedAt: String(row[col.resolvedAt])
     }));
   trades.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return { ok: true, trades };
@@ -2832,10 +3472,10 @@ function _cleanOldBackups(folder, prefix) {
 
 function getOrCreateBBBSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('BBB');
+  let sheet = ss.getSheetByName(SHEET_NAMES.BBB);
   if (!sheet) {
-    sheet = ss.insertSheet('BBB');
-    sheet.appendRow(['userId', 'careBuddyId', 'careBuddyName', 'secretRevealed', 'secretBuddyId', 'secretBuddyName']);
+    sheet = ss.insertSheet(SHEET_NAMES.BBB);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.BBB));
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -2843,10 +3483,10 @@ function getOrCreateBBBSheet() {
 
 function getOrCreateBBBMessagesSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('BBBMessages');
+  let sheet = ss.getSheetByName(SHEET_NAMES.BBB_MESSAGES);
   if (!sheet) {
-    sheet = ss.insertSheet('BBBMessages');
-    sheet.appendRow(['msgId', 'fromUserId', 'toUserId', 'message', 'createdAt']);
+    sheet = ss.insertSheet(SHEET_NAMES.BBB_MESSAGES);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.BBB_MESSAGES));
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -2864,14 +3504,17 @@ function _shuffle(arr) {
 /// ─ BBB 사진 시트
 function getOrCreateBBBPhotosSheet() {
   const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName('BBBPhotos');
+  let sheet = ss.getSheetByName(SHEET_NAMES.BBB_PHOTOS);
   if (!sheet) {
-    sheet = ss.insertSheet('BBBPhotos');
-    sheet.appendRow(['userId', 'photoBase64', 'uploadedAt', 'missionType']);
+    sheet = ss.insertSheet(SHEET_NAMES.BBB_PHOTOS);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.BBB_PHOTOS));
     sheet.setFrozenRows(1);
   } else {
     const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 4)).getValues()[0];
-    if (String(header[3] || '') !== 'missionType') sheet.getRange(1, 4).setValue('missionType');
+    const col = getBbbPhotoColumns_(sheet);
+    if (String(header[col.missionType] || '') !== SCHEMA.BBB_PHOTOS.columns.missionType) {
+      sheet.getRange(SCHEMA.BBB_PHOTOS.headerRow, col.missionType + 1).setValue(SCHEMA.BBB_PHOTOS.columns.missionType);
+    }
   }
   return sheet;
 }
@@ -2888,13 +3531,14 @@ function uploadBBBPhoto(body) {
 
   try {
   const photoSheet = getOrCreateBBBPhotosSheet();
+  const photoCol = getBbbPhotoColumns_(photoSheet);
   const last = photoSheet.getLastRow();
   let existingRow = -1;
-  if (last >= 2) {
-    const rows = photoSheet.getRange(2, 1, last - 1, 4).getValues();
+  if (last >= SCHEMA.BBB_PHOTOS.dataStartRow) {
+    const rows = getBbbPhotoRows_(photoSheet);
     for (let i = 0; i < rows.length; i++) {
-      const mt = String(rows[i][3] || 'm1');
-      if (String(rows[i][0]) === userId && mt === missionType) { existingRow = i + 2; break; }
+      const mt = String(rows[i][photoCol.missionType] || 'm1');
+      if (String(rows[i][photoCol.userId]) === userId && mt === missionType) { existingRow = i + SCHEMA.BBB_PHOTOS.dataStartRow; break; }
     }
   }
 
@@ -2902,7 +3546,8 @@ function uploadBBBPhoto(body) {
   if (existingRow === -1) {
     photoSheet.appendRow([userId, photo, now, missionType]);
   } else {
-    photoSheet.getRange(existingRow, 2, 1, 2).setValues([[photo, now]]);
+    photoSheet.getRange(existingRow, photoCol.photoBase64 + 1).setValue(photo);
+    photoSheet.getRange(existingRow, photoCol.uploadedAt + 1).setValue(now);
   }
 
   // BonusDraws 이력 기준 중복 지급 방지
@@ -2910,9 +3555,10 @@ function uploadBBBPhoto(body) {
   const bonusSheet = getOrCreateBonusDrawsSheet();
   const bLast = bonusSheet.getLastRow();
   let alreadyRewarded = false;
-  if (bLast >= 2) {
-    const bRows = bonusSheet.getRange(2, 1, bLast - 1, 2).getValues();
-    alreadyRewarded = bRows.some(function(r) { return String(r[0]) === userId && String(r[1]) === bonusSource; });
+  if (bLast >= SCHEMA.BONUS_DRAWS.dataStartRow) {
+    const bonusCol = getBonusDrawColumns_(bonusSheet);
+    const bRows = getBonusDrawRows_(bonusSheet);
+    alreadyRewarded = bRows.some(function(r) { return String(r[bonusCol.userId]) === userId && String(r[bonusCol.source]) === bonusSource; });
   }
 
   let rewarded = false;
@@ -2922,10 +3568,13 @@ function uploadBBBPhoto(body) {
       const pSheet = getOrCreateBBBPhotosSheet();
       const pLast = pSheet.getLastRow();
       let filledSpots = 0;
-      if (pLast >= 2) {
-        const pRows = pSheet.getRange(2, 1, pLast - 1, 4).getValues();
+      if (pLast >= SCHEMA.BBB_PHOTOS.dataStartRow) {
+        const pCol = getBbbPhotoColumns_(pSheet);
+        const pRows = getBbbPhotoRows_(pSheet);
         for (let s = 0; s < 7; s++) {
-          const found = pRows.some(function(r) { return String(r[0]) === userId && String(r[3]) === 'm3_' + s && String(r[1]); });
+          const found = pRows.some(function(r) {
+            return String(r[pCol.userId]) === userId && String(r[pCol.missionType]) === 'm3_' + s && String(r[pCol.photoBase64]);
+          });
           if (found) filledSpots++;
         }
       }
@@ -2952,13 +3601,14 @@ function deleteBBBPhoto(body) {
   const missionType = String(body.missionType || 'm1').trim();
   if (!userId) return { error: '필수 항목 누락.' };
   const photoSheet = getOrCreateBBBPhotosSheet();
+  const photoCol = getBbbPhotoColumns_(photoSheet);
   const last = photoSheet.getLastRow();
-  if (last < 2) return { ok: true };
-  const rows = photoSheet.getRange(2, 1, last - 1, 4).getValues();
+  if (last < SCHEMA.BBB_PHOTOS.dataStartRow) return { ok: true };
+  const rows = getBbbPhotoRows_(photoSheet);
   for (let i = 0; i < rows.length; i++) {
-    const mt = String(rows[i][3] || 'm1');
-    if (String(rows[i][0]) === userId && mt === missionType) {
-      photoSheet.deleteRow(i + 2);
+    const mt = String(rows[i][photoCol.missionType] || 'm1');
+    if (String(rows[i][photoCol.userId]) === userId && mt === missionType) {
+      photoSheet.deleteRow(i + SCHEMA.BBB_PHOTOS.dataStartRow);
       break;
     }
   }
@@ -2969,25 +3619,29 @@ function deleteBBBPhoto(body) {
 function adminWriteBBBRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return { error: 'rows가 비어있어요.' };
   const bbbSheet = getOrCreateBBBSheet();
-  if (bbbSheet.getLastRow() > 1) {
-    bbbSheet.getRange(2, 1, bbbSheet.getLastRow() - 1, 6).clearContent();
+  if (bbbSheet.getLastRow() >= SCHEMA.BBB.dataStartRow) {
+    bbbSheet.getRange(SCHEMA.BBB.dataStartRow, 1, bbbSheet.getLastRow() - SCHEMA.BBB.dataStartRow + 1, 6).clearContent();
   }
-  const values = rows.map(r => [r[0], r[1], r[2], false, r[3], r[4]]);
-  bbbSheet.getRange(2, 1, values.length, 6).setValues(values);
+  const values = rows.map(function(r) {
+    const [userId, careBuddyId, careBuddyName, secretBuddyId, secretBuddyName] = r;
+    return [userId, careBuddyId, careBuddyName, false, secretBuddyId, secretBuddyName];
+  });
+  bbbSheet.getRange(SCHEMA.BBB.dataStartRow, 1, values.length, 6).setValues(values);
   return { ok: true, written: values.length };
 }
 
 // ─ TF(isStaff=TRUE) 원형 순환 매칭 후 BBB 시트에 기록
 // GAS 에디터에서 한 번만 실행
 function setupBBBMatching() {
-  const userSheet = getSpreadsheet().getSheetByName('Users');
-  const data      = userSheet.getDataRange().getValues();
+  const userSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
+  const col       = getUserColumns_(userSheet);
+  const data      = getUserRows_(userSheet);
 
-  // isTFRetreat=TRUE 인 유저 추출 (A=nickname, C=name, G=isTFRetreat)
+  // isTFRetreat=TRUE 인 유저 추출
   const staff = [];
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][6] === true && data[i][0]) {
-      staff.push({ nickname: String(data[i][0]).trim(), name: String(data[i][2]).trim() });
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][col.isDev] === true && data[i][col.nickname]) {
+      staff.push({ nickname: String(data[i][col.nickname]).trim(), name: String(data[i][col.name]).trim() });
     }
   }
   if (staff.length < 2) return { error: 'isTFRetreat=TRUE 인원이 2명 이상이어야 합니다.' };
@@ -2998,8 +3652,8 @@ function setupBBBMatching() {
 
   const bbbSheet = getOrCreateBBBSheet();
   // 기존 데이터 초기화 (헤더 제외)
-  if (bbbSheet.getLastRow() > 1) {
-    bbbSheet.getRange(2, 1, bbbSheet.getLastRow() - 1, 6).clearContent();
+  if (bbbSheet.getLastRow() >= SCHEMA.BBB.dataStartRow) {
+    bbbSheet.getRange(SCHEMA.BBB.dataStartRow, 1, bbbSheet.getLastRow() - SCHEMA.BBB.dataStartRow + 1, 6).clearContent();
   }
 
   // i의 케어버디 = (i+1)%n, i의 시크릿버디 = (i-1+n)%n
@@ -3008,38 +3662,49 @@ function setupBBBMatching() {
     const secretBuddy = staff[(i - 1 + n) % n];
     return [person.nickname, careBuddy.nickname, careBuddy.name, false, secretBuddy.nickname, secretBuddy.name];
   });
-  bbbSheet.getRange(2, 1, rows.length, 6).setValues(rows);
+  bbbSheet.getRange(SCHEMA.BBB.dataStartRow, 1, rows.length, 6).setValues(rows);
 
-  Logger.log('BBB 매칭 완료: ' + rows.map(r => r[0] + ' → 케어:' + r[2] + ' / 시크릿:' + r[5]).join(', '));
-  return { ok: true, matched: rows.length, pairs: rows.map(r => ({ from: r[0], careBuddy: r[2] })) };
+  Logger.log('BBB 매칭 완료: ' + rows.map(function(r) {
+    const [userId, , careBuddyName, , , secretBuddyName] = r;
+    return userId + ' → 케어:' + careBuddyName + ' / 시크릿:' + secretBuddyName;
+  }).join(', '));
+  return {
+    ok: true,
+    matched: rows.length,
+    pairs: rows.map(function(r) {
+      const [userId, , careBuddyName] = r;
+      return { from: userId, careBuddy: careBuddyName };
+    })
+  };
 }
 
 // ─ 내 BBB 정보 조회
 function getBBB(userId) {
   const bbbSheet = getOrCreateBBBSheet();
+  const bbbCol = getBbbColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
-  if (last < 2) return { ok: false, error: '매칭 정보가 없어요.' };
+  if (last < SCHEMA.BBB.dataStartRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
-  const rows = bbbSheet.getRange(2, 1, last - 1, 6).getValues();
+  const rows = getBbbRows_(bbbSheet);
 
   // 내 row 찾기 (E=secretBuddyId, F=secretBuddyName 포함)
   let myRow = null, myRowIdx = -1;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === userId) { myRow = rows[i]; myRowIdx = i; break; }
+    if (String(rows[i][bbbCol.userId]) === userId) { myRow = rows[i]; myRowIdx = i; break; }
   }
   if (!myRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
   const revealed        = true; // 임시 전체 공개
-  const secretBuddyId   = String(myRow[4] || '');
-  const secretBuddyName = String(myRow[5] || '');
+  const secretBuddyId   = String(myRow[bbbCol.secretBuddyId] || '');
+  const secretBuddyName = String(myRow[bbbCol.secretBuddyName] || '');
 
   // 내 케어버디가 나를 시크릿버디로 맞혔는지 (= 내가 들켰는지)
   // 케어버디 row에서 secretBuddyId === userId 이고 secretRevealed === true 인지 확인
-  const careBuddyId = String(myRow[1]);
+  const careBuddyId = String(myRow[bbbCol.careBuddyId]);
   let caughtByBuddy = false;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === careBuddyId) {
-      caughtByBuddy = rows[i][3] === true;
+    if (String(rows[i][bbbCol.userId]) === careBuddyId) {
+      caughtByBuddy = rows[i][bbbCol.secretRevealed] === true;
       break;
     }
   }
@@ -3053,12 +3718,13 @@ function getBBB(userId) {
   try {
     const photoSheet = getOrCreateBBBPhotosSheet();
     const pLast = photoSheet.getLastRow();
-    if (pLast >= 2) {
-      const pRows = photoSheet.getRange(2, 1, pLast - 1, 4).getValues();
+    if (pLast >= SCHEMA.BBB_PHOTOS.dataStartRow) {
+      const photoCol = getBbbPhotoColumns_(photoSheet);
+      const pRows = getBbbPhotoRows_(photoSheet);
       pRows.forEach(function(r) {
-        if (String(r[0]) !== userId) return;
-        const mt = String(r[3] || 'm1');
-        const src = String(r[1]);
+        if (String(r[photoCol.userId]) !== userId) return;
+        const mt = String(r[photoCol.missionType] || 'm1');
+        const src = String(r[photoCol.photoBase64]);
         if (mt === 'm1') myPhoto = src;
         else if (mt === 'm2') myPhotoM2 = src;
         else if (mt.startsWith('m3_')) {
@@ -3074,12 +3740,13 @@ function getBBB(userId) {
   try {
     const bonusSheet = getOrCreateBonusDrawsSheet();
     const bLast = bonusSheet.getLastRow();
-    if (bLast >= 2) {
-      const bRows = bonusSheet.getRange(2, 1, bLast - 1, 2).getValues();
+    if (bLast >= SCHEMA.BONUS_DRAWS.dataStartRow) {
+      const bonusCol = getBonusDrawColumns_(bonusSheet);
+      const bRows = getBonusDrawRows_(bonusSheet);
       bRows.forEach(function(r) {
-        if (String(r[0]) !== userId) return;
-        if (String(r[1]) === 'bbb_m2') m2Rewarded = true;
-        if (String(r[1]) === 'bbb_m3') m3Rewarded = true;
+        if (String(r[bonusCol.userId]) !== userId) return;
+        if (String(r[bonusCol.source]) === 'bbb_m2') m2Rewarded = true;
+        if (String(r[bonusCol.source]) === 'bbb_m3') m3Rewarded = true;
       });
     }
   } catch(e) {}
@@ -3093,7 +3760,7 @@ function getBBB(userId) {
     m3Rewarded,
     careBuddy: {
       nickname: careBuddyId,
-      name:     String(myRow[2])
+      name:     String(myRow[bbbCol.careBuddyName])
     },
     secretBuddy: secretBuddyId ? {
       revealed,
@@ -3112,46 +3779,42 @@ function guessBBBSecret(body) {
   if (!userId || !guess) return { error: '필수 항목이 누락됐어요.' };
 
   const bbbSheet = getOrCreateBBBSheet();
+  const bbbCol = getBbbColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
-  if (last < 2) return { error: '매칭 정보가 없어요.' };
+  if (last < SCHEMA.BBB.dataStartRow) return { error: '매칭 정보가 없어요.' };
 
-  const rows = bbbSheet.getRange(2, 1, last - 1, 4).getValues();
+  const rows = getBbbRows_(bbbSheet);
 
   // 내 row 찾기
   let myRowIdx = -1;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === userId) { myRowIdx = i; break; }
+    if (String(rows[i][bbbCol.userId]) === userId) { myRowIdx = i; break; }
   }
   if (myRowIdx < 0) return { error: '매칭 정보가 없어요.' };
-  if (rows[myRowIdx][3] === true) return { ok: true, correct: true, alreadyRevealed: true };
+  if (rows[myRowIdx][bbbCol.secretRevealed] === true) return { ok: true, correct: true, alreadyRevealed: true };
 
   // 나를 케어버디로 갖는 사람 = 내 시크릿버디
   let secretBuddy = null;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][1]) === userId) { secretBuddy = rows[i]; break; }
+    if (String(rows[i][bbbCol.careBuddyId]) === userId) { secretBuddy = rows[i]; break; }
   }
   if (!secretBuddy) return { error: '시크릿버디 정보가 없어요.' };
 
   // 닉네임 또는 이름으로 비교 (대소문자·공백 무시)
   const normalize = s => String(s).replace(/\s/g, '').toLowerCase();
-  const secretNickname = String(secretBuddy[0]);
+  const secretNickname = String(secretBuddy[bbbCol.userId]);
 
   // 시크릿버디의 이름(name)을 Users 시트에서 찾기
-  const userSheet = getSpreadsheet().getSheetByName('Users');
-  const userData  = userSheet.getDataRange().getValues();
+  const userNameMap = getUserNameMap_();
   let secretName  = secretNickname;
-  for (let i = 1; i < userData.length; i++) {
-    if (String(userData[i][0]).trim() === secretNickname) {
-      secretName = String(userData[i][2]).trim(); break;
-    }
-  }
+  if (userNameMap[secretNickname]) secretName = String(userNameMap[secretNickname]).trim();
 
   const correct = normalize(guess) === normalize(secretNickname) ||
                   normalize(guess) === normalize(secretName);
 
   if (correct) {
     // secretRevealed = TRUE 기록
-    bbbSheet.getRange(myRowIdx + 2, 4).setValue(true);
+    bbbSheet.getRange(myRowIdx + SCHEMA.BBB.dataStartRow, bbbCol.secretRevealed + 1).setValue(true);
     return { ok: true, correct: true, secretName, secretNickname };
   }
   return { ok: true, correct: false };
@@ -3170,23 +3833,25 @@ function sendBBBMessage(body) {
 
   // 케어버디 찾기
   const bbbSheet = getOrCreateBBBSheet();
+  const bbbCol = getBbbColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
-  if (last < 2) return { error: '매칭 정보가 없어요.' };
-  const rows = bbbSheet.getRange(2, 1, last - 1, 2).getValues();
+  if (last < SCHEMA.BBB.dataStartRow) return { error: '매칭 정보가 없어요.' };
+  const rows = getBbbRows_(bbbSheet);
   let careBuddyId = null;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === userId) { careBuddyId = String(rows[i][1]); break; }
+    if (String(rows[i][bbbCol.userId]) === userId) { careBuddyId = String(rows[i][bbbCol.careBuddyId]); break; }
   }
   if (!careBuddyId) return { error: '매칭 정보가 없어요.' };
 
   const msgSheet = getOrCreateBBBMessagesSheet();
+  const msgCol = getBbbMessageColumns_(msgSheet);
   const msgLast = msgSheet.getLastRow();
-  if (msgLast >= 2) {
-    const recent = msgSheet.getRange(Math.max(2, msgLast - 9), 1, Math.min(msgLast - 1, 10), 5).getValues();
+  if (msgLast >= SCHEMA.BBB_MESSAGES.dataStartRow) {
+    const recent = getBbbMessageRows_(msgSheet).slice(-10);
     const now = Date.now();
     for (const r of recent) {
-      if (String(r[1]) === userId && String(r[3]) === message) {
-        const sent = new Date(String(r[4])).getTime();
+      if (String(r[msgCol.fromUserId]) === userId && String(r[msgCol.message]) === message) {
+        const sent = new Date(String(r[msgCol.createdAt])).getTime();
         if (!isNaN(sent) && now - sent < 15000) return { ok: true };
       }
     }
@@ -3199,18 +3864,19 @@ function sendBBBMessage(body) {
 // ─ 내가 받은 익명 메시지 조회 (발신자 숨김)
 function getBBBMessages(userId) {
   const msgSheet = getOrCreateBBBMessagesSheet();
+  const msgCol = getBbbMessageColumns_(msgSheet);
   const last = msgSheet.getLastRow();
-  if (last < 2) return { ok: true, messages: [], sent: [] };
-  const rows = msgSheet.getRange(2, 1, last - 1, 5).getValues();
+  if (last < SCHEMA.BBB_MESSAGES.dataStartRow) return { ok: true, messages: [], sent: [] };
+  const rows = getBbbMessageRows_(msgSheet);
   // 받은 메시지: to === userId (오래된 순)
   const messages = rows
-    .filter(r => r[0] && String(r[2]) === userId)
-    .map(r => ({ id: String(r[0]), message: String(r[3]), createdAt: String(r[4]) }))
+    .filter(r => r[msgCol.msgId] && String(r[msgCol.toUserId]) === userId)
+    .map(r => ({ id: String(r[msgCol.msgId]), message: String(r[msgCol.message]), createdAt: String(r[msgCol.createdAt]) }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   // 보낸 메시지: from === userId (오래된 순)
   const sent = rows
-    .filter(r => r[0] && String(r[1]) === userId)
-    .map(r => ({ id: String(r[0]), message: String(r[3]), createdAt: String(r[4]) }))
+    .filter(r => r[msgCol.msgId] && String(r[msgCol.fromUserId]) === userId)
+    .map(r => ({ id: String(r[msgCol.msgId]), message: String(r[msgCol.message]), createdAt: String(r[msgCol.createdAt]) }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   return { ok: true, messages, sent };
 }
@@ -3219,23 +3885,31 @@ function getBBBMessages(userId) {
 function adminGetBBB() {
   const bbbSheet = getOrCreateBBBSheet();
   const msgSheet = getOrCreateBBBMessagesSheet();
+  const bbbCol = getBbbColumns_(bbbSheet);
+  const msgCol = getBbbMessageColumns_(msgSheet);
 
   const lastB = bbbSheet.getLastRow();
-  const matches = lastB < 2 ? [] :
-    bbbSheet.getRange(2, 1, lastB - 1, 6).getValues()
-      .filter(r => r[0])
+  const matches = lastB < SCHEMA.BBB.dataStartRow ? [] :
+    getBbbRows_(bbbSheet)
+      .filter(r => r[bbbCol.userId])
       .map(r => ({
-        userId: String(r[0]),
-        careBuddyId: String(r[1]), careBuddyName: String(r[2]),
-        secretRevealed: r[3] === true,
-        secretBuddyId: String(r[4]), secretBuddyName: String(r[5])
+        userId: String(r[bbbCol.userId]),
+        careBuddyId: String(r[bbbCol.careBuddyId]), careBuddyName: String(r[bbbCol.careBuddyName]),
+        secretRevealed: r[bbbCol.secretRevealed] === true,
+        secretBuddyId: String(r[bbbCol.secretBuddyId]), secretBuddyName: String(r[bbbCol.secretBuddyName])
       }));
 
   const lastM = msgSheet.getLastRow();
-  const messages = lastM < 2 ? [] :
-    msgSheet.getRange(2, 1, lastM - 1, 5).getValues()
-      .filter(r => r[0])
-      .map(r => ({ id: String(r[0]), from: String(r[1]), to: String(r[2]), message: String(r[3]), createdAt: String(r[4]) }))
+  const messages = lastM < SCHEMA.BBB_MESSAGES.dataStartRow ? [] :
+    getBbbMessageRows_(msgSheet)
+      .filter(r => r[msgCol.msgId])
+      .map(r => ({
+        id: String(r[msgCol.msgId]),
+        from: String(r[msgCol.fromUserId]),
+        to: String(r[msgCol.toUserId]),
+        message: String(r[msgCol.message]),
+        createdAt: String(r[msgCol.createdAt])
+      }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const messageOpen = isBBBMessageOpen();
@@ -3247,15 +3921,16 @@ function adminSetBBBMessageOpen(body) {
   if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const open = body.open === true;
-  configSheet.getRange('C1').setValue(open);
+  configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).setValue(open);
   const bbbSheet = getOrCreateBBBSettingsSheet();
+  const bbbCol = getBbbSettingsColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
   var updated = false;
-  if (last >= 2) {
-    const rows = bbbSheet.getRange(2, 1, last - 1, 1).getValues();
+  if (last >= SCHEMA.BBB_SETTINGS.dataStartRow) {
+    const rows = getBbbSettingsRows_(bbbSheet);
     rows.forEach(function(r, i) {
-      if (String(r[0]).trim() === 'msgOpen') {
-        bbbSheet.getRange(i + 2, 2).setValue(open);
+      if (String(r[bbbCol.key]).trim() === 'msgOpen') {
+        bbbSheet.getRange(i + SCHEMA.BBB_SETTINGS.dataStartRow, bbbCol.open + 1).setValue(open);
         updated = true;
       }
     });
@@ -3267,7 +3942,7 @@ function adminSetBBBMessageOpen(body) {
 
 // ── 일회성: HoldPray 신규 기도제목 추가 (2026-05-09) ────────────────
 function addHoldPrayRows() {
-  var sheet = getSpreadsheet().getSheetByName('HoldPray');
+  var sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.HOLD_PRAY);
 
   var newRows = [
     ["문수혁",  "1청",         "1.곧 입대하는데 군대 잘 다녀오도록 2.군생활기간 동안 가족들, 친구들 건강하게 잘 지내도록 3. 군생활 어려울 때 하나님 먼저 찾을 수 있는 군인이 되도록", false, ""],
@@ -3298,8 +3973,9 @@ function addHoldPrayRows() {
 
 // ── 일회성: HoldPray 오타 수정 (2026-05-09) ──────────────────────────
 function fixHoldPrayTypos() {
-  var sheet = getSpreadsheet().getSheetByName('HoldPray');
-  var data  = sheet.getDataRange().getValues();
+  var sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.HOLD_PRAY);
+  var col   = getHoldPrayColumns_(sheet);
+  var data  = getHoldPrayRows_(sheet);
 
   // [이름, 교구, 찾을 문자열, 바꿀 문자열]
   var fixes = [
@@ -3317,13 +3993,13 @@ function fixHoldPrayTypos() {
 
   var fixed = 0;
   for (var r = 0; r < data.length; r++) {
-    var name   = data[r][0];
-    var parish = data[r][1];
-    var prayer = data[r][2];
+    var name   = data[r][col.name];
+    var parish = data[r][col.parish];
+    var prayer = data[r][col.content];
     for (var f = 0; f < fixes.length; f++) {
       if (name === fixes[f][0] && parish === fixes[f][1] && prayer.indexOf(fixes[f][2]) !== -1) {
         var newPrayer = prayer.replace(fixes[f][2], fixes[f][3]);
-        sheet.getRange(r + 1, 3).setValue(newPrayer);
+        sheet.getRange(r + SCHEMA.HOLD_PRAY.dataStartRow, col.content + 1).setValue(newPrayer);
         Logger.log('수정: ' + name + ' [' + fixes[f][2] + '] → [' + fixes[f][3] + ']');
         fixed++;
       }
