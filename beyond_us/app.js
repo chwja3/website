@@ -27,7 +27,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260511d';
+    const APP_VERSION = '20260511e';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2653,7 +2653,7 @@
     };
     let _currentSection = 'mission';
     const _sectionScrollPos = {};
-    let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, msgOpen:{open:false} };
+    let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/14 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, msgOpen:{open:false} };
     function switchSection(name) {
       const prev = _currentSection;
       _sectionScrollPos[prev] = window.scrollY;
