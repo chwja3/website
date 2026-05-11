@@ -27,7 +27,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260511i';
+    const APP_VERSION = '20260511j';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -3271,8 +3271,9 @@
           document.getElementById('bbbSecretLive').style.display = 'none';
         }
 
-        // 받은 메시지
+        // 받은 메시지 + 보낸 메시지
         _renderBBBMessages(msgRes.messages || []);
+        _renderBBBSentMessages(msgRes.sent || []);
 
       } catch(e) {
         if (!silent) {
@@ -3472,6 +3473,43 @@
       const olderHtml = older.length
         ? `<div id="bbbMsgHistoryWrap" style="display:none;max-height:280px;overflow-y:auto;padding-bottom:4px;">${older.map(_bubble).join('')}</div>
            <button id="bbbMsgHistoryBtn" data-count="${older.length}" onclick="(function(b){var w=document.getElementById('bbbMsgHistoryWrap'),open=w.style.display!=='none';w.style.display=open?'none':'';b.textContent=open?'▾ 이전 메시지 보기 ('+b.dataset.count+'개)':'▴ 접기';})(this)" style="display:block;width:100%;background:none;border:none;font-size:12px;color:var(--sub);padding:4px 0 6px;cursor:pointer;text-align:center;">▾ 이전 메시지 보기 (${older.length}개)</button>`
+        : '';
+      el.innerHTML = olderHtml + _bubble(latest);
+    }
+
+    // 보낸 메시지 = 오른쪽 정렬 (나 → 케어버디)
+    function _renderBBBSentMessages(messages) {
+      const el = document.getElementById('bbbSentMsgList');
+      if (!el) return;
+      if (!messages.length) {
+        el.innerHTML = '';
+        return;
+      }
+      function _fmtBBBDate(s) {
+        if (!s) return '';
+        const d = new Date(s.replace(' ', 'T'));
+        if (isNaN(d)) return s.slice(0, 16).replace('T', ' ');
+        const yy = String(d.getFullYear()).slice(2);
+        const mo = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = d.getHours(), mm = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hh < 12 ? 'AM' : 'PM';
+        const h12 = hh % 12 || 12;
+        return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
+      }
+      function _bubble(m) {
+        return `<div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
+          <div style="max-width:80%;background:var(--primary);color:#faf6ef;border-radius:12px 12px 2px 12px;padding:10px 13px;">
+            <p style="font-size:14px;margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+            <p style="font-size:10px;opacity:0.7;margin:0;text-align:left;">${_fmtBBBDate(m.createdAt)}</p>
+          </div>
+        </div>`;
+      }
+      const latest = messages[messages.length - 1];
+      const older  = messages.slice(0, messages.length - 1);
+      const olderHtml = older.length
+        ? `<div id="bbbSentHistoryWrap" style="display:none;max-height:280px;overflow-y:auto;padding-bottom:4px;">${older.map(_bubble).join('')}</div>
+           <button id="bbbSentHistoryBtn" data-count="${older.length}" onclick="(function(b){var w=document.getElementById('bbbSentHistoryWrap'),open=w.style.display!=='none';w.style.display=open?'none':'';b.textContent=open?'▾ 이전 메시지 보기 ('+b.dataset.count+'개)':'▴ 접기';})(this)" style="display:block;width:100%;background:none;border:none;font-size:12px;color:var(--sub);padding:4px 0 6px;cursor:pointer;text-align:center;">▾ 이전 메시지 보기 (${older.length}개)</button>`
         : '';
       el.innerHTML = olderHtml + _bubble(latest);
     }

@@ -3200,13 +3200,19 @@ function sendBBBMessage(body) {
 function getBBBMessages(userId) {
   const msgSheet = getOrCreateBBBMessagesSheet();
   const last = msgSheet.getLastRow();
-  if (last < 2) return { ok: true, messages: [] };
+  if (last < 2) return { ok: true, messages: [], sent: [] };
   const rows = msgSheet.getRange(2, 1, last - 1, 5).getValues();
+  // 받은 메시지: to === userId (오래된 순)
   const messages = rows
     .filter(r => r[0] && String(r[2]) === userId)
     .map(r => ({ id: String(r[0]), message: String(r[3]), createdAt: String(r[4]) }))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return { ok: true, messages };
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  // 보낸 메시지: from === userId (오래된 순)
+  const sent = rows
+    .filter(r => r[0] && String(r[1]) === userId)
+    .map(r => ({ id: String(r[0]), message: String(r[3]), createdAt: String(r[4]) }))
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  return { ok: true, messages, sent };
 }
 
 // ─ 어드민: 전체 매칭 + 메시지 로그 조회
