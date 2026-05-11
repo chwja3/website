@@ -24,19 +24,54 @@
       }).then(r => r.json());
     }
 
-    /* ── 버전 체크 (PWA 캐시 강제 갱신) ── */
-    const APP_VERSION = '20260511c';
+    /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
+       자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
+       자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
+    const APP_VERSION = '20260511d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
         .then(remote => {
-          if (remote.trim() && remote.trim() !== APP_VERSION) {
-            console.warn('[DIAG] checkVersion reload triggered. local=', APP_VERSION, 'remote=', remote.trim());
-            location.reload(true);
+          const remoteVer = remote.trim();
+          if (remoteVer && remoteVer !== APP_VERSION) {
+            console.warn('[DIAG] new version detected. local=', APP_VERSION, 'remote=', remoteVer);
+            showUpdateBanner();
           }
         })
         .catch(() => {});
     })();
+
+    function showUpdateBanner() {
+      if (document.getElementById('updateBanner')) return; // 중복 방지
+      const mount = () => {
+        if (!document.body) { setTimeout(mount, 50); return; }
+        const banner = document.createElement('div');
+        banner.id = 'updateBanner';
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#7b4fa6;color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,0.25);font-family:inherit;';
+        banner.innerHTML =
+          '<span>새 버전이 있어요. 새로고침해주세요.</span>' +
+          '<button id="updateBannerBtn" style="background:#fff;color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:600;cursor:pointer;font-size:13px;">새로고침</button>';
+        document.body.appendChild(banner);
+        document.getElementById('updateBannerBtn').onclick = async () => {
+          const btn = document.getElementById('updateBannerBtn');
+          if (btn) { btn.textContent = '...'; btn.disabled = true; }
+          try {
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(regs.map(r => r.unregister()));
+            }
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map(k => caches.delete(k)));
+            }
+          } catch(e) {
+            console.warn('[DIAG] SW/cache cleanup error', e);
+          }
+          location.reload();
+        };
+      };
+      mount();
+    }
 
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
