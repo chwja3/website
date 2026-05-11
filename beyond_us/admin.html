@@ -520,14 +520,29 @@
   </div>
 
   <script>
-    const API_BASE  = (location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    function isDevEnvironment() {
+      const params = new URLSearchParams(location.search);
+      const host = location.hostname;
+      return params.get('dev') === '1' ||
+        params.get('devMode') === 'true' ||
+        params.get('test') === '1' ||
+        location.protocol === 'file:' ||
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host.includes('dev.') ||
+        host.startsWith('dev-') ||
+        host.includes('-dev') ||
+        host.endsWith('.pages.dev');
+    }
+
+    const IS_DEV_ENV = isDevEnvironment();
+    const API_BASE  = IS_DEV_ENV
       ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     let adminPw = '';
     let targetNickname = '';
 
     /* ── DEV 환경 감지 ── */
-    const IS_DEV_ENV = location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if (IS_DEV_ENV) {
       document.getElementById('devBanner').style.display = 'block';
       document.getElementById('devBannerSpacer').style.display = 'block';
