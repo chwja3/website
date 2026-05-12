@@ -29,7 +29,21 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512b';
+    const APP_VERSION = '20260512m';
+    const MAINTENANCE_MODE = true;
+    if (MAINTENANCE_MODE && !(location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body.innerHTML = `
+          <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:#faf6ef;color:#2c2417;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;">
+            <section style="max-width:420px;">
+              <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:128px;height:auto;margin-bottom:28px;" />
+              <h1 style="font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:850;">잠시 점검 중입니다.</h1>
+              <p style="font-size:15px;line-height:1.8;margin:0;color:#6f6254;">더 안정적인 운영을 위해 서버와 데이터를 정리하고 있어요.<br>작업이 끝나면 다시 열어둘게요.</p>
+            </section>
+          </main>`;
+      });
+      throw new Error('maintenance_mode');
+    }
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
