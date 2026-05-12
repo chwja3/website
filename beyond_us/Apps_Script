@@ -1329,6 +1329,18 @@ function Events_readByUser(userId) {
     .map(function(row) { return Events_rowToObject_(row, col); });
 }
 
+function Events_readAll_() {
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  return getEventsRows_(sheet)
+    .filter(function(row) {
+      return String(row[col.userId] || '').trim() ||
+        String(row[col.type] || '').trim() ||
+        String(row[col.eventId] || '').trim();
+    })
+    .map(function(row) { return Events_rowToObject_(row, col); });
+}
+
 function Events_clearMigrationEvents_() {
   const sheet = getOrCreateEventsSheet();
   const col = getEventsColumns_(sheet);
@@ -4461,6 +4473,210 @@ function getTicketStats() {
     .sort(function(a, b) { return b.remaining - a.remaining; });
   const totalRemaining = users.reduce(function(s, u) { return s + u.remaining; }, 0);
   return { ok: true, users: users, totalRemaining: totalRemaining };
+}
+
+function previewCollectionProjection(userId) {
+  const cleanUserId = String(userId || '').trim();
+  const events = Events_readAll_();
+  const userIds = cleanUserId ? [cleanUserId] : getCollectionProjectionCandidateUserIds_(events);
+  const comparisons = userIds.map(function(id) {
+    return compareCollectionProjectionForUser_(id, events);
+  });
+  const mismatches = comparisons.filter(function(item) { return item.diffs.length > 0; });
+  return logJsonResult_('previewCollectionProjection result', {
+    ok: true,
+    checked: comparisons.length,
+    mismatchCount: mismatches.length,
+    mismatches: mismatches.slice(0, 30),
+    samples: comparisons.slice(0, Math.min(5, comparisons.length)),
+  });
+}
+
+function getCollectionProjectionCandidateUserIds_(events) {
+  const ids = {};
+  const usersSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
+  if (usersSheet) {
+    const userCol = getUserColumns_(usersSheet);
+    getUserRows_(usersSheet).forEach(function(row) {
+      const userId = String(row[userCol.nickname] || '').trim();
+      if (userId) ids[userId] = true;
+    });
+  }
+
+  const collectionSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.COLLECTION);
+  if (collectionSheet) {
+    const collectionCol = getCollectionColumns_(collectionSheet);
+    getCollectionRows_(collectionSheet).forEach(function(row) {
+      const userId = String(row[collectionCol.userId] || '').trim();
+      if (userId) ids[userId] = true;
+    });
+  }
+
+  events.forEach(function(event) {
+    const userId = String(event.userId || '').trim();
+    if (userId) ids[userId] = true;
+    if (event.type === EVENT_TYPES.TRADE_REQUESTED) {
+      const target = String((event.payload && event.payload.target) || '').trim();
+      if (target) ids[target] = true;
+    }
+  });
+
+  return Object.keys(ids).sort();
+}
+
+function compareCollectionProjectionForUser_(userId, events) {
+  const current = getCurrentCollectionSnapshot_(userId);
+  const projected = buildCollectionProjectionFromEvents_(userId, events);
+  const diffs = diffCollectionSnapshots_(current, projected);
+  return {
+    userId: userId,
+    ok: diffs.length === 0,
+    diffs: diffs,
+    current: current,
+    projected: projected,
+  };
+}
+
+function getCurrentCollectionSnapshot_(userId) {
+  const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
+  const rows = getCollectionRows_(sheet);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[col.userId] || '').trim() !== userId) continue;
+    return collectionRowToSnapshot_(row, col, true);
+  }
+  return emptyCollectionSnapshot_(userId, false);
+}
+
+function collectionRowToSnapshot_(row, col, rowExists) {
+  const cardCounts = {};
+  for (let cardId = 1; cardId <= 9; cardId++) {
+    cardCounts[cardId] = Number(row[col['card' + cardId]]) || 0;
+  }
+  cardCounts[10] = Number(row[col.hidden]) || 0;
+  return {
+    rowExists: rowExists,
+    userId: String(row[col.userId] || ''),
+    totalEarned: Number(row[col.totalEarned]) || 0,
+    totalDrawn: Number(row[col.totalDrawn]) || 0,
+    remaining: Number(row[col.remaining]) || 0,
+    cardCounts: cardCounts,
+    totalCards: Number(row[col.totalCards]) || 0,
+  };
+}
+
+function emptyCollectionSnapshot_(userId, rowExists) {
+  const cardCounts = {};
+  for (let cardId = 1; cardId <= 10; cardId++) cardCounts[cardId] = 0;
+  return {
+    rowExists: rowExists,
+    userId: userId,
+    totalEarned: 0,
+    totalDrawn: 0,
+    remaining: 0,
+    cardCounts: cardCounts,
+    totalCards: 0,
+  };
+}
+
+function buildCollectionProjectionFromEvents_(userId, events) {
+  const snapshot = emptyCollectionSnapshot_(userId, true);
+  const tradeRequests = buildTradeRequestMapFromEvents_(events);
+  const acceptedTradeIds = {};
+
+  events.forEach(function(event) {
+    if (String(event.userId || '').trim() !== userId) return;
+    if (event.type === EVENT_TYPES.TICKET_GRANTED) {
+      snapshot.totalEarned += eventAmount_(event, 1);
+    } else if (event.type === EVENT_TYPES.TICKET_CONSUMED) {
+      snapshot.remaining -= eventAmount_(event, 1);
+    } else if (event.type === EVENT_TYPES.CARD_DRAWN) {
+      const cardId = Number(event.refId);
+      const amount = eventAmount_(event, 1);
+      snapshot.totalDrawn += amount;
+      if (cardId >= 1 && cardId <= 10) snapshot.cardCounts[cardId] += amount;
+    }
+  });
+
+  events.forEach(function(event) {
+    if (event.type !== EVENT_TYPES.TRADE_ACCEPTED) return;
+    const tradeId = String(event.refId || '').trim();
+    if (!tradeId || acceptedTradeIds[tradeId]) return;
+    const trade = tradeRequests[tradeId];
+    if (!trade) return;
+    acceptedTradeIds[tradeId] = true;
+    applyAcceptedTradeProjection_(snapshot, trade, userId);
+  });
+
+  snapshot.remaining = Math.max(0, snapshot.totalEarned + snapshot.remaining);
+  snapshot.totalCards = 0;
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    snapshot.cardCounts[cardId] = Math.max(0, Number(snapshot.cardCounts[cardId]) || 0);
+    snapshot.totalCards += snapshot.cardCounts[cardId];
+  }
+  return snapshot;
+}
+
+function eventAmount_(event, defaultValue) {
+  if (event.amount === '' || event.amount === null || event.amount === undefined) return defaultValue;
+  const amount = Number(event.amount);
+  return isNaN(amount) ? defaultValue : amount;
+}
+
+function buildTradeRequestMapFromEvents_(events) {
+  const trades = {};
+  events.forEach(function(event) {
+    if (event.type !== EVENT_TYPES.TRADE_REQUESTED) return;
+    const tradeId = String(event.refId || '').trim();
+    if (!tradeId) return;
+    const payload = event.payload || {};
+    trades[tradeId] = {
+      tradeId: tradeId,
+      requester: String(event.userId || '').trim(),
+      target: String(payload.target || '').trim(),
+      requesterCardId: Number(payload.requesterCardId) || 0,
+      targetCardId: Number(payload.targetCardId) || 0,
+    };
+  });
+  return trades;
+}
+
+function applyAcceptedTradeProjection_(snapshot, trade, userId) {
+  if (trade.requester === userId) {
+    adjustProjectedCardCount_(snapshot, trade.requesterCardId, -1);
+    adjustProjectedCardCount_(snapshot, trade.targetCardId, 1);
+  } else if (trade.target === userId) {
+    adjustProjectedCardCount_(snapshot, trade.targetCardId, -1);
+    adjustProjectedCardCount_(snapshot, trade.requesterCardId, 1);
+  }
+}
+
+function adjustProjectedCardCount_(snapshot, cardId, delta) {
+  if (cardId < 1 || cardId > 10) return;
+  snapshot.cardCounts[cardId] = Math.max(0, (Number(snapshot.cardCounts[cardId]) || 0) + delta);
+}
+
+function diffCollectionSnapshots_(current, projected) {
+  const diffs = [];
+  [
+    'totalEarned',
+    'totalDrawn',
+    'remaining',
+    'totalCards',
+  ].forEach(function(key) {
+    if (Number(current[key]) !== Number(projected[key])) {
+      diffs.push({ field: key, current: current[key], projected: projected[key] });
+    }
+  });
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    const currentCount = Number(current.cardCounts[cardId]) || 0;
+    const projectedCount = Number(projected.cardCounts[cardId]) || 0;
+    if (currentCount !== projectedCount) {
+      diffs.push({ field: 'card_' + cardId, current: currentCount, projected: projectedCount });
+    }
+  }
+  return diffs;
 }
 
 function updateCollectionSheet(userId, cardId, delta) {

@@ -366,6 +366,7 @@ function migrate_runAll() / migrate_verify()
 > Collection 직접 setValue 제거. Events 기반 재계산만 사용. 코어 mutation 경로 변경 — 가장 신중하게.
 
 **작업.**
+- 먼저 `previewCollectionProjection(userId)`로 기존 Collection row와 Events 기반 계산값을 비교한다. 이 단계에서는 어떤 row도 쓰지 않는다.
 - `rebuildCollectionRow(userId)` 함수 작성.
   ```js
   function rebuildCollectionRow(userId) {

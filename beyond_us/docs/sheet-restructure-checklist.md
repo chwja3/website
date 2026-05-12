@@ -149,6 +149,11 @@
 
 > Collection 직접 mutation을 전부 제거하고, Events 기반 재계산으로 대체.
 
+- [x] 2D-0 비교용 preview 함수 구현. 기존 Collection을 쓰기 전에 Events 기반 계산값과 비교
+  - [x] `previewCollectionProjection(userId)` 구현. 인자 없으면 전체 후보 유저 비교
+  - [x] `ticket.granted`, `ticket.consumed`, `card.drawn`, `trade.accepted` 반영
+  - [x] 기존 Collection row와 projected row의 field별 diff 출력
+- [ ] `previewCollectionProjection()` DEV 실행 후 mismatch 원인 확인
 - [ ] `rebuildCollectionRow(userId)` 함수 작성 — Events에서 그 유저 row 통째로 재계산
 - [ ] mutation 경로에서 Collection 직접 setValue 제거.
   - [ ] `updateCollectionSheet` (카드 뽑기 후)
