@@ -390,6 +390,7 @@ function migrate_runAll() / migrate_verify()
     rebuildCollectionRow(userId);
     ```
 - 관리자 히든 카드 지급은 `card.drawn`이 아니라 `card.granted`로 기록한다. `card.granted`는 보유 카드 수와 총카드수에는 반영하지만, 실제 뽑은 개수에는 반영하지 않는다.
+- DEV 교환 테스트용 `adminGrantTestCard`는 `ENABLE_TEST_ADMIN_TOOLS=true` Script Property가 있을 때만 동작한다. 테스트 카드 지급도 `Collection` 직접 수정 없이 `card.granted` 이벤트와 `rebuildCollectionRow_()`만 사용한다.
 - 기존 `rebuildCollectionSheet`(전체)는 검증/긴급 정비용으로 보존.
 
 **검증.**

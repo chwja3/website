@@ -2,6 +2,7 @@ const SCRIPT_PROPERTY_KEYS = Object.freeze({
   SPREADSHEET_ID: 'SPREADSHEET_ID',
   ADMIN_PASSWORD: 'ADMIN_PASSWORD',
   ALLOW_TEST_DRAWS: 'ALLOW_TEST_DRAWS',
+  ENABLE_TEST_ADMIN_TOOLS: 'ENABLE_TEST_ADMIN_TOOLS',
 });
 const REQUIRED_SCRIPT_PROPERTY_KEYS = Object.freeze([
   SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID,
@@ -688,6 +689,10 @@ function isTestDrawAllowed_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS).toLowerCase() === 'true';
 }
 
+function isTestAdminToolsEnabled_() {
+  return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS).toLowerCase() === 'true';
+}
+
 function setRequiredScriptProperties(properties) {
   const keys = REQUIRED_SCRIPT_PROPERTY_KEYS.slice();
   const clean = {};
@@ -707,6 +712,10 @@ function setRequiredScriptProperties(properties) {
   const allowTestDraws = properties && properties[SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS];
   if (allowTestDraws !== null && allowTestDraws !== undefined && String(allowTestDraws).trim() !== '') {
     clean[SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS] = String(allowTestDraws).trim();
+  }
+  const enableTestAdminTools = properties && properties[SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS];
+  if (enableTestAdminTools !== null && enableTestAdminTools !== undefined && String(enableTestAdminTools).trim() !== '') {
+    clean[SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS] = String(enableTestAdminTools).trim();
   }
 
   PropertiesService.getScriptProperties().setProperties(clean, false);
@@ -974,6 +983,7 @@ function doPost(e) {
     }
 
     if (action === 'adminGrantHiddenCard') return jsonOutput(adminGrantHiddenCard(body));
+    if (action === 'adminGrantTestCard') return jsonOutput(adminGrantTestCard(body));
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -1003,6 +1013,54 @@ function adminGrantHiddenCard(body) {
   });
   rebuildCollectionRow_(userId);
   return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminGrantTestCard(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  if (!isTestAdminToolsEnabled_()) return { error: 'test_admin_tools_disabled' };
+
+  const userId = String(body.userId || body.nickname || '').trim();
+  const cardId = Number(body.cardId);
+  const amount = Math.floor(Number(body.amount) || 1);
+  if (!userId) return { error: 'missing_userId' };
+  if (!(cardId >= 1 && cardId <= 10)) return { error: 'invalid_cardId' };
+  if (!(amount >= 1 && amount <= 20)) return { error: 'invalid_amount' };
+
+  const card = SPIRIT_CARDS.find(function(c) { return c.id === cardId; });
+  if (!card) return { error: 'invalid_cardId' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const now = new Date().toISOString();
+    const event = Events_append_(EVENT_TYPES.CARD_GRANTED, userId, {
+      timestamp: now,
+      amount: amount,
+      refId: cardId,
+      source: EVENT_SOURCES.ADMIN,
+      payload: {
+        cardName: card.name,
+        reason: 'test_card_grant',
+      },
+    });
+    const rebuild = rebuildCollectionRow_(userId);
+    return {
+      ok: true,
+      userId: userId,
+      cardId: cardId,
+      amount: amount,
+      eventId: event.event.eventId,
+      collection: getUserCollection(userId),
+      tickets: getCollectionTickets(userId),
+      rebuild: {
+        ok: rebuild.ok,
+        diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
+      },
+    };
   } finally {
     lock.releaseLock();
   }
