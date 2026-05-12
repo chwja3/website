@@ -524,7 +524,6 @@
       const params = new URLSearchParams(location.search);
       const host = location.hostname;
       return params.get('dev') === '1' ||
-        params.get('devMode') === 'true' ||
         params.get('test') === '1' ||
         location.protocol === 'file:' ||
         host === 'localhost' ||
@@ -547,23 +546,6 @@
       document.getElementById('devBanner').style.display = 'block';
       document.getElementById('devBannerSpacer').style.display = 'block';
       document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 시트 사용 중</span>';
-
-      // Dev 모드 fetch 인터셉터 — API_BASE 요청에 devMode 자동 추가
-      const _origFetch = window.fetch.bind(window);
-      window.fetch = function(url, opts) {
-        if (typeof url === 'string' && url.startsWith(API_BASE)) {
-          if (opts && opts.method === 'POST' && opts.body) {
-            try {
-              const b = JSON.parse(opts.body);
-              b.devMode = true;
-              opts = Object.assign({}, opts, { body: JSON.stringify(b) });
-            } catch(e) {}
-          } else if (!url.includes('devMode')) {
-            url = url + (url.includes('?') ? '&' : '?') + 'devMode=true';
-          }
-        }
-        return _origFetch(url, opts);
-      };
     }
 
     /* ── 로그인 ── */

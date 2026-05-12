@@ -1,8 +1,12 @@
 const SCRIPT_PROPERTY_KEYS = Object.freeze({
   SPREADSHEET_ID: 'SPREADSHEET_ID',
-  DEV_SPREADSHEET_ID: 'DEV_SPREADSHEET_ID',
   ADMIN_PASSWORD: 'ADMIN_PASSWORD',
+  ALLOW_TEST_DRAWS: 'ALLOW_TEST_DRAWS',
 });
+const REQUIRED_SCRIPT_PROPERTY_KEYS = Object.freeze([
+  SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID,
+  SCRIPT_PROPERTY_KEYS.ADMIN_PASSWORD,
+]);
 const SHEET_NAMES = Object.freeze({
   USERS: 'Users',
   CONFIG: 'config',
@@ -395,8 +399,6 @@ const CONFIG_LAYOUT = Object.freeze({
 });
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
 
-let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
-
 function getScriptProperty_(key) {
   const value = PropertiesService.getScriptProperties().getProperty(key);
   if (value === null || value === undefined || String(value).trim() === '') {
@@ -405,8 +407,13 @@ function getScriptProperty_(key) {
   return String(value).trim();
 }
 
-function getSpreadsheetId_(devMode) {
-  return getScriptProperty_(devMode ? SCRIPT_PROPERTY_KEYS.DEV_SPREADSHEET_ID : SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID);
+function getOptionalScriptProperty_(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function getSpreadsheetId_() {
+  return getScriptProperty_(SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID);
 }
 
 function getAdminPassword_() {
@@ -417,10 +424,12 @@ function isAdminAuthorized_(password) {
   return String(password || '') === getAdminPassword_();
 }
 
+function isTestDrawAllowed_() {
+  return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS).toLowerCase() === 'true';
+}
+
 function setRequiredScriptProperties(properties) {
-  const keys = Object.keys(SCRIPT_PROPERTY_KEYS).map(function(key) {
-    return SCRIPT_PROPERTY_KEYS[key];
-  });
+  const keys = REQUIRED_SCRIPT_PROPERTY_KEYS.slice();
   const clean = {};
 
   keys.forEach(function(key) {
@@ -434,6 +443,11 @@ function setRequiredScriptProperties(properties) {
     return !clean[key];
   });
   if (missing.length) throw new Error('Missing script properties: ' + missing.join(', '));
+
+  const allowTestDraws = properties && properties[SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS];
+  if (allowTestDraws !== null && allowTestDraws !== undefined && String(allowTestDraws).trim() !== '') {
+    clean[SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS] = String(allowTestDraws).trim();
+  }
 
   PropertiesService.getScriptProperties().setProperties(clean, false);
   return { ok: true, keys: keys };
@@ -464,7 +478,6 @@ const SPIRIT_CARDS = [
 
 // ── GET ──────────────────────────────────────────
 function doGet(e) {
-  _devMode = (e && e.parameter && e.parameter.devMode === 'true');
   const action = (e && e.parameter && e.parameter.action) || 'dashboard';
 
   if (action === 'dashboard') return jsonOutput(getDashboardDataCached_());
@@ -554,7 +567,6 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body   = JSON.parse(e.postData.contents || '{}');
-    _devMode = (body.devMode === true);
     const action = body.action;
 
     if (action === 'submit') {
@@ -738,7 +750,7 @@ function adminGrantHiddenCard(body) {
 // 현장미션 섹션 → BBBSettings 시트 (key / open / text)
 
 function getSpreadsheet() {
-  return SpreadsheetApp.openById(getSpreadsheetId_(_devMode));
+  return SpreadsheetApp.openById(getSpreadsheetId_());
 }
 
 function getColumns(sheet, schemaOrHeaderRow) {
@@ -938,7 +950,7 @@ function getUsersSheet_() {
 /**
  * Users 시트의 parish 컬럼(D)에서 "장년" → "목양교구" 일괄 치환.
  * Apps Script 에디터에서 직접 Run으로 실행 (1회성).
- * PROD/DEV 양쪽에서 _devMode 토글한 뒤 각각 실행해야 함.
+ * 실행한 GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 적용됨.
  */
 function migrateParishJangnyeon() {
   const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
@@ -1081,7 +1093,7 @@ function hasValidUserAuth_(body, nickname) {
 }
 
 function cacheKey_(name) {
-  return (_devMode ? 'dev__' : 'prod__') + name;
+  return name;
 }
 
 function cacheGetJson_(key) {
@@ -1580,8 +1592,8 @@ function drawCard(userId, weekKey, testMode, requestId) {
     const config = getConfig();
     const ss     = getSpreadsheet();
 
-    // DEV 환경은 뽑기권 검증 스킵 (테스트 자유롭게)
-    if (!_devMode) {
+    const bypassTicketCheck = testMode === true && isTestDrawAllowed_();
+    if (!bypassTicketCheck) {
       const pendingDraws = getCollectionTickets(userId).remaining;
       if (pendingDraws <= 0) {
         const noTicketResult = { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
@@ -1600,7 +1612,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
       isNew = !(existingCounts[card.id] > 0);
     } catch(e) {}
 
-    // 항상 시트에 기록 (DEV → DEV 시트, PROD → PROD 시트)
+    // 항상 현재 GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
     const draws = getOrCreateDrawSheet();
     draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
     updateCollectionSheet(userId, card.id, 1);
@@ -3488,15 +3500,9 @@ function backupSpreadsheet() {
 
     const dateStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd_HHmm');
 
-    // PROD 백업
-    DriveApp.getFileById(getSpreadsheetId_(false))
-      .makeCopy('BeyondUs_PROD_' + dateStr, folder);
-    _cleanOldBackups(folder, 'BeyondUs_PROD_');
-
-    // DEV 백업
-    DriveApp.getFileById(getSpreadsheetId_(true))
-      .makeCopy('BeyondUs_DEV_' + dateStr, folder);
-    _cleanOldBackups(folder, 'BeyondUs_DEV_');
+    DriveApp.getFileById(getSpreadsheetId_())
+      .makeCopy('BeyondUs_' + dateStr, folder);
+    _cleanOldBackups(folder, 'BeyondUs_');
 
     Logger.log('백업 완료: ' + dateStr);
     return { ok: true, backed_up: dateStr };

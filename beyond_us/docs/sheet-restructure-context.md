@@ -371,7 +371,7 @@
 
 | 데이터 | 현재 위치 | 목표 위치 | 우선순위 |
 |---|---|---|---|
-| PROD/DEV 스프레드시트 ID | `Apps_Script` 상수 | Apps Script Script Properties | 높음 |
+| PROD/DEV 스프레드시트 ID | `Apps_Script` 상수 | 배포별 Apps Script Script Properties의 `SPREADSHEET_ID` | 높음 |
 | 관리자 비밀번호 | `Apps_Script` 상수 | Apps Script Script Properties | 높음 |
 | 사용자 비밀번호 | `Users` B열 평문 | `passwordHash`, `passwordSalt` 컬럼 | 높음 |
 | H&P 기도제목 | `HOLD_PRAY_ENTRIES` 하드코딩 | `HoldPray` 시트 | 높음 |
@@ -392,7 +392,7 @@
 
 - **완화.** GAS Web App 배포 시 "Manage Deployments → 기존 배포 편집 → 새 버전" 으로 동일 URL 유지
 - URL 바뀐 경우 `app.js` + `admin.html` 의 DEV/PROD `API_BASE` 동시 갱신 필수
-- 특히 `admin.html`은 dev/local에서도 현재 단일 `API_BASE`에 devMode만 붙이는 구조이므로, 계획 실행 시 dev/local 관리자 페이지가 바뀐 DEV GAS를 직접 참조하도록 수정해야 한다.
+- `app.js`와 `admin.html`은 dev/local/preview 환경에서 DEV GAS URL을 직접 참조하고, PROD 환경에서는 PROD GAS URL을 참조해야 한다.
 
 ### 리스크 3. 컬럼 인덱스 기반 코드가 새 헤더 순서로 깨짐
 
@@ -445,3 +445,4 @@
 - 2026-05-12. Phase 1 시작. `Apps_Script`에 `SHEET_NAMES`, `SCHEMA`, `getColumns`, `getSheetRows` 추가. 리터럴 시트명 참조를 `SHEET_NAMES`로 1차 치환하고, `Users` 인증/세션/이름 매핑 흐름은 컬럼 헬퍼 기반으로 전환.
 - 2026-05-12. Phase 1.5 시작. 이번 실행 범위는 `SPREADSHEET_ID`, `DEV_SPREADSHEET_ID`, `ADMIN_PASSWORD`의 Script Properties 전환으로 한정하고, 사용자 비밀번호 hash 전환과 행사 데이터 외부화는 별도 하위 Phase로 분리.
 - 2026-05-12. Phase 1.5 Script Properties 전환 완료. `Apps_Script`에서 민감값 리터럴을 제거하고 DEV Apps Script 프로젝트 Properties에 값을 설정한 뒤 기존 DEV 웹앱 배포를 version 5로 재배포. `adminLogin`, `getCurrentWeek`, `dashboard`, `getCardStats`, `getTabSettings` smoke 테스트 통과.
+- 2026-05-12. Phase 1.5 후속 정리. `DEV_SPREADSHEET_ID`, `_devMode`, 프론트의 `devMode=true` 자동 첨부를 제거하고, GAS 프로젝트별 `SPREADSHEET_ID` Property 하나로 DEV/PROD 시트를 구분하도록 로컬 코드 수정. 이후 GAS 반영과 Properties 확인은 사용자가 수동으로 진행.

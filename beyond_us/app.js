@@ -29,7 +29,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512a';
+    const APP_VERSION = '20260512b';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -218,35 +218,12 @@
     }
 
     /* ── 테스트 모드: ?test=1 또는 dev URL이면 자동 활성 ── */
-    const IS_DEV_ENV = location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const IS_DEV_ENV = location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname.endsWith('.pages.dev');
     const TEST_MODE  = IS_DEV_ENV || new URLSearchParams(window.location.search).get('test') === '1';
 
     /* ── DEV PWA 매니페스트 교체 ── */
     if (IS_DEV_ENV) {
       document.getElementById('pwaManifest').href = 'manifest-dev.json';
-    }
-
-    /* ── Dev 모드 fetch 인터셉터 ──
-       IS_DEV_ENV일 때 API_BASE로 가는 모든 요청에 자동으로 devMode 추가.
-       GET  → URL에 &devMode=true 추가
-       POST → body JSON에 devMode: true 추가
-    ── */
-    if (IS_DEV_ENV) {
-      const _origFetch = window.fetch.bind(window);
-      window.fetch = function(url, opts) {
-        if (typeof url === 'string' && url.startsWith(API_BASE)) {
-          if (opts && opts.method === 'POST' && opts.body) {
-            try {
-              const b = JSON.parse(opts.body);
-              b.devMode = true;
-              opts = Object.assign({}, opts, { body: JSON.stringify(b) });
-            } catch(e) {}
-          } else if (!url.includes('devMode')) {
-            url = url + (url.includes('?') ? '&' : '?') + 'devMode=true';
-          }
-        }
-        return _origFetch(url, opts);
-      };
     }
 
     /* ── 상태 ── */
@@ -1963,12 +1940,11 @@
         playSfx('packOpen');
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
-        // DEV 환경: fetch interceptor가 devMode=true 자동 추가 → DEV 시트에 기록
-        // GAS 항상 호출 (DEV/PROD 시트 분리로 통계 오염 없음)
+        // GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
         var cardPromise = fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), requestId: drawRequestId }))
+          body: JSON.stringify(withSession({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE, requestId: drawRequestId }))
         })
         .then(function(r) { return r.json(); })
         .catch(function() { return null; });
