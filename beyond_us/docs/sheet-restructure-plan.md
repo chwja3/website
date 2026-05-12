@@ -427,9 +427,14 @@ function migrate_runAll() / migrate_verify()
   - `CardDraws`, `BonusDraws`, `raw_checkins`, `config`는 삭제 후보지만 코드 참조 제거 전 삭제 금지.
 - 위험 낮은 read path부터 Events 기준으로 전환.
   - `getUserStatus()`의 이번 주 카드 뽑기 여부는 `Events.card.drawn`으로 전환.
-  - `BonusDraws` 중복 지급 체크는 Events 우선 + legacy fallback 구조로 단계 전환.
+  - `BonusDraws` 중복 지급 체크는 Events 기준으로 전환.
   - `getCardStats()`의 카드별/유저별 뽑기 수는 `Events.card.drawn`으로 전환하고, 수령/교환 상세는 현행 도메인 시트를 유지.
   - admin 전체 Collection 재계산 액션은 Events projection 경로를 사용하도록 전환.
+- 활성 쓰기 경로에서 삭제 후보 탭 제거.
+  - `saveCheckin()` / `getDashboardData()` / `getUserStatus()`는 `raw_checkins` 대신 Events payload 기준.
+  - `drawCard()`는 `CardDraws` 대신 `Events.ticket.consumed` + `Events.card.drawn` 기준.
+  - H&P/BBB 보상은 `BonusDraws` 대신 `Events.ticket.granted` 기준.
+  - `config` fallback은 제거하고, 운영 설정은 `AppSettings` / `MissionDefinitions` / `TabSettings` / `BBBSettings` 기준.
 - 오래된 `rebuildCollectionSheet()` legacy 본문과 미사용 `updateCollectionSheet()` / `updateTicketCols()` 제거.
 - Sheets API v4 Advanced Service 활성화.
   - 로컬 GAS는 `Sheets` Advanced Service가 켜져 있으면 batch 경로를 사용하고, 꺼져 있으면 SpreadsheetApp으로 fallback 한다.
@@ -476,7 +481,7 @@ function migrate_runAll() / migrate_verify()
 1. 서버 또는 앱 안내를 maintenance 상태로 전환.
 2. PROD GAS Script Properties의 `SPREADSHEET_ID`, `ADMIN_PASSWORD` 확인.
 3. admin `시스템 상태`에서 `prodCutoverDryRun` 실행.
-4. dry-run 결과의 `ok`, `eventsPlanned`, `plannedByType`, `projection.mismatchCount`, `visibleLegacySheets` 확인.
+4. dry-run 결과의 `ok`, `eventsPlanned`, `plannedByType`, `sourceRows`, `visibleLegacySheets` 확인.
 5. 문제가 없으면 PROD GAS 기존 배포를 새 버전으로 갱신하되 Web App URL은 유지.
 6. admin `시스템 상태`에서 `APPLY_PROD_CUTOVER` 확인 문자열 입력 후 `prodCutoverApply` 실행.
 7. `prodCutoverHealthCheck` 결과가 `ok: true`인지 확인.

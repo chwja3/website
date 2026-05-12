@@ -31,7 +31,6 @@ const SHEET_NAMES = Object.freeze({
   EVENTS: 'Events',
   USER_DASHBOARD: 'UserDashboard',
 });
-const RAW_SHEET_NAME = SHEET_NAMES.RAW_CHECKINS;
 const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
 const SCHEMA = Object.freeze({
   USERS: Object.freeze({
@@ -1955,15 +1954,9 @@ function coerceAppSettingValue_(value, type, defaultValue) {
   return value;
 }
 
-function getLegacyCurrentWeek_() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet) return 1;
-  return Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
-}
-
 function getCurrentWeek_() {
   const appSettingWeek = getAppSetting_(APP_SETTING_KEYS.CURRENT_WEEK, null);
-  return Number(appSettingWeek === null || appSettingWeek === undefined ? getLegacyCurrentWeek_() : appSettingWeek) || 1;
+  return Number(appSettingWeek) || 1;
 }
 
 function setCurrentWeek_(week) {
@@ -1975,23 +1968,8 @@ function setCurrentWeek_(week) {
     'number',
     '현재 진행 주차. AppSettings 기준값.'
   );
-  syncLegacyCurrentWeek_(cleanWeek);
   clearConfigCaches_();
   return { ok: true, week: cleanWeek };
-}
-
-function syncLegacyCurrentWeek_(week) {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet) return;
-  sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(week);
-}
-
-function getLegacyAppOpenDate_() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet) return '';
-  const value = sheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue();
-  if (value instanceof Date) return Utilities.formatDate(value, 'GMT+9', 'yyyy-MM-dd');
-  return String(value || '');
 }
 
 function getMissionDefinitionRowInfos_(week) {
@@ -2051,28 +2029,8 @@ function getMissionConfigFromDefinitions_(week) {
   return { ok: true, week: week, title: title, threshold: threshold, items: items };
 }
 
-function getLegacyMissionConfig_(week) {
-  if (week < 1 || week > 6) return null;
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet) return null;
-  const startRow = getConfigWeekStartRow_(week);
-  const title = sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue();
-  const threshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-  const rawItems = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
-  const items = rawItems.map(function(row) {
-    const itemText = String(row[0] || '');
-    return {
-      item: itemText,
-      score: Number(row[1]) || 1,
-      cat: String(row[2] || 'L'),
-      enabled: itemText.trim() !== '',
-    };
-  });
-  return { ok: true, week: week, title: title, threshold: threshold, items: items };
-}
-
 function getMissionConfigModel_(week) {
-  return getMissionConfigFromDefinitions_(week) || getLegacyMissionConfig_(week);
+  return getMissionConfigFromDefinitions_(week);
 }
 
 function getAllWeekMeta_() {
@@ -2154,22 +2112,6 @@ function setMissionConfigInDefinitions_(body) {
   });
 
   return { ok: true };
-}
-
-function syncLegacyMissionConfig_(body) {
-  const week = Number(body.week);
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet || !week || week < 1 || week > 6) return;
-  const startRow = getConfigWeekStartRow_(week);
-  sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
-  const items = Array.isArray(body.items) ? body.items : [];
-  const rows = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
-  for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
-    const item = items[i] || {};
-    if (!String(item.item || '').trim()) continue;
-    rows[i] = [String(item.item), Number(item.score) || 1, String(item.cat || 'L')];
-  }
-  sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(rows);
 }
 
 function migrate_step5_absorbToEvents(options) {
@@ -3002,6 +2944,41 @@ function getConfig() {
   return { weekTitle, items, scores, cats, drawThreshold, currentWeek };
 }
 
+function isMissionSubmittedForConfig_(event, config, weekKey) {
+  if (!event || event.type !== EVENT_TYPES.MISSION_SUBMITTED) return false;
+  const payload = event.payload || {};
+  const expectedWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
+  const eventWeekKey = String(event.weekKey || '').trim();
+  if (expectedWeekKey && eventWeekKey === expectedWeekKey) return true;
+  return String(payload.weekTitle || '').trim() === String(config.weekTitle || '').trim();
+}
+
+function getMissionSubmittedEventsForConfig_(events, config, weekKey) {
+  return (events || []).filter(function(event) {
+    return isMissionSubmittedForConfig_(event, config, weekKey);
+  });
+}
+
+function getMissionEventDateKey_(event) {
+  const payload = event.payload || {};
+  return eventDateKey_(payload.dateKey);
+}
+
+function getMissionEventItems_(event) {
+  const payload = event.payload || {};
+  return Array.isArray(payload.items) ? payload.items : [];
+}
+
+function getMissionEventIndices_(event) {
+  const payload = event.payload || {};
+  return Array.isArray(payload.indices) ? payload.indices : [];
+}
+
+function getMissionEventScore_(event) {
+  const payload = event.payload || {};
+  return Number(payload.score) || 0;
+}
+
 // ── raw_checkins 컬럼 구조 ────────────────────────
 // [0] timestamp  [1] weekTitle  [2] items_json
 // [3] userId     [4] weekKey    [5] dateKey  [6] score
@@ -3028,31 +3005,27 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
     const cachedAfterWait = cacheGetJson_(requestCacheKey);
     if (cachedAfterWait) return cachedAfterWait;
   }
-  const ss       = getSpreadsheet();
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
-  const rawCol = getRawColumns_(rawSheet);
+  const effectiveWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
 
-  // 서버사이드 중복 제출 방지: 텍스트 + 인덱스 둘 다 체크
+  // 서버사이드 중복 제출 방지: Events payload의 텍스트 + 인덱스 둘 다 체크
   const submittedToday   = new Set();
   const submittedIndices = new Set();
-  const allRows = getRawRows_(rawSheet, 10);
+  const userEvents = Events_readByUser(userId);
+  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, effectiveWeekKey);
   let prevWeekScore = 0;
-  if (allRows.length) {
-    for (const row of allRows) {
-      if (String(row[rawCol.userId]) === userId && String(row[rawCol.weekTitle]) === config.weekTitle) {
-        prevWeekScore += Number(row[rawCol.score]) || 0;
-      }
-      const rowDateValue = row[rawCol.dateKey];
-      const rowDate = rowDateValue instanceof Date ? Utilities.formatDate(rowDateValue, 'Asia/Seoul', 'yyyy-MM-dd') : String(rowDateValue).trim();
-      if (String(row[rawCol.userId]) === userId && rowDate === today) {
-        try { JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
+  if (submittedEvents.length) {
+    for (const event of submittedEvents) {
+      prevWeekScore += getMissionEventScore_(event);
+      if (getMissionEventDateKey_(event) === today) {
+        getMissionEventItems_(event).forEach(function(item) {
           submittedToday.add(item);
           const idx = config.items.indexOf(item);
           if (idx >= 0) submittedIndices.add(idx);
-        }); } catch(e) {}
-        try { JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => { if (typeof idx === 'number') submittedIndices.add(idx); }); } catch(e) {}
+        });
+        getMissionEventIndices_(event).forEach(function(idx) {
+          if (typeof idx === 'number') submittedIndices.add(idx);
+        });
       }
     }
   }
@@ -3090,10 +3063,9 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   const ticketEarned = (prevWeekScore < config.drawThreshold && weekCumScore >= config.drawThreshold) ? 1 : 0;
 
   const now = new Date();
-  rawSheet.appendRow([now, config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
   Events_append_(EVENT_TYPES.MISSION_SUBMITTED, userId, {
     timestamp: now,
-    weekKey: weekKey,
+    weekKey: effectiveWeekKey,
     payload: {
       weekTitle: config.weekTitle,
       dateKey: today,
@@ -3109,7 +3081,7 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
       timestamp: now,
       timestampOffsetMs: 1,
       amount: 1,
-      weekKey: weekKey,
+      weekKey: effectiveWeekKey,
       payload: { reason: 'week_complete' },
       source: EVENT_SOURCES.WEB,
     });
@@ -3134,104 +3106,30 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
 
 // ── raw_checkins 헤더 설정 ────────────────────────────────────────────────────
 function setupRawCheckinsHeader() {
-  const ss        = getSpreadsheet();
-  const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
-
-  const headers = ['timestamp', 'weekTitle', 'items_json', 'userId', 'weekKey', 'dateKey', 'score', 'indices_json', 'weekCumScore', 'ticketEarned'];
-
-  // A1이 이미 헤더면 스킵, 아니면 1행 삽입 후 헤더 작성
-  const a1 = String(rawSheet.getRange(1, 1).getValue()).trim();
-  if (a1 !== 'timestamp') {
-    rawSheet.insertRowBefore(1);
-  }
-  rawSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  return { ok: true, message: '헤더 설정 완료' };
+  return { ok: false, error: 'deprecated_raw_checkins', message: 'raw_checkins는 더 이상 활성 쓰기 대상이 아닙니다.' };
 }
 
 // ── raw_checkins I·J열 소급 재계산 ───────────────────────────────────────────
 function backfillRawCheckinsCols() {
-  const ss        = getSpreadsheet();
-  const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
-  const rawCol = getRawColumns_(rawSheet);
-
-  const lastRow = rawSheet.getLastRow();
-  if (lastRow < 2) return { ok: true, message: '데이터 없음' };
-
-  // 헤더 확인 (A1 = 'timestamp' 이면 데이터는 2행부터, 아니면 1행부터)
-  const a1 = String(rawSheet.getRange(1, 1).getValue()).trim();
-  const dataStart = (a1 === 'timestamp') ? 2 : 1;
-  const dataCount = lastRow - dataStart + 1;
-  if (dataCount <= 0) return { ok: true, message: '데이터 없음' };
-
-  // 전체 읽기 (10열)
-  const allData = rawSheet.getRange(dataStart, 1, dataCount, 10).getValues();
-
-  // threshold 맵: weekTitle/weekKey → threshold
-  const thresholdMap = getMissionThresholdMap_();
-
-  // userId + weekTitle 별 누적 점수 추적
-  const cumMap = {}; // key: "userId__weekTitle" → 누적 점수
-
-  const updates = []; // { rowIndex (0-based in allData), weekCumScore, ticketEarned }
-
-  for (let i = 0; i < allData.length; i++) {
-    const row       = allData[i];
-    const userId    = String(row[rawCol.userId]).trim();
-    const weekTitle = String(row[rawCol.weekTitle]).trim();
-    const rowScore  = Number(row[rawCol.score]) || 0;
-
-    if (!userId || !weekTitle) continue;
-
-    const key       = userId + '__' + weekTitle;
-    const prevCum   = cumMap[key] || 0;
-    const newCum    = prevCum + rowScore;
-    cumMap[key]     = newCum;
-
-    const threshold   = thresholdMap[weekTitle] || thresholdMap[String(row[rawCol.weekKey] || '').trim()] || 6;
-    const earned      = (prevCum < threshold && newCum >= threshold) ? 1 : 0;
-
-    updates.push({ i, weekCumScore: newCum, ticketEarned: earned });
-  }
-
-  // I·J열 일괄 쓰기
-  const ijValues = allData.map(function(row) { return [row[rawCol.weekCumScore], row[rawCol.ticketEarned]]; });
-  for (const u of updates) {
-    ijValues[u.i] = [u.weekCumScore, u.ticketEarned];
-  }
-  rawSheet.getRange(dataStart, rawCol.weekCumScore + 1, dataCount, 2).setValues(ijValues);
-
-  return { ok: true, message: `${updates.length}행 재계산 완료` };
+  return { ok: false, error: 'deprecated_raw_checkins', message: 'raw_checkins는 더 이상 활성 쓰기 대상이 아닙니다.' };
 }
 
 function getDashboardData() {
-  const ss       = getSpreadsheet();
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다.');
-  const rawCol = getRawColumns_(rawSheet);
-
-  const values  = getRawRows_(rawSheet, 10);
-
-  const currentWeekRows = values.filter(row => String(row[rawCol.weekTitle]).trim() === config.weekTitle);
   const counts = {};
   config.items.forEach(item => counts[item] = 0);
+  const currentWeekEvents = getMissionSubmittedEventsForConfig_(Events_readAll_(), config, 'w' + config.currentWeek);
 
-  currentWeekRows.forEach(row => {
+  currentWeekEvents.forEach(event => {
     const counted = new Set();
     // 텍스트 기반 카운트
-    try {
-      JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
-        if (counts[item] !== undefined) counted.add(item);
-      });
-    } catch(e) {}
+    getMissionEventItems_(event).forEach(item => {
+      if (counts[item] !== undefined) counted.add(item);
+    });
     // 인덱스 기반 폴백 (텍스트 변경된 구 데이터 보완)
-    try {
-      JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => {
-        if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
-      });
-    } catch(e) {}
+    getMissionEventIndices_(event).forEach(idx => {
+      if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
+    });
     counted.forEach(item => { counts[item]++; });
   });
 
@@ -3244,7 +3142,7 @@ function getDashboardData() {
     drawThreshold:   config.drawThreshold,
     counts,
     totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
-    submissionCount: currentWeekRows.length,
+    submissionCount: currentWeekEvents.length,
     tabSettings:     getTabSettings()
   };
 }
@@ -3286,23 +3184,11 @@ function migrateHoldPrayToSheet() {
   return { ok: true, migrated: rows.length };
 }
 
-// ── 보너스 뽑기권 시트 ──────────────────────────────
-function getOrCreateBonusDrawsSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAMES.BONUS_DRAWS);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAMES.BONUS_DRAWS);
-    sheet.appendRow(getSchemaHeaders_(SCHEMA.BONUS_DRAWS));
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
-}
-
 function getBonusDrawCount(userId) {
-  const sheet = getOrCreateBonusDrawsSheet();
-  const col = getBonusDrawColumns_(sheet);
-  return getBonusDrawRows_(sheet)
-    .filter(r => String(r[col.userId]) === userId).length;
+  return Events_readByUser(userId).filter(function(event) {
+    return event.type === EVENT_TYPES.TICKET_GRANTED &&
+      !!String((event.payload && event.payload.legacySource) || '').trim();
+  }).length;
 }
 
 function hasBonusTicketGrant_(userId, legacySource, weekKey, userEvents) {
@@ -3321,39 +3207,13 @@ function hasBonusTicketGrant_(userId, legacySource, weekKey, userEvents) {
     if (matchedEvent) return true;
   } catch(e) {}
 
-  try {
-    const sheet = getOrCreateBonusDrawsSheet();
-    const last = sheet.getLastRow();
-    if (last < SCHEMA.BONUS_DRAWS.dataStartRow) return false;
-    const col = getBonusDrawColumns_(sheet);
-    return getBonusDrawRows_(sheet).some(function(row) {
-      return String(row[col.userId]) === cleanUserId && String(row[col.source]) === cleanSource;
-    });
-  } catch(e) {
-    return false;
-  }
+  return false;
 }
 
 // ── 카드 시스템 ───────────────────────────────────
-function getOrCreateDrawSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAMES.CARD_DRAWS);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAMES.CARD_DRAWS);
-    sheet.appendRow(getSchemaHeaders_(SCHEMA.CARD_DRAWS));
-  } else {
-    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 6)).getValues()[0];
-    const col = getCardDrawColumns_(sheet);
-    if (String(header[col.received] || '') !== SCHEMA.CARD_DRAWS.columns.received) {
-      sheet.getRange(SCHEMA.CARD_DRAWS.headerRow, col.received + 1).setValue(SCHEMA.CARD_DRAWS.columns.received);
-    }
-  }
-  return sheet;
-}
-
 function getUserStatus(userId, weekKey) {
-  const ss     = getSpreadsheet();
   const config = getConfig();
+  weekKey = String(weekKey || ('w' + config.currentWeek)).trim();
   let weekScore = 0, drawnThisWeek = false, weekCard = null;
   const collection = [];
   const todayItems   = [];
@@ -3372,46 +3232,39 @@ function getUserStatus(userId, weekKey) {
   const weekStart = monday.toISOString().slice(0, 10);
   const weekEnd   = sunday.toISOString().slice(0, 10);
 
-  // raw_checkins 전체 읽기 (이번 주 점수 + 오늘 항목 + 이월 계산에 재사용)
-  // 10열까지 읽어 J열(ticketEarned) 포함
-  let allRows = [];
+  const userEvents = Events_readByUser(userId);
+  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, weekKey);
   let earnedTicketThisWeek = false;
-  try {
-    const raw     = ss.getSheetByName(RAW_SHEET_NAME);
-    const rawCol  = getRawColumns_(raw);
-    allRows = getRawRows_(raw, 10);
-    if (allRows.length) {
-      for (const row of allRows) {
-        if (String(row[rawCol.userId]) !== userId) continue;
-        if (String(row[rawCol.weekTitle]) === config.weekTitle) {
-          weekScore += Number(row[rawCol.score]) || 0;
-          if (Number(row[rawCol.ticketEarned]) === 1) earnedTicketThisWeek = true;
-          const rowDateValue = row[rawCol.dateKey];
-          const rowDate = rowDateValue instanceof Date ? Utilities.formatDate(rowDateValue, 'Asia/Seoul', 'yyyy-MM-dd') : String(rowDateValue).trim();
-          // 이번 주 제출 날짜 수집
-          if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
-            weekDates.push(rowDate);
-          }
-          if (rowDate === today) {
-            try { JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
-              todayItems.push(item);
-              // 인덱스 미저장 구 데이터: 현재 config 텍스트와 매칭해 인덱스 역추적
-              const idx = config.items.indexOf(item);
-              if (idx >= 0) todayIndices.push(idx);
-            }); } catch(e) {}
-            // 신규 데이터: 저장된 인덱스 추가 (텍스트 변경 후에도 유지)
-            try { JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => { if (typeof idx === 'number') todayIndices.push(idx); }); } catch(e) {}
-          }
-        }
-      }
+  submittedEvents.forEach(function(event) {
+    weekScore += getMissionEventScore_(event);
+    const rowDate = getMissionEventDateKey_(event);
+    if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
+      weekDates.push(rowDate);
     }
-  } catch(e) {}
+    if (rowDate === today) {
+      getMissionEventItems_(event).forEach(function(item) {
+        todayItems.push(item);
+        // 인덱스 미저장 구 데이터: 현재 config 텍스트와 매칭해 인덱스 역추적
+        const idx = config.items.indexOf(item);
+        if (idx >= 0) todayIndices.push(idx);
+      });
+      getMissionEventIndices_(event).forEach(function(idx) {
+        if (typeof idx === 'number') todayIndices.push(idx);
+      });
+    }
+  });
+  userEvents.forEach(function(event) {
+    if (event.type !== EVENT_TYPES.TICKET_GRANTED) return;
+    if (String(event.weekKey || '') !== String(weekKey || '')) return;
+    if (String((event.payload && event.payload.reason) || '') === 'week_complete') {
+      earnedTicketThisWeek = true;
+    }
+  });
 
   // 카드 뽑기 이력 (drawnThisWeek, weekCard)
   try {
-    const events = Events_readByUser(userId);
-    if (events.length) {
-      for (const event of events) {
+    if (userEvents.length) {
+      for (const event of userEvents) {
         if (event.type !== EVENT_TYPES.CARD_DRAWN) continue;
         if (String(event.weekKey) !== weekKey) continue;
         const card = SPIRIT_CARDS.find(c => c.id === Number(event.refId));
@@ -3468,9 +3321,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
         try { return JSON.parse(cached); } catch(e) {}
       }
     }
-
-    const config = getConfig();
-    const ss     = getSpreadsheet();
+    weekKey = String(weekKey || ('w' + getCurrentWeek_())).trim();
 
     const bypassTicketCheck = testMode === true && isTestDrawAllowed_();
     if (!bypassTicketCheck) {
@@ -3492,10 +3343,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
       isNew = !(existingCounts[card.id] > 0);
     } catch(e) {}
 
-    // 항상 현재 GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
     const drawnAt = new Date().toISOString();
-    const draws = getOrCreateDrawSheet();
-    draws.appendRow([userId, weekKey, card.id, card.name, drawnAt]);
     Events_append_(EVENT_TYPES.TICKET_CONSUMED, userId, {
       timestamp: drawnAt,
       amount: 1,
@@ -3600,7 +3448,7 @@ function fixHoldPrayBlankNames() {
 }
 
 function getHoldPray(weekKey, nickname) {
-  if (!weekKey) weekKey = 'w' + (getConfig().currentWeek);
+  if (!weekKey) weekKey = 'w' + getCurrentWeek_();
   const entries = getYouthHpEntries();
   const hpRevision = String(hashStr(JSON.stringify(entries.map(function(e) {
     return [e.n, e.p, e.c, e.a === true, e.nick || ''];
@@ -3777,8 +3625,6 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
     const alreadyAwarded = hasBonusTicketGrant_(nickname, source, weekKey);
     if (!alreadyAwarded) {
       const awardedAt = new Date().toISOString();
-      const bonusSheet = getOrCreateBonusDrawsSheet();
-      bonusSheet.appendRow([nickname, source, awardedAt]);
       Events_append_(EVENT_TYPES.TICKET_GRANTED, nickname, {
         timestamp: awardedAt,
         amount: 1,
@@ -3828,21 +3674,9 @@ function getOrCreateTabSettingsSheet() {
   sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
-  // config B2/B3/D1에서 마이그레이션 (최초 1회)
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  var holdprayVal = true, secretVal = true, chatVal = false;
-  if (configSheet) {
-    const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
-    const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
-    const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
-    holdprayVal = (b2 === '') ? true : Boolean(b2);
-    secretVal   = (b3 === '') ? true : Boolean(b3);
-    chatVal     = (typeof d1 === 'boolean') ? d1 : false; // '1주차' 같은 문자열은 false로 처리
-    // 마이그레이션 후 config 시트에서 제거
-    configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).clearContent();
-    configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).clearContent();
-    configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).clearContent();
-  }
+  var holdprayVal = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, true) === true;
+  var secretVal   = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, true) === true;
+  var chatVal     = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, false) === true;
 
   sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, 3, 3).setValues([
     ['holdpray', 'Hold & Pray', holdprayVal],
@@ -3861,18 +3695,12 @@ function getOrCreateBBBSettingsSheet() {
   sheet.getRange(SCHEMA.BBB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.BBB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
-  // D2 JSON에서 마이그레이션 시도 (이전 저장값 복원)
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  var saved = {};
-  try {
-    const d2val = configSheet ? configSheet.getRange(CONFIG_LAYOUT.legacyBbbSectionsCell).getValue() : '';
-    if (d2val) saved = JSON.parse(d2val);
-  } catch(e) {}
-
   const rows = Object.keys(BBB_SECTIONS_DEFAULT).map(function(key) {
     const def = BBB_SECTIONS_DEFAULT[key];
-    const sv  = saved[key] || {};
-    return [key, sv.open === true, sv.text !== undefined ? sv.text : (def.text || '')];
+    const openValue = key === 'msgOpen'
+      ? getAppSetting_(APP_SETTING_KEYS.BBB_MESSAGE_OPEN, def.open === true) === true
+      : def.open === true;
+    return [key, openValue, def.text || ''];
   });
   sheet.getRange(SCHEMA.BBB_SETTINGS.dataStartRow, 1, rows.length, 3).setValues(rows);
   return sheet;
@@ -3891,12 +3719,10 @@ function isBBBMessageOpen() {
     }
   } catch(e) {}
 
-  // 구버전 config C1 설정 fallback
   try {
     const appSettingValue = getAppSetting_(APP_SETTING_KEYS.BBB_MESSAGE_OPEN, null);
     if (appSettingValue !== null && appSettingValue !== undefined) return appSettingValue === true;
-    const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return configSheet && configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue() === true;
+    return false;
   } catch(e) {
     return false;
   }
@@ -3914,27 +3740,12 @@ function getTabSettings() {
       if (Object.prototype.hasOwnProperty.call(tabMap, key)) tabMap[key] = r[tabCol.enabled] === true;
     });
   } else {
-    // TabSettings 생성 전에는 AppSettings 값을 우선 읽고, 없으면 config의 기존 값을 읽는다.
     const hpSetting = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, null);
     const secretSetting = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, null);
     const chatSetting = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, null);
     if (hpSetting !== null && hpSetting !== undefined) tabMap.holdpray = hpSetting === true;
     if (secretSetting !== null && secretSetting !== undefined) tabMap.secret = secretSetting === true;
     if (chatSetting !== null && chatSetting !== undefined) tabMap.chat = chatSetting === true;
-
-    if (hpSetting === null || hpSetting === undefined ||
-        secretSetting === null || secretSetting === undefined ||
-        chatSetting === null || chatSetting === undefined) {
-      const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-      if (configSheet) {
-        const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
-        const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
-        const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
-        if (hpSetting === null || hpSetting === undefined) tabMap.holdpray = (b2 === '') ? true : b2 === true;
-        if (secretSetting === null || secretSetting === undefined) tabMap.secret = (b3 === '') ? true : b3 === true;
-        if (chatSetting === null || chatSetting === undefined) tabMap.chat = d1 === true;
-      }
-    }
   }
 
   // BBBSettings 시트에서 현장미션 섹션 오픈 설정 읽기
@@ -4003,8 +3814,7 @@ function setTabSettings(body) {
 
 function getAppOpenDate() {
   const value = getAppSetting_(APP_SETTING_KEYS.APP_OPEN_DATE, '');
-  if (value) return eventDateKey_(value);
-  return getLegacyAppOpenDate_();
+  return value ? eventDateKey_(value) : '';
 }
 
 // ── 유저 인증 ─────────────────────────────────────
@@ -4364,13 +4174,7 @@ function setCardReceivedQty(body) {
 }
 
 function setDrawReceived(body) {
-  var rowIndex = Number(body.rowIndex);
-  var received = body.received !== false;
-  if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
-  var sheet = getOrCreateDrawSheet();
-  var col = getCardDrawColumns_(sheet);
-  sheet.getRange(rowIndex, col.received + 1).setValue(received ? 'TRUE' : '');
-  return { ok: true };
+  return { ok: false, error: 'deprecated_card_draws', message: 'CardDraws는 더 이상 활성 쓰기 대상이 아닙니다. CardReceived를 사용하세요.' };
 }
 
 function getCardStats() {
@@ -4555,24 +4359,14 @@ const ALL_WEEK_DATA = [
 ];
 
 function setupAllWeeks() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-
-  // 헤더 세팅 (첫 실행 시)
-  sheet.getRange(CONFIG_LAYOUT.currentWeekLabelCell).setValue('current_week');
-  if (!sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(1);
-  // 탭 on/off → TabSettings 시트, 현장미션 섹션 → BBBSettings 시트
-
-  // 기존 주차 데이터 영역 초기화
-  sheet.getRange(CONFIG_LAYOUT.weekBlockClearRange).clearContent();
-
   ALL_WEEK_DATA.forEach((w, i) => {
-    const startRow = getConfigWeekStartRow_(i + 1);
-    sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).setValue(w.title);
-    sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).setValue(w.threshold);
-    w.items.forEach(([item, score, cat], j) => {
-      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionItemCol).setValue(item);
-      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionScoreCol).setValue(score);
-      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionCategoryCol).setValue(cat || 'L');
+    setMissionConfigInDefinitions_({
+      week: i + 1,
+      title: w.title,
+      threshold: w.threshold,
+      items: w.items.map(function(item) {
+        return { item: item[0], score: item[1], cat: item[2] || 'L' };
+      }),
     });
   });
 
@@ -4583,43 +4377,7 @@ function setupAllWeeks() {
 // ── 일회성 config/raw_checkins 복구 (B5/B6 충돌 수정 후 1회 실행) ───────────
 // GAS 에디터에서 직접 실행: fixConfigSheetConflict()
 function fixConfigSheetConflict() {
-  const ss          = getSpreadsheet();
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-
-  // 1) 1주차 config 복원 (B5: weekTitle, C5: threshold, A6:C11: items)
-  const startRow = getConfigWeekStartRow_(1);
-  configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).setValue('1주차');
-  configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).setValue(9);
-  const w1items = [
-    ['자기 전 1분 동안 무릎 꿇고 기도하기', 2, 'L'],
-    ['"하나님, 저는 오늘 ____이 필요합니다." 문장 완성하기', 1, 'L'],
-    ['이번주 예배 송리스트 전체 듣기', 2, 'L'],
-    ['손기도 기도제목 위에 손을 얹고 그 자리에서 중보기도하기', 1, 'L'],
-    ['교회 어른들께 먼저 인사하기', 1, 'MC'],
-    ['밥 먹기 전에 식기도하기', 1, 'MW'],
-  ];
-  configSheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(w1items);
-
-  // 3) raw_checkins B열: boolean false → '1주차' 마이그레이션
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
-  if (rawSheet && rawSheet.getLastRow() >= 2) {
-    const rawCol = getRawColumns_(rawSheet);
-    const dataStart = SCHEMA.RAW_CHECKINS.dataStartRow;
-    const lastRow = rawSheet.getLastRow();
-    const bCol = rawSheet.getRange(dataStart, rawCol.weekTitle + 1, lastRow - dataStart + 1, 1).getValues();
-    let fixed = 0;
-    bCol.forEach(function(r, i) {
-      const [weekTitle] = r;
-      if (weekTitle === false || weekTitle === '' || String(weekTitle).trim() === 'false') {
-        rawSheet.getRange(i + dataStart, rawCol.weekTitle + 1).setValue('1주차');
-        fixed++;
-      }
-    });
-    Logger.log('raw_checkins 마이그레이션: ' + fixed + '행 수정');
-  }
-
-  Logger.log('fixConfigSheetConflict 완료');
-  return { ok: true };
+  return { ok: false, error: 'deprecated_config_raw_checkins', message: 'config/raw_checkins 복구 도구는 Events 전환 이후 사용하지 않습니다.' };
 }
 
 // ── 미션 config 읽기/쓰기 ─────────────────────────
@@ -4641,7 +4399,6 @@ function setMissionConfig(body) {
   const week = Number(body.week);
   if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
   const result = setMissionConfigInDefinitions_(body);
-  syncLegacyMissionConfig_(body);
   clearConfigCaches_();
   return result;
 }
@@ -5382,9 +5139,7 @@ function prodCutoverDryRun_(options) {
   steps.absorbToEvents = runCutoverStep_('absorbToEventsDryRun', function() {
     return migrate_step5_absorbToEvents({ dryRun: true });
   });
-  steps.healthCheck = runCutoverStep_('healthCheckReadOnly', function() {
-    return prodCutoverHealthCheck_({ rowLimit: rowLimit, allowVisibleLegacySheets: true });
-  });
+  steps.sheetStatus = runCutoverStep_('sheetStatusReadOnly', getCutoverSheetStatus_);
   return {
     ok: areCutoverStepsOk_(steps),
     dryRun: true,
@@ -6062,7 +5817,7 @@ function uploadBBBPhoto(body) {
     photoSheet.getRange(existingRow, photoCol.uploadedAt + 1).setValue(now);
   }
 
-  // Events 우선, BonusDraws fallback 기준 중복 지급 방지
+  // Events 기준 중복 지급 방지
   const bonusSource = missionType === 'm1' ? 'bbb_photo' : 'bbb_' + missionType.split('_')[0];
   const alreadyRewarded = hasBonusTicketGrant_(userId, bonusSource, '');
 
@@ -6084,8 +5839,6 @@ function uploadBBBPhoto(body) {
         }
       }
       if (filledSpots >= 7) {
-        const bonusSheet = getOrCreateBonusDrawsSheet();
-        bonusSheet.appendRow([userId, bonusSource, now]);
         Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
           timestamp: now,
           amount: 1,
@@ -6101,8 +5854,6 @@ function uploadBBBPhoto(body) {
         rewarded = true;
       }
     } else {
-      const bonusSheet = getOrCreateBonusDrawsSheet();
-      bonusSheet.appendRow([userId, bonusSource, now]);
       Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
         timestamp: now,
         amount: 1,

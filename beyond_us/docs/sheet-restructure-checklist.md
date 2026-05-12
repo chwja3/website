@@ -204,11 +204,25 @@
   - [x] 유지: `Trades`, `Users`, `HoldPray`, `HPGuesses`, `BBBMessages`, `BBBPhotos`, `Notices`, `Inquiries`, `CardReceived`
   - [x] 삭제 후보: `raw_checkins`, `CardDraws`, `BonusDraws`, `config`
 - [x] `getUserStatus()`의 이번 주 카드 뽑기 여부를 `CardDraws` 대신 `Events.card.drawn` 기준으로 전환
-- [x] `BonusDraws` 중복 지급 체크를 Events 우선 + legacy fallback 구조로 전환
+- [x] `BonusDraws` 중복 지급 체크를 Events 기준으로 전환
   - [x] H&P w3/w6 보상 수령 여부
   - [x] H&P 정답 제출 보상 중복 방지
   - [x] BBB M1/M2/M3 보상 중복 방지
   - [x] BBB M2/M3 수령 여부 표시
+- [x] 활성 쓰기 경로에서 `raw_checkins` 제거
+  - [x] `saveCheckin()`은 `Events.mission.submitted` + `Events.ticket.granted`만 기록
+  - [x] `getDashboardData()`는 `Events.mission.submitted` 기준으로 계산
+  - [x] `getUserStatus()`는 오늘 제출/주차 점수/제출 날짜를 Events payload 기준으로 계산
+- [x] 활성 쓰기 경로에서 `CardDraws` 제거
+  - [x] `drawCard()`는 `Events.ticket.consumed` + `Events.card.drawn`만 기록
+  - [x] `setDrawReceived()`는 deprecated 응답으로 전환
+- [x] 활성 쓰기 경로에서 `BonusDraws` 제거
+  - [x] H&P 보상 지급 시 `BonusDraws.appendRow` 제거
+  - [x] BBB 보상 지급 시 `BonusDraws.appendRow` 제거
+- [x] `config` fallback 제거
+  - [x] 현재 주차/오픈일/미션 정의는 `AppSettings` + `MissionDefinitions`만 사용
+  - [x] `TabSettings` / `BBBSettings` 생성 시 `config` fallback 제거
+  - [x] `setCurrentWeek()` / `setMissionConfig()`의 legacy config 동기화 제거
 - [x] `getCardStats()`의 카드별/유저별 뽑기 수를 `CardDraws` 대신 `Events.card.drawn` 기준으로 전환
   - [x] `CardReceived` 실물 수령 수량은 현행 유지
   - [x] `Trades` accepted 교환 상세는 현행 유지
@@ -235,7 +249,7 @@
   - [x] Script Properties 존재 여부 확인.
   - [x] `migrate_step4_splitConfig({ dryRun: true })` 실행.
   - [x] `migrate_step5_absorbToEvents({ dryRun: true })` 실행.
-  - [x] `prodCutoverHealthCheck()` 읽기 전용 확인.
+  - [x] 적용 전 상태에서도 실패하지 않도록 sheet status 읽기 전용 확인.
 - [x] `prodCutoverApply(options)` 추가.
   - [x] `confirm: "APPLY_PROD_CUTOVER"` 없이는 실행 차단.
   - [x] Drive 백업 후 config split, Events 흡수, Collection 재계산, UserDashboard 재설정, legacy 탭 숨김, health check 순서로 실행.
@@ -245,7 +259,7 @@
   - [x] 상태 확인.
   - [x] PROD cutover dry-run.
   - [x] 확인 문자열 기반 PROD cutover apply.
-- [x] admin 변경에 맞춰 `version.txt`, `app.js` `APP_VERSION`, `sw.js` `CACHE`를 `20260512f`로 동기화.
+- [x] admin 변경에 맞춰 `version.txt`, `app.js` `APP_VERSION`, `sw.js` `CACHE`를 `20260512g`로 동기화.
 
 ## Phase 3 — PROD 적용 (단계별 배포)
 

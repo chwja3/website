@@ -1881,7 +1881,8 @@ const SHEET_NAMES = Object.freeze({
 - 2026-05-12. Phase 2E legacy 참조 축소 2차. admin 카드 통계 `getCardStats()`의 카드별 총 뽑기 수와 유저별 뽑기 수를 `CardDraws` 직접 조회 대신 `Events.card.drawn` 이벤트 기준으로 전환했다. 실물 카드 수령 수량(`CardReceived`)과 accepted 교환 상세(`Trades`)는 아직 운영 UI가 사용하는 도메인 상태라 현행 유지한다.
 - 2026-05-12. Phase 2E legacy 참조 축소 3차. admin `adminRebuildCollection` POST 액션과 하위 호환 `migrateCardDrawsToCollection` 액션을 기존 `rebuildCollectionSheet()` 대신 이미 검증한 `rebuildCollectionRowsFromEvents_()` 경로로 전환했다. 오래된 `rebuildCollectionSheet()` 본문은 삭제 전 별도 검토 대상으로 남겼다.
 - 2026-05-12. Phase 2E 일괄 마무리 로컬 구현. 오래된 `rebuildCollectionSheet()` legacy 본문은 제거하고 Events 기준 wrapper만 유지했으며, 호출자가 없던 `updateCollectionSheet()` / `updateTicketCols()`를 제거했다. Collection projection 재계산은 `getCollectionProjectionInputs_()`에서 Events/Users/Collection 입력을 모아 읽고, Sheets API v4 Advanced Service가 켜져 있으면 `batchGet`/`batchUpdate`/`batchClear`를 사용하되 꺼져 있으면 SpreadsheetApp으로 fallback 한다. 캐시는 공지 캐시를 불필요하게 지우지 않도록 `clearHotCaches_()`를 dashboard 중심으로 좁히고, 유저 파생 캐시 헬퍼를 추가했다. DEV 확인용으로 `phase2EHealthCheck()`, `phase2EMeasurePerformance()`, `phase2EStressTestDraws(body)`를 추가했다.
-- 2026-05-12. PROD 전환 시간을 줄이기 위해 cutover helper를 추가했다. `prodCutoverDryRun()`은 Script Properties, config split dry-run, Events 흡수 dry-run, health check를 읽기 전용으로 묶어 보여준다. `prodCutoverApply(options)`는 `confirm: "APPLY_PROD_CUTOVER"`가 있을 때만 백업, config split, Events 흡수, Collection 재계산, UserDashboard 재설정, legacy 탭 숨김, health check를 순서대로 실행한다. admin에는 `시스템 상태` 패널을 추가해 health check, dry-run, apply 결과 JSON을 한 화면에서 확인하도록 했다.
+- 2026-05-12. PROD 전환 시간을 줄이기 위해 cutover helper를 추가했다. `prodCutoverDryRun()`은 Script Properties, config split dry-run, Events 흡수 dry-run, sheet status를 읽기 전용으로 묶어 보여준다. `prodCutoverApply(options)`는 `confirm: "APPLY_PROD_CUTOVER"`가 있을 때만 백업, config split, Events 흡수, Collection 재계산, UserDashboard 재설정, legacy 탭 숨김, health check를 순서대로 실행한다. admin에는 `시스템 상태` 패널을 추가해 health check, dry-run, apply 결과 JSON을 한 화면에서 확인하도록 했다.
+- 2026-05-12. Phase 2E legacy 활성 쓰기 제거를 5번 확인 절차 직전까지 진행했다. `saveCheckin()` / `getDashboardData()` / `getUserStatus()`는 `raw_checkins` 대신 Events payload 기준으로 계산하고, `drawCard()`는 `CardDraws` 없이 `ticket.consumed` + `card.drawn` 이벤트만 남긴다. H&P/BBB 보상은 `BonusDraws` 기록과 fallback을 제거하고 `Events.ticket.granted`의 `payload.legacySource`만 중복 기준으로 사용한다. `config` fallback도 제거해 현재 주차, 앱 오픈일, 미션 정의, 탭 설정 초기값은 `AppSettings` / `MissionDefinitions` / `TabSettings` / `BBBSettings` 기준으로만 읽는다. admin Collection 탭의 raw_checkins 정비 버튼은 제거했고, 오래된 API 액션은 deprecated 응답으로 막았다.
 
 ## 현재 상태 요약 — 2026-05-12
 
@@ -1893,6 +1894,7 @@ const SHEET_NAMES = Object.freeze({
 | Phase 2B | `UserDashboard` 생성, Events 기반 공식, Collection 검증 컬럼 구성 |
 | Phase 2C | `AppSettings` / `MissionDefinitions` 구조와 read/write fallback 구현 |
 | Phase 2D | 주요 mutation 경로를 Events 기록 + `Collection` row rebuild 방식으로 전환 |
+| Phase 2E legacy 활성 쓰기 | `raw_checkins`, `CardDraws`, `BonusDraws`, `config` fallback 제거. migration 입력과 숨김 상태 추적용 상수는 유지 |
 | Dashboard 검증 | `previewCollectionProjection()` `mismatchCount: 0`, UserDashboard ✓ 유지 확인 |
 | Admin 보조 기능 | 테스트 카드 지급, 카드 추가/삭제 event 생성, Events 기준 재계산 패널 구현 |
 | PROD 전환 보조 | `prodCutoverDryRun`, `prodCutoverApply`, `prodCutoverHealthCheck`, admin `시스템 상태` 패널 구현 |
@@ -1911,8 +1913,8 @@ const SHEET_NAMES = Object.freeze({
 
 | 우선순위 | 작업 | 확인 기준 |
 |---|---|---|
-| 1 | Phase 2E legacy 참조 축소 | 삭제 후보 탭을 읽는 활성 경로를 Events/Collection 기준으로 대체 |
-| 2 | Phase 2E 속도 최적화 | 카드 뽑기와 대시보드 응답 시간 측정 후 병목 개선 |
+| 1 | DEV GAS 수동 반영 | 로컬 `Apps_Script`를 DEV GAS에 반영 |
+| 2 | Phase 2E health check | `phase2EHealthCheck()` 또는 admin 시스템 상태 결과 `ok: true` 확인 |
 | 3 | 삭제 후보 탭 숨김 검증 | 숨김 상태에서도 DEV 전체 회귀 테스트 통과 |
 | 4 | PROD Phase 3 적용 계획 확정 | cutover dry-run → apply → health check 기준으로 서버 닫는 시간을 최소화 |
 | 5 | PROD 적용 전 최종 DEV 백업/스냅샷 | DEV 정상 상태를 되돌릴 수 있게 보존 |
