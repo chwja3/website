@@ -418,9 +418,16 @@ function migrate_runAll() / migrate_verify()
 
 ### 2E — 속도 최적화
 
-> 단계별 코드 변경이 GAS RPC 호출을 늘렸을 수 있으므로 마지막에 정리.
+> 단계별 코드 변경이 GAS RPC 호출을 늘렸을 수 있으므로 마지막에 정리. 안정성 우선 원칙에 따라 이 단계에서 시트를 바로 삭제하지 않는다. 먼저 legacy 참조를 줄이고, 삭제 후보 탭을 숨긴 상태로 회귀 테스트한 뒤, 전체 Phase 완료 후 삭제한다.
 
 **작업.**
+- legacy 참조 감사.
+  - `Collection`은 Events 기반 projection cache라 유지.
+  - `Trades`는 진행 중 교환 UI 상태를 담고 있어 유지.
+  - `CardDraws`, `BonusDraws`, `raw_checkins`, `config`는 삭제 후보지만 코드 참조 제거 전 삭제 금지.
+- 위험 낮은 read path부터 Events 기준으로 전환.
+  - `getUserStatus()`의 이번 주 카드 뽑기 여부는 `Events.card.drawn`으로 전환.
+  - `BonusDraws` 중복 지급 체크는 Events 우선 + legacy fallback 구조로 단계 전환.
 - Sheets API v4 Advanced Service 활성화.
 - `Sheets.Spreadsheets.Values.batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소.
 - 캐시 키 정밀화.

@@ -3134,6 +3134,35 @@ function getBonusDrawCount(userId) {
     .filter(r => String(r[col.userId]) === userId).length;
 }
 
+function hasBonusTicketGrant_(userId, legacySource, weekKey, userEvents) {
+  const cleanUserId = String(userId || '').trim();
+  const cleanSource = String(legacySource || '').trim();
+  const cleanWeekKey = String(weekKey || '').trim();
+  if (!cleanUserId || !cleanSource) return false;
+
+  try {
+    const events = userEvents || Events_readByUser(cleanUserId);
+    const matchedEvent = events.some(function(event) {
+      if (event.type !== EVENT_TYPES.TICKET_GRANTED) return false;
+      if (cleanWeekKey && String(event.weekKey || '') !== cleanWeekKey) return false;
+      return String((event.payload && event.payload.legacySource) || '') === cleanSource;
+    });
+    if (matchedEvent) return true;
+  } catch(e) {}
+
+  try {
+    const sheet = getOrCreateBonusDrawsSheet();
+    const last = sheet.getLastRow();
+    if (last < SCHEMA.BONUS_DRAWS.dataStartRow) return false;
+    const col = getBonusDrawColumns_(sheet);
+    return getBonusDrawRows_(sheet).some(function(row) {
+      return String(row[col.userId]) === cleanUserId && String(row[col.source]) === cleanSource;
+    });
+  } catch(e) {
+    return false;
+  }
+}
+
 // ── 카드 시스템 ───────────────────────────────────
 function getOrCreateDrawSheet() {
   const ss = getSpreadsheet();
@@ -3207,19 +3236,17 @@ function getUserStatus(userId, weekKey) {
     }
   } catch(e) {}
 
-  // 카드 뽑기 이력 (drawnThisWeek, weekCard, 총 뽑기 수 카운트용)
-  let totalDraws = 0;
+  // 카드 뽑기 이력 (drawnThisWeek, weekCard)
   try {
-    const draws = getOrCreateDrawSheet();
-    const drawCol = getCardDrawColumns_(draws);
-    const rows = getCardDrawRows_(draws);
-    if (rows.length) {
-      for (const row of rows) {
-        if (String(row[drawCol.userId]) !== userId) continue;
-        totalDraws++;
-        const card = SPIRIT_CARDS.find(c => c.id === Number(row[drawCol.cardId]));
+    const events = Events_readByUser(userId);
+    if (events.length) {
+      for (const event of events) {
+        if (event.type !== EVENT_TYPES.CARD_DRAWN) continue;
+        if (String(event.weekKey) !== weekKey) continue;
+        const card = SPIRIT_CARDS.find(c => c.id === Number(event.refId));
         if (!card) continue;
-        if (String(row[drawCol.weekKey]) === weekKey) { drawnThisWeek = true; weekCard = card; }
+        drawnThisWeek = true;
+        weekCard = card;
       }
     }
   } catch(e) {}
@@ -3463,16 +3490,8 @@ function getHoldPray(weekKey, nickname) {
   let ticketAlreadyAwarded = false;
   let ticketCardIdx = -1;
   if (nickname && (weekKey === 'w3' || weekKey === 'w6')) {
-    const bonusSheet = getOrCreateBonusDrawsSheet();
-    const last = bonusSheet.getLastRow();
     const source = 'hp_' + weekKey;
-    if (last >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-      const bonusCol = getBonusDrawColumns_(bonusSheet);
-      const rows = getBonusDrawRows_(bonusSheet);
-      ticketAlreadyAwarded = rows.some(function(r) {
-        return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source;
-      });
-    }
+    ticketAlreadyAwarded = hasBonusTicketGrant_(nickname, source, weekKey);
     if (ticketAlreadyAwarded) {
       const guessSheet = getOrCreateHPGuessesSheet();
       const gLast = guessSheet.getLastRow();
@@ -3583,17 +3602,11 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
   }
   let ticketAwarded = false;
   if (correct && (weekKey === 'w3' || weekKey === 'w6')) {
-    const bonusSheet = getOrCreateBonusDrawsSheet();
-    const last = bonusSheet.getLastRow();
     const source = 'hp_' + weekKey;
-    let alreadyAwarded = false;
-    if (last >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-      const bonusCol = getBonusDrawColumns_(bonusSheet);
-      const rows = getBonusDrawRows_(bonusSheet);
-      alreadyAwarded = rows.some(function(r) { return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source; });
-    }
+    const alreadyAwarded = hasBonusTicketGrant_(nickname, source, weekKey);
     if (!alreadyAwarded) {
       const awardedAt = new Date().toISOString();
+      const bonusSheet = getOrCreateBonusDrawsSheet();
       bonusSheet.appendRow([nickname, source, awardedAt]);
       Events_append_(EVENT_TYPES.TICKET_GRANTED, nickname, {
         timestamp: awardedAt,
@@ -5699,16 +5712,9 @@ function uploadBBBPhoto(body) {
     photoSheet.getRange(existingRow, photoCol.uploadedAt + 1).setValue(now);
   }
 
-  // BonusDraws 이력 기준 중복 지급 방지
+  // Events 우선, BonusDraws fallback 기준 중복 지급 방지
   const bonusSource = missionType === 'm1' ? 'bbb_photo' : 'bbb_' + missionType.split('_')[0];
-  const bonusSheet = getOrCreateBonusDrawsSheet();
-  const bLast = bonusSheet.getLastRow();
-  let alreadyRewarded = false;
-  if (bLast >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-    const bonusCol = getBonusDrawColumns_(bonusSheet);
-    const bRows = getBonusDrawRows_(bonusSheet);
-    alreadyRewarded = bRows.some(function(r) { return String(r[bonusCol.userId]) === userId && String(r[bonusCol.source]) === bonusSource; });
-  }
+  const alreadyRewarded = hasBonusTicketGrant_(userId, bonusSource, '');
 
   let rewarded = false;
   if (!alreadyRewarded) {
@@ -5728,6 +5734,7 @@ function uploadBBBPhoto(body) {
         }
       }
       if (filledSpots >= 7) {
+        const bonusSheet = getOrCreateBonusDrawsSheet();
         bonusSheet.appendRow([userId, bonusSource, now]);
         Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
           timestamp: now,
@@ -5744,6 +5751,7 @@ function uploadBBBPhoto(body) {
         rewarded = true;
       }
     } else {
+      const bonusSheet = getOrCreateBonusDrawsSheet();
       bonusSheet.appendRow([userId, bonusSource, now]);
       Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
         timestamp: now,
@@ -5909,17 +5917,9 @@ function getBBB(userId) {
   // M2/M3 뽑기권 수령 여부
   let m2Rewarded = false, m3Rewarded = false;
   try {
-    const bonusSheet = getOrCreateBonusDrawsSheet();
-    const bLast = bonusSheet.getLastRow();
-    if (bLast >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-      const bonusCol = getBonusDrawColumns_(bonusSheet);
-      const bRows = getBonusDrawRows_(bonusSheet);
-      bRows.forEach(function(r) {
-        if (String(r[bonusCol.userId]) !== userId) return;
-        if (String(r[bonusCol.source]) === 'bbb_m2') m2Rewarded = true;
-        if (String(r[bonusCol.source]) === 'bbb_m3') m3Rewarded = true;
-      });
-    }
+    const userEvents = Events_readByUser(userId);
+    m2Rewarded = hasBonusTicketGrant_(userId, 'bbb_m2', '', userEvents);
+    m3Rewarded = hasBonusTicketGrant_(userId, 'bbb_m3', '', userEvents);
   } catch(e) {}
 
   return {

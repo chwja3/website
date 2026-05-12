@@ -198,6 +198,19 @@
 
 ### 2E — 속도 최적화
 
+- [x] 2E 방향 확정 — 탭 삭제는 지금 하지 않고, 참조 제거/속도 최적화/숨김 검증 후 마지막에 처리
+- [x] legacy 탭 1차 분류
+  - [x] 유지: `Events`, `Collection`, `UserDashboard`
+  - [x] 유지: `Trades`, `Users`, `HoldPray`, `HPGuesses`, `BBBMessages`, `BBBPhotos`, `Notices`, `Inquiries`, `CardReceived`
+  - [x] 삭제 후보: `raw_checkins`, `CardDraws`, `BonusDraws`, `config`
+- [x] `getUserStatus()`의 이번 주 카드 뽑기 여부를 `CardDraws` 대신 `Events.card.drawn` 기준으로 전환
+- [x] `BonusDraws` 중복 지급 체크를 Events 우선 + legacy fallback 구조로 전환
+  - [x] H&P w3/w6 보상 수령 여부
+  - [x] H&P 정답 제출 보상 중복 방지
+  - [x] BBB M1/M2/M3 보상 중복 방지
+  - [x] BBB M2/M3 수령 여부 표시
+- [ ] `getCardStats()`의 `CardDraws` 참조를 Events 기준으로 전환 가능한지 분리 검토
+- [ ] 삭제 후보 탭 숨김 상태에서 DEV 회귀 테스트
 - [ ] Sheets API v4 (Advanced Service) 활성화
 - [ ] `batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소
 - [ ] 캐시 키 정밀화 — 유저 단위로 무효화 (`clearHotCaches_` 광범위 invalidate 제거)
