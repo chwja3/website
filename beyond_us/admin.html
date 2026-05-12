@@ -1729,7 +1729,7 @@
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       hintListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       try {
-        const res = await get({ action: 'getInquiries' });
+        const res = await get({ action: 'getInquiries', adminPw });
         if (!res.ok) throw new Error();
         renderAdminInquiries(res.inquiries);
       } catch(e) {

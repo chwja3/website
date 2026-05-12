@@ -3,6 +3,7 @@ const SCRIPT_PROPERTY_KEYS = Object.freeze({
   ADMIN_PASSWORD: 'ADMIN_PASSWORD',
   ALLOW_TEST_DRAWS: 'ALLOW_TEST_DRAWS',
   ENABLE_TEST_ADMIN_TOOLS: 'ENABLE_TEST_ADMIN_TOOLS',
+  PASSWORD_PEPPER: 'PASSWORD_PEPPER',
 });
 const REQUIRED_SCRIPT_PROPERTY_KEYS = Object.freeze([
   SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID,
@@ -661,6 +662,8 @@ const APP_SETTING_KEYS = Object.freeze({
   BBB_SECTIONS_OPEN: 'bbb_sections_open',
 });
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
+const PASSWORD_HASH_VERSION = 'pwv1';
+const PASSWORD_HASH_ITERATIONS = 750;
 
 function getScriptProperty_(key) {
   const value = PropertiesService.getScriptProperties().getProperty(key);
@@ -693,6 +696,77 @@ function isTestDrawAllowed_() {
 
 function isTestAdminToolsEnabled_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS).toLowerCase() === 'true';
+}
+
+function getPasswordPepper_() {
+  const props = PropertiesService.getScriptProperties();
+  let pepper = props.getProperty(SCRIPT_PROPERTY_KEYS.PASSWORD_PEPPER);
+  if (!pepper) {
+    pepper = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+    props.setProperty(SCRIPT_PROPERTY_KEYS.PASSWORD_PEPPER, pepper);
+  }
+  return pepper;
+}
+
+function makePasswordSalt_() {
+  return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
+}
+
+function computePasswordHash_(password, salt, iterations) {
+  const pepper = getPasswordPepper_();
+  let digest = String(salt || '') + '\n' + String(password || '') + '\n' + pepper;
+  for (let i = 0; i < iterations; i++) {
+    digest = Utilities.base64Encode(Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256,
+      digest,
+      Utilities.Charset.UTF_8
+    ));
+  }
+  return digest;
+}
+
+function makePasswordHash_(password) {
+  const salt = makePasswordSalt_();
+  const hash = computePasswordHash_(password, salt, PASSWORD_HASH_ITERATIONS);
+  return [PASSWORD_HASH_VERSION, PASSWORD_HASH_ITERATIONS, salt, hash].join('$');
+}
+
+function parsePasswordHash_(stored) {
+  const parts = String(stored || '').trim().split('$');
+  if (parts.length !== 4 || parts[0] !== PASSWORD_HASH_VERSION) return null;
+  const iterations = Number(parts[1]) || 0;
+  if (!iterations || !parts[2] || !parts[3]) return null;
+  return { iterations: iterations, salt: parts[2], hash: parts[3] };
+}
+
+function isPasswordHash_(stored) {
+  return !!parsePasswordHash_(stored);
+}
+
+function secureCompare_(a, b) {
+  const left = String(a || '');
+  const right = String(b || '');
+  let diff = left.length ^ right.length;
+  const max = Math.max(left.length, right.length);
+  for (let i = 0; i < max; i++) {
+    diff |= (left.charCodeAt(i) || 0) ^ (right.charCodeAt(i) || 0);
+  }
+  return diff === 0;
+}
+
+function verifyStoredPassword_(stored, password) {
+  const cleanPassword = String(password || '').trim();
+  if (!cleanPassword) return false;
+  const parsed = parsePasswordHash_(stored);
+  if (!parsed) return String(stored || '').trim() === cleanPassword;
+  return secureCompare_(computePasswordHash_(cleanPassword, parsed.salt, parsed.iterations), parsed.hash);
+}
+
+function setUserPassword_(sheet, rowIndex, password) {
+  const col = getUserColumns_(sheet);
+  const cell = sheet.getRange(rowIndex, col.password + 1);
+  cell.setNumberFormat('@');
+  cell.setValue(makePasswordHash_(password));
 }
 
 function setRequiredScriptProperties(properties) {
@@ -768,7 +842,7 @@ function doGet(e) {
     return jsonOutput(getTabSettings());
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
-  if (action === 'getInquiries') return jsonOutput(getInquiries());
+  if (action === 'getInquiries') return jsonOutput(getInquiries(e.parameter));
   if (action === 'findNickname') {
     const name   = e.parameter.name   || '';
     const parish = e.parameter.parish || '';
@@ -3928,9 +4002,7 @@ function registerUser(body) {
 
   sheet.appendRow([nickname, '', name, parish, new Date(), '', '', '', '']);
   const rowIndex = sheet.getLastRow();
-  const pwCell = sheet.getRange(rowIndex, col.password + 1);
-  pwCell.setNumberFormat('@');
-  pwCell.setValue(password);
+  setUserPassword_(sheet, rowIndex, password);
   const sessionToken = issueSessionToken_(sheet, rowIndex);
   return { ok: true, sessionToken };
 }
@@ -3947,9 +4019,13 @@ function loginUser(body) {
   for (let i = 0; i < data.length; i++) {
     if (String(data[i][col.nickname]).trim() === nickname) {
       const rowIndex = i + schema.dataStartRow;
-      const passwordOk = password && String(data[i][col.password]).trim() === password;
+      const storedPassword = String(data[i][col.password] || '').trim();
+      const passwordOk = password && verifyStoredPassword_(storedPassword, password);
       const sessionOk = !password && sessionToken && verifySession(nickname, sessionToken);
       if (passwordOk || sessionOk) {
+        if (passwordOk && !isPasswordHash_(storedPassword)) {
+          setUserPassword_(sheet, rowIndex, password);
+        }
         const token = passwordOk ? issueSessionToken_(sheet, rowIndex) : sessionToken;
         if (sessionOk) touchSessionToken_(sheet, rowIndex);
         return {
@@ -3987,9 +4063,7 @@ function resetPassword(body) {
       if (String(data[i][col.nickname]).trim() === nickname &&
           String(data[i][col.name]).trim() === name &&
           String(data[i][col.parish]).trim() === parish) {
-        const cell = sheet.getRange(rowIndex, col.password + 1);
-        cell.setNumberFormat('@');
-        cell.setValue(newPassword);
+        setUserPassword_(sheet, rowIndex, newPassword);
         clearSessionToken_(sheet, rowIndex);
         return { ok: true };
       }
@@ -4014,9 +4088,7 @@ function resetPassword(body) {
   }
 
   // 1명: 바로 변경
-  const cell = sheet.getRange(matches[0].row, col.password + 1);
-  cell.setNumberFormat('@');
-  cell.setValue(newPassword);
+  setUserPassword_(sheet, matches[0].row, newPassword);
   clearSessionToken_(sheet, matches[0].row);
   return { ok: true };
 }
@@ -4060,9 +4132,7 @@ function adminResetPassword(body) {
   for (let i = 0; i < data.length; i++) {
     if (String(data[i][col.nickname]).trim() === nickname) {
       const rowIndex = i + schema.dataStartRow;
-      const cell = sheet.getRange(rowIndex, col.password + 1);
-      cell.setNumberFormat('@');
-      cell.setValue(newPassword);
+      setUserPassword_(sheet, rowIndex, newPassword);
       clearSessionToken_(sheet, rowIndex);
       return { ok: true };
     }
@@ -4512,9 +4582,90 @@ function verifyUserPassword(nickname, password) {
   const col   = getUserColumns_(sheet);
   const data  = getUserRows_(sheet);
   for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname]).trim() === nickname && String(data[i][col.password]).trim() === password) return true;
+    if (String(data[i][col.nickname]).trim() === nickname) {
+      return verifyStoredPassword_(String(data[i][col.password] || '').trim(), password);
+    }
   }
   return false;
+}
+
+function auditUserPasswordStorage_() {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const result = {
+    ok: true,
+    totalUsers: 0,
+    hashed: 0,
+    plaintext: 0,
+    empty: 0,
+    plaintextUsers: [],
+    passwordPepperExists: !!getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.PASSWORD_PEPPER),
+  };
+
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname) return;
+    result.totalUsers++;
+    const stored = String(row[col.password] || '').trim();
+    if (!stored) {
+      result.empty++;
+    } else if (isPasswordHash_(stored)) {
+      result.hashed++;
+    } else {
+      result.plaintext++;
+      if (result.plaintextUsers.length < 20) result.plaintextUsers.push(nickname);
+    }
+  });
+  result.ok = result.plaintext === 0 && result.empty === 0;
+  return result;
+}
+
+function migrateUserPasswordsToHash_(dryRun) {
+  const sheet = getUsersSheet_();
+  const schema = SCHEMA.USERS;
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const result = auditUserPasswordStorage_();
+  result.dryRun = dryRun === true;
+  result.migratedPlanned = 0;
+  result.migratedWritten = 0;
+  result.skipped = 0;
+
+  rows.forEach(function(row, index) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname) return;
+    const stored = String(row[col.password] || '').trim();
+    if (!stored || isPasswordHash_(stored)) {
+      result.skipped++;
+      return;
+    }
+    result.migratedPlanned++;
+    if (!dryRun) {
+      const rowIndex = index + schema.dataStartRow;
+      setUserPassword_(sheet, rowIndex, stored);
+      result.migratedWritten++;
+    }
+  });
+
+  if (!dryRun) {
+    const after = auditUserPasswordStorage_();
+    result.after = after;
+    result.ok = after.ok;
+  }
+  return result;
+}
+
+function auditUserPasswordStorage() {
+  return logJsonResult_('auditUserPasswordStorage result', auditUserPasswordStorage_());
+}
+
+function migrateUserPasswordsToHashDryRun() {
+  return logJsonResult_('migrateUserPasswordsToHash dryRun', migrateUserPasswordsToHash_(true));
+}
+
+function migrateUserPasswordsToHashApply() {
+  return logJsonResult_('migrateUserPasswordsToHash apply', migrateUserPasswordsToHash_(false));
 }
 
 function postHpHint(body) {
@@ -4556,22 +4707,30 @@ function postHpHint(body) {
   return { ok: true, id: String(id) };
 }
 
-function getInquiries() {
+function getInquiries(source) {
+  const params = source || {};
+  const adminAuthorized = isAdminAuthorized_(params.adminPw);
+  const requester = String(params.nickname || params.userId || '').trim();
+  const userAuthorized = !adminAuthorized && requester && verifySession(requester, params.sessionToken);
+  if (!adminAuthorized && !userAuthorized) return { error: 'unauthorized', authRequired: true };
+
   const sheet = getOrCreateInquirySheet();
   const last  = sheet.getLastRow();
   if (last < SCHEMA.INQUIRIES.dataStartRow) return { ok: true, inquiries: [] };
   const col = getInquiryColumns_(sheet);
   const rows = getInquiryRows_(sheet);
   const inquiries = rows
-    .filter(r => r[col.id])
-    .map((r, i) => ({
-      rowIndex:  i + SCHEMA.INQUIRIES.dataStartRow,
-      id:        String(r[col.id]),
-      nickname:  String(r[col.nickname]),
-      content:   String(r[col.content]),
-      createdAt: r[col.createdAt],
-      reply:     String(r[col.reply] || ''),
-      repliedAt: r[col.repliedAt] || ''
+    .map((r, i) => ({ row: r, rowIndex: i + SCHEMA.INQUIRIES.dataStartRow }))
+    .filter(item => item.row[col.id])
+    .filter(item => adminAuthorized || String(item.row[col.nickname]).trim() === requester)
+    .map(item => ({
+      rowIndex:  item.rowIndex,
+      id:        String(item.row[col.id]),
+      nickname:  String(item.row[col.nickname]),
+      content:   String(item.row[col.content]),
+      createdAt: item.row[col.createdAt],
+      reply:     String(item.row[col.reply] || ''),
+      repliedAt: item.row[col.repliedAt] || ''
     }))
     .reverse();
   return { ok: true, inquiries };

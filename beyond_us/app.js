@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513a';
+    const APP_VERSION = '20260513b';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2984,9 +2984,13 @@
     async function loadInquiries() {
       const list = document.getElementById('inquiryList');
       if (!list) return;
+      if (!currentNickname) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인 후 내 문의를 확인할 수 있어요.</p>';
+        return;
+      }
       list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
       try {
-        const res  = await fetch(`${API_BASE}?action=getInquiries&t=${Date.now()}`, { cache: 'no-store' });
+        const res  = await fetch(`${API_BASE}?action=getInquiries&nickname=${encodeURIComponent(currentNickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
         if (!data.ok) throw new Error();
         renderInquiries(data.inquiries);
