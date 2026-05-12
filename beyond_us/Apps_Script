@@ -3698,8 +3698,8 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
 
 // ── 탭 설정 ──────────────────────────────────────
 // TabSettings 시트 구조:
-// A열: tab_key (holdpray / secret / chat)
-// B열: label   (Hold & Pray / 현장미션 / 채팅방)
+// A열: tab_key (holdpray / secret / chat / qt)
+// B열: label   (Hold & Pray / B.B.B 미션 / 채팅방 / Q.T. 말씀 묵상)
 // C열: enabled (TRUE/FALSE)
 //
 // BBBSettings 시트 구조:
@@ -3716,24 +3716,59 @@ var BBB_SECTIONS_DEFAULT = {
   msgOpen:     { open: false },
 };
 
+function getTabSettingsDefaultRows_() {
+  var holdprayVal = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, true) === true;
+  var secretVal   = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, true) === true;
+  var chatVal     = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, false) === true;
+  return [
+    ['holdpray', 'Hold & Pray', holdprayVal],
+    ['secret',   'B.B.B 미션',   secretVal],
+    ['chat',     '채팅방',        chatVal],
+    ['qt',       'Q.T. 말씀 묵상', true],
+  ];
+}
+
+function ensureTabSettingsDefaultRows_(sheet) {
+  sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
+  const tabCol = getTabSettingsColumns_(sheet);
+  const rows = getTabSettingsRows_(sheet);
+  const existing = {};
+  rows.forEach(function(row, index) {
+    const key = String(row[tabCol.key] || '').trim();
+    if (key) existing[key] = { rowIndex: index + SCHEMA.TAB_SETTINGS.dataStartRow, row: row };
+  });
+
+  const rowsToAppend = [];
+  getTabSettingsDefaultRows_().forEach(function(defaultRow) {
+    const key = defaultRow[0];
+    if (existing[key]) {
+      if (String(existing[key].row[tabCol.label] || '') !== defaultRow[1]) {
+        sheet.getRange(existing[key].rowIndex, tabCol.label + 1).setValue(defaultRow[1]);
+      }
+      return;
+    }
+    rowsToAppend.push(defaultRow);
+  });
+
+  if (rowsToAppend.length) {
+    const startRow = Math.max(sheet.getLastRow() + 1, SCHEMA.TAB_SETTINGS.dataStartRow);
+    sheet.getRange(startRow, 1, rowsToAppend.length, 3).setValues(rowsToAppend);
+  }
+}
+
 function getOrCreateTabSettingsSheet() {
   const ss = getSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAMES.TAB_SETTINGS);
-  if (sheet) return sheet;
+  if (sheet) {
+    ensureTabSettingsDefaultRows_(sheet);
+    return sheet;
+  }
 
   sheet = ss.insertSheet(SHEET_NAMES.TAB_SETTINGS);
   sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
-  var holdprayVal = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, true) === true;
-  var secretVal   = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, true) === true;
-  var chatVal     = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, false) === true;
-
-  sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, 3, 3).setValues([
-    ['holdpray', 'Hold & Pray', holdprayVal],
-    ['secret',   '현장미션',    secretVal],
-    ['chat',     '채팅방',      chatVal],
-  ]);
+  sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, 4, 3).setValues(getTabSettingsDefaultRows_());
   return sheet;
 }
 
@@ -3780,10 +3815,9 @@ function isBBBMessageOpen() {
 }
 
 function getTabSettings() {
-  // TabSettings 시트에서 holdpray/secret/chat 읽기
-  const ss = getSpreadsheet();
-  const tabSheet = ss.getSheetByName(SHEET_NAMES.TAB_SETTINGS);
-  const tabMap = { holdpray: true, secret: true, chat: false };
+  // TabSettings 시트에서 holdpray/secret/chat/qt 읽기
+  const tabSheet = getOrCreateTabSettingsSheet();
+  const tabMap = { holdpray: true, secret: true, chat: false, qt: true };
   if (tabSheet && tabSheet.getLastRow() >= SCHEMA.TAB_SETTINGS.dataStartRow) {
     const tabCol = getTabSettingsColumns_(tabSheet);
     getTabSettingsRows_(tabSheet).forEach(function(r) {
@@ -3818,6 +3852,7 @@ function getTabSettings() {
     prayer:      tabMap.holdpray, // API 키는 'prayer' 유지 (index.html/admin.html 호환)
     secret:      tabMap.secret,
     chat:        tabMap.chat,
+    qt:          tabMap.qt,
     bbbSections: bbbSections
   };
 }
@@ -3837,6 +3872,7 @@ function setTabSettings(body) {
       if (key === 'holdpray' && body.prayer !== undefined) r[tabCol.enabled] = body.prayer !== false;
       if (key === 'secret'   && body.secret !== undefined) r[tabCol.enabled] = body.secret  !== false;
       if (key === 'chat'     && body.chat   !== undefined) r[tabCol.enabled] = body.chat    !== false;
+      if (key === 'qt'       && body.qt     !== undefined) r[tabCol.enabled] = body.qt      !== false;
     });
     tabRange.setValues(tabRows);
   }
