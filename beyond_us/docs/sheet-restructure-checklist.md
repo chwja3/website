@@ -58,7 +58,7 @@
 
 > Event Sourcing + Dual Projection 구조 도입.
 > Events 시트가 단일 truth source. Collection은 pure projection. UserDashboard는 시트 함수 기반 검증 뷰.
-> 단계별로 위험도 차이가 커서 2A~2E로 쪼개고, 각 단계 끝마다 DEV에서 모니터링 후 다음 단계.
+> DEV는 활성 사용자가 없으므로 dual-write 모니터링 없이 big-bang으로 전환. PROD는 Phase 3에서 dual-write 안전 모드 유지.
 
 ### 2.0 사전 설계 (문서 작업)
 
@@ -70,13 +70,13 @@
 - [x] UserDashboard 컬럼 명세 + 시트 함수 초안 (COUNTIFS / SUMIFS / VLOOKUP) — Phase 2.0 E
 - [x] 전체 영문 key 시트명 + 운영진 라벨 + machine header 명세 확정 (`sheet-restructure-context.md` F섹션 "최종 스키마")
 
-### 2A — Events 시트 + Dual-Write [non-breaking]
+### 2A — Events 시트 + DEV Big-Bang 백필
 
-> 모든 mutation을 Events에도 같이 적는다. 기존 동작은 그대로.
+> DEV 시트 백업 후 기존 데이터를 Events로 한 번에 백필한다. 장기간 dual-write 모니터링은 생략.
 
 - [ ] DEV 시트에 `Events` 시트 생성 (헤더: eventId / timestamp / userId / type / payload / source)
 - [ ] `Events.append(type, userId, payload, source)` 헬퍼 작성
-- [ ] mutation 경로 dual-write 패치.
+- [ ] 기존 mutation 시트 데이터를 Events로 백필.
   - [ ] `submit` (mission.submitted)
   - [ ] `drawCard` (card.drawn) + 티켓 차감 (ticket.consumed)
   - [ ] 미션 주차 완료 시 티켓 발급 (ticket.granted, reason=week_complete)
@@ -86,7 +86,9 @@
   - [ ] `guessBBBSecret` (bbb.guessed)
   - [ ] `uploadBBBPhoto` (bbb.photo_uploaded)
   - [ ] 관리자 티켓 지급 등 보너스 액션 (ticket.granted, reason=admin)
-- [ ] DEV 며칠 모니터링 — Events vs 기존 시트 비교 스크립트로 누락/불일치 확인
+- [ ] DEV 시트 사본에서 dry-run
+- [ ] `migrate_verify()` 로 Events 백필 결과와 기존 시트 집계 비교
+- [ ] 샘플 유저별 mission/draw/ticket/trade 집계 확인
 - [ ] dev 브랜치 커밋
 
 ### 2B — UserDashboard 시트 추가 [read-only]
@@ -105,7 +107,7 @@
   - [ ] 마지막 활동 timestamp
 - [ ] Collection 저장값과 비교하는 검증 컬럼 (✓/❌)
 - [ ] 조건부 서식 — ❌ 행 빨갛게
-- [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A dual-write가 잘 됐다면)
+- [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A big-bang 백필이 잘 됐다면)
 
 ### 2C — 스키마 정규화 + 마이그레이션
 
