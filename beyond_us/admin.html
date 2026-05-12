@@ -328,10 +328,14 @@
       <div id="tab-inquiry" class="tab-panel">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h2 class="card-title" style="margin:0;">문의 목록</h2>
+            <h2 class="card-title" style="margin:0;">개발자 문의</h2>
             <button class="btn btn-ghost btn-sm" id="refreshInquiryAdminBtn">새로고침</button>
           </div>
           <div id="inquiryAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom:14px;">H&amp;P 힌트</h2>
+          <div id="hpHintAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -1713,30 +1717,37 @@
 
     async function loadAdminInquiries() {
       const listEl = document.getElementById('inquiryAdminList');
+      const hintListEl = document.getElementById('hpHintAdminList');
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      hintListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       try {
         const res = await get({ action: 'getInquiries' });
         if (!res.ok) throw new Error();
         renderAdminInquiries(res.inquiries);
       } catch(e) {
         listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+        hintListEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
       }
+    }
+
+    function isHpHintInquiry(inq) {
+      return inq.content.startsWith('[H&P 힌트 요청]');
     }
 
     function renderAdminInquiries(inquiries) {
       const listEl = document.getElementById('inquiryAdminList');
+      const hintListEl = document.getElementById('hpHintAdminList');
+      renderAdminInquiryList(listEl, inquiries.filter(inq => !isHpHintInquiry(inq)), '개발자 문의가 없어요.');
+      renderAdminInquiryList(hintListEl, inquiries.filter(isHpHintInquiry), 'H&P 힌트 요청이 없어요.');
+    }
+
+    function renderAdminInquiryList(listEl, inquiries, emptyText) {
       if (!inquiries.length) {
-        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">문의가 없어요.</p>';
+        listEl.innerHTML = `<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">${emptyText}</p>`;
         return;
       }
-      const sorted = [...inquiries].sort((a, b) => {
-        const aHint = a.content.startsWith('[H&P 힌트 요청]');
-        const bHint = b.content.startsWith('[H&P 힌트 요청]');
-        if (aHint !== bHint) return aHint ? -1 : 1;
-        return 0;
-      });
-      listEl.innerHTML = sorted.map(inq => {
-        const isHint = inq.content.startsWith('[H&P 힌트 요청]');
+      listEl.innerHTML = inquiries.map(inq => {
+        const isHint = isHpHintInquiry(inq);
         const hintAnswer = isHint ? (inq.content.match(/\| 정답: (.+)$/) || [])[1] : null;
         const hintMeta   = isHint ? (inq.content.match(/주차: ([^,]+), 카드: (\d+)번/) || []) : [];
         return `
