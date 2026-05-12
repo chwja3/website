@@ -855,6 +855,301 @@ bbb.guessed  (유지)
 
 ---
 
+## Phase 2.0 — (C) AppSettings + MissionDefinitions 스키마
+
+### C.0 분리 배경
+
+현재 `config` 시트에는 성격이 전혀 다른 두 가지가 섞여 있다.
+
+1. **단일값 설정** — `B1` 현재 주차, `B4` 앱 오픈일, `C1` BBB 메시지 토글 등. 어드민이 수시로 바꾸는 값.
+2. **주차별 미션 정의** — 8행 단위 블록 × 6주차 = 48행. 기획 단계에서 세팅하고 거의 바꾸지 않는 값.
+
+이 두 가지를 `AppSettings`(Key-Value 단순 설정)와 `MissionDefinitions`(1행 1미션 항목)으로 분리한다.  
+분리 후에는 "BBB 메시지 입력창 켜려면?" → AppSettings에서 `bbb_message_open` 행만 찾으면 끝.  
+"2주차 미션 항목 수정?" → MissionDefinitions에서 `weekKey=w2` 필터면 끝.
+
+---
+
+### C.1 AppSettings 스키마
+
+**시트명 (machine key)**: `AppSettings`  
+**운영진 라벨**: `앱 설정 (Key-Value)`  
+**헤더 구조**: Row 1 = 운영진 라벨, Row 2 = machine header, Row 3+ = 데이터  
+
+| 컬럼 (machine header) | 운영진 라벨 | 타입 | 설명 |
+|---|---|---|---|
+| `key` | 설정 키 | string | 고유 식별자. GAS 코드에서 직접 참조 |
+| `value` | 값 | any | 설정값 (문자열로 저장, 코드에서 캐스팅) |
+| `type` | 타입 힌트 | string | `number` / `string` / `boolean` / `date`. 운영진용 메모 |
+| `note` | 설명 | string | 이 설정이 뭘 하는지 한 줄 설명 |
+
+**초기 데이터 행:**
+
+| key | value | type | note |
+|---|---|---|---|
+| `current_week` | `3` | `number` | 현재 진행 주차. 어드민 패널 "주차 변경"으로 수정 |
+| `app_open_date` | `2026-05-10` | `date` | 앱 정식 오픈일. 이 날 이후 비운영진도 앱 진입 가능 |
+| `bbb_message_open` | `FALSE` | `boolean` | BBB 익명 메시지 입력창 공개 여부. 어드민 토글 |
+| `allow_test_draws` | `FALSE` | `boolean` | 뽑기권 없어도 뽑기 허용 (DEV Scripts Property 기반으로 대체 가능) |
+
+> `TabSettings`, `BBBSettings` 시트에서 관리하는 값(탭 활성화, BBB 섹션 공개)은 현재 구조 유지.  
+> 향후 이 시트들도 AppSettings로 통합 가능하지만 이번 마이그레이션 범위에서 제외.
+
+**GAS 헬퍼 (읽기/쓰기):**
+
+```js
+/**
+ * AppSettings 시트에서 key에 해당하는 value를 반환한다.
+ * 없으면 defaultValue를 반환.
+ */
+function getAppSetting_(key, defaultValue) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  if (!sheet) return defaultValue;
+  const rows = sheet.getDataRange().getValues().slice(2); // header 2행 건너뜀
+  const row = rows.find(r => r[0] === key);
+  return row ? row[1] : defaultValue;
+}
+
+/**
+ * AppSettings 시트의 key 행을 value로 업데이트한다.
+ * 해당 key가 없으면 새 행을 추가한다 (upsert).
+ */
+function setAppSetting_(key, value) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  const all = sheet.getDataRange().getValues();
+  // Row 1, 2는 헤더 → idx 2부터 탐색
+  for (let i = 2; i < all.length; i++) {
+    if (all[i][0] === key) {
+      sheet.getRange(i + 1, 2).setValue(value); // +1: 1-based
+      return;
+    }
+  }
+  sheet.appendRow([key, value, '', '']);
+}
+```
+
+**이전 코드 치환 대응:**
+
+| 기존 | 신규 |
+|---|---|
+| `getConfig().B1` → 현재 주차 | `getAppSetting_('current_week', 1)` |
+| `getConfig().B4` → 앱 오픈일 | `getAppSetting_('app_open_date', '')` |
+| `BBBSettings` 시트 `bbb_message_open` 열 | `getAppSetting_('bbb_message_open', false)` (단계적 전환) |
+
+---
+
+### C.2 MissionDefinitions 스키마
+
+**시트명 (machine key)**: `MissionDefinitions`  
+**운영진 라벨**: `주차별 미션 항목 정의`  
+**헤더 구조**: Row 1 = 운영진 라벨, Row 2 = machine header, Row 3+ = 데이터  
+**정렬 기준**: `weekOrder` ASC → `itemNo` ASC
+
+| 컬럼 (machine header) | 운영진 라벨 | 타입 | 설명 |
+|---|---|---|---|
+| `weekKey` | 주차 키 | string | `w1`~`w6`. raw_checkins의 weekKey와 동일 |
+| `weekOrder` | 주차 순서 | number | 1~6. 정렬용 |
+| `weekTitle` | 주차 제목 | string | 예. `1주차: 나는 누구인가?` |
+| `weekStartDate` | 주차 시작일 | date | `YYYY-MM-DD`. 캘린더 표시용 |
+| `weekEndDate` | 주차 종료일 | date | `YYYY-MM-DD`. 캘린더 표시용 |
+| `drawThreshold` | 뽑기권 발급 기준 점수 | number | 이 점수 이상 달성 시 주차 완료 → 뽑기권 1장 |
+| `itemNo` | 항목 번호 | number | 해당 주차 내 순서. 1~6 |
+| `itemText` | 항목 내용 | string | 미션 항목 텍스트 |
+| `scoreWeight` | 배점 | number | 제출 시 획득 점수 (현재 모두 1) |
+| `category` | 분류 | string | `bible` / `pray` / `share` / `act` 등 (미래 확장용) |
+| `enabled` | 활성화 | boolean | `FALSE`면 해당 항목 앱에서 숨김 |
+
+**예시 데이터 (w1 기준):**
+
+| weekKey | weekOrder | weekTitle | weekStartDate | weekEndDate | drawThreshold | itemNo | itemText | scoreWeight | category | enabled |
+|---|---|---|---|---|---|---|---|---|---|---|
+| w1 | 1 | 1주차: 나는 누구인가? | 2026-05-10 | 2026-05-16 | 6 | 1 | 말씀 묵상 (갈라디아서 5:22-23) | 1 | bible | TRUE |
+| w1 | 1 | 1주차: 나는 누구인가? | 2026-05-10 | 2026-05-16 | 6 | 2 | 기도 (성령의 열매를 위한 기도) | 1 | pray | TRUE |
+| … | … | … | … | … | … | … | … | … | … | … |
+
+> `weekTitle`, `weekStartDate`, `weekEndDate`, `drawThreshold`는 주차 내 모든 항목 행에 반복된다 (denormalized).  
+> 이렇게 하면 GAS 단일 FILTER 쿼리로 주차 메타 + 항목 전체를 한 번에 읽을 수 있다.  
+> 정규화(별도 WeekMeta 테이블)의 이득이 없는 규모(6주 × 6항목 = 36행)이므로 denormalized로 채택.
+
+**GAS 헬퍼:**
+
+```js
+/**
+ * weekKey에 해당하는 미션 항목 배열을 반환한다.
+ * 반환값: [{ weekKey, weekTitle, weekStartDate, weekEndDate, drawThreshold,
+ *            itemNo, itemText, scoreWeight, category, enabled }, ...]
+ */
+function getMissionItems_(weekKey) {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet) return [];
+  const all = sheet.getDataRange().getValues();
+  const headers = all[1]; // Row 2 = machine header (0-indexed: index 1)
+  const col = Object.fromEntries(headers.map((h, i) => [h, i]));
+  return all.slice(2) // Row 3부터 데이터
+    .filter(r => r[col.weekKey] === weekKey && r[col.enabled] !== false && r[col.enabled] !== 'FALSE')
+    .map(r => ({
+      weekKey:        r[col.weekKey],
+      weekTitle:      r[col.weekTitle],
+      weekStartDate:  r[col.weekStartDate],
+      weekEndDate:    r[col.weekEndDate],
+      drawThreshold:  Number(r[col.drawThreshold]),
+      itemNo:         Number(r[col.itemNo]),
+      itemText:       r[col.itemText],
+      scoreWeight:    Number(r[col.scoreWeight]),
+      category:       r[col.category],
+    }))
+    .sort((a, b) => a.itemNo - b.itemNo);
+}
+
+/**
+ * 전체 주차 메타 정보 배열을 반환한다 (항목 중복 제거).
+ * 반환값: [{ weekKey, weekOrder, weekTitle, weekStartDate, weekEndDate, drawThreshold }, ...]
+ */
+function getAllWeekMeta_() {
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet) return [];
+  const all = sheet.getDataRange().getValues();
+  const headers = all[1];
+  const col = Object.fromEntries(headers.map((h, i) => [h, i]));
+  const seen = new Set();
+  const result = [];
+  for (const r of all.slice(2)) {
+    const wk = r[col.weekKey];
+    if (!seen.has(wk)) {
+      seen.add(wk);
+      result.push({
+        weekKey:       wk,
+        weekOrder:     Number(r[col.weekOrder]),
+        weekTitle:     r[col.weekTitle],
+        weekStartDate: r[col.weekStartDate],
+        weekEndDate:   r[col.weekEndDate],
+        drawThreshold: Number(r[col.drawThreshold]),
+      });
+    }
+  }
+  return result.sort((a, b) => a.weekOrder - b.weekOrder);
+}
+```
+
+---
+
+### C.3 migrate_step4_splitConfig() 구조
+
+```js
+/**
+ * config 시트의 단일값 설정과 8행 단위 미션 블록을
+ * AppSettings + MissionDefinitions 두 시트로 분리한다.
+ * idempotent: 시트가 이미 존재하면 데이터만 갱신.
+ */
+function migrate_step4_splitConfig() {
+  const ss = getSpreadsheet();
+  const config = ss.getSheetByName(SHEET_NAMES.CONFIG); // 기존 config 시트
+
+  // ── AppSettings 시트 ──────────────────────────────────
+  let appSettingsSheet = ss.getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  if (!appSettingsSheet) appSettingsSheet = ss.insertSheet(SHEET_NAMES.APP_SETTINGS);
+  appSettingsSheet.clearContents();
+  // Row 1: 운영진 라벨
+  appSettingsSheet.getRange(1, 1, 1, 4).setValues([['앱 설정 (Key-Value)', '', '', '']]);
+  // Row 2: machine header
+  appSettingsSheet.getRange(2, 1, 1, 4).setValues([['key', 'value', 'type', 'note']]);
+  // Row 3+: 데이터 (config에서 읽어옴)
+  const currentWeek  = config.getRange('B1').getValue();
+  const appOpenDate  = config.getRange('B4').getValue();
+  const rows = [
+    ['current_week',     currentWeek,  'number',  '현재 진행 주차. 어드민 패널에서 수정.'],
+    ['app_open_date',    appOpenDate,  'date',    '앱 정식 오픈일. YYYY-MM-DD.'],
+    ['bbb_message_open', 'FALSE',      'boolean', 'BBB 익명 메시지 입력창 공개 여부.'],
+    ['allow_test_draws', 'FALSE',      'boolean', '테스트용 뽑기권 bypass (PROD은 항상 FALSE).'],
+  ];
+  appSettingsSheet.getRange(3, 1, rows.length, 4).setValues(rows);
+
+  // ── MissionDefinitions 시트 ───────────────────────────
+  let mdefSheet = ss.getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!mdefSheet) mdefSheet = ss.insertSheet(SHEET_NAMES.MISSION_DEFINITIONS);
+  mdefSheet.clearContents();
+  // Row 1: 운영진 라벨
+  const mdefHeaders = ['weekKey','weekOrder','weekTitle','weekStartDate','weekEndDate',
+                       'drawThreshold','itemNo','itemText','scoreWeight','category','enabled'];
+  const mdefLabels  = ['주차 키','주차 순서','주차 제목','시작일','종료일',
+                       '뽑기권 기준점수','항목 번호','항목 내용','배점','분류','활성화'];
+  mdefSheet.getRange(1, 1, 1, mdefHeaders.length).setValues([mdefLabels]);
+  // Row 2: machine header
+  mdefSheet.getRange(2, 1, 1, mdefHeaders.length).setValues([mdefHeaders]);
+  // Row 3+: config 8행 블록 파싱 (기존 getMissionConfig() 로직 재활용)
+  const allMdef = [];
+  const NUM_WEEKS = 6;
+  const ITEMS_PER_WEEK = 6;
+  // config 시트 기존 구조: startRow = (week-1)*8 + 5 (1-based)
+  // 블록 레이아웃 추정: row1=weekTitle, row2=startDate, row3=endDate, row4=drawThreshold,
+  //                    row5~row8(혹은 +5~+10)=미션항목 — 실제 구조는 GAS getMissionConfig 참조
+  const configVals = config.getDataRange().getValues();
+  for (let w = 1; w <= NUM_WEEKS; w++) {
+    const base = (w - 1) * 8;          // 0-based row index 내 블록 시작
+    const weekKey        = `w${w}`;
+    const weekTitle      = configVals[base]     ? configVals[base][1]     : '';
+    const weekStartDate  = configVals[base + 1] ? configVals[base + 1][1] : '';
+    const weekEndDate    = configVals[base + 2] ? configVals[base + 2][1] : '';
+    const drawThreshold  = configVals[base + 3] ? configVals[base + 3][1] : 6;
+    for (let i = 0; i < ITEMS_PER_WEEK; i++) {
+      const itemRow = configVals[base + 4 + i];
+      if (!itemRow) continue;
+      allMdef.push([
+        weekKey, w, weekTitle, weekStartDate, weekEndDate, drawThreshold,
+        i + 1,             // itemNo
+        itemRow[1] || '',  // itemText (B열)
+        itemRow[2] || 1,   // scoreWeight (C열) — 없으면 1
+        itemRow[3] || '',  // category (D열)
+        true,              // enabled
+      ]);
+    }
+  }
+  if (allMdef.length > 0) {
+    mdefSheet.getRange(3, 1, allMdef.length, mdefHeaders.length).setValues(allMdef);
+  }
+
+  Logger.log(`migrate_step4_splitConfig 완료. AppSettings ${rows.length}행, MissionDefinitions ${allMdef.length}행.`);
+}
+```
+
+> **주의.** config 시트의 실제 블록 레이아웃(행 오프셋)은 GAS `getMissionConfig` 함수를 기준으로 파싱 오프셋을 조정해야 한다.  
+> migrate_step4를 실행하기 전에 DEV 시트에서 `Logger.log(JSON.stringify(allMdef.slice(0, 6)))` 으로 파싱 결과를 먼저 검증한다.
+
+---
+
+### C.4 SHEET_NAMES + SCHEMA 상수 추가 항목
+
+```js
+// SHEET_NAMES에 추가
+const SHEET_NAMES = {
+  // ... 기존 항목들 ...
+  APP_SETTINGS:        'AppSettings',
+  MISSION_DEFINITIONS: 'MissionDefinitions',
+};
+
+// SCHEMA에 추가 (헤더 참조용)
+const SCHEMA = {
+  // ... 기존 항목들 ...
+  APP_SETTINGS: {
+    operatorLabel: '앱 설정 (Key-Value)',
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: { key: 0, value: 1, type: 2, note: 3 },
+  },
+  MISSION_DEFINITIONS: {
+    operatorLabel: '주차별 미션 항목 정의',
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: {
+      weekKey: 0, weekOrder: 1, weekTitle: 2, weekStartDate: 3, weekEndDate: 4,
+      drawThreshold: 5, itemNo: 6, itemText: 7, scoreWeight: 8, category: 9, enabled: 10,
+    },
+  },
+};
+```
+
+---
+
 ## 결정 사항
 
 ### 합치기로 결정한 것
@@ -969,3 +1264,4 @@ bbb.guessed  (유지)
 - 2026-05-12. Phase 2/3을 Event Sourcing 단계 구조(2A~2E / 3A~3E)로 재편. DEV는 활성 사용자 없으니 dual-write 단계 생략하고 big-bang 변환으로 가기로 결정. PROD는 활성 사용자 있어서 Phase 3에서 dual-write 안전 모드 유지.
 - 2026-05-12. Phase 2.0 설계 시작. Events 시트 스키마 + event type 카탈로그 확정. 컬럼 구조는 하이브리드(`refId`/`amount`/`weekKey` 별도 컬럼 + `payload` JSON). append-only + LockService + ISO 8601 timestamp 채택.
 - 2026-05-12. Phase 2.0 (B) 과거 데이터 → Events 변환 규칙 확정. 시트별 변환 매트릭스 + 컬럼 매핑 + idempotent 함수 구조. BBB 메시지/사진은 raw content라서 Events 적재 제외. `BBBMessages`/`BBBPhotos`/`Notices`/`Inquiries` 는 도메인 시트로 standalone 유지. A.9 미해결 4개 모두 해소.
+- 2026-05-12. Phase 2.0 (C) AppSettings + MissionDefinitions 스키마 확정. `config` 시트 단일값 설정 → `AppSettings` (Key-Value 4컬럼), 8행 블록 미션 정의 → `MissionDefinitions` (1행 1미션 항목, denormalized). GAS 헬퍼 `getAppSetting_` / `setAppSetting_` / `getMissionItems_` / `getAllWeekMeta_` 설계. migrate_step4_splitConfig() 구조 작성.
