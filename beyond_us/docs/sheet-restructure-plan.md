@@ -429,6 +429,7 @@ function migrate_runAll() / migrate_verify()
   - `getUserStatus()`의 이번 주 카드 뽑기 여부는 `Events.card.drawn`으로 전환.
   - `BonusDraws` 중복 지급 체크는 Events 우선 + legacy fallback 구조로 단계 전환.
   - `getCardStats()`의 카드별/유저별 뽑기 수는 `Events.card.drawn`으로 전환하고, 수령/교환 상세는 현행 도메인 시트를 유지.
+  - admin 전체 Collection 재계산 액션은 Events projection 경로를 사용하도록 전환.
 - Sheets API v4 Advanced Service 활성화.
 - `Sheets.Spreadsheets.Values.batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소.
 - 캐시 키 정밀화.

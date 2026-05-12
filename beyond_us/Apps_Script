@@ -960,7 +960,7 @@ function doPost(e) {
     }
     if (action === 'adminRebuildCollection') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
-      return jsonOutput(rebuildCollectionSheet());
+      return jsonOutput(rebuildCollectionRowsFromEvents_());
     }
     if (action === 'adminRebuildCollectionRow') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
@@ -5251,12 +5251,12 @@ function rebuildCollectionSheet() {
 // 어드민 래퍼 (adminPw 체크)
 function adminRebuildCollection(body) {
   if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
-  return rebuildCollectionSheet();
+  return rebuildCollectionRowsFromEvents_();
 }
 
-// CardDraws → Collection 마이그레이션 (rebuildCollectionSheet로 대체됨 — 하위 호환용 유지)
+// Events → Collection 재계산. 기존 액션명은 하위 호환용으로 유지.
 function migrateCardDrawsToCollection() {
-  return rebuildCollectionSheet();
+  return rebuildCollectionRowsFromEvents_();
 }
 
 // ── Trades 시트 ───────────────────────────────────

@@ -212,6 +212,8 @@
 - [x] `getCardStats()`의 카드별/유저별 뽑기 수를 `CardDraws` 대신 `Events.card.drawn` 기준으로 전환
   - [x] `CardReceived` 실물 수령 수량은 현행 유지
   - [x] `Trades` accepted 교환 상세는 현행 유지
+- [x] admin `adminRebuildCollection`과 하위 호환 `migrateCardDrawsToCollection` 액션을 Events 기준 전체 재계산으로 전환
+- [ ] 오래된 `rebuildCollectionSheet()` legacy 본문 삭제 여부 별도 검토
 - [ ] 삭제 후보 탭 숨김 상태에서 DEV 회귀 테스트
 - [ ] Sheets API v4 (Advanced Service) 활성화
 - [ ] `batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소
