@@ -29,7 +29,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512c';
+    const APP_VERSION = '20260512d';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -2880,10 +2880,15 @@
     /* ════ 개발자 문의 ════ */
     function updateInquiryLoginUI() {
       const loggedIn = !!currentNickname;
-      const wrap = document.getElementById('inquiryQuickWrap');
-      const msg  = document.getElementById('inquiryLoginMsg');
-      if (wrap) wrap.style.display = loggedIn ? '' : 'none';
-      if (msg)  msg.style.display  = loggedIn ? 'none' : '';
+      [
+        ['inquiryQuickWrap', 'inquiryLoginMsg'],
+        ['inquiryComposeWrap', 'inquiryComposeLoginMsg'],
+      ].forEach(([wrapId, msgId]) => {
+        const wrap = document.getElementById(wrapId);
+        const msg  = document.getElementById(msgId);
+        if (wrap) wrap.style.display = loggedIn ? '' : 'none';
+        if (msg)  msg.style.display  = loggedIn ? 'none' : '';
+      });
     }
 
     async function loadInquiries() {
@@ -3015,13 +3020,13 @@
       }
     }
 
-    document.getElementById('inquiryQuickBtn').addEventListener('click', async () => {
+    async function submitInquiry(inputId, statusId, buttonId) {
       if (!currentNickname) return;
-      const input    = document.getElementById('inquiryQuickInput');
-      const statusEl = document.getElementById('inquiryQuickStatus');
+      const input    = document.getElementById(inputId);
+      const statusEl = document.getElementById(statusId);
       const content  = input.value.trim();
       if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
-      const btn = document.getElementById('inquiryQuickBtn');
+      const btn = document.getElementById(buttonId);
       btn.disabled = true;
       const dotsTimerPost = animDots(statusEl, '등록 중');
       statusEl.style.color = 'var(--sub)';
@@ -3036,6 +3041,7 @@
           input.value = '';
           stopAnimDots(dotsTimerPost, statusEl, '등록됐어요!');
           statusEl.style.color = 'var(--success)';
+          loadInquiries();
           setTimeout(() => { statusEl.textContent = ''; }, 2000);
         } else if (data.error === 'wrong_password' || data.error === 'unauthorized') {
           stopAnimDots(dotsTimerPost, statusEl, '인증 오류. 다시 로그인해주세요.');
@@ -3050,6 +3056,14 @@
       } finally {
         btn.disabled = false;
       }
+    }
+
+    document.getElementById('inquiryQuickBtn').addEventListener('click', async () => {
+      submitInquiry('inquiryQuickInput', 'inquiryQuickStatus', 'inquiryQuickBtn');
+    });
+
+    document.getElementById('inquiryComposeBtn').addEventListener('click', async () => {
+      submitInquiry('inquiryComposeInput', 'inquiryComposeStatus', 'inquiryComposeBtn');
     });
 
     document.getElementById('refreshInquiryBtn').addEventListener('click', loadInquiries);
