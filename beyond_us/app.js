@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512t';
+    const APP_VERSION = '20260512u';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -895,12 +895,20 @@
         </div>`;
     }
 
+    function updateTicketBadge(status) {
+      const ticketBadge = document.getElementById('ticketBadge');
+      if (!ticketBadge) return;
+      const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
+      ticketBadge.textContent = `🎫 ${pending}`;
+    }
+
     /* ════ 뽑기 섹션 렌더 ════ */
     function renderDrawSection() {
       const el = document.getElementById('drawSectionBody');
       const testBadge = TEST_MODE
         ? `<div style="display:inline-block;margin-bottom:10px;padding:4px 10px;background:#fef08a;color:#854d0e;font-size:11px;font-weight:800;border-radius:999px;">🧪 테스트 모드</div><br>`
         : '';
+      updateTicketBadge(userStatus);
 
       if (!currentNickname) {
         el.innerHTML = `${testBadge}<button class="btn btn-secondary" style="width:100%;" id="setNicknameBtn">로그인하고 참여하기</button>`;
@@ -928,9 +936,6 @@
 
       // 서비스 모드: 정책 적용
       const pending = userStatus.pendingDraws || 0;
-
-      const ticketBadge = document.getElementById('ticketBadge');
-      if (ticketBadge) ticketBadge.textContent = `🎫 ${pending}`;
 
       if (pending > 0 || IS_DEV_ENV) {
         el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기${IS_DEV_ENV && pending === 0 ? ' (DEV)' : ''}</button>`;
@@ -2623,9 +2628,13 @@
           userStatus.weekScore = Number(saved?.weekScore) || ((userStatus.weekScore || 0) + (isNaN(addedScore) ? 0 : addedScore));
           userStatus.todayItems = [...new Set([...(userStatus.todayItems || []), ...savedItems])];
           userStatus.todayIndices = [...new Set([...(userStatus.todayIndices || []), ...savedIndices])];
-          if (saved?.ticketEarned) userStatus.earnedTicketThisWeek = true;
+          if (saved?.ticketEarned) {
+            userStatus.earnedTicketThisWeek = true;
+            userStatus.pendingDraws = (Number(userStatus.pendingDraws) || 0) + 1;
+          }
         }
         if (lastConfigData) renderConfig(lastConfigData);
+        renderDrawSection();
         updateScoreProgress();
         renderWeekCal();
 
