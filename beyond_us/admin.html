@@ -188,6 +188,7 @@
       <button class="drawer-item active" data-panel="checkin">대시보드</button>
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
+      <button class="drawer-item" data-panel="bbbphotos">BBB 사진 승인</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <div class="drawer-section-divider"></div>
@@ -298,6 +299,27 @@
             <button class="btn btn-ghost btn-sm" onclick="loadAdminTrades()">새로고침</button>
           </div>
           <div id="tradesLogBody"><p style="color:var(--sub);font-size:13px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- BBB 사진 승인 -->
+      <div id="tab-bbbphotos" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">승인 대기</div><div class="stat-value" id="bbbPhotoPendingCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">승인 완료</div><div class="stat-value" id="bbbPhotoApprovedCount">-</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">BBB 사진 승인</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">MISSION 1, 2 사진을 확인하고 승인하면 뽑기권이 지급됩니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshBBBPhotoApprovalsBtn" onclick="loadBBBPhotoApprovals()">새로고침</button>
+          </div>
+          <div id="bbbPhotoApprovalList">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
+          </div>
         </div>
       </div>
 
@@ -636,6 +658,7 @@
       document.getElementById('activePanelLabel').textContent = label || panelId;
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
+      if (panelId === 'bbbphotos') loadBBBPhotoApprovals();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
       if (panelId === 'system')  loadSystemStatus();
@@ -1413,6 +1436,104 @@
           </table>
         </div>`;
       } catch(e) { el.innerHTML = '<p style="color:var(--danger);">오류 발생</p>'; }
+    }
+
+    function formatDateTime(v) {
+      if (!v) return '-';
+      const d = new Date(v);
+      if (isNaN(d)) return String(v).slice(0, 16).replace('T', ' ');
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    async function loadBBBPhotoApprovals() {
+      const listEl = document.getElementById('bbbPhotoApprovalList');
+      const refreshBtn = document.getElementById('refreshBBBPhotoApprovalsBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (refreshBtn) refreshBtn.disabled = true;
+      try {
+        const res = await get({ action: 'adminGetBBBPhotoApprovals', adminPw });
+        if (!res.ok) {
+          listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">불러오기 실패</p>';
+          return;
+        }
+        document.getElementById('bbbPhotoPendingCount').textContent = res.pendingCount || 0;
+        document.getElementById('bbbPhotoApprovedCount').textContent = res.approvedCount || 0;
+        renderBBBPhotoApprovals(res.photos || []);
+      } catch(e) {
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+      } finally {
+        if (refreshBtn) refreshBtn.disabled = false;
+      }
+    }
+
+    function renderBBBPhotoApprovals(photos) {
+      const listEl = document.getElementById('bbbPhotoApprovalList');
+      if (!photos.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">제출된 MISSION 1, 2 사진이 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = photos.map(item => {
+        const approved = item.approvalStatus === 'approved';
+        const statusText = approved ? '승인 완료' : '승인 대기';
+        const statusColor = approved ? 'var(--success)' : 'var(--danger)';
+        return `
+          <div style="display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);align-items:start;">
+            <button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;text-align:left;">
+              <img src="${item.photoBase64}" alt="${esc(item.missionLabel)} 사진" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--bg);" />
+            </button>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+                <div>
+                  <div style="font-size:15px;font-weight:800;">${esc(item.userId)}${item.name ? ` · ${esc(item.name)}` : ''}</div>
+                  <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(item.missionLabel)} · ${formatDateTime(item.uploadedAt)}</div>
+                </div>
+                <span style="font-size:11px;font-weight:800;color:${statusColor};background:var(--primary-soft);border-radius:999px;padding:4px 9px;white-space:nowrap;">${statusText}</span>
+              </div>
+              ${approved ? `<p style="font-size:12px;color:var(--sub);margin:0 0 10px;">승인: ${formatDateTime(item.approvedAt)}${item.rewardEventId ? ` · ${esc(item.rewardEventId).slice(0,8)}` : ''}</p>` : ''}
+              <div class="status" data-approval-status="${esc(item.userId)}_${esc(item.missionType)}" style="min-height:18px;margin-bottom:8px;"></div>
+              <button class="btn ${approved ? 'btn-ghost' : 'btn-primary'} btn-sm"
+                data-user-id="${esc(item.userId)}"
+                data-mission-type="${esc(item.missionType)}"
+                onclick="approveBBBPhotoFromButton(this)"
+                ${approved ? 'disabled' : ''}>${approved ? '승인됨' : '확인 후 승인'}</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function approveBBBPhotoFromButton(btn) {
+      const userId = btn.dataset.userId || '';
+      const missionType = btn.dataset.missionType || '';
+      if (!userId || !missionType) return;
+      if (!confirm(`${userId}의 ${missionType.toUpperCase()} 사진을 승인하고 뽑기권 1장을 지급할까요?`)) return;
+      const statusEl = btn.parentElement.querySelector('[data-approval-status]');
+      btn.disabled = true;
+      if (statusEl) statusEl.textContent = '승인 처리 중...';
+      try {
+        const res = await post({ action: 'adminApproveBBBPhoto', adminPw, userId, missionType, adminId: 'admin' });
+        if (res.ok) {
+          if (statusEl) {
+            statusEl.className = 'status ok';
+            statusEl.textContent = res.rewarded ? '승인 및 지급 완료' : '이미 지급된 사진으로 표시했습니다.';
+          }
+          await loadBBBPhotoApprovals();
+        } else {
+          if (statusEl) {
+            statusEl.className = 'status';
+            statusEl.textContent = '오류: ' + (res.error || '실패');
+          }
+          btn.disabled = false;
+        }
+      } catch(e) {
+        if (statusEl) statusEl.textContent = '연결 오류';
+        btn.disabled = false;
+      }
+    }
+
+    function openBBBPhotoPreview(btn) {
+      const img = btn.querySelector('img');
+      if (img && img.src) window.open(img.src, '_blank');
     }
 
     /* ── B.B.B. ── */

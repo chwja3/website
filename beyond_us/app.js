@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513b';
+    const APP_VERSION = '20260513c';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -3175,6 +3175,11 @@
       document.getElementById('bbbPhotoPlaceholderText').style.display = 'none';
       document.getElementById('bbbPhotoLabel').style.border = '1px solid #1a1a1a';
     }
+    function _bbbPhotoErrorText(error) {
+      if (error === 'already_approved') return '이미 승인된 사진은 변경할 수 없어요.';
+      if (error === 'approved_photo_locked') return '이미 승인된 사진은 삭제할 수 없어요.';
+      return error || '업로드 실패';
+    }
     function openBbbPhotoModal() {
       const modal = document.getElementById('bbbPhotoModal');
       if (modal) modal.style.display = 'flex';
@@ -3212,6 +3217,8 @@
           document.getElementById('bbbPhotoPlaceholderText').style.display = '';
           document.getElementById('bbbPhotoLabel').style.border = '1.5px dashed var(--line)';
           if (statusEl) stopAnimDots(dotsTimer, statusEl, '');
+        } else if (statusEl) {
+          stopAnimDots(dotsTimer, statusEl, _bbbPhotoErrorText(res.error) || '삭제 실패');
         }
       } catch(e) {
         if (statusEl) stopAnimDots(dotsTimer, statusEl, '');
@@ -3311,7 +3318,11 @@
         if (bbbRes.myPhoto) {
           _bbbShowPhoto(bbbRes.myPhoto);
           const st = document.getElementById('bbbPhotoStatus');
-          if (st) { st.textContent = '✓ 뽑기권 획득 완료'; st.style.color = 'var(--sub)'; st.style.fontWeight = '500'; }
+          if (st) {
+            st.textContent = bbbRes.m1Rewarded ? '✓ 뽑기권 획득 완료' : '운영진 확인 대기 중';
+            st.style.color = bbbRes.m1Rewarded ? 'var(--sub)' : 'var(--primary)';
+            st.style.fontWeight = bbbRes.m1Rewarded ? '500' : '600';
+          }
         }
 
         document.getElementById('bbbPhotoInput').onchange = async function() {
@@ -3332,12 +3343,12 @@
             const res = await REDIRECT.json();
             if (res.ok) {
               _bbbShowPhoto(base64);
-              stopAnimDots(dotsTimer, statusEl, res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료');
-              statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
-              statusEl.style.fontWeight = res.rewarded ? '600' : '500';
+              stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 뽑기권이 지급돼요.' : '✓ 제출 완료');
+              statusEl.style.color = 'var(--primary)';
+              statusEl.style.fontWeight = '600';
               if (res.rewarded) syncTicketBadgeFromServer();
             } else {
-              stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패');
+              stopAnimDots(dotsTimer, statusEl, _bbbPhotoErrorText(res.error));
             }
           } catch(e) {
             stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message);
@@ -3423,7 +3434,7 @@
           document.getElementById('bbbM2Label').style.border = '1.5px dashed var(--line)';
           stopAnimDots(dotsTimer, statusEl, '');
         } else {
-          stopAnimDots(dotsTimer, statusEl, '삭제 실패');
+          stopAnimDots(dotsTimer, statusEl, _bbbPhotoErrorText(data.error) || '삭제 실패');
         }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류'); }
     }
@@ -3431,7 +3442,11 @@
       const statusEl = document.getElementById('bbbM2Status');
       if (bbbRes.myPhotoM2) {
         _bbbShowM2Photo(bbbRes.myPhotoM2);
-        if (statusEl) { statusEl.textContent = bbbRes.m2Rewarded ? '✓ 뽑기권 획득 완료' : ''; statusEl.style.color = 'var(--sub)'; statusEl.style.fontWeight = '500'; }
+        if (statusEl) {
+          statusEl.textContent = bbbRes.m2Rewarded ? '✓ 뽑기권 획득 완료' : '운영진 확인 대기 중';
+          statusEl.style.color = bbbRes.m2Rewarded ? 'var(--sub)' : 'var(--primary)';
+          statusEl.style.fontWeight = bbbRes.m2Rewarded ? '500' : '600';
+        }
       }
       document.getElementById('bbbM2Input').onchange = async function() {
         const file = this.files[0];
@@ -3445,11 +3460,11 @@
           const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm2' })), redirect: 'follow' })).json();
           if (res.ok) {
             _bbbShowM2Photo(base64);
-            stopAnimDots(dotsTimer, statusEl, res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료');
-            statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
-            statusEl.style.fontWeight = res.rewarded ? '600' : '500';
+            stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 뽑기권이 지급돼요.' : '✓ 제출 완료');
+            statusEl.style.color = 'var(--primary)';
+            statusEl.style.fontWeight = '600';
             if (res.rewarded) syncTicketBadgeFromServer();
-          } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
+          } else { stopAnimDots(dotsTimer, statusEl, _bbbPhotoErrorText(res.error)); }
         } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
         finally { label.style.pointerEvents = ''; }
       };
