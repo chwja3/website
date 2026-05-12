@@ -30,10 +30,10 @@
 |---|---|---|
 | `Users` | `getUsersSheet_`, `registerUser`, `loginUser`, `setupBBBMatching` | 회원, 인증, 운영진/DEV/BBB 대상 플래그 |
 | `config` | `getConfig`, `getAppOpenDate`, `getMissionConfig`, `setMissionConfig`, `getTabSettings` | 현재 주차, 앱 오픈일, 미션 정의, 과거 탭/BBB 설정 |
-| `raw_checkins` | `saveCheckin`, `getDashboardData`, `getUserStatus`, `updateTicketCols` | 미션 제출 이력과 주차 누적 점수 |
+| `raw_checkins` | `saveCheckin`, `getDashboardData`, `getUserStatus` | 미션 제출 이력과 주차 누적 점수 |
 | `CardDraws` | `getOrCreateDrawSheet`, `drawCard`, `getUserStatus`, `rebuildCollectionSheet` | 카드 뽑기 사용 이력 |
 | `BonusDraws` | `getOrCreateBonusDrawsSheet`, `submitHoldPrayGuess`, `uploadBBBPhoto` | 보너스 뽑기권 적립 이력 |
-| `Collection` | `getOrCreateCollectionSheet`, `updateCollectionSheet`, `updateTicketCols`, `rebuildCollectionSheet` | 카드 보유 현황과 뽑기권 캐시 |
+| `Collection` | `getOrCreateCollectionSheet`, `getUserCollection`, `getCollectionTickets`, `getTicketStats`, `rebuildCollectionRowsFromEvents_`, `rebuildCollectionRow_` | 카드 보유 현황과 뽑기권 캐시 |
 | `CardReceived` | `getOrCreateCardReceivedSheet`, `setCardReceivedQty`, `getCardStats` | 실물 카드 수령 수량 |
 | `Trades` | `getOrCreateTradesSheet`, `requestTrade`, `acceptTrade`, `getTrades` | 카드 교환 요청과 처리 결과 |
 | `HoldPray` | `getOrCreateHoldPraySheet`, `migrateHoldPrayToSheet`, `getYouthHpEntries` | H&P 기도제목 원천 시트 후보 |
@@ -67,7 +67,7 @@
 | 위치 | 현재 의미 | 사용처 |
 |---|---|---|
 | A1 | `current_week` 라벨 | `setupAllWeeks` |
-| B1 | 현재 주차 번호 | `getConfig`, `getCurrentWeek`, `setCurrentWeek`, `updateTicketCols` |
+| B1 | 현재 주차 번호 | `getConfig`, `getCurrentWeek`, `setCurrentWeek` |
 | C1 | 구버전 BBB 메시지 오픈 여부 | `isBBBMessageOpen`, `adminSetBBBMessageOpen` fallback |
 | B2 | 구버전 Hold & Pray 탭 오픈 여부 | `getOrCreateTabSettingsSheet`, `getTabSettings` fallback |
 | B3 | 구버전 현장미션 탭 오픈 여부 | `getOrCreateTabSettingsSheet`, `getTabSettings` fallback |
@@ -272,7 +272,7 @@
 | 공통/환경 | `doGet`, `doPost`, `getSpreadsheet`, `cacheKey_`, `clearHotCaches_` |
 | 인증/회원 | `getUsersSheet_`, `findUserRow_`, `issueSessionToken_`, `clearSessionToken_`, `touchSessionToken_`, `verifySession`, `registerUser`, `loginUser`, `resetPassword`, `getUsers`, `findNickname`, `adminResetPassword`, `verifyUserPassword`, `migrateParishJangnyeon` |
 | 미션/config | `getConfig`, `saveCheckin`, `setupRawCheckinsHeader`, `backfillRawCheckinsCols`, `getDashboardData`, `getUserStatus`, `setupAllWeeks`, `fixConfigSheetConflict`, `getMissionConfig`, `setMissionConfig`, `getAppOpenDate` |
-| 카드/뽑기권 | `getOrCreateBonusDrawsSheet`, `getBonusDrawCount`, `getOrCreateDrawSheet`, `drawCard`, `getOrCreateCollectionSheet`, `getUserCollection`, `getCollectionTickets`, `getTicketStats`, `updateCollectionSheet`, `updateTicketCols`, `rebuildCollectionSheet`, `adminRebuildCollection`, `migrateCardDrawsToCollection`, `getOrCreateCardReceivedSheet`, `setCardReceivedQty`, `setDrawReceived`, `getCardStats`, `adminGrantHiddenCard` |
+| 카드/뽑기권 | `getOrCreateBonusDrawsSheet`, `getBonusDrawCount`, `getOrCreateDrawSheet`, `drawCard`, `getOrCreateCollectionSheet`, `getUserCollection`, `getCollectionTickets`, `getTicketStats`, `rebuildCollectionRow_`, `rebuildCollectionRowsFromEvents_`, `rebuildCollectionSheet`, `adminRebuildCollection`, `migrateCardDrawsToCollection`, `getOrCreateCardReceivedSheet`, `setCardReceivedQty`, `setDrawReceived`, `getCardStats`, `adminGrantHiddenCard` |
 | 교환 | `getOrCreateTradesSheet`, `requestTrade`, `acceptTrade`, `rejectTrade`, `cancelTrade`, `_expireOldTrades`, `getTrades`, `prayForTrade`, `getAdminTrades` |
 | H&P | `getOrCreateHoldPraySheet`, `migrateHoldPrayToSheet`, `getYouthHpEntries`, `fixHoldPrayBlankNames`, `getHoldPray`, `getOrCreateHPGuessesSheet`, `submitHoldPrayGuess`, `postHpHint`, `addHoldPrayRows`, `fixHoldPrayTypos` |
 | 탭/BBB 설정 | `getOrCreateTabSettingsSheet`, `getOrCreateBBBSettingsSheet`, `isBBBMessageOpen`, `getTabSettings`, `setTabSettings`, `adminSetBBBMessageOpen` |
@@ -1880,6 +1880,7 @@ const SHEET_NAMES = Object.freeze({
 - 2026-05-12. Phase 2E legacy 참조 축소 1차. `hasBonusTicketGrant_()`를 추가해 보너스 뽑기권 중복 지급 판단을 `Events.ticket.granted`의 `payload.legacySource` 우선으로 확인하고, 과거 데이터 안전을 위해 `BonusDraws` fallback을 유지한다. 적용 범위는 H&P w3/w6 보상 수령 여부, H&P 정답 제출 중복 방지, BBB M1/M2/M3 보상 중복 방지, BBB M2/M3 수령 여부 표시다. 아직 보상 지급 시 `BonusDraws.appendRow`는 legacy fallback 보존을 위해 유지한다.
 - 2026-05-12. Phase 2E legacy 참조 축소 2차. admin 카드 통계 `getCardStats()`의 카드별 총 뽑기 수와 유저별 뽑기 수를 `CardDraws` 직접 조회 대신 `Events.card.drawn` 이벤트 기준으로 전환했다. 실물 카드 수령 수량(`CardReceived`)과 accepted 교환 상세(`Trades`)는 아직 운영 UI가 사용하는 도메인 상태라 현행 유지한다.
 - 2026-05-12. Phase 2E legacy 참조 축소 3차. admin `adminRebuildCollection` POST 액션과 하위 호환 `migrateCardDrawsToCollection` 액션을 기존 `rebuildCollectionSheet()` 대신 이미 검증한 `rebuildCollectionRowsFromEvents_()` 경로로 전환했다. 오래된 `rebuildCollectionSheet()` 본문은 삭제 전 별도 검토 대상으로 남겼다.
+- 2026-05-12. Phase 2E 일괄 마무리 로컬 구현. 오래된 `rebuildCollectionSheet()` legacy 본문은 제거하고 Events 기준 wrapper만 유지했으며, 호출자가 없던 `updateCollectionSheet()` / `updateTicketCols()`를 제거했다. Collection projection 재계산은 `getCollectionProjectionInputs_()`에서 Events/Users/Collection 입력을 모아 읽고, Sheets API v4 Advanced Service가 켜져 있으면 `batchGet`/`batchUpdate`/`batchClear`를 사용하되 꺼져 있으면 SpreadsheetApp으로 fallback 한다. 캐시는 공지 캐시를 불필요하게 지우지 않도록 `clearHotCaches_()`를 dashboard 중심으로 좁히고, 유저 파생 캐시 헬퍼를 추가했다. DEV 확인용으로 `phase2EHealthCheck()`, `phase2EMeasurePerformance()`, `phase2EStressTestDraws(body)`를 추가했다.
 
 ## 현재 상태 요약 — 2026-05-12
 

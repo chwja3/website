@@ -430,8 +430,10 @@ function migrate_runAll() / migrate_verify()
   - `BonusDraws` 중복 지급 체크는 Events 우선 + legacy fallback 구조로 단계 전환.
   - `getCardStats()`의 카드별/유저별 뽑기 수는 `Events.card.drawn`으로 전환하고, 수령/교환 상세는 현행 도메인 시트를 유지.
   - admin 전체 Collection 재계산 액션은 Events projection 경로를 사용하도록 전환.
+- 오래된 `rebuildCollectionSheet()` legacy 본문과 미사용 `updateCollectionSheet()` / `updateTicketCols()` 제거.
 - Sheets API v4 Advanced Service 활성화.
-- `Sheets.Spreadsheets.Values.batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소.
+  - 로컬 GAS는 `Sheets` Advanced Service가 켜져 있으면 batch 경로를 사용하고, 꺼져 있으면 SpreadsheetApp으로 fallback 한다.
+- `Sheets.Spreadsheets.Values.batchGet` / `batchUpdate` / `batchClear` 도입 — Collection projection 재계산 경로의 RPC 횟수 감소.
 - 캐시 키 정밀화.
   ```js
   // 변경 전 — 전체 무효화
@@ -439,8 +441,9 @@ function migrate_runAll() / migrate_verify()
   // 변경 후 — 유저별
   clearUserCache_(userId);
   ```
-- 함수당 `getSpreadsheet()` 호출 1회로 통합.
-- 카드 뽑기 응답 시간 측정. 2D 후 ~1000ms → 2E 후 ~500ms 목표.
+- Collection projection 경로는 `getCollectionProjectionInputs_()`로 Events/Users/Collection 입력을 한 번에 모은다.
+- 카드 뽑기/대시보드 응답 시간 측정. `phase2EMeasurePerformance()`로 2E 후 기준점 기록.
+- DEV 스트레스 테스트. `phase2EStressTestDraws(body)`는 테스트 도구/테스트 뽑기가 켜진 DEV에서만 사용.
 
 ---
 

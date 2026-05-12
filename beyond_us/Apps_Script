@@ -987,6 +987,18 @@ function doPost(e) {
     if (action === 'adminGrantTestCard') return jsonOutput(adminGrantTestCard(body));
     if (action === 'adminCreateCardEvent') return jsonOutput(adminCreateCardEvent(body));
     if (action === 'adminRebuildEventDerivedViews') return jsonOutput(adminRebuildEventDerivedViews(body));
+    if (action === 'phase2EHealthCheck') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(phase2EHealthCheck_(body));
+    }
+    if (action === 'phase2EMeasurePerformance') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(phase2EMeasurePerformance_(body));
+    }
+    if (action === 'phase2EStressTestDraws') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(phase2EStressTestDraws_(body));
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -1371,6 +1383,136 @@ function getSheetRows(sheet, schemaOrHeaderRow, maxColumns) {
   if (lastRow < dataStartRow) return [];
   const width = maxColumns || sheet.getLastColumn();
   return sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, width).getValues();
+}
+
+function isSheetsValuesApiAvailable_() {
+  try {
+    return !!(typeof Sheets !== 'undefined' &&
+      Sheets.Spreadsheets &&
+      Sheets.Spreadsheets.Values);
+  } catch(e) {
+    return false;
+  }
+}
+
+function a1Column_(columnNumber) {
+  let column = Number(columnNumber) || 1;
+  let label = '';
+  while (column > 0) {
+    const mod = (column - 1) % 26;
+    label = String.fromCharCode(65 + mod) + label;
+    column = Math.floor((column - mod) / 26);
+  }
+  return label;
+}
+
+function quoteSheetNameForA1_(sheetName) {
+  return "'" + String(sheetName || '').replace(/'/g, "''") + "'";
+}
+
+function buildA1Range_(sheet, row, column, numRows, numColumns) {
+  const startColumn = a1Column_(column);
+  const endColumn = a1Column_(column + numColumns - 1);
+  return quoteSheetNameForA1_(sheet.getName()) + '!' +
+    startColumn + row + ':' + endColumn + (row + numRows - 1);
+}
+
+function normalizeSheetValues_(values, width) {
+  return (values || []).map(function(row) {
+    const normalized = row ? row.slice() : [];
+    while (normalized.length < width) normalized.push('');
+    return normalized.slice(0, width);
+  });
+}
+
+function getBatchSheetRows_(requests) {
+  const prepared = [];
+  const result = {};
+  requests.forEach(function(request) {
+    result[request.key] = [];
+    if (!request.sheet) return;
+    const schema = request.schemaOrHeaderRow || request.schema;
+    const dataStartRow = typeof schema === 'number'
+      ? schema
+      : (schema && schema.dataStartRow) || 2;
+    const lastRow = request.sheet.getLastRow();
+    if (lastRow < dataStartRow) return;
+    const width = request.maxColumns || request.sheet.getLastColumn();
+    prepared.push({
+      key: request.key,
+      sheet: request.sheet,
+      schema: schema,
+      dataStartRow: dataStartRow,
+      lastRow: lastRow,
+      width: width,
+      range: buildA1Range_(request.sheet, dataStartRow, 1, lastRow - dataStartRow + 1, width),
+    });
+  });
+
+  if (prepared.length && isSheetsValuesApiAvailable_()) {
+    try {
+      const response = Sheets.Spreadsheets.Values.batchGet(getSpreadsheetId_(), {
+        ranges: prepared.map(function(item) { return item.range; }),
+        valueRenderOption: 'UNFORMATTED_VALUE',
+        dateTimeRenderOption: 'FORMATTED_STRING',
+      });
+      const valueRanges = response.valueRanges || [];
+      prepared.forEach(function(item, index) {
+        result[item.key] = normalizeSheetValues_((valueRanges[index] && valueRanges[index].values) || [], item.width);
+      });
+      return result;
+    } catch(e) {
+      Logger.log('Sheets batchGet fallback: ' + e);
+    }
+  }
+
+  prepared.forEach(function(item) {
+    result[item.key] = getSheetRows(item.sheet, item.schema, item.width);
+  });
+  return result;
+}
+
+function setSheetValues_(sheet, row, column, values) {
+  if (!values || !values.length) return { ok: true, rows: 0 };
+  const width = values.reduce(function(max, valueRow) {
+    return Math.max(max, valueRow ? valueRow.length : 0);
+  }, 0);
+  if (width <= 0) return { ok: true, rows: values.length };
+  const normalized = normalizeSheetValues_(values, width);
+
+  if (isSheetsValuesApiAvailable_()) {
+    try {
+      Sheets.Spreadsheets.Values.batchUpdate({
+        valueInputOption: 'RAW',
+        data: [{
+          range: buildA1Range_(sheet, row, column, normalized.length, width),
+          values: normalized,
+        }],
+      }, getSpreadsheetId_());
+      return { ok: true, rows: normalized.length, api: 'sheets_v4' };
+    } catch(e) {
+      Logger.log('Sheets batchUpdate fallback: ' + e);
+    }
+  }
+
+  sheet.getRange(row, column, normalized.length, width).setValues(normalized);
+  return { ok: true, rows: normalized.length, api: 'spreadsheet_app' };
+}
+
+function clearSheetValues_(sheet, row, column, numRows, numColumns) {
+  if (numRows <= 0 || numColumns <= 0) return { ok: true, rows: 0 };
+  if (isSheetsValuesApiAvailable_()) {
+    try {
+      Sheets.Spreadsheets.Values.batchClear({
+        ranges: [buildA1Range_(sheet, row, column, numRows, numColumns)],
+      }, getSpreadsheetId_());
+      return { ok: true, rows: numRows, api: 'sheets_v4' };
+    } catch(e) {
+      Logger.log('Sheets batchClear fallback: ' + e);
+    }
+  }
+  sheet.getRange(row, column, numRows, numColumns).clearContent();
+  return { ok: true, rows: numRows, api: 'spreadsheet_app' };
 }
 
 function ensureTwoHeaderSheet_(sheet, schema, labels, colCount) {
@@ -1821,7 +1963,7 @@ function setCurrentWeek_(week) {
     '현재 진행 주차. AppSettings 기준값.'
   );
   syncLegacyCurrentWeek_(cleanWeek);
-  clearHotCaches_();
+  clearConfigCaches_();
   return { ok: true, week: cleanWeek };
 }
 
@@ -2760,8 +2902,9 @@ function hasValidUserAuth_(body, nickname) {
          verifyUserPassword(nickname, body && body.password);
 }
 
-function cacheKey_(name) {
-  return name;
+function cacheKey_(name, scope) {
+  const cleanScope = String(scope || '').trim();
+  return cleanScope ? name + ':' + cleanScope : name;
 }
 
 function cacheGetJson_(key) {
@@ -2799,8 +2942,7 @@ function getDashboardDataCached_() {
 }
 
 function clearHotCaches_() {
-  cacheRemove_(cacheKey_('dashboard_v1'));
-  cacheRemove_(cacheKey_('notices_v1'));
+  clearDashboardCache_();
 }
 
 function clearDashboardCache_() {
@@ -2809,6 +2951,22 @@ function clearDashboardCache_() {
 
 function clearNoticesCache_() {
   cacheRemove_(cacheKey_('notices_v1'));
+}
+
+function clearUserCache_(userId) {
+  const cleanUserId = String(userId || '').trim();
+  if (!cleanUserId) return;
+  cacheRemove_(cacheKey_('user_status_v1', cleanUserId));
+  cacheRemove_(cacheKey_('collection_v1', cleanUserId));
+}
+
+function clearUserDerivedCaches_(userId) {
+  clearUserCache_(userId);
+  clearDashboardCache_();
+}
+
+function clearConfigCaches_() {
+  clearDashboardCache_();
 }
 
 function getConfig() {
@@ -2944,7 +3102,7 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
     });
     rebuildCollectionRow_(userId);
   }
-  clearDashboardCache_();
+  clearUserDerivedCaches_(userId);
   const result = {
     ok: true,
     savedItems: newItems,
@@ -3314,7 +3472,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
     const drawableCards = SPIRIT_CARDS.filter(function(c) { return c.id !== 10; });
     const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
 
-    // 뽑기 전 기존 보유 여부 확인 (isNew 계산용 — updateCollectionSheet 전에 읽어야 정확)
+    // 뽑기 전 기존 보유 여부 확인 (isNew 계산용)
     let isNew = true;
     try {
       const existingCounts = getUserCollection(userId);
@@ -3826,7 +3984,7 @@ function setTabSettings(body) {
       bbbRange.setValues(bbbRows);
     }
   }
-  clearHotCaches_();
+  clearConfigCaches_();
   return { ok: true };
 }
 
@@ -4405,7 +4563,7 @@ function setupAllWeeks() {
     });
   });
 
-  clearHotCaches_();
+  clearConfigCaches_();
   Logger.log('전체 주차 세팅 완료');
 }
 
@@ -4471,7 +4629,7 @@ function setMissionConfig(body) {
   if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
   const result = setMissionConfigInDefinitions_(body);
   syncLegacyMissionConfig_(body);
-  clearHotCaches_();
+  clearConfigCaches_();
   return result;
 }
 
@@ -4714,10 +4872,11 @@ function getTicketStats() {
 
 function previewCollectionProjection(userId) {
   const cleanUserId = String(userId || '').trim();
-  const events = Events_readAll_();
-  const userIds = cleanUserId ? [cleanUserId] : getCollectionProjectionCandidateUserIds_(events);
+  const inputs = getCollectionProjectionInputs_();
+  const events = inputs.events;
+  const userIds = cleanUserId ? [cleanUserId] : getCollectionProjectionCandidateUserIds_(events, inputs);
   const comparisons = userIds.map(function(id) {
-    return compareCollectionProjectionForUser_(id, events);
+    return compareCollectionProjectionForUser_(id, events, inputs);
   });
   const mismatches = comparisons.filter(function(item) { return item.diffs.length > 0; });
   return logJsonResult_('previewCollectionProjection result', {
@@ -4729,24 +4888,71 @@ function previewCollectionProjection(userId) {
   });
 }
 
-function getCollectionProjectionCandidateUserIds_(events) {
+function getCollectionProjectionInputs_() {
+  const ss = getSpreadsheet();
+  const eventsSheet = getOrCreateEventsSheet();
+  const eventsCol = getEventsColumns_(eventsSheet);
+  const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
+  const userCol = usersSheet ? getUserColumns_(usersSheet) : null;
+  const collectionSheet = getOrCreateCollectionSheet();
+  const collectionCol = getCollectionColumns_(collectionSheet);
+  const rows = getBatchSheetRows_([
+    { key: 'events', sheet: eventsSheet, schema: SCHEMA.EVENTS, maxColumns: EVENTS_COL_COUNT },
+    { key: 'users', sheet: usersSheet, schema: SCHEMA.USERS },
+    { key: 'collection', sheet: collectionSheet, schema: SCHEMA.COLLECTION, maxColumns: COLLECTION_COL_COUNT },
+  ]);
+  const events = (rows.events || [])
+    .filter(function(row) {
+      return String(row[eventsCol.userId] || '').trim() ||
+        String(row[eventsCol.type] || '').trim() ||
+        String(row[eventsCol.eventId] || '').trim();
+    })
+    .map(function(row) { return Events_rowToObject_(row, eventsCol); });
+  return {
+    events: events,
+    usersRows: rows.users || [],
+    userCol: userCol,
+    collectionSheet: collectionSheet,
+    collectionCol: collectionCol,
+    collectionRows: rows.collection || [],
+    sheetsApiV4Available: isSheetsValuesApiAvailable_(),
+  };
+}
+
+function getCollectionProjectionCandidateUserIds_(events, inputs) {
   const ids = {};
-  const usersSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
-  if (usersSheet) {
-    const userCol = getUserColumns_(usersSheet);
-    getUserRows_(usersSheet).forEach(function(row) {
+  if (inputs && inputs.userCol) {
+    const userCol = inputs.userCol;
+    (inputs.usersRows || []).forEach(function(row) {
       const userId = String(row[userCol.nickname] || '').trim();
       if (userId) ids[userId] = true;
     });
+  } else {
+    const usersSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
+    if (usersSheet) {
+      const userCol = getUserColumns_(usersSheet);
+      getUserRows_(usersSheet).forEach(function(row) {
+        const userId = String(row[userCol.nickname] || '').trim();
+        if (userId) ids[userId] = true;
+      });
+    }
   }
 
-  const collectionSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.COLLECTION);
-  if (collectionSheet) {
-    const collectionCol = getCollectionColumns_(collectionSheet);
-    getCollectionRows_(collectionSheet).forEach(function(row) {
+  if (inputs && inputs.collectionCol) {
+    const collectionCol = inputs.collectionCol;
+    (inputs.collectionRows || []).forEach(function(row) {
       const userId = String(row[collectionCol.userId] || '').trim();
       if (userId) ids[userId] = true;
     });
+  } else {
+    const collectionSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.COLLECTION);
+    if (collectionSheet) {
+      const collectionCol = getCollectionColumns_(collectionSheet);
+      getCollectionRows_(collectionSheet).forEach(function(row) {
+        const userId = String(row[collectionCol.userId] || '').trim();
+        if (userId) ids[userId] = true;
+      });
+    }
   }
 
   events.forEach(function(event) {
@@ -4761,8 +4967,8 @@ function getCollectionProjectionCandidateUserIds_(events) {
   return Object.keys(ids).sort();
 }
 
-function compareCollectionProjectionForUser_(userId, events) {
-  const current = getCurrentCollectionSnapshot_(userId);
+function compareCollectionProjectionForUser_(userId, events, inputs) {
+  const current = getCurrentCollectionSnapshot_(userId, inputs);
   const projected = buildCollectionProjectionFromEvents_(userId, events);
   const diffs = diffCollectionSnapshots_(current, projected);
   return {
@@ -4774,10 +4980,17 @@ function compareCollectionProjectionForUser_(userId, events) {
   };
 }
 
-function getCurrentCollectionSnapshot_(userId) {
-  const sheet = getOrCreateCollectionSheet();
-  const col = getCollectionColumns_(sheet);
-  const rows = getCollectionRows_(sheet);
+function getCurrentCollectionSnapshot_(userId, inputs) {
+  let col;
+  let rows;
+  if (inputs && inputs.collectionCol && inputs.collectionRows) {
+    col = inputs.collectionCol;
+    rows = inputs.collectionRows;
+  } else {
+    const sheet = getOrCreateCollectionSheet();
+    col = getCollectionColumns_(sheet);
+    rows = getCollectionRows_(sheet);
+  }
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (String(row[col.userId] || '').trim() !== userId) continue;
@@ -4969,9 +5182,9 @@ function rebuildCollectionRow_(userId) {
   if (rowIndex === -1) {
     sheet.appendRow(row);
   } else {
-    sheet.getRange(rowIndex, 1, 1, COLLECTION_COL_COUNT).setValues([row]);
+    setSheetValues_(sheet, rowIndex, 1, [row]);
   }
-  clearDashboardCache_();
+  clearUserDerivedCaches_(userId);
 
   return {
     ok: true,
@@ -5007,25 +5220,157 @@ function rebuildCollectionRowsFromEvents() {
 }
 
 function rebuildCollectionRowsFromEvents_() {
-  const events = Events_readAll_();
-  const userIds = getCollectionProjectionCandidateUserIds_(events);
-  const sheet = getOrCreateCollectionSheet();
-  const col = getCollectionColumns_(sheet);
+  const inputs = getCollectionProjectionInputs_();
+  const events = inputs.events;
+  const userIds = getCollectionProjectionCandidateUserIds_(events, inputs);
+  const sheet = inputs.collectionSheet;
+  const col = inputs.collectionCol;
   const last = sheet.getLastRow();
   if (last >= SCHEMA.COLLECTION.dataStartRow) {
-    sheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, last - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT).clearContent();
+    clearSheetValues_(sheet, SCHEMA.COLLECTION.dataStartRow, 1, last - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT);
   }
   const rows = userIds.map(function(userId) {
     return collectionSnapshotToRow_(buildCollectionProjectionFromEvents_(userId, events), col);
   });
   if (rows.length) {
-    sheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, COLLECTION_COL_COUNT).setValues(rows);
+    setSheetValues_(sheet, SCHEMA.COLLECTION.dataStartRow, 1, rows);
   }
   clearDashboardCache_();
   return {
     ok: true,
     rebuilt: rows.length,
   };
+}
+
+function phase2EHealthCheck() {
+  return logJsonResult_('phase2EHealthCheck result', phase2EHealthCheck_({}));
+}
+
+function phase2EMeasurePerformance() {
+  return logJsonResult_('phase2EMeasurePerformance result', phase2EMeasurePerformance_({}));
+}
+
+function phase2EHealthCheck_(options) {
+  const started = new Date().getTime();
+  const inputs = getCollectionProjectionInputs_();
+  const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
+  const comparisons = userIds.map(function(userId) {
+    return compareCollectionProjectionForUser_(userId, inputs.events, inputs);
+  });
+  const mismatches = comparisons.filter(function(item) { return item.diffs.length > 0; });
+  const performance = phase2EMeasurePerformance_(options || {});
+  const legacySheets = getLegacySheetVisibilityStatus_();
+  return {
+    ok: mismatches.length === 0 &&
+      performance.ok === true &&
+      legacySheets.every(function(item) { return !item.exists || item.hidden; }),
+    sheetsApiV4Available: isSheetsValuesApiAvailable_(),
+    legacySheets: legacySheets,
+    projection: {
+      checked: comparisons.length,
+      mismatchCount: mismatches.length,
+      mismatches: mismatches.slice(0, 20),
+    },
+    performance: performance,
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function phase2EMeasurePerformance_(options) {
+  const opts = options || {};
+  const timings = {};
+  const currentWeek = getCurrentWeek_();
+  const sampleUserId = String(opts.userId || opts.nickname || getFirstProjectionCandidateUserId_()).trim();
+  measurePhase2EStep_(timings, 'getTicketStats', function() { getTicketStats(); });
+  measurePhase2EStep_(timings, 'getCardStats', function() { getCardStats(); });
+  measurePhase2EStep_(timings, 'getDashboardDataUncached', function() { getDashboardData(); });
+  measurePhase2EStep_(timings, 'projectionPreview', function() {
+    const inputs = getCollectionProjectionInputs_();
+    const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
+    userIds.slice(0, Math.min(userIds.length, 50)).forEach(function(userId) {
+      compareCollectionProjectionForUser_(userId, inputs.events, inputs);
+    });
+  });
+  if (sampleUserId) {
+    measurePhase2EStep_(timings, 'getUserStatusSample', function() {
+      getUserStatus(sampleUserId, 'w' + currentWeek);
+    });
+  }
+  return {
+    ok: Object.keys(timings).every(function(key) { return timings[key].ok; }),
+    sampleUserId: sampleUserId,
+    timingsMs: timings,
+  };
+}
+
+function phase2EStressTestDraws(body) {
+  return logJsonResult_('phase2EStressTestDraws result', phase2EStressTestDraws_(body || {}));
+}
+
+function phase2EStressTestDraws_(body) {
+  const userId = String(body.userId || body.nickname || '').trim();
+  const count = Math.min(Math.max(Number(body.count) || 3, 1), 10);
+  const weekKey = String(body.weekKey || ('w' + getCurrentWeek_())).trim();
+  if (!userId) return { ok: false, error: 'missing_userId' };
+  if (!isTestAdminToolsEnabled_()) return { ok: false, error: 'test_admin_tools_disabled' };
+  if (!isTestDrawAllowed_()) return { ok: false, error: 'test_draws_disabled' };
+
+  const started = new Date().getTime();
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const requestId = 'phase2e_stress_' + started + '_' + i;
+    const drawStarted = new Date().getTime();
+    const result = drawCard(userId, weekKey, true, requestId);
+    results.push({
+      index: i + 1,
+      ok: result && result.ok === true,
+      error: result && result.error,
+      elapsedMs: new Date().getTime() - drawStarted,
+      cardId: result && result.card && result.card.id,
+    });
+    if (!result || result.ok !== true) break;
+  }
+
+  const health = phase2EHealthCheck_({ userId: userId });
+  return {
+    ok: results.every(function(result) { return result.ok; }) && health.ok,
+    userId: userId,
+    weekKey: weekKey,
+    requestedCount: count,
+    completedCount: results.filter(function(result) { return result.ok; }).length,
+    elapsedMs: new Date().getTime() - started,
+    results: results,
+    tickets: getCollectionTickets(userId),
+    projectionMismatchCount: health.projection.mismatchCount,
+  };
+}
+
+function measurePhase2EStep_(timings, key, fn) {
+  const started = new Date().getTime();
+  try {
+    fn();
+    timings[key] = { ok: true, ms: new Date().getTime() - started };
+  } catch(e) {
+    timings[key] = { ok: false, ms: new Date().getTime() - started, error: String(e) };
+  }
+}
+
+function getFirstProjectionCandidateUserId_() {
+  const inputs = getCollectionProjectionInputs_();
+  const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
+  return userIds[0] || '';
+}
+
+function getLegacySheetVisibilityStatus_() {
+  const ss = getSpreadsheet();
+  return LEGACY_SHEETS_TO_HIDE.map(function(name) {
+    const sheet = ss.getSheetByName(name);
+    return {
+      name: name,
+      exists: !!sheet,
+      hidden: sheet ? sheet.isSheetHidden() : false,
+    };
+  });
 }
 
 function findCollectionRowIndex_(sheet, col, userId) {
@@ -5052,200 +5397,9 @@ function collectionSnapshotToRow_(snapshot, col) {
   return row;
 }
 
-function updateCollectionSheet(userId, cardId, delta) {
-  const sheet = getOrCreateCollectionSheet();
-  const col = getCollectionColumns_(sheet);
-  const last = sheet.getLastRow();
-  let rowIndex = -1;
-  if (last >= SCHEMA.COLLECTION.dataStartRow) {
-    const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
-    for (let i = 0; i < ids.length; i++) {
-      if (String(ids[i][0]) === userId) { rowIndex = i + SCHEMA.COLLECTION.dataStartRow; break; }
-    }
-  }
-  const cardIdx = getCollectionCardIndex_(cardId, col);
-  const cardCol = cardIdx + 1;
-  if (rowIndex === -1) {
-    const newRow = new Array(COLLECTION_COL_COUNT).fill(0);
-    newRow[col.userId] = userId;
-    if (delta > 0) {
-      newRow[cardIdx] = delta;
-      newRow[col.totalCards] = delta;
-    }
-    sheet.appendRow(newRow);
-  } else {
-    const cardCell = sheet.getRange(rowIndex, cardCol);
-    const beforeCardCount = Number(cardCell.getValue()) || 0;
-    const afterCardCount = Math.max(0, beforeCardCount + delta);
-    const actualDelta = afterCardCount - beforeCardCount;
-    cardCell.setValue(afterCardCount);
-    const totalCell = sheet.getRange(rowIndex, col.totalCards + 1);
-    totalCell.setValue(Math.max(0, (Number(totalCell.getValue()) || 0) + actualDelta));
-  }
-}
-
-// 뽑기권 관련 컬럼(2~4) 재계산 후 업데이트
-function updateTicketCols(userId) {
-  try {
-    const ss = getSpreadsheet();
-    const currentWeek = getCurrentWeek_();
-    const weekMeta = getAllWeekMeta_();
-
-    // 자격 주 수 계산
-    let qualifiedWeeks = 0;
-    const raw = ss.getSheetByName(RAW_SHEET_NAME);
-    const rawCol = raw ? getRawColumns_(raw) : null;
-    const allRaw = raw ? getRawRows_(raw, 10) : [];
-    for (let w = 1; w <= currentWeek; w++) {
-      const meta = weekMeta[w - 1] || { weekKey: 'w' + w, title: w + '주차', threshold: 6 };
-      const wScore     = allRaw
-        .filter(function(r) {
-          return String(r[rawCol.userId]) === userId &&
-            (String(r[rawCol.weekKey]) === meta.weekKey || String(r[rawCol.weekTitle]) === meta.title);
-        })
-        .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
-      if (wScore >= meta.threshold) qualifiedWeeks++;
-    }
-
-    const bonusCount  = getBonusDrawCount(userId);
-    const totalEarned = qualifiedWeeks + bonusCount;
-
-    // 실제 뽑은 횟수
-    let totalDraws = 0;
-    const drawSheet = getOrCreateDrawSheet();
-    const drawCol = getCardDrawColumns_(drawSheet);
-    totalDraws = getCardDrawRows_(drawSheet)
-      .filter(r => String(r[drawCol.userId]) === userId).length;
-
-    const remaining = Math.max(0, totalEarned - totalDraws);
-
-    // Collection 시트 해당 row 업데이트 (없으면 생성)
-    const collSheet = getOrCreateCollectionSheet();
-    const collCol = getCollectionColumns_(collSheet);
-    const collLast  = collSheet.getLastRow();
-    let rowIndex = -1;
-    if (collLast >= SCHEMA.COLLECTION.dataStartRow) {
-      const ids = collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, collCol.userId + 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
-      for (let i = 0; i < ids.length; i++) {
-        if (String(ids[i][0]) === userId) { rowIndex = i + SCHEMA.COLLECTION.dataStartRow; break; }
-      }
-    }
-    if (rowIndex === -1) {
-      const newRow = new Array(COLLECTION_COL_COUNT).fill(0);
-      newRow[collCol.userId] = userId;
-      newRow[collCol.totalEarned] = totalEarned;
-      newRow[collCol.totalDrawn] = totalDraws;
-      newRow[collCol.remaining] = remaining;
-      collSheet.appendRow(newRow);
-    } else {
-      collSheet.getRange(rowIndex, collCol.totalEarned + 1, 1, 3).setValues([[totalEarned, totalDraws, remaining]]);
-    }
-  } catch(e) {
-    Logger.log('updateTicketCols error: ' + e);
-  }
-}
-
-// 전체 Collection 시트 재계산 (백필 / 비상 재정합용)
+// 전체 Collection 캐시를 Events 기준으로 재계산하는 하위 호환 wrapper
 function rebuildCollectionSheet() {
-  const ss = getSpreadsheet();
-
-  // 시트 헤더 재설정 + 데이터 클리어
-  const collSheet = getOrCreateCollectionSheet();
-  const collCol = getCollectionColumns_(collSheet);
-  const collLast = collSheet.getLastRow();
-  const hiddenMap = {};
-  if (collLast >= SCHEMA.COLLECTION.dataStartRow) {
-    getCollectionRows_(collSheet).forEach(function(r) {
-      const userId = String(r[collCol.userId]).trim();
-      const hidden = Number(r[collCol.hidden]) || 0;
-      if (userId && hidden > 0) hiddenMap[userId] = hidden;
-    });
-  }
-  collSheet.getRange(SCHEMA.COLLECTION.headerRow, 1, 1, COLLECTION_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.COLLECTION)]);
-  if (collLast >= SCHEMA.COLLECTION.dataStartRow) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT).clearContent();
-
-  // 등록된 전체 유저
-  const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
-  const userCol    = usersSheet ? getUserColumns_(usersSheet) : null;
-  const userData   = usersSheet ? getUserRows_(usersSheet) : [];
-  const userIds    = [];
-  for (let i = 0; i < userData.length; i++) {
-    if (userData[i][userCol.nickname]) userIds.push(String(userData[i][userCol.nickname]).trim());
-  }
-  if (!userIds.length) return { ok: true, rebuilt: 0 };
-
-  // 원천 데이터 일괄 로드
-  const drawSheet  = getOrCreateDrawSheet();
-  const drawCol    = getCardDrawColumns_(drawSheet);
-  const allDraws   = getCardDrawRows_(drawSheet);
-
-  const tradeSheet = getOrCreateTradesSheet();
-  const tradeCol   = getTradesColumns_(tradeSheet);
-  const allTrades  = getTradesRows_(tradeSheet);
-
-  const bonusSheet = getOrCreateBonusDrawsSheet();
-  const bonusCol   = getBonusDrawColumns_(bonusSheet);
-  const allBonus   = getBonusDrawRows_(bonusSheet);
-
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
-  const rawCol   = rawSheet ? getRawColumns_(rawSheet) : null;
-  const allRaw   = rawSheet ? getRawRows_(rawSheet, 10) : [];
-
-  const currentWeek = getCurrentWeek_();
-  const weekMeta = getAllWeekMeta_();
-
-  // 유저별 행 계산
-  const rows = [];
-  for (const userId of userIds) {
-    let qualifiedWeeks = 0;
-    for (let w = 1; w <= currentWeek; w++) {
-      const meta = weekMeta[w - 1] || { weekKey: 'w' + w, title: w + '주차', threshold: 6 };
-      const wScore     = allRaw
-        .filter(function(r) {
-          return String(r[rawCol.userId]) === userId &&
-            (String(r[rawCol.weekKey]) === meta.weekKey || String(r[rawCol.weekTitle]) === meta.title);
-        })
-        .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
-      if (wScore >= meta.threshold) qualifiedWeeks++;
-    }
-
-    const bonusCount  = allBonus.filter(r => String(r[bonusCol.userId]) === userId).length;
-    const totalEarned = qualifiedWeeks + bonusCount;
-
-    const userDraws = allDraws.filter(r => String(r[drawCol.userId]) === userId);
-    const totalDraws = userDraws.length;
-    const remaining  = Math.max(0, totalEarned - totalDraws);
-
-    const cardCounts = new Array(9).fill(0);
-    for (const d of userDraws) {
-      const cid = Number(d[drawCol.cardId]);
-      if (cid >= 1 && cid <= 9) cardCounts[cid - 1]++;
-    }
-
-    // accepted 교환 결과 반영: Collection 시트는 현재 보유 카드 기준이어야 함
-    for (const t of allTrades) {
-      if (String(t[tradeCol.status]) !== 'accepted') continue;
-      const requester = String(t[tradeCol.requester]);
-      const reqCardId = Number(t[tradeCol.requesterCardId]);
-      const target    = String(t[tradeCol.target]);
-      const tgtCardId = Number(t[tradeCol.targetCardId]);
-      if (requester === userId) {
-        if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1] = Math.max(0, cardCounts[reqCardId - 1] - 1);
-        if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1]++;
-      } else if (target === userId) {
-        if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1] = Math.max(0, cardCounts[tgtCardId - 1] - 1);
-        if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1]++;
-      }
-    }
-
-    const hidden = hiddenMap[userId] || 0;
-    const totalCards = cardCounts.reduce((s, n) => s + n, 0) + hidden;
-
-    rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards, hidden]);
-  }
-
-  if (rows.length) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, COLLECTION_COL_COUNT).setValues(rows);
-  return { ok: true, rebuilt: rows.length };
+  return rebuildCollectionRowsFromEvents_();
 }
 
 // 어드민 래퍼 (adminPw 체크)
@@ -6101,7 +6255,7 @@ function adminSetBBBMessageOpen(body) {
     });
   }
   if (!updated) bbbSheet.appendRow(['msgOpen', open, '']);
-  clearHotCaches_();
+  clearConfigCaches_();
   return { ok: true, messageOpen: open };
 }
 

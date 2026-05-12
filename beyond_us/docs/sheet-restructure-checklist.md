@@ -167,7 +167,7 @@
   - [x] `submitHoldPrayGuess` / `uploadBBBPhoto` 보너스 지급 — `ticket.granted` 기록 후 row rebuild
   - [x] `adminGrantHiddenCard` — `card.granted` 기록 후 row rebuild
   - [~] `adminGrantHiddenCard` 수동 지급 검증은 보류. 구현은 완료, GAS 편집기에서 인자 없이 직접 실행하지 않음
-  - [x] 기존 `updateCollectionSheet` / `updateTicketCols` 정의는 비상/호환용으로 보존
+  - [x] 기존 `updateCollectionSheet` / `updateTicketCols` 정의는 Phase 2E에서 제거
 - [x] DEV 교환 테스트용 `adminGrantTestCard` 추가
   - [x] `ENABLE_TEST_ADMIN_TOOLS=true` Script Property가 있을 때만 동작
   - [x] `card.granted` 이벤트 기록 후 해당 유저 `Collection` row rebuild
@@ -213,14 +213,19 @@
   - [x] `CardReceived` 실물 수령 수량은 현행 유지
   - [x] `Trades` accepted 교환 상세는 현행 유지
 - [x] admin `adminRebuildCollection`과 하위 호환 `migrateCardDrawsToCollection` 액션을 Events 기준 전체 재계산으로 전환
-- [ ] 오래된 `rebuildCollectionSheet()` legacy 본문 삭제 여부 별도 검토
-- [ ] 삭제 후보 탭 숨김 상태에서 DEV 회귀 테스트
-- [ ] Sheets API v4 (Advanced Service) 활성화
-- [ ] `batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소
-- [ ] 캐시 키 정밀화 — 유저 단위로 무효화 (`clearHotCaches_` 광범위 invalidate 제거)
-- [ ] 함수당 `getSpreadsheet()` 호출 1회로 통합
-- [ ] 카드 뽑기 응답 시간 측정 — 2D 직후 vs 2E 후 비교
-- [ ] DEV 스트레스 테스트 (연속 뽑기 등)
+- [x] 오래된 `rebuildCollectionSheet()` legacy 본문 제거. 현재는 Events 기준 wrapper만 유지
+- [x] 미사용 legacy helper `updateCollectionSheet()` / `updateTicketCols()` 제거
+- [x] 삭제 후보 탭 숨김 상태 DEV 회귀 테스트용 `phase2EHealthCheck()` 추가
+  - [ ] DEV GAS 반영 후 `phase2EHealthCheck()` 결과 `ok: true` 확인
+- [x] Sheets API v4 optional fallback 헬퍼 추가
+  - [ ] DEV Apps Script에서 Advanced Service 활성화 후 `sheetsApiV4Available: true` 확인
+- [x] `batchGet` / `batchUpdate` / `batchClear` 도입 — Collection projection 재계산 경로의 RPC 감소
+- [x] 캐시 키 정밀화 — `clearHotCaches_`의 공지 캐시 삭제 제거, 유저 파생 캐시 헬퍼 추가
+- [x] Collection projection 경로의 `getSpreadsheet()`/시트 row 읽기 입력을 `getCollectionProjectionInputs_()`로 통합
+- [x] 카드 뽑기/대시보드 응답 시간 측정용 `phase2EMeasurePerformance()` 추가
+  - [ ] DEV에서 측정 결과 기록
+- [x] DEV 스트레스 테스트용 `phase2EStressTestDraws(body)` 추가
+  - [ ] DEV에서 테스트 유저로 연속 뽑기 실행 후 `projectionMismatchCount: 0` 확인
 
 ---
 
