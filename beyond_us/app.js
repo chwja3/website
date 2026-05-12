@@ -1,4 +1,14 @@
-    const API_BASE = (location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+    const DEV_HOSTS = new Set(['dev.website-78h.pages.dev']);
+    function isDevEnvironment() {
+      const host = location.hostname;
+      return location.protocol === 'file:' ||
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        DEV_HOSTS.has(host);
+    }
+    const IS_DEV_ENV = isDevEnvironment();
+
+    const API_BASE = IS_DEV_ENV
       ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
 
@@ -29,9 +39,9 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512r';
+    const APP_VERSION = '20260512s';
     const MAINTENANCE_MODE = false;
-    if (MAINTENANCE_MODE && !(location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
       document.addEventListener('DOMContentLoaded', () => {
         document.body.innerHTML = `
@@ -233,7 +243,6 @@
     }
 
     /* ── 테스트 모드: dev URL에서만 자동 활성 ── */
-    const IS_DEV_ENV = location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const TEST_MODE  = IS_DEV_ENV;
 
     /* ── DEV PWA 매니페스트 교체 ── */

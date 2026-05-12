@@ -581,17 +581,13 @@
   </div>
 
   <script>
+    const DEV_HOSTS = new Set(['dev.website-78h.pages.dev']);
     function isDevEnvironment() {
-      const params = new URLSearchParams(location.search);
       const host = location.hostname;
-      return params.get('dev') === '1' ||
-        params.get('test') === '1' ||
-        location.protocol === 'file:' ||
+      return location.protocol === 'file:' ||
         host === 'localhost' ||
         host === '127.0.0.1' ||
-        host.includes('dev.') ||
-        host.startsWith('dev-') ||
-        host.includes('-dev');
+        DEV_HOSTS.has(host);
     }
 
     const IS_DEV_ENV = isDevEnvironment();
