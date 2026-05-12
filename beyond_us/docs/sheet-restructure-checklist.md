@@ -38,7 +38,12 @@
 
 ## Phase 1.5 — 하드코딩 제거 준비
 
-- [ ] `SPREADSHEET_ID`, `DEV_SPREADSHEET_ID`, `ADMIN_PASSWORD` 를 Script Properties로 이동
+- [x] `SPREADSHEET_ID`, `DEV_SPREADSHEET_ID`, `ADMIN_PASSWORD` 를 Script Properties로 이동
+  - [x] GAS 코드에서 민감값 상수 제거
+  - [x] Script Properties 접근 헬퍼 추가
+  - [x] 관리자 인증 비교를 헬퍼 기반으로 전환
+  - [x] DEV Apps Script 프로젝트에 Properties 설정
+  - [x] DEV 배포 URL 새 버전 반영 및 smoke 테스트
 - [ ] `Users` 비밀번호 평문 저장을 `passwordHash` / `passwordSalt` 구조로 전환하는 마이그레이션 설계
 - [ ] `HOLD_PRAY_ENTRIES` 를 `HoldPray` 시트 원천 데이터로 전환
 - [ ] `AppSettings` / `MissionDefinitions` 목표 스키마 샘플 작성

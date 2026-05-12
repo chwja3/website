@@ -1,6 +1,8 @@
-const SPREADSHEET_ID     = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q'; // PROD
-const DEV_SPREADSHEET_ID = '19-2XZ3egh8-K3XnE9QmuYVCnz6pkkgo-vf66BPKFS-o'; // DEV
-const ADMIN_PASSWORD = 'zmsdmsgP';
+const SCRIPT_PROPERTY_KEYS = Object.freeze({
+  SPREADSHEET_ID: 'SPREADSHEET_ID',
+  DEV_SPREADSHEET_ID: 'DEV_SPREADSHEET_ID',
+  ADMIN_PASSWORD: 'ADMIN_PASSWORD',
+});
 const SHEET_NAMES = Object.freeze({
   USERS: 'Users',
   CONFIG: 'config',
@@ -395,6 +397,58 @@ const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
 
 let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
 
+function getScriptProperty_(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  if (value === null || value === undefined || String(value).trim() === '') {
+    throw new Error('Missing script property: ' + key);
+  }
+  return String(value).trim();
+}
+
+function getSpreadsheetId_(devMode) {
+  return getScriptProperty_(devMode ? SCRIPT_PROPERTY_KEYS.DEV_SPREADSHEET_ID : SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID);
+}
+
+function getAdminPassword_() {
+  return getScriptProperty_(SCRIPT_PROPERTY_KEYS.ADMIN_PASSWORD);
+}
+
+function isAdminAuthorized_(password) {
+  return String(password || '') === getAdminPassword_();
+}
+
+function setRequiredScriptProperties(properties) {
+  const keys = Object.keys(SCRIPT_PROPERTY_KEYS).map(function(key) {
+    return SCRIPT_PROPERTY_KEYS[key];
+  });
+  const clean = {};
+
+  keys.forEach(function(key) {
+    const value = properties && properties[key];
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      clean[key] = String(value).trim();
+    }
+  });
+
+  const missing = keys.filter(function(key) {
+    return !clean[key];
+  });
+  if (missing.length) throw new Error('Missing script properties: ' + missing.join(', '));
+
+  PropertiesService.getScriptProperties().setProperties(clean, false);
+  return { ok: true, keys: keys };
+}
+
+function getScriptPropertiesStatus() {
+  const props = PropertiesService.getScriptProperties();
+  const status = {};
+  Object.keys(SCRIPT_PROPERTY_KEYS).forEach(function(key) {
+    const propertyKey = SCRIPT_PROPERTY_KEYS[key];
+    status[propertyKey] = !!props.getProperty(propertyKey);
+  });
+  return { ok: true, properties: status };
+}
+
 const SPIRIT_CARDS = [
   {id:1, name:'사랑'},
   {id:2, name:'희락'},
@@ -422,11 +476,11 @@ function doGet(e) {
     return jsonOutput(getUserStatus(userId, weekKey));
   }
   if (action === 'getUsers') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getUsers());
   }
   if (action === 'getTabSettings') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getTabSettings());
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
@@ -438,20 +492,20 @@ function doGet(e) {
   }
   if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || '', e.parameter.nickname || ''));
   if (action === 'getCurrentWeek') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
     return jsonOutput({ ok: true, week: Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1 });
   }
   if (action === 'getMissionConfig') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getMissionConfig(Number(e.parameter.week) || 1));
   }
   if (action === 'getCardStats') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getCardStats());
   }
   if (action === 'getTicketStats') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getTicketStats());
   }
   if (action === 'getPublicCollection') {
@@ -467,11 +521,11 @@ function doGet(e) {
     return jsonOutput(getTrades(uid));
   }
   if (action === 'getAdminTrades') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getAdminTrades());
   }
   if (action === 'migrateCardDrawsToCollection') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(migrateCardDrawsToCollection());
   }
   if (action === 'getBBB') {
@@ -489,7 +543,7 @@ function doGet(e) {
     return jsonOutput(getBBBMessages(uid));
   }
   if (action === 'adminGetBBB') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(adminGetBBB());
   }
 
@@ -514,11 +568,11 @@ function doPost(e) {
       return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false, body.requestId || ''));
     }
     if (action === 'adminLogin') {
-      const ok = body.password === ADMIN_PASSWORD;
+      const ok = isAdminAuthorized_(body.password);
       return jsonOutput(ok ? { ok: true } : { error: 'wrong_password' });
     }
     if (action === 'adminResetPassword') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminResetPassword(body));
     }
     if (action === 'register') {
@@ -548,7 +602,7 @@ function doPost(e) {
       return jsonOutput(setTabSettings(body));
     }
     if (action === 'setCurrentWeek') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       const week = Number(body.week);
       if (!week || week < 1 || week > 6) return jsonOutput({ error: 'invalid_week' });
       const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
@@ -557,19 +611,19 @@ function doPost(e) {
       return jsonOutput({ ok: true, week });
     }
     if (action === 'setMissionConfig') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setMissionConfig(body));
     }
     if (action === 'postNotice') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(postNotice(body));
     }
     if (action === 'deleteNotice') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(deleteNotice(body));
     }
     if (action === 'editNotice') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(editNotice(body));
     }
     if (action === 'requestTrade') {
@@ -619,31 +673,31 @@ function doPost(e) {
     }
     if (action === 'adminSetBBBMessageOpen') return jsonOutput(adminSetBBBMessageOpen(body));
     if (action === 'adminSetupBBBMatching') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupBBBMatching());
     }
     if (action === 'adminWriteBBBRows') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminWriteBBBRows(body.rows));
     }
     if (action === 'adminRebuildCollection') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(rebuildCollectionSheet());
     }
     if (action === 'adminSetupRawHeader') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupRawCheckinsHeader());
     }
     if (action === 'adminBackfillRawCols') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(backfillRawCheckinsCols());
     }
     if (action === 'setCardReceivedQty') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setCardReceivedQty(body));
     }
     if (action === 'setDrawReceived') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setDrawReceived(body));
     }
 
@@ -656,7 +710,7 @@ function doPost(e) {
 }
 
 function adminGrantHiddenCard(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   const userId = String(body.userId || '').trim();
   if (!userId) return { error: 'missing_userId' };
 
@@ -684,7 +738,7 @@ function adminGrantHiddenCard(body) {
 // 현장미션 섹션 → BBBSettings 시트 (key / open / text)
 
 function getSpreadsheet() {
-  return SpreadsheetApp.openById(_devMode ? DEV_SPREADSHEET_ID : SPREADSHEET_ID);
+  return SpreadsheetApp.openById(getSpreadsheetId_(_devMode));
 }
 
 function getColumns(sheet, schemaOrHeaderRow) {
@@ -1973,7 +2027,7 @@ function getTabSettings() {
 }
 
 function setTabSettings(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
 
   // TabSettings 시트 업데이트
   const tabSheet = getOrCreateTabSettingsSheet();
@@ -2791,7 +2845,7 @@ function deleteInquiry(body) {
   for (let i = 0; i < rows.length; i++) {
     const rowIndex = i + SCHEMA.INQUIRIES.dataStartRow;
     if (String(rows[i][col.id]) !== id) continue;
-    if (body.adminPw === ADMIN_PASSWORD) {
+    if (isAdminAuthorized_(body.adminPw)) {
       sheet.deleteRow(rowIndex);
       return { ok: true };
     }
@@ -2806,7 +2860,7 @@ function deleteInquiry(body) {
 }
 
 function replyInquiry(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   const id    = String(body.id    || '');
   const reply = String(body.reply || '').trim();
   if (!id) return { error: 'missing_fields' };
@@ -3105,7 +3159,7 @@ function rebuildCollectionSheet() {
 
 // 어드민 래퍼 (adminPw 체크)
 function adminRebuildCollection(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   return rebuildCollectionSheet();
 }
 
@@ -3435,12 +3489,12 @@ function backupSpreadsheet() {
     const dateStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd_HHmm');
 
     // PROD 백업
-    DriveApp.getFileById(SPREADSHEET_ID)
+    DriveApp.getFileById(getSpreadsheetId_(false))
       .makeCopy('BeyondUs_PROD_' + dateStr, folder);
     _cleanOldBackups(folder, 'BeyondUs_PROD_');
 
     // DEV 백업
-    DriveApp.getFileById(DEV_SPREADSHEET_ID)
+    DriveApp.getFileById(getSpreadsheetId_(true))
       .makeCopy('BeyondUs_DEV_' + dateStr, folder);
     _cleanOldBackups(folder, 'BeyondUs_DEV_');
 
@@ -3918,7 +3972,7 @@ function adminGetBBB() {
 
 // ─ 어드민: 메시지 오픈/클로즈 토글
 function adminSetBBBMessageOpen(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const open = body.open === true;
   configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).setValue(open);

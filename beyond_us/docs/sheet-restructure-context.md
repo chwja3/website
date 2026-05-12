@@ -443,3 +443,5 @@
 - 2026-05-12. `admin.html`의 `API_BASE`가 dev/local에서는 DEV GAS, 일반 배포에서는 PROD GAS를 참조하도록 분기된 것을 정적 확인.
 - 2026-05-12. PROD/DEV 실제 Google Sheet 헤더와 로컬 `Apps_Script` 분석 결과 대조 완료. 사용자 확인 기준.
 - 2026-05-12. Phase 1 시작. `Apps_Script`에 `SHEET_NAMES`, `SCHEMA`, `getColumns`, `getSheetRows` 추가. 리터럴 시트명 참조를 `SHEET_NAMES`로 1차 치환하고, `Users` 인증/세션/이름 매핑 흐름은 컬럼 헬퍼 기반으로 전환.
+- 2026-05-12. Phase 1.5 시작. 이번 실행 범위는 `SPREADSHEET_ID`, `DEV_SPREADSHEET_ID`, `ADMIN_PASSWORD`의 Script Properties 전환으로 한정하고, 사용자 비밀번호 hash 전환과 행사 데이터 외부화는 별도 하위 Phase로 분리.
+- 2026-05-12. Phase 1.5 Script Properties 전환 완료. `Apps_Script`에서 민감값 리터럴을 제거하고 DEV Apps Script 프로젝트 Properties에 값을 설정한 뒤 기존 DEV 웹앱 배포를 version 5로 재배포. `adminLogin`, `getCurrentWeek`, `dashboard`, `getCardStats`, `getTabSettings` smoke 테스트 통과.
