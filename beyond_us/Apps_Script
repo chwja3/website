@@ -4203,29 +4203,25 @@ function setDrawReceived(body) {
 }
 
 function getCardStats() {
-  var ss = getSpreadsheet();
   var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
 
-  // 1. CardDraws → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
+  // 1. Events.card.drawn → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
   var cardCounts = {};
   var totalDraws = 0;
   var userDrawMap = {}; // nickname → { cardId: count }
   SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
   try {
-    var drawSheet = getOrCreateDrawSheet();
-    var drawCol = getCardDrawColumns_(drawSheet);
-    var drawRows = getCardDrawRows_(drawSheet);
-    if (drawRows.length) {
-      drawRows.forEach(function(row) {
-        var nick = String(row[drawCol.userId]);
-        var cid  = Number(row[drawCol.cardId]);
-        if (!nick || !cid) return;
-        cardCounts[cid] = (cardCounts[cid] || 0) + 1;
-        totalDraws++;
-        if (!userDrawMap[nick]) userDrawMap[nick] = {};
-        userDrawMap[nick][cid] = (userDrawMap[nick][cid] || 0) + 1;
-      });
-    }
+    Events_readAll_().forEach(function(event) {
+      if (event.type !== EVENT_TYPES.CARD_DRAWN) return;
+      var nick = String(event.userId || '').trim();
+      var cid = Number(event.refId);
+      var amount = eventAmount_(event, 1);
+      if (!nick || !cid || amount <= 0) return;
+      cardCounts[cid] = (cardCounts[cid] || 0) + amount;
+      totalDraws += amount;
+      if (!userDrawMap[nick]) userDrawMap[nick] = {};
+      userDrawMap[nick][cid] = (userDrawMap[nick][cid] || 0) + amount;
+    });
   } catch(e) {}
 
   // 2. CardReceived → 카드별 총 수령 수 + 유저별 수령 맵
