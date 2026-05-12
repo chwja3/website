@@ -1,6 +1,13 @@
-const SPREADSHEET_ID     = '1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q'; // PROD
-const DEV_SPREADSHEET_ID = '19-2XZ3egh8-K3XnE9QmuYVCnz6pkkgo-vf66BPKFS-o'; // DEV
-const ADMIN_PASSWORD = 'zmsdmsgP';
+const SCRIPT_PROPERTY_KEYS = Object.freeze({
+  SPREADSHEET_ID: 'SPREADSHEET_ID',
+  ADMIN_PASSWORD: 'ADMIN_PASSWORD',
+  ALLOW_TEST_DRAWS: 'ALLOW_TEST_DRAWS',
+  ENABLE_TEST_ADMIN_TOOLS: 'ENABLE_TEST_ADMIN_TOOLS',
+});
+const REQUIRED_SCRIPT_PROPERTY_KEYS = Object.freeze([
+  SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID,
+  SCRIPT_PROPERTY_KEYS.ADMIN_PASSWORD,
+]);
 const SHEET_NAMES = Object.freeze({
   USERS: 'Users',
   CONFIG: 'config',
@@ -19,8 +26,11 @@ const SHEET_NAMES = Object.freeze({
   BBB_PHOTOS: 'BBBPhotos',
   NOTICES: 'Notices',
   INQUIRIES: 'Inquiries',
+  APP_SETTINGS: 'AppSettings',
+  MISSION_DEFINITIONS: 'MissionDefinitions',
+  EVENTS: 'Events',
+  USER_DASHBOARD: 'UserDashboard',
 });
-const RAW_SHEET_NAME = SHEET_NAMES.RAW_CHECKINS;
 const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
 const SCHEMA = Object.freeze({
   USERS: Object.freeze({
@@ -237,6 +247,85 @@ const SCHEMA = Object.freeze({
       missionType: 'missionType',
     }),
   }),
+  APP_SETTINGS: Object.freeze({
+    sheetName: SHEET_NAMES.APP_SETTINGS,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      key: 'key',
+      value: 'value',
+      type: 'type',
+      note: 'note',
+    }),
+  }),
+  MISSION_DEFINITIONS: Object.freeze({
+    sheetName: SHEET_NAMES.MISSION_DEFINITIONS,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      weekKey: 'weekKey',
+      weekOrder: 'weekOrder',
+      weekTitle: 'weekTitle',
+      weekStartDate: 'weekStartDate',
+      weekEndDate: 'weekEndDate',
+      drawThreshold: 'drawThreshold',
+      itemNo: 'itemNo',
+      itemText: 'itemText',
+      scoreWeight: 'scoreWeight',
+      category: 'category',
+      enabled: 'enabled',
+    }),
+  }),
+  EVENTS: Object.freeze({
+    sheetName: SHEET_NAMES.EVENTS,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      eventId: 'eventId',
+      timestamp: 'timestamp',
+      userId: 'userId',
+      type: 'type',
+      refId: 'refId',
+      amount: 'amount',
+      weekKey: 'weekKey',
+      payload: 'payload',
+      source: 'source',
+    }),
+  }),
+  USER_DASHBOARD: Object.freeze({
+    sheetName: SHEET_NAMES.USER_DASHBOARD,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      userId: 'userId',
+      name: 'name',
+      parish: 'parish',
+      missionCount: 'missionCount',
+      ticketsEarned: 'ticketsEarned',
+      ticketsConsumed: 'ticketsConsumed',
+      ticketsRemaining: 'ticketsRemaining',
+      cardsDrawn: 'cardsDrawn',
+      card1: 'card_1',
+      card2: 'card_2',
+      card3: 'card_3',
+      card4: 'card_4',
+      card5: 'card_5',
+      card6: 'card_6',
+      card7: 'card_7',
+      card8: 'card_8',
+      card9: 'card_9',
+      card10: 'card_10',
+      totalCards: 'totalCards',
+      activeTrades: 'activeTrades',
+      lastActivity: 'lastActivity',
+      colTicketsRemaining: 'col_ticketsRemaining',
+      colTotalCards: 'col_totalCards',
+      colCardsDrawn: 'col_cardsDrawn',
+      validTickets: 'valid_tickets',
+      validCards: 'valid_cards',
+      validDrawn: 'valid_drawn',
+    }),
+  }),
 });
 const USER_COLUMN_FALLBACK = Object.freeze({
   nickname: 0,
@@ -374,6 +463,174 @@ const BBB_PHOTOS_COLUMN_FALLBACK = Object.freeze({
   uploadedAt: 2,
   missionType: 3,
 });
+const APP_SETTINGS_COLUMN_FALLBACK = Object.freeze({
+  key: 0,
+  value: 1,
+  type: 2,
+  note: 3,
+});
+const MISSION_DEFINITIONS_COLUMN_FALLBACK = Object.freeze({
+  weekKey: 0,
+  weekOrder: 1,
+  weekTitle: 2,
+  weekStartDate: 3,
+  weekEndDate: 4,
+  drawThreshold: 5,
+  itemNo: 6,
+  itemText: 7,
+  scoreWeight: 8,
+  category: 9,
+  enabled: 10,
+});
+const APP_SETTINGS_LABELS = Object.freeze([
+  '설정 키',
+  '값',
+  '타입',
+  '설명',
+]);
+const APP_SETTINGS_COL_COUNT = Object.keys(SCHEMA.APP_SETTINGS.columns).length;
+const MISSION_DEFINITIONS_LABELS = Object.freeze([
+  '주차 키',
+  '주차 순서',
+  '주차 제목',
+  '주차 시작일',
+  '주차 종료일',
+  '뽑기권 기준 점수',
+  '항목 번호',
+  '미션 내용',
+  '점수',
+  '분류',
+  '사용 여부',
+]);
+const MISSION_DEFINITIONS_COL_COUNT = Object.keys(SCHEMA.MISSION_DEFINITIONS.columns).length;
+const EVENTS_LABELS = Object.freeze([
+  '이벤트ID',
+  '발생시각',
+  '사용자',
+  '유형',
+  '참조ID',
+  '수량',
+  '주차',
+  '상세',
+  '출처',
+]);
+const EVENTS_COLUMN_FALLBACK = Object.freeze({
+  eventId: 0,
+  timestamp: 1,
+  userId: 2,
+  type: 3,
+  refId: 4,
+  amount: 5,
+  weekKey: 6,
+  payload: 7,
+  source: 8,
+});
+const EVENTS_COL_COUNT = Object.keys(SCHEMA.EVENTS.columns).length;
+const EVENT_TYPES = Object.freeze({
+  MISSION_SUBMITTED: 'mission.submitted',
+  TICKET_GRANTED: 'ticket.granted',
+  TICKET_CONSUMED: 'ticket.consumed',
+  CARD_DRAWN: 'card.drawn',
+  CARD_GRANTED: 'card.granted',
+  CARD_REMOVED: 'card.removed',
+  CARD_RECEIVED: 'card.received',
+  TRADE_REQUESTED: 'trade.requested',
+  TRADE_ACCEPTED: 'trade.accepted',
+  TRADE_REJECTED: 'trade.rejected',
+  TRADE_CANCELLED: 'trade.cancelled',
+  TRADE_EXPIRED: 'trade.expired',
+  TRADE_PRAYED: 'trade.prayed',
+  HP_GUESSED: 'hp.guessed',
+  BBB_GUESSED: 'bbb.guessed',
+});
+const EVENT_SOURCES = Object.freeze({
+  WEB: 'web',
+  ADMIN: 'admin',
+  SERVER: 'server',
+  MIGRATION: 'migration',
+});
+const USER_DASHBOARD_LABELS = Object.freeze([
+  '닉네임',
+  '이름',
+  '교구',
+  '미션 제출 수',
+  '누적 획득 뽑기권',
+  '사용 뽑기권',
+  '남은 뽑기권',
+  '뽑은 총 횟수',
+  '사랑',
+  '희락',
+  '화평',
+  '오래참음',
+  '자비',
+  '양선',
+  '충성',
+  '온유',
+  '절제',
+  '히든',
+  '총 카드 수',
+  '진행중 교환',
+  '마지막 활동',
+  '[컬렉션] 남은 뽑기권',
+  '[컬렉션] 총 카드 수',
+  '[컬렉션] 뽑은 횟수',
+  '뽑기권 일치',
+  '카드 수 일치',
+  '뽑기 횟수 일치',
+]);
+const USER_DASHBOARD_COL_COUNT = Object.keys(SCHEMA.USER_DASHBOARD.columns).length;
+const USER_DASHBOARD_DEFAULT_ROWS = 250;
+const USER_DASHBOARD_EVENT_MAX_ROW = 5000;
+const USER_DASHBOARD_DOMAIN_MAX_ROW = 1000;
+const USER_DASHBOARD_TAB_COLOR = '#3B82F6';
+const PROD_CUTOVER_CONFIRM = 'APPLY_PROD_CUTOVER';
+const FINAL_VISIBLE_SHEET_NAMES = Object.freeze([
+  SHEET_NAMES.EVENTS,
+  SHEET_NAMES.USER_DASHBOARD,
+  SHEET_NAMES.USERS,
+  SHEET_NAMES.COLLECTION,
+  SHEET_NAMES.CARD_RECEIVED,
+  SHEET_NAMES.TRADES,
+  SHEET_NAMES.HOLD_PRAY,
+  SHEET_NAMES.HP_GUESSES,
+  SHEET_NAMES.APP_SETTINGS,
+  SHEET_NAMES.MISSION_DEFINITIONS,
+  SHEET_NAMES.TAB_SETTINGS,
+  SHEET_NAMES.BBB_SETTINGS,
+  SHEET_NAMES.BBB,
+  SHEET_NAMES.BBB_MESSAGES,
+  SHEET_NAMES.BBB_PHOTOS,
+  SHEET_NAMES.NOTICES,
+  SHEET_NAMES.INQUIRIES,
+]);
+const FINAL_HIDDEN_SHEET_NAMES = Object.freeze([
+  SHEET_NAMES.CONFIG,
+  SHEET_NAMES.RAW_CHECKINS,
+  SHEET_NAMES.CARD_DRAWS,
+  SHEET_NAMES.BONUS_DRAWS,
+]);
+const FINAL_SHEET_TABS = Object.freeze([
+  Object.freeze({ name: SHEET_NAMES.EVENTS, color: '#9333EA' }),
+  Object.freeze({ name: SHEET_NAMES.USER_DASHBOARD, color: USER_DASHBOARD_TAB_COLOR }),
+  Object.freeze({ name: SHEET_NAMES.USERS, color: '#22C55E' }),
+  Object.freeze({ name: SHEET_NAMES.COLLECTION, color: '#22C55E' }),
+  Object.freeze({ name: SHEET_NAMES.RAW_CHECKINS, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.CARD_DRAWS, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.BONUS_DRAWS, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.CARD_RECEIVED, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.TRADES, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.HOLD_PRAY, color: '#F97316' }),
+  Object.freeze({ name: SHEET_NAMES.HP_GUESSES, color: '#F97316' }),
+  Object.freeze({ name: SHEET_NAMES.APP_SETTINGS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.MISSION_DEFINITIONS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.TAB_SETTINGS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.BBB_SETTINGS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.BBB, color: '#EF4444' }),
+  Object.freeze({ name: SHEET_NAMES.BBB_MESSAGES, color: '#EF4444' }),
+  Object.freeze({ name: SHEET_NAMES.BBB_PHOTOS, color: '#EF4444' }),
+  Object.freeze({ name: SHEET_NAMES.NOTICES, color: '#FFFFFF' }),
+  Object.freeze({ name: SHEET_NAMES.INQUIRIES, color: '#FFFFFF' }),
+]);
 const CONFIG_LAYOUT = Object.freeze({
   currentWeekLabelCell: 'A1',
   currentWeekCell: 'B1',
@@ -393,9 +650,88 @@ const CONFIG_LAYOUT = Object.freeze({
   missionCategoryCol: 3,
   weekBlockClearRange: 'A5:C200',
 });
+const APP_SETTING_KEYS = Object.freeze({
+  CURRENT_WEEK: 'current_week',
+  APP_OPEN_DATE: 'app_open_date',
+  BBB_MESSAGE_OPEN: 'bbb_message_open',
+  HOLD_PRAY_OPEN: 'hold_pray_open',
+  SECRET_OPEN: 'secret_open',
+  CHAT_OPEN: 'chat_open',
+  BBB_SECTIONS_OPEN: 'bbb_sections_open',
+});
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
 
-let _devMode = false; // 요청마다 doGet/doPost에서 설정됨
+function getScriptProperty_(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  if (value === null || value === undefined || String(value).trim() === '') {
+    throw new Error('Missing script property: ' + key);
+  }
+  return String(value).trim();
+}
+
+function getOptionalScriptProperty_(key) {
+  const value = PropertiesService.getScriptProperties().getProperty(key);
+  return value === null || value === undefined ? '' : String(value).trim();
+}
+
+function getSpreadsheetId_() {
+  return getScriptProperty_(SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID);
+}
+
+function getAdminPassword_() {
+  return getScriptProperty_(SCRIPT_PROPERTY_KEYS.ADMIN_PASSWORD);
+}
+
+function isAdminAuthorized_(password) {
+  return String(password || '') === getAdminPassword_();
+}
+
+function isTestDrawAllowed_() {
+  return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS).toLowerCase() === 'true';
+}
+
+function isTestAdminToolsEnabled_() {
+  return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS).toLowerCase() === 'true';
+}
+
+function setRequiredScriptProperties(properties) {
+  const keys = REQUIRED_SCRIPT_PROPERTY_KEYS.slice();
+  const clean = {};
+
+  keys.forEach(function(key) {
+    const value = properties && properties[key];
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      clean[key] = String(value).trim();
+    }
+  });
+
+  const missing = keys.filter(function(key) {
+    return !clean[key];
+  });
+  if (missing.length) throw new Error('Missing script properties: ' + missing.join(', '));
+
+  const allowTestDraws = properties && properties[SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS];
+  if (allowTestDraws !== null && allowTestDraws !== undefined && String(allowTestDraws).trim() !== '') {
+    clean[SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS] = String(allowTestDraws).trim();
+  }
+  const enableTestAdminTools = properties && properties[SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS];
+  if (enableTestAdminTools !== null && enableTestAdminTools !== undefined && String(enableTestAdminTools).trim() !== '') {
+    clean[SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS] = String(enableTestAdminTools).trim();
+  }
+
+  PropertiesService.getScriptProperties().setProperties(clean, false);
+  return { ok: true, keys: keys };
+}
+
+function getScriptPropertiesStatus() {
+  const props = PropertiesService.getScriptProperties();
+  const status = {};
+  Object.keys(SCRIPT_PROPERTY_KEYS).forEach(function(key) {
+    const propertyKey = SCRIPT_PROPERTY_KEYS[key];
+    status[propertyKey] = !!props.getProperty(propertyKey);
+  });
+  return { ok: true, properties: status };
+}
 
 const SPIRIT_CARDS = [
   {id:1, name:'사랑'},
@@ -412,7 +748,6 @@ const SPIRIT_CARDS = [
 
 // ── GET ──────────────────────────────────────────
 function doGet(e) {
-  _devMode = (e && e.parameter && e.parameter.devMode === 'true');
   const action = (e && e.parameter && e.parameter.action) || 'dashboard';
 
   if (action === 'dashboard') return jsonOutput(getDashboardDataCached_());
@@ -421,14 +756,14 @@ function doGet(e) {
     const weekKey = e.parameter.weekKey || '';
     const auth = requireSessionForUser_(e.parameter, userId);
     if (auth) return jsonOutput(auth);
-    return jsonOutput(getUserStatus(userId, weekKey));
+    return jsonOutput(getUserStatusCached_(userId, weekKey));
   }
   if (action === 'getUsers') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getUsers());
   }
   if (action === 'getTabSettings') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getTabSettings());
   }
   if (action === 'getNotices') return jsonOutput(getNotices());
@@ -440,20 +775,19 @@ function doGet(e) {
   }
   if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || '', e.parameter.nickname || ''));
   if (action === 'getCurrentWeek') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
-    const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return jsonOutput({ ok: true, week: Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1 });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput({ ok: true, week: getCurrentWeek_() });
   }
   if (action === 'getMissionConfig') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getMissionConfig(Number(e.parameter.week) || 1));
   }
   if (action === 'getCardStats') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getCardStats());
   }
   if (action === 'getTicketStats') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getTicketStats());
   }
   if (action === 'getPublicCollection') {
@@ -469,11 +803,11 @@ function doGet(e) {
     return jsonOutput(getTrades(uid));
   }
   if (action === 'getAdminTrades') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getAdminTrades());
   }
   if (action === 'migrateCardDrawsToCollection') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(migrateCardDrawsToCollection());
   }
   if (action === 'getBBB') {
@@ -491,7 +825,7 @@ function doGet(e) {
     return jsonOutput(getBBBMessages(uid));
   }
   if (action === 'adminGetBBB') {
-    if ((e.parameter.adminPw || '') !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(adminGetBBB());
   }
 
@@ -502,7 +836,6 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body   = JSON.parse(e.postData.contents || '{}');
-    _devMode = (body.devMode === true);
     const action = body.action;
 
     if (action === 'submit') {
@@ -516,11 +849,11 @@ function doPost(e) {
       return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false, body.requestId || ''));
     }
     if (action === 'adminLogin') {
-      const ok = body.password === ADMIN_PASSWORD;
+      const ok = isAdminAuthorized_(body.password);
       return jsonOutput(ok ? { ok: true } : { error: 'wrong_password' });
     }
     if (action === 'adminResetPassword') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminResetPassword(body));
     }
     if (action === 'register') {
@@ -550,28 +883,25 @@ function doPost(e) {
       return jsonOutput(setTabSettings(body));
     }
     if (action === 'setCurrentWeek') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       const week = Number(body.week);
       if (!week || week < 1 || week > 6) return jsonOutput({ error: 'invalid_week' });
-      const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-      sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(week);
-      clearHotCaches_();
-      return jsonOutput({ ok: true, week });
+      return jsonOutput(setCurrentWeek_(week));
     }
     if (action === 'setMissionConfig') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setMissionConfig(body));
     }
     if (action === 'postNotice') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(postNotice(body));
     }
     if (action === 'deleteNotice') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(deleteNotice(body));
     }
     if (action === 'editNotice') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(editNotice(body));
     }
     if (action === 'requestTrade') {
@@ -621,35 +951,66 @@ function doPost(e) {
     }
     if (action === 'adminSetBBBMessageOpen') return jsonOutput(adminSetBBBMessageOpen(body));
     if (action === 'adminSetupBBBMatching') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupBBBMatching());
     }
     if (action === 'adminWriteBBBRows') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminWriteBBBRows(body.rows));
     }
     if (action === 'adminRebuildCollection') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
-      return jsonOutput(rebuildCollectionSheet());
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(rebuildCollectionRowsFromEvents_());
+    }
+    if (action === 'adminRebuildCollectionRow') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(rebuildCollectionRow(body.userId || body.nickname));
     }
     if (action === 'adminSetupRawHeader') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupRawCheckinsHeader());
     }
     if (action === 'adminBackfillRawCols') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(backfillRawCheckinsCols());
     }
     if (action === 'setCardReceivedQty') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setCardReceivedQty(body));
     }
     if (action === 'setDrawReceived') {
-      if (body.adminPw !== ADMIN_PASSWORD) return jsonOutput({ error: 'unauthorized' });
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setDrawReceived(body));
     }
 
     if (action === 'adminGrantHiddenCard') return jsonOutput(adminGrantHiddenCard(body));
+    if (action === 'adminGrantTestCard') return jsonOutput(adminGrantTestCard(body));
+    if (action === 'adminCreateCardEvent') return jsonOutput(adminCreateCardEvent(body));
+    if (action === 'adminRebuildEventDerivedViews') return jsonOutput(adminRebuildEventDerivedViews(body));
+    if (action === 'phase2EHealthCheck') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(phase2EHealthCheck_(body));
+    }
+    if (action === 'phase2EMeasurePerformance') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(phase2EMeasurePerformance_(body));
+    }
+    if (action === 'phase2EStressTestDraws') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(phase2EStressTestDraws_(body));
+    }
+    if (action === 'prodCutoverDryRun') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(prodCutoverDryRun_(body));
+    }
+    if (action === 'prodCutoverApply') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(prodCutoverApply_(body));
+    }
+    if (action === 'prodCutoverHealthCheck') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(prodCutoverHealthCheck_(body));
+    }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -658,7 +1019,7 @@ function doPost(e) {
 }
 
 function adminGrantHiddenCard(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   const userId = String(body.userId || '').trim();
   if (!userId) return { error: 'missing_userId' };
 
@@ -666,8 +1027,144 @@ function adminGrantHiddenCard(body) {
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
   try {
-  updateCollectionSheet(userId, 10, 1);
+  const now = new Date().toISOString();
+  Events_append_(EVENT_TYPES.CARD_GRANTED, userId, {
+    timestamp: now,
+    amount: 1,
+    refId: 10,
+    source: EVENT_SOURCES.ADMIN,
+    payload: {
+      cardName: '히든',
+      reason: 'admin_hidden_grant',
+    },
+  });
+  rebuildCollectionRow_(userId);
   return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminGrantTestCard(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  if (!isTestAdminToolsEnabled_()) return { error: 'test_admin_tools_disabled' };
+
+  const userId = String(body.userId || body.nickname || '').trim();
+  const cardId = Number(body.cardId);
+  const amount = Math.floor(Number(body.amount) || 1);
+  if (!userId) return { error: 'missing_userId' };
+  if (!(cardId >= 1 && cardId <= 10)) return { error: 'invalid_cardId' };
+  if (!(amount >= 1 && amount <= 20)) return { error: 'invalid_amount' };
+
+  const card = SPIRIT_CARDS.find(function(c) { return c.id === cardId; });
+  if (!card) return { error: 'invalid_cardId' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const now = new Date().toISOString();
+    const event = Events_append_(EVENT_TYPES.CARD_GRANTED, userId, {
+      timestamp: now,
+      amount: amount,
+      refId: cardId,
+      source: EVENT_SOURCES.ADMIN,
+      payload: {
+        cardName: card.name,
+        reason: 'test_card_grant',
+      },
+    });
+    const rebuild = rebuildCollectionRow_(userId);
+    return {
+      ok: true,
+      userId: userId,
+      cardId: cardId,
+      amount: amount,
+      eventId: event.event.eventId,
+      collection: getUserCollection(userId),
+      tickets: getCollectionTickets(userId),
+      rebuild: {
+        ok: rebuild.ok,
+        diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
+      },
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminCreateCardEvent(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  if (!isTestAdminToolsEnabled_()) return { error: 'test_admin_tools_disabled' };
+
+  const eventMode = String(body.eventMode || body.mode || '').trim();
+  const userId = String(body.userId || body.nickname || '').trim();
+  const cardId = Number(body.cardId);
+  const amount = Math.floor(Number(body.amount) || 1);
+  if (eventMode !== 'add' && eventMode !== 'remove') return { error: 'invalid_eventMode' };
+  if (!userId) return { error: 'missing_userId' };
+  if (!(cardId >= 1 && cardId <= 10)) return { error: 'invalid_cardId' };
+  if (!(amount >= 1 && amount <= 20)) return { error: 'invalid_amount' };
+
+  const card = SPIRIT_CARDS.find(function(c) { return c.id === cardId; });
+  if (!card) return { error: 'invalid_cardId' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const now = new Date().toISOString();
+    const eventType = eventMode === 'remove' ? EVENT_TYPES.CARD_REMOVED : EVENT_TYPES.CARD_GRANTED;
+    const reason = String(body.reason || (eventMode === 'remove' ? 'admin_card_remove' : 'admin_card_grant')).trim();
+    const event = Events_append_(eventType, userId, {
+      timestamp: now,
+      amount: amount,
+      refId: cardId,
+      source: EVENT_SOURCES.ADMIN,
+      payload: {
+        cardName: card.name,
+        reason: reason,
+      },
+    });
+    const rebuild = rebuildCollectionRow_(userId);
+    return {
+      ok: true,
+      eventMode: eventMode,
+      eventType: eventType,
+      userId: userId,
+      cardId: cardId,
+      amount: amount,
+      eventId: event.event.eventId,
+      collection: getUserCollection(userId),
+      tickets: getCollectionTickets(userId),
+      rebuild: {
+        ok: rebuild.ok,
+        diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
+      },
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminRebuildEventDerivedViews(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+
+  const rowLimit = Math.max(Number(body.rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const collection = rebuildCollectionRowsFromEvents_();
+    const dashboard = setupUserDashboard(rowLimit);
+    clearDashboardCache_();
+    return {
+      ok: true,
+      collectionRebuilt: collection.rebuilt,
+      dashboardRows: dashboard.rowsPrepared,
+      collectionSheet: SHEET_NAMES.COLLECTION,
+      dashboardSheet: SHEET_NAMES.USER_DASHBOARD,
+    };
   } finally {
     lock.releaseLock();
   }
@@ -686,7 +1183,7 @@ function adminGrantHiddenCard(body) {
 // 현장미션 섹션 → BBBSettings 시트 (key / open / text)
 
 function getSpreadsheet() {
-  return SpreadsheetApp.openById(_devMode ? DEV_SPREADSHEET_ID : SPREADSHEET_ID);
+  return SpreadsheetApp.openById(getSpreadsheetId_());
 }
 
 function getColumns(sheet, schemaOrHeaderRow) {
@@ -846,6 +1343,30 @@ function getBbbPhotoRows_(sheet, maxColumns) {
   return getSheetRows(sheet, SCHEMA.BBB_PHOTOS, maxColumns || 4);
 }
 
+function getAppSettingsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.APP_SETTINGS, APP_SETTINGS_COLUMN_FALLBACK);
+}
+
+function getAppSettingsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.APP_SETTINGS, maxColumns || APP_SETTINGS_COL_COUNT);
+}
+
+function getMissionDefinitionsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_COLUMN_FALLBACK);
+}
+
+function getMissionDefinitionsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.MISSION_DEFINITIONS, maxColumns || MISSION_DEFINITIONS_COL_COUNT);
+}
+
+function getEventsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.EVENTS, EVENTS_COLUMN_FALLBACK);
+}
+
+function getEventsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.EVENTS, maxColumns || EVENTS_COL_COUNT);
+}
+
 function getConfigWeekStartRow_(week) {
   return (week - 1) * CONFIG_LAYOUT.weekBlockSize + CONFIG_LAYOUT.weekBlockFirstRow;
 }
@@ -876,6 +1397,1314 @@ function getSheetRows(sheet, schemaOrHeaderRow, maxColumns) {
   return sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, width).getValues();
 }
 
+function isSheetsValuesApiAvailable_() {
+  try {
+    return !!(typeof Sheets !== 'undefined' &&
+      Sheets.Spreadsheets &&
+      Sheets.Spreadsheets.Values);
+  } catch(e) {
+    return false;
+  }
+}
+
+function a1Column_(columnNumber) {
+  let column = Number(columnNumber) || 1;
+  let label = '';
+  while (column > 0) {
+    const mod = (column - 1) % 26;
+    label = String.fromCharCode(65 + mod) + label;
+    column = Math.floor((column - mod) / 26);
+  }
+  return label;
+}
+
+function quoteSheetNameForA1_(sheetName) {
+  return "'" + String(sheetName || '').replace(/'/g, "''") + "'";
+}
+
+function buildA1Range_(sheet, row, column, numRows, numColumns) {
+  const startColumn = a1Column_(column);
+  const endColumn = a1Column_(column + numColumns - 1);
+  return quoteSheetNameForA1_(sheet.getName()) + '!' +
+    startColumn + row + ':' + endColumn + (row + numRows - 1);
+}
+
+function normalizeSheetValues_(values, width) {
+  return (values || []).map(function(row) {
+    const normalized = row ? row.slice() : [];
+    while (normalized.length < width) normalized.push('');
+    return normalized.slice(0, width);
+  });
+}
+
+function getBatchSheetRows_(requests) {
+  const prepared = [];
+  const result = {};
+  requests.forEach(function(request) {
+    result[request.key] = [];
+    if (!request.sheet) return;
+    const schema = request.schemaOrHeaderRow || request.schema;
+    const dataStartRow = typeof schema === 'number'
+      ? schema
+      : (schema && schema.dataStartRow) || 2;
+    const lastRow = request.sheet.getLastRow();
+    if (lastRow < dataStartRow) return;
+    const width = request.maxColumns || request.sheet.getLastColumn();
+    prepared.push({
+      key: request.key,
+      sheet: request.sheet,
+      schema: schema,
+      dataStartRow: dataStartRow,
+      lastRow: lastRow,
+      width: width,
+      range: buildA1Range_(request.sheet, dataStartRow, 1, lastRow - dataStartRow + 1, width),
+    });
+  });
+
+  if (prepared.length && isSheetsValuesApiAvailable_()) {
+    try {
+      const response = Sheets.Spreadsheets.Values.batchGet(getSpreadsheetId_(), {
+        ranges: prepared.map(function(item) { return item.range; }),
+        valueRenderOption: 'UNFORMATTED_VALUE',
+        dateTimeRenderOption: 'FORMATTED_STRING',
+      });
+      const valueRanges = response.valueRanges || [];
+      prepared.forEach(function(item, index) {
+        result[item.key] = normalizeSheetValues_((valueRanges[index] && valueRanges[index].values) || [], item.width);
+      });
+      return result;
+    } catch(e) {
+      Logger.log('Sheets batchGet fallback: ' + e);
+    }
+  }
+
+  prepared.forEach(function(item) {
+    result[item.key] = getSheetRows(item.sheet, item.schema, item.width);
+  });
+  return result;
+}
+
+function setSheetValues_(sheet, row, column, values) {
+  if (!values || !values.length) return { ok: true, rows: 0 };
+  const width = values.reduce(function(max, valueRow) {
+    return Math.max(max, valueRow ? valueRow.length : 0);
+  }, 0);
+  if (width <= 0) return { ok: true, rows: values.length };
+  const normalized = normalizeSheetValues_(values, width);
+
+  if (isSheetsValuesApiAvailable_()) {
+    try {
+      Sheets.Spreadsheets.Values.batchUpdate({
+        valueInputOption: 'RAW',
+        data: [{
+          range: buildA1Range_(sheet, row, column, normalized.length, width),
+          values: normalized,
+        }],
+      }, getSpreadsheetId_());
+      return { ok: true, rows: normalized.length, api: 'sheets_v4' };
+    } catch(e) {
+      Logger.log('Sheets batchUpdate fallback: ' + e);
+    }
+  }
+
+  sheet.getRange(row, column, normalized.length, width).setValues(normalized);
+  return { ok: true, rows: normalized.length, api: 'spreadsheet_app' };
+}
+
+function clearSheetValues_(sheet, row, column, numRows, numColumns) {
+  if (numRows <= 0 || numColumns <= 0) return { ok: true, rows: 0 };
+  if (isSheetsValuesApiAvailable_()) {
+    try {
+      Sheets.Spreadsheets.Values.batchClear({
+        ranges: [buildA1Range_(sheet, row, column, numRows, numColumns)],
+      }, getSpreadsheetId_());
+      return { ok: true, rows: numRows, api: 'sheets_v4' };
+    } catch(e) {
+      Logger.log('Sheets batchClear fallback: ' + e);
+    }
+  }
+  sheet.getRange(row, column, numRows, numColumns).clearContent();
+  return { ok: true, rows: numRows, api: 'spreadsheet_app' };
+}
+
+function ensureTwoHeaderSheet_(sheet, schema, labels, colCount) {
+  if (sheet.getMaxColumns() < colCount) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), colCount - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < schema.headerRow) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), schema.headerRow - sheet.getMaxRows());
+  }
+  sheet.getRange(1, 1, 1, colCount).setValues([labels.slice()]);
+  sheet.getRange(schema.headerRow, 1, 1, colCount).setValues([getSchemaHeaders_(schema)]);
+  sheet.setFrozenRows(2);
+}
+
+function clearSheetDataRows_(sheet, schema, colCount) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < schema.dataStartRow) return;
+  sheet.getRange(schema.dataStartRow, 1, lastRow - schema.dataStartRow + 1, colCount).clearContent();
+}
+
+function getOrCreateAppSettingsSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.APP_SETTINGS);
+  ensureTwoHeaderSheet_(sheet, SCHEMA.APP_SETTINGS, APP_SETTINGS_LABELS, APP_SETTINGS_COL_COUNT);
+  return sheet;
+}
+
+function getOrCreateMissionDefinitionsSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.MISSION_DEFINITIONS);
+  ensureTwoHeaderSheet_(sheet, SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_LABELS, MISSION_DEFINITIONS_COL_COUNT);
+  return sheet;
+}
+
+// Events append-only ledger.
+function getOrCreateEventsSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.EVENTS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.EVENTS);
+  ensureEventsSheet_(sheet);
+  return sheet;
+}
+
+function ensureEventsSheet_(sheet) {
+  if (sheet.getMaxColumns() < EVENTS_COL_COUNT) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), EVENTS_COL_COUNT - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < SCHEMA.EVENTS.headerRow) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), SCHEMA.EVENTS.headerRow - sheet.getMaxRows());
+  }
+  sheet.getRange(1, 1, 1, EVENTS_COL_COUNT).setValues([EVENTS_LABELS.slice()]);
+  sheet.getRange(SCHEMA.EVENTS.headerRow, 1, 1, EVENTS_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.EVENTS)]);
+  sheet.setFrozenRows(2);
+}
+
+function Events_append(type, userId, options) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
+
+  try {
+    return Events_append_(type, userId, options || {});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function Events_append_(type, userId, options) {
+  const sheet = getOrCreateEventsSheet();
+  const row = Events_buildRow_(type, userId, options || {});
+  sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, 1, EVENTS_COL_COUNT).setValues([row]);
+  return { ok: true, event: Events_rowToObject_(row) };
+}
+
+function Events_buildRow_(type, userId, options) {
+  const opts = options || {};
+  const amount = Object.prototype.hasOwnProperty.call(opts, 'amount') ? opts.amount : '';
+  return [
+    opts.eventId || Utilities.getUuid(),
+    eventTimestampIso_(opts.timestamp, opts.timestampOffsetMs || 0),
+    String(userId || '').trim(),
+    String(type || '').trim(),
+    opts.refId === null || opts.refId === undefined ? '' : String(opts.refId),
+    amount === null || amount === undefined ? '' : amount,
+    opts.weekKey === null || opts.weekKey === undefined ? '' : String(opts.weekKey),
+    eventPayloadJson_(opts.payload),
+    opts.source || EVENT_SOURCES.SERVER,
+  ];
+}
+
+function Events_rowToObject_(row, columns) {
+  const col = columns || EVENTS_COLUMN_FALLBACK;
+  return {
+    eventId: String(row[col.eventId] || ''),
+    timestamp: String(row[col.timestamp] || ''),
+    userId: String(row[col.userId] || ''),
+    type: String(row[col.type] || ''),
+    refId: String(row[col.refId] || ''),
+    amount: row[col.amount],
+    weekKey: String(row[col.weekKey] || ''),
+    payload: parseEventPayload_(row[col.payload]),
+    source: String(row[col.source] || ''),
+  };
+}
+
+function Events_readByUser(userId) {
+  const clean = String(userId || '').trim();
+  if (!clean) return [];
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  return getEventsRows_(sheet)
+    .filter(function(row) { return String(row[col.userId] || '').trim() === clean; })
+    .map(function(row) { return Events_rowToObject_(row, col); });
+}
+
+function Events_readAll_() {
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  return getEventsRows_(sheet)
+    .filter(function(row) {
+      return String(row[col.userId] || '').trim() ||
+        String(row[col.type] || '').trim() ||
+        String(row[col.eventId] || '').trim();
+    })
+    .map(function(row) { return Events_rowToObject_(row, col); });
+}
+
+function Events_clearMigrationEvents_() {
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  const rows = getEventsRows_(sheet);
+  let removed = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][col.source] || '') === EVENT_SOURCES.MIGRATION) {
+      sheet.deleteRow(i + SCHEMA.EVENTS.dataStartRow);
+      removed++;
+    }
+  }
+  return removed;
+}
+
+function eventTimestampIso_(value, offsetMs) {
+  let date;
+  if (value instanceof Date) {
+    date = value;
+  } else {
+    const text = String(value || '').trim();
+    date = text ? new Date(text) : new Date();
+  }
+  if (!date || isNaN(date.getTime())) date = new Date();
+  if (offsetMs) date = new Date(date.getTime() + offsetMs);
+  return date.toISOString();
+}
+
+function eventPayloadJson_(payload) {
+  if (payload === null || payload === undefined || payload === '') return '{}';
+  if (typeof payload === 'string') return payload;
+  return JSON.stringify(payload);
+}
+
+function parseEventPayload_(payload) {
+  const text = String(payload || '').trim();
+  if (!text) return {};
+  try { return JSON.parse(text); } catch(e) { return { raw: text }; }
+}
+
+function parseJsonSafe_(value, fallback) {
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+  try { return JSON.parse(text); } catch(e) { return fallback; }
+}
+
+function isTruthyEventValue_(value) {
+  const text = String(value || '').trim().toLowerCase();
+  return value === true || Number(value) === 1 || text === 'true' || text === 'yes' || text === 'y';
+}
+
+function nonEmptyValue_(value) {
+  return String(value === null || value === undefined ? '' : value).trim() !== '';
+}
+
+function countEventRowsByType_(rows) {
+  const counts = {};
+  const typeIndex = EVENTS_COLUMN_FALLBACK.type;
+  rows.forEach(function(row) {
+    const type = String(row[typeIndex] || '');
+    if (!type) return;
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  return counts;
+}
+
+function sortEventsByTimestamp_(sheet) {
+  const last = sheet.getLastRow();
+  if (last < SCHEMA.EVENTS.dataStartRow) return;
+  const col = getEventsColumns_(sheet);
+  sheet
+    .getRange(SCHEMA.EVENTS.dataStartRow, 1, last - SCHEMA.EVENTS.dataStartRow + 1, EVENTS_COL_COUNT)
+    .sort([
+      { column: col.timestamp + 1, ascending: true },
+      { column: col.type + 1, ascending: true },
+    ]);
+}
+
+function pushMigrationEvent_(rows, type, userId, options) {
+  const opts = options || {};
+  opts.source = EVENT_SOURCES.MIGRATION;
+  rows.push(Events_buildRow_(type, userId, opts));
+}
+
+function logMigrationResult_(label, result) {
+  return logJsonResult_(label, result);
+}
+
+function logJsonResult_(label, result) {
+  Logger.log(label + '\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function migrate_step1_backup() {
+  return logJsonResult_('migrate_step1_backup result', backupSpreadsheet());
+}
+
+function migrate_step4_splitConfig(options) {
+  const dryRun = options === true || !!(options && options.dryRun);
+  const ss = getSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!configSheet) {
+    return logJsonResult_('migrate_step4_splitConfig result', {
+      ok: false,
+      error: 'config_missing',
+    });
+  }
+
+  const plan = buildConfigSplitPlan_(configSheet);
+  if (dryRun) {
+    return logJsonResult_('migrate_step4_splitConfig dryRun', {
+      ok: true,
+      dryRun: true,
+      appSettingsPlanned: plan.appSettingsRows.length,
+      missionDefinitionsPlanned: plan.missionDefinitionRows.length,
+      appSettingKeys: plan.appSettingsRows.map(function(row) { return row[0]; }),
+      enabledMissionCounts: plan.enabledMissionCounts,
+    });
+  }
+
+  const appSettingsSheet = getOrCreateAppSettingsSheet_();
+  clearSheetDataRows_(appSettingsSheet, SCHEMA.APP_SETTINGS, APP_SETTINGS_COL_COUNT);
+  if (plan.appSettingsRows.length) {
+    appSettingsSheet
+      .getRange(SCHEMA.APP_SETTINGS.dataStartRow, 1, plan.appSettingsRows.length, APP_SETTINGS_COL_COUNT)
+      .setValues(plan.appSettingsRows);
+  }
+
+  const missionDefinitionsSheet = getOrCreateMissionDefinitionsSheet_();
+  clearSheetDataRows_(missionDefinitionsSheet, SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_COL_COUNT);
+  if (plan.missionDefinitionRows.length) {
+    missionDefinitionsSheet
+      .getRange(SCHEMA.MISSION_DEFINITIONS.dataStartRow, 1, plan.missionDefinitionRows.length, MISSION_DEFINITIONS_COL_COUNT)
+      .setValues(plan.missionDefinitionRows);
+  }
+
+  return logJsonResult_('migrate_step4_splitConfig result', {
+    ok: true,
+    dryRun: false,
+    appSettingsWritten: plan.appSettingsRows.length,
+    missionDefinitionsWritten: plan.missionDefinitionRows.length,
+    enabledMissionCounts: plan.enabledMissionCounts,
+  });
+}
+
+function migrate_step4_splitConfig_dryRun() {
+  return migrate_step4_splitConfig({ dryRun: true });
+}
+
+function buildConfigSplitPlan_(configSheet) {
+  return {
+    appSettingsRows: buildAppSettingsRowsFromConfig_(configSheet),
+    missionDefinitionRows: buildMissionDefinitionRowsFromConfig_(configSheet),
+    enabledMissionCounts: countEnabledMissionRowsByWeek_(configSheet),
+  };
+}
+
+function buildAppSettingsRowsFromConfig_(configSheet) {
+  return [
+    [
+      'current_week',
+      Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1,
+      'number',
+      '현재 진행 주차. 기존 config!B1에서 복사.',
+    ],
+    [
+      'app_open_date',
+      eventDateKey_(configSheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue()),
+      'date',
+      '앱 공식 오픈일. 기존 config!B4에서 복사.',
+    ],
+    [
+      'bbb_message_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue()),
+      'boolean',
+      '레거시 BBB 메시지 입력창 공개 여부. 기존 config!C1에서 복사.',
+    ],
+    [
+      'hold_pray_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue()),
+      'boolean',
+      '레거시 H&P 공개 여부. 기존 config!B2에서 복사.',
+    ],
+    [
+      'secret_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue()),
+      'boolean',
+      '레거시 비밀친구 공개 여부. 기존 config!B3에서 복사.',
+    ],
+    [
+      'chat_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue()),
+      'boolean',
+      '레거시 채팅 공개 여부. 기존 config!D1에서 복사.',
+    ],
+    [
+      'bbb_sections_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyBbbSectionsCell).getValue()),
+      'boolean',
+      '레거시 BBB 섹션 공개 여부. 기존 config!D2에서 복사.',
+    ],
+  ];
+}
+
+function buildMissionDefinitionRowsFromConfig_(configSheet) {
+  const rows = [];
+  for (let week = 1; week <= 6; week++) {
+    const startRow = getConfigWeekStartRow_(week);
+    const weekKey = 'w' + week;
+    const weekTitle = String(configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue() || (week + '주차')).trim();
+    const drawThreshold = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
+    const rawItems = configSheet
+      .getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3)
+      .getValues();
+
+    for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
+      const itemText = String(rawItems[i][0] || '').trim();
+      const enabled = itemText !== '';
+      rows.push([
+        weekKey,
+        week,
+        weekTitle,
+        '',
+        '',
+        drawThreshold,
+        i + 1,
+        itemText,
+        enabled ? (Number(rawItems[i][1]) || 1) : '',
+        enabled ? String(rawItems[i][2] || 'L').trim() : '',
+        enabled,
+      ]);
+    }
+  }
+  return rows;
+}
+
+function countEnabledMissionRowsByWeek_(configSheet) {
+  const counts = {};
+  for (let week = 1; week <= 6; week++) {
+    const weekKey = 'w' + week;
+    const startRow = getConfigWeekStartRow_(week);
+    const items = configSheet
+      .getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 1)
+      .getValues();
+    counts[weekKey] = items.filter(function(row) {
+      return String(row[0] || '').trim() !== '';
+    }).length;
+  }
+  return counts;
+}
+
+function getAppSetting_(key, defaultValue) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  if (!sheet || sheet.getLastRow() < SCHEMA.APP_SETTINGS.dataStartRow) return defaultValue;
+  const col = getAppSettingsColumns_(sheet);
+  const rows = getAppSettingsRows_(sheet);
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.key] || '').trim() === key) {
+      return coerceAppSettingValue_(rows[i][col.value], rows[i][col.type], defaultValue);
+    }
+  }
+  return defaultValue;
+}
+
+function setAppSetting_(key, value, type, note) {
+  const sheet = getOrCreateAppSettingsSheet_();
+  const col = getAppSettingsColumns_(sheet);
+  const rows = getAppSettingsRows_(sheet);
+  const cleanKey = String(key || '').trim();
+  if (!cleanKey) return { ok: false, error: 'missing_key' };
+
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.key] || '').trim() !== cleanKey) continue;
+    const rowIndex = i + SCHEMA.APP_SETTINGS.dataStartRow;
+    sheet.getRange(rowIndex, col.value + 1).setValue(value);
+    if (type) sheet.getRange(rowIndex, col.type + 1).setValue(type);
+    if (note) sheet.getRange(rowIndex, col.note + 1).setValue(note);
+    return { ok: true, key: cleanKey, updated: true };
+  }
+
+  const row = new Array(APP_SETTINGS_COL_COUNT).fill('');
+  row[col.key] = cleanKey;
+  row[col.value] = value;
+  row[col.type] = type || '';
+  row[col.note] = note || '';
+  sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.APP_SETTINGS.dataStartRow), 1, 1, APP_SETTINGS_COL_COUNT).setValues([row]);
+  return { ok: true, key: cleanKey, inserted: true };
+}
+
+function coerceAppSettingValue_(value, type, defaultValue) {
+  const typeName = String(type || '').trim().toLowerCase();
+  if (value === '' || value === null || value === undefined) return defaultValue;
+  if (typeName === 'number') {
+    const numberValue = Number(value);
+    return isNaN(numberValue) ? defaultValue : numberValue;
+  }
+  if (typeName === 'boolean') return isTruthyEventValue_(value);
+  if (typeName === 'date') return eventDateKey_(value);
+  return value;
+}
+
+function getCurrentWeek_() {
+  const appSettingWeek = getAppSetting_(APP_SETTING_KEYS.CURRENT_WEEK, null);
+  return Number(appSettingWeek) || 1;
+}
+
+function setCurrentWeek_(week) {
+  const cleanWeek = Number(week);
+  if (!cleanWeek || cleanWeek < 1 || cleanWeek > 6) return { error: 'invalid_week' };
+  setAppSetting_(
+    APP_SETTING_KEYS.CURRENT_WEEK,
+    cleanWeek,
+    'number',
+    '현재 진행 주차. AppSettings 기준값.'
+  );
+  clearConfigCaches_();
+  return { ok: true, week: cleanWeek };
+}
+
+function getMissionDefinitionRowInfos_(week) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet || sheet.getLastRow() < SCHEMA.MISSION_DEFINITIONS.dataStartRow) return [];
+  const col = getMissionDefinitionsColumns_(sheet);
+  const rows = getMissionDefinitionsRows_(sheet);
+  const weekKey = 'w' + week;
+  return rows
+    .map(function(row, index) {
+      return {
+        rowIndex: index + SCHEMA.MISSION_DEFINITIONS.dataStartRow,
+        row: row,
+      };
+    })
+    .filter(function(info) {
+      return String(info.row[col.weekKey] || '').trim() === weekKey ||
+        Number(info.row[col.weekOrder]) === Number(week);
+    })
+    .sort(function(a, b) {
+      return (Number(a.row[col.itemNo]) || 0) - (Number(b.row[col.itemNo]) || 0);
+    });
+}
+
+function getMissionConfigFromDefinitions_(week) {
+  if (week < 1 || week > 6) return null;
+  const infos = getMissionDefinitionRowInfos_(week);
+  if (!infos.length) return null;
+  const col = getMissionDefinitionsColumns_(getSpreadsheet().getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS));
+  const first = infos[0].row;
+  const title = String(first[col.weekTitle] || (week + '주차')).trim();
+  const threshold = Number(first[col.drawThreshold]) || 6;
+  const byItemNo = {};
+  infos.forEach(function(info) {
+    const itemNo = Number(info.row[col.itemNo]) || 0;
+    if (itemNo >= 1 && itemNo <= CONFIG_LAYOUT.missionRowsPerWeek && !byItemNo[itemNo]) byItemNo[itemNo] = info;
+  });
+  const items = [];
+  for (let itemNo = 1; itemNo <= CONFIG_LAYOUT.missionRowsPerWeek; itemNo++) {
+    const info = byItemNo[itemNo];
+    if (!info) {
+      items.push({ item: '', score: 1, cat: 'L', enabled: false });
+      continue;
+    }
+    const row = info.row;
+    const itemText = String(row[col.itemText] || '').trim();
+    const enabledCell = row[col.enabled];
+    const enabled = enabledCell === '' ? itemText !== '' : isTruthyEventValue_(enabledCell);
+    items.push({
+      item: itemText,
+      score: Number(row[col.scoreWeight]) || 1,
+      cat: String(row[col.category] || 'L').trim(),
+      enabled: enabled,
+    });
+  }
+  return { ok: true, week: week, title: title, threshold: threshold, items: items };
+}
+
+function getMissionConfigModel_(week) {
+  return getMissionConfigFromDefinitions_(week);
+}
+
+function getAllWeekMeta_() {
+  const weeks = [];
+  for (let week = 1; week <= 6; week++) {
+    const config = getMissionConfigModel_(week);
+    weeks.push({
+      week: week,
+      weekKey: 'w' + week,
+      title: config ? String(config.title || (week + '주차')).trim() : (week + '주차'),
+      threshold: config ? (Number(config.threshold) || 6) : 6,
+    });
+  }
+  return weeks;
+}
+
+function getMissionThresholdMap_() {
+  const thresholdMap = {};
+  getAllWeekMeta_().forEach(function(meta) {
+    if (meta.title) thresholdMap[meta.title] = meta.threshold;
+    thresholdMap[meta.weekKey] = meta.threshold;
+  });
+  return thresholdMap;
+}
+
+function ensureMissionDefinitionWeekRows_(sheet, week) {
+  const col = getMissionDefinitionsColumns_(sheet);
+  const existing = getMissionDefinitionRowInfos_(week);
+  const byItemNo = {};
+  existing.forEach(function(info) {
+    const itemNo = Number(info.row[col.itemNo]) || 0;
+    if (itemNo >= 1 && itemNo <= CONFIG_LAYOUT.missionRowsPerWeek && !byItemNo[itemNo]) byItemNo[itemNo] = info;
+  });
+
+  for (let itemNo = 1; itemNo <= CONFIG_LAYOUT.missionRowsPerWeek; itemNo++) {
+    if (byItemNo[itemNo]) continue;
+    const row = new Array(MISSION_DEFINITIONS_COL_COUNT).fill('');
+    row[col.weekKey] = 'w' + week;
+    row[col.weekOrder] = week;
+    row[col.weekTitle] = week + '주차';
+    row[col.drawThreshold] = 6;
+    row[col.itemNo] = itemNo;
+    row[col.enabled] = false;
+    const rowIndex = Math.max(sheet.getLastRow() + 1, SCHEMA.MISSION_DEFINITIONS.dataStartRow);
+    sheet.getRange(rowIndex, 1, 1, MISSION_DEFINITIONS_COL_COUNT).setValues([row]);
+    byItemNo[itemNo] = { rowIndex: rowIndex, row: row };
+  }
+
+  return Object.keys(byItemNo)
+    .map(function(itemNo) { return byItemNo[itemNo]; })
+    .sort(function(a, b) {
+      return (Number(a.row[col.itemNo]) || 0) - (Number(b.row[col.itemNo]) || 0);
+    });
+}
+
+function setMissionConfigInDefinitions_(body) {
+  const week = Number(body.week);
+  const sheet = getOrCreateMissionDefinitionsSheet_();
+  const col = getMissionDefinitionsColumns_(sheet);
+  const infos = ensureMissionDefinitionWeekRows_(sheet, week);
+  const title = String(body.title || '');
+  const threshold = Number(body.threshold) || 6;
+  const items = Array.isArray(body.items) ? body.items : [];
+
+  infos.forEach(function(info, index) {
+    const rowIndex = info.rowIndex;
+    sheet.getRange(rowIndex, col.weekKey + 1).setValue('w' + week);
+    sheet.getRange(rowIndex, col.weekOrder + 1).setValue(week);
+    sheet.getRange(rowIndex, col.weekTitle + 1).setValue(title);
+    sheet.getRange(rowIndex, col.drawThreshold + 1).setValue(threshold);
+    sheet.getRange(rowIndex, col.itemNo + 1).setValue(index + 1);
+
+    const item = items[index] || {};
+    if (!String(item.item || '').trim()) return;
+    sheet.getRange(rowIndex, col.itemText + 1).setValue(String(item.item));
+    sheet.getRange(rowIndex, col.scoreWeight + 1).setValue(Number(item.score) || 1);
+    sheet.getRange(rowIndex, col.category + 1).setValue(String(item.cat || 'L'));
+    sheet.getRange(rowIndex, col.enabled + 1).setValue(true);
+  });
+
+  return { ok: true };
+}
+
+function migrate_step5_absorbToEvents(options) {
+  const dryRun = options === true || !!(options && options.dryRun);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
+
+  try {
+    const sheet = getOrCreateEventsSheet();
+    const migration = buildEventsMigrationRows_();
+    if (dryRun) {
+      return logMigrationResult_('migrate_step5_absorbToEvents dryRun', {
+        ok: true,
+        dryRun: true,
+        eventsPlanned: migration.rows.length,
+        plannedByType: migration.byType,
+        sourceRows: migration.sourceRows,
+      });
+    }
+
+    const removedMigrationEvents = Events_clearMigrationEvents_();
+    if (migration.rows.length) {
+      sheet
+        .getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, migration.rows.length, EVENTS_COL_COUNT)
+        .setValues(migration.rows);
+    }
+    sortEventsByTimestamp_(sheet);
+    const verify = migrate_verify();
+    return logMigrationResult_('migrate_step5_absorbToEvents result', {
+      ok: verify.ok,
+      dryRun: false,
+      removedMigrationEvents: removedMigrationEvents,
+      eventsWritten: migration.rows.length,
+      plannedByType: migration.byType,
+      sourceRows: migration.sourceRows,
+      verify: verify,
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function migrate_step5_absorbToEvents_dryRun() {
+  return migrate_step5_absorbToEvents({ dryRun: true });
+}
+
+function migrate_verify() {
+  const expectedMigration = buildEventsMigrationRows_();
+  const expected = expectedMigration.byType;
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  const migrationRows = getEventsRows_(sheet).filter(function(row) {
+    return String(row[col.source] || '') === EVENT_SOURCES.MIGRATION;
+  });
+  const actual = countEventRowsByType_(migrationRows);
+  const issues = compareEventCounts_(expected, actual);
+  const orphanUserIds = findOrphanEventUsers_(migrationRows);
+  const invalidTradeRefs = findInvalidTradeEventRefs_(migrationRows);
+
+  if (orphanUserIds.length) issues.push('orphan_event_users: ' + orphanUserIds.join(', '));
+  if (invalidTradeRefs.length) issues.push('invalid_trade_refs: ' + invalidTradeRefs.join(', '));
+
+  return logMigrationResult_('migrate_verify result', {
+    ok: issues.length === 0,
+    expected: expected,
+    actual: actual,
+    eventsChecked: migrationRows.length,
+    sourceRows: expectedMigration.sourceRows,
+    issues: issues,
+    orphanUserIds: orphanUserIds,
+    invalidTradeRefs: invalidTradeRefs,
+  });
+}
+
+function buildEventsMigrationRows_() {
+  const ss = getSpreadsheet();
+  const rows = [];
+  const sourceRows = {};
+
+  collectRawCheckinEvents_(ss, rows, sourceRows);
+  collectCardDrawEvents_(ss, rows, sourceRows);
+  collectBonusDrawEvents_(ss, rows, sourceRows);
+  collectTradeEvents_(ss, rows, sourceRows);
+  collectHpGuessEvents_(ss, rows, sourceRows);
+  collectCardReceivedEvents_(ss, rows, sourceRows);
+
+  rows.sort(compareEventRows_);
+  return {
+    rows: rows,
+    byType: countEventRowsByType_(rows),
+    sourceRows: sourceRows,
+  };
+}
+
+function getMigrationSheetContext_(ss, sheetName, columnFn, rowsFn, maxColumns) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return null;
+  return {
+    sheet: sheet,
+    col: columnFn(sheet),
+    rows: rowsFn(sheet, maxColumns),
+  };
+}
+
+function collectRawCheckinEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.RAW_CHECKINS, getRawColumns_, getRawRows_, 10);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const userId = String(row[ctx.col.userId] || '').trim();
+      if (!userId) return;
+      converted++;
+      const timestamp = row[ctx.col.timestamp];
+      const weekKey = String(row[ctx.col.weekKey] || '').trim();
+      pushMigrationEvent_(eventRows, EVENT_TYPES.MISSION_SUBMITTED, userId, {
+        timestamp: timestamp,
+        weekKey: weekKey,
+        payload: {
+          weekTitle: String(row[ctx.col.weekTitle] || ''),
+          dateKey: eventDateKey_(row[ctx.col.dateKey]),
+          score: Number(row[ctx.col.score]) || 0,
+          weekCumScore: Number(row[ctx.col.weekCumScore]) || 0,
+          items: parseJsonSafe_(row[ctx.col.itemsJson], []),
+          indices: parseJsonSafe_(row[ctx.col.indicesJson], []),
+        },
+      });
+      if (isTruthyEventValue_(row[ctx.col.ticketEarned])) {
+        pushMigrationEvent_(eventRows, EVENT_TYPES.TICKET_GRANTED, userId, {
+          timestamp: timestamp,
+          timestampOffsetMs: 1,
+          amount: 1,
+          weekKey: weekKey,
+          payload: { reason: 'week_complete' },
+        });
+      }
+    });
+  }
+  sourceRows[SHEET_NAMES.RAW_CHECKINS] = converted;
+}
+
+function collectCardDrawEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.CARD_DRAWS, getCardDrawColumns_, getCardDrawRows_, 6);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const userId = String(row[ctx.col.userId] || '').trim();
+      const cardId = String(row[ctx.col.cardId] || '').trim();
+      if (!userId || !cardId) return;
+      converted++;
+      const timestamp = row[ctx.col.drawnAt];
+      const weekKey = String(row[ctx.col.weekKey] || '').trim();
+      pushMigrationEvent_(eventRows, EVENT_TYPES.TICKET_CONSUMED, userId, {
+        timestamp: timestamp,
+        amount: 1,
+        weekKey: weekKey,
+        payload: { reason: 'card_draw' },
+      });
+      pushMigrationEvent_(eventRows, EVENT_TYPES.CARD_DRAWN, userId, {
+        timestamp: timestamp,
+        timestampOffsetMs: 1,
+        amount: 1,
+        weekKey: weekKey,
+        refId: cardId,
+        payload: {
+          cardName: String(row[ctx.col.cardName] || ''),
+          received: isTruthyEventValue_(row[ctx.col.received]),
+        },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.CARD_DRAWS] = converted;
+}
+
+function collectBonusDrawEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.BONUS_DRAWS, getBonusDrawColumns_, getBonusDrawRows_, 3);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const userId = String(row[ctx.col.userId] || '').trim();
+      const source = String(row[ctx.col.source] || '').trim();
+      if (!userId || !source) return;
+      converted++;
+      pushMigrationEvent_(eventRows, EVENT_TYPES.TICKET_GRANTED, userId, {
+        timestamp: row[ctx.col.awardedAt],
+        amount: 1,
+        weekKey: eventWeekKeyFromBonusSource_(source),
+        payload: {
+          reason: eventReasonFromBonusSource_(source),
+          legacySource: source,
+        },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.BONUS_DRAWS] = converted;
+}
+
+function collectTradeEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.TRADES, getTradesColumns_, getTradesRows_, 12);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const tradeId = String(row[ctx.col.id] || '').trim();
+      if (!tradeId) return;
+      converted++;
+      const requester = String(row[ctx.col.requester] || '').trim();
+      const target = String(row[ctx.col.target] || '').trim();
+      const status = String(row[ctx.col.status] || '').trim();
+      pushMigrationEvent_(eventRows, EVENT_TYPES.TRADE_REQUESTED, requester, {
+        timestamp: row[ctx.col.createdAt],
+        refId: tradeId,
+        payload: {
+          target: target,
+          requesterCardId: Number(row[ctx.col.requesterCardId]) || '',
+          requesterCardName: String(row[ctx.col.requesterCardName] || ''),
+          targetCardId: Number(row[ctx.col.targetCardId]) || '',
+          targetCardName: String(row[ctx.col.targetCardName] || ''),
+        },
+      });
+
+      const terminalType = eventTradeTerminalType_(status);
+      if (terminalType && nonEmptyValue_(row[ctx.col.resolvedAt])) {
+        pushMigrationEvent_(eventRows, terminalType, requester, {
+          timestamp: row[ctx.col.resolvedAt],
+          refId: tradeId,
+          payload: {
+            target: target,
+            status: status,
+          },
+        });
+      }
+      if (nonEmptyValue_(row[ctx.col.requesterPrayed])) {
+        pushMigrationEvent_(eventRows, EVENT_TYPES.TRADE_PRAYED, requester, {
+          timestamp: row[ctx.col.requesterPrayed],
+          refId: tradeId,
+          payload: { side: 'requester' },
+        });
+      }
+      if (nonEmptyValue_(row[ctx.col.targetPrayed])) {
+        pushMigrationEvent_(eventRows, EVENT_TYPES.TRADE_PRAYED, target, {
+          timestamp: row[ctx.col.targetPrayed],
+          refId: tradeId,
+          payload: { side: 'target' },
+        });
+      }
+    });
+  }
+  sourceRows[SHEET_NAMES.TRADES] = converted;
+}
+
+function collectHpGuessEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.HP_GUESSES, getHpGuessColumns_, getHpGuessRows_, 5);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const nickname = String(row[ctx.col.nickname] || '').trim();
+      const guessedName = String(row[ctx.col.guessedName] || '').trim();
+      if (!nickname || !guessedName) return;
+      converted++;
+      pushMigrationEvent_(eventRows, EVENT_TYPES.HP_GUESSED, nickname, {
+        timestamp: row[ctx.col.answeredAt],
+        weekKey: String(row[ctx.col.weekKey] || '').trim(),
+        payload: {
+          cardIndex: Number(row[ctx.col.cardIndex]),
+          guessedName: guessedName,
+        },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.HP_GUESSES] = converted;
+}
+
+function collectCardReceivedEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.CARD_RECEIVED, getCardReceivedColumns_, getCardReceivedRows_, 4);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const nickname = String(row[ctx.col.nickname] || '').trim();
+      const cardId = String(row[ctx.col.cardId] || '').trim();
+      if (!nickname || !cardId) return;
+      converted++;
+      pushMigrationEvent_(eventRows, EVENT_TYPES.CARD_RECEIVED, nickname, {
+        timestamp: row[ctx.col.updatedAt],
+        amount: Number(row[ctx.col.receivedQty]) || 0,
+        refId: cardId,
+        payload: { cardId: cardId },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.CARD_RECEIVED] = converted;
+}
+
+function compareEventRows_(a, b) {
+  const col = EVENTS_COLUMN_FALLBACK;
+  const timeCompare = String(a[col.timestamp] || '').localeCompare(String(b[col.timestamp] || ''));
+  if (timeCompare !== 0) return timeCompare;
+  return String(a[col.type] || '').localeCompare(String(b[col.type] || ''));
+}
+
+function compareEventCounts_(expected, actual) {
+  const issues = [];
+  const keys = {};
+  Object.keys(expected).forEach(function(key) { keys[key] = true; });
+  Object.keys(actual).forEach(function(key) { keys[key] = true; });
+  Object.keys(keys).sort().forEach(function(key) {
+    const expectedCount = expected[key] || 0;
+    const actualCount = actual[key] || 0;
+    if (expectedCount !== actualCount) {
+      issues.push(key + ': expected ' + expectedCount + ', actual ' + actualCount);
+    }
+  });
+  return issues;
+}
+
+function findOrphanEventUsers_(eventRows) {
+  const userIds = getKnownUserIdSet_();
+  const col = EVENTS_COLUMN_FALLBACK;
+  const orphans = {};
+  eventRows.forEach(function(row) {
+    const userId = String(row[col.userId] || '').trim();
+    if (userId && !userIds[userId]) orphans[userId] = true;
+  });
+  return Object.keys(orphans).sort();
+}
+
+function findInvalidTradeEventRefs_(eventRows) {
+  const tradeIds = getTradeIdSet_();
+  const col = EVENTS_COLUMN_FALLBACK;
+  const invalid = {};
+  eventRows.forEach(function(row) {
+    const type = String(row[col.type] || '');
+    const refId = String(row[col.refId] || '').trim();
+    if (type.indexOf('trade.') === 0 && refId && !tradeIds[refId]) invalid[refId] = true;
+  });
+  return Object.keys(invalid).sort();
+}
+
+function getKnownUserIdSet_() {
+  const set = {};
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
+  if (!sheet) return set;
+  const col = getUserColumns_(sheet);
+  getUserRows_(sheet).forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (nickname) set[nickname] = true;
+  });
+  return set;
+}
+
+function getTradeIdSet_() {
+  const set = {};
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.TRADES);
+  if (!sheet) return set;
+  const col = getTradesColumns_(sheet);
+  getTradesRows_(sheet).forEach(function(row) {
+    const id = String(row[col.id] || '').trim();
+    if (id) set[id] = true;
+  });
+  return set;
+}
+
+function eventDateKey_(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, 'Asia/Seoul', 'yyyy-MM-dd');
+  return String(value || '').trim();
+}
+
+function eventWeekKeyFromBonusSource_(source) {
+  const match = String(source || '').match(/^hp_(w\d+)$/);
+  return match ? match[1] : '';
+}
+
+function eventReasonFromBonusSource_(source) {
+  const text = String(source || '');
+  if (text.indexOf('hp_') === 0) return 'hp_correct';
+  if (text === 'bbb_photo') return 'bbb_photo';
+  if (text.indexOf('bbb_') === 0) return 'bbb_mission';
+  return text || 'bonus';
+}
+
+function eventTradeTerminalType_(status) {
+  const text = String(status || '').trim().toLowerCase();
+  if (!text || text === 'pending') return '';
+  if (text === 'accepted') return EVENT_TYPES.TRADE_ACCEPTED;
+  if (text === 'rejected' || text.indexOf('거절') !== -1) return EVENT_TYPES.TRADE_REJECTED;
+  if (text === 'cancelled' || text === 'canceled' || text.indexOf('취소') !== -1) return EVENT_TYPES.TRADE_CANCELLED;
+  if (text === 'expired' || text.indexOf('시간') !== -1 || text.indexOf('초과') !== -1) return EVENT_TYPES.TRADE_EXPIRED;
+  return EVENT_TYPES.TRADE_REJECTED;
+}
+
+function setupUserDashboard(rowLimit) {
+  const limit = Math.max(Number(rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const sheet = getOrCreateUserDashboardSheet_();
+  ensureUserDashboardSheet_(sheet, limit);
+  const result = {
+    ok: true,
+    sheetName: SHEET_NAMES.USER_DASHBOARD,
+    rowsPrepared: limit,
+    dataRange: 'A' + SCHEMA.USER_DASHBOARD.dataStartRow + ':AA' + (SCHEMA.USER_DASHBOARD.dataStartRow + limit - 1),
+    firstUserFormula: sheet.getRange(SCHEMA.USER_DASHBOARD.dataStartRow, 1).getFormula(),
+  };
+  return logJsonResult_('setupUserDashboard result', result);
+}
+
+function getOrCreateUserDashboardSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.USER_DASHBOARD);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.USER_DASHBOARD);
+  return sheet;
+}
+
+function ensureUserDashboardSheet_(sheet, rowLimit) {
+  const schema = SCHEMA.USER_DASHBOARD;
+  const requiredRows = schema.dataStartRow + rowLimit - 1;
+  if (sheet.getMaxColumns() < USER_DASHBOARD_COL_COUNT) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), USER_DASHBOARD_COL_COUNT - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < requiredRows) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), requiredRows - sheet.getMaxRows());
+  }
+
+  sheet.getRange(1, 1, requiredRows, USER_DASHBOARD_COL_COUNT).clearContent();
+  sheet.getRange(1, 1, 1, USER_DASHBOARD_COL_COUNT).setValues([USER_DASHBOARD_LABELS.slice()]);
+  sheet.getRange(schema.headerRow, 1, 1, USER_DASHBOARD_COL_COUNT).setValues([getSchemaHeaders_(schema)]);
+  sheet.getRange(schema.dataStartRow, 1, rowLimit, USER_DASHBOARD_COL_COUNT).setFormulas(buildUserDashboardFormulas_(rowLimit));
+  sheet.setFrozenRows(2);
+  sheet.setFrozenColumns(3);
+  sheet.setTabColor(USER_DASHBOARD_TAB_COLOR);
+  applyUserDashboardFormatting_(sheet, rowLimit);
+}
+
+function buildUserDashboardFormulas_(rowLimit) {
+  const formulas = [];
+  for (let i = 0; i < rowLimit; i++) {
+    const sheetRow = SCHEMA.USER_DASHBOARD.dataStartRow + i;
+    const userRow = SCHEMA.USERS.dataStartRow + i;
+    formulas.push(buildUserDashboardFormulaRow_(sheetRow, userRow));
+  }
+  return formulas;
+}
+
+function buildUserDashboardFormulaRow_(sheetRow, userRow) {
+  const userCell = 'A' + sheetRow;
+  const eventsUserRange = 'Events!C$3:C$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsTypeRange = 'Events!D$3:D$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsRefRange = 'Events!E$3:E$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsAmountRange = 'Events!F$3:F$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsTimeRange = 'Events!B$3:B$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const tradesRequesterRange = 'Trades!B$2:B$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
+  const tradesTargetRange = 'Trades!E$2:E$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
+  const tradesStatusRange = 'Trades!H$2:H$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
+
+  const row = [
+    '=IF(Users!A' + userRow + '="","",Users!A' + userRow + ')',
+    '=IFERROR(VLOOKUP(' + userCell + ',Users!A:C,3,0),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Users!A:D,4,0),"")',
+    '=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.MISSION_SUBMITTED + '"))',
+    '=IF(' + userCell + '="","",SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.TICKET_GRANTED + '"))',
+    '=IF(' + userCell + '="","",SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.TICKET_CONSUMED + '"))',
+    '=IF(' + userCell + '="","",E' + sheetRow + '-F' + sheetRow + ')',
+    '=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '"))',
+  ];
+
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    const drawnCount = 'COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '",' + eventsRefRange + ',"' + cardId + '")';
+    const grantedSum = 'SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_GRANTED + '",' + eventsRefRange + ',"' + cardId + '")';
+    const removedSum = 'SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_REMOVED + '",' + eventsRefRange + ',"' + cardId + '")';
+    row.push('=IF(' + userCell + '="","",MAX(0,' + drawnCount + '+' + grantedSum + '-' + removedSum + '))');
+  }
+
+  row.push(
+    '=IF(' + userCell + '="","",SUM(I' + sheetRow + ':R' + sheetRow + '))',
+    '=IF(' + userCell + '="","",COUNTIFS(' + tradesRequesterRange + ',' + userCell + ',' + tradesStatusRange + ',"pending")+COUNTIFS(' + tradesTargetRange + ',' + userCell + ',' + tradesStatusRange + ',"pending"))',
+    '=IFERROR(INDEX(SORT(FILTER(' + eventsTimeRange + ',' + eventsUserRange + '=' + userCell + '),1,FALSE),1),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Collection!A:D,4,0),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Collection!A:N,14,0),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Collection!A:C,3,0),"")',
+    '=IF(' + userCell + '="","",IF(N(G' + sheetRow + ')=N(V' + sheetRow + '),"✓","❌"))',
+    '=IF(' + userCell + '="","",IF(N(S' + sheetRow + ')=N(W' + sheetRow + '),"✓","❌"))',
+    '=IF(' + userCell + '="","",IF(N(H' + sheetRow + ')=N(X' + sheetRow + '),"✓","❌"))'
+  );
+  return row;
+}
+
+function applyUserDashboardFormatting_(sheet, rowLimit) {
+  const schema = SCHEMA.USER_DASHBOARD;
+  const dataRange = sheet.getRange(schema.dataStartRow, 1, rowLimit, USER_DASHBOARD_COL_COUNT);
+  const checkRange = sheet.getRange(schema.dataStartRow, 25, rowLimit, 3);
+  const rowRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=OR($Y3="❌",$Z3="❌",$AA3="❌")')
+    .setBackground('#FFE0E0')
+    .setRanges([dataRange])
+    .build();
+  const cellRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('❌')
+    .setBackground('#FF4444')
+    .setFontColor('#FFFFFF')
+    .setRanges([checkRange])
+    .build();
+  sheet.setConditionalFormatRules([rowRule, cellRule]);
+  sheet.getRange(1, 1, 2, USER_DASHBOARD_COL_COUNT).setFontWeight('bold');
+  sheet.getRange(1, 1, 1, USER_DASHBOARD_COL_COUNT).setBackground('#DBEAFE');
+  sheet.getRange(2, 1, 1, USER_DASHBOARD_COL_COUNT).setBackground('#EFF6FF');
+}
+
+function applyFinalSheetVisibility() {
+  const ss = getSpreadsheet();
+  const shown = [];
+  const hidden = [];
+  const missing = [];
+
+  FINAL_VISIBLE_SHEET_NAMES.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      missing.push(sheetName);
+      return;
+    }
+    sheet.showSheet();
+    shown.push(sheetName);
+  });
+
+  FINAL_HIDDEN_SHEET_NAMES.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      missing.push(sheetName);
+      return;
+    }
+    sheet.hideSheet();
+    hidden.push(sheetName);
+  });
+
+  return logJsonResult_('applyFinalSheetVisibility result', {
+    ok: true,
+    shown: shown,
+    hidden: hidden,
+    missing: missing,
+  });
+}
+
+function hideLegacyDevSheets() {
+  return applyFinalSheetVisibility();
+}
+
+function migrate_step7_orderAndColor() {
+  const ss = getSpreadsheet();
+  const ordered = [];
+  const colored = [];
+  const missing = [];
+  const orderIssues = [];
+
+  FINAL_SHEET_TABS.forEach(function(tab) {
+    const sheet = ss.getSheetByName(tab.name);
+    if (!sheet) {
+      missing.push(tab.name);
+      return;
+    }
+    sheet.showSheet();
+  });
+
+  FINAL_SHEET_TABS.forEach(function(tab, index) {
+    const sheet = ss.getSheetByName(tab.name);
+    if (!sheet) return;
+
+    try {
+      ss.setActiveSheet(sheet);
+      ss.moveActiveSheet(index + 1);
+      ordered.push(tab.name);
+    } catch(e) {
+      orderIssues.push(tab.name + ': ' + e);
+    }
+
+    try {
+      sheet.setTabColor(tab.color);
+      colored.push(tab.name);
+    } catch(e) {
+      orderIssues.push(tab.name + ' color: ' + e);
+    }
+  });
+
+  const visibility = applyFinalSheetVisibility();
+  visibility.missing.forEach(function(sheetName) {
+    if (missing.indexOf(sheetName) === -1) missing.push(sheetName);
+  });
+
+  return logJsonResult_('migrate_step7_orderAndColor result', {
+    ok: orderIssues.length === 0,
+    ordered: ordered,
+    colored: colored,
+    shown: visibility.shown,
+    hidden: visibility.hidden,
+    missing: missing,
+    orderIssues: orderIssues,
+  });
+}
+
 function getUsersSheet_() {
   const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
   if (!sheet) throw new Error('Users 시트를 찾을 수 없습니다.');
@@ -886,7 +2715,7 @@ function getUsersSheet_() {
 /**
  * Users 시트의 parish 컬럼(D)에서 "장년" → "목양교구" 일괄 치환.
  * Apps Script 에디터에서 직접 Run으로 실행 (1회성).
- * PROD/DEV 양쪽에서 _devMode 토글한 뒤 각각 실행해야 함.
+ * 실행한 GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 적용됨.
  */
 function migrateParishJangnyeon() {
   const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
@@ -1028,8 +2857,9 @@ function hasValidUserAuth_(body, nickname) {
          verifyUserPassword(nickname, body && body.password);
 }
 
-function cacheKey_(name) {
-  return (_devMode ? 'dev__' : 'prod__') + name;
+function cacheKey_(name, scope) {
+  const cleanScope = String(scope || '').trim();
+  return cleanScope ? name + ':' + cleanScope : name;
 }
 
 function cacheGetJson_(key) {
@@ -1067,8 +2897,7 @@ function getDashboardDataCached_() {
 }
 
 function clearHotCaches_() {
-  cacheRemove_(cacheKey_('dashboard_v1'));
-  cacheRemove_(cacheKey_('notices_v1'));
+  clearDashboardCache_();
 }
 
 function clearDashboardCache_() {
@@ -1079,27 +2908,78 @@ function clearNoticesCache_() {
   cacheRemove_(cacheKey_('notices_v1'));
 }
 
+function clearUserCache_(userId) {
+  const cleanUserId = String(userId || '').trim();
+  if (!cleanUserId) return;
+  cacheRemove_(cacheKey_('user_status_v1', cleanUserId));
+  for (let week = 1; week <= 12; week++) {
+    cacheRemove_(cacheKey_('user_status_v1', cleanUserId + ':w' + week));
+  }
+  cacheRemove_(cacheKey_('collection_v1', cleanUserId));
+}
+
+function clearUserDerivedCaches_(userId) {
+  clearUserCache_(userId);
+  clearDashboardCache_();
+}
+
+function clearConfigCaches_() {
+  clearDashboardCache_();
+}
+
 function getConfig() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
+  const currentWeek = getCurrentWeek_();
+  const missionConfig = getMissionConfigModel_(currentWeek);
+  if (!missionConfig) throw new Error('미션 설정을 찾을 수 없습니다.');
 
-  const currentWeek   = Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
-  const startRow      = getConfigWeekStartRow_(currentWeek);
-  const weekTitle     = String(sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue() || (currentWeek + '주차')).trim();
-  const drawThreshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-
-  const rawItems = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
+  const weekTitle = String(missionConfig.title || (currentWeek + '주차')).trim();
+  const drawThreshold = Number(missionConfig.threshold) || 6;
   const items  = [];
   const scores = {};
   const cats   = {};
-  rawItems.forEach(([item, score, cat]) => {
-    if (!item) return;
-    const key = String(item);
+  missionConfig.items.forEach(function(item) {
+    if (!item || !item.enabled || !item.item) return;
+    const key = String(item.item);
     items.push(key);
-    scores[key] = Number(score) || 1;
-    cats[key]   = String(cat || 'L');
+    scores[key] = Number(item.score) || 1;
+    cats[key] = String(item.cat || 'L');
   });
   return { weekTitle, items, scores, cats, drawThreshold, currentWeek };
+}
+
+function isMissionSubmittedForConfig_(event, config, weekKey) {
+  if (!event || event.type !== EVENT_TYPES.MISSION_SUBMITTED) return false;
+  const payload = event.payload || {};
+  const expectedWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
+  const eventWeekKey = String(event.weekKey || '').trim();
+  if (expectedWeekKey && eventWeekKey === expectedWeekKey) return true;
+  return String(payload.weekTitle || '').trim() === String(config.weekTitle || '').trim();
+}
+
+function getMissionSubmittedEventsForConfig_(events, config, weekKey) {
+  return (events || []).filter(function(event) {
+    return isMissionSubmittedForConfig_(event, config, weekKey);
+  });
+}
+
+function getMissionEventDateKey_(event) {
+  const payload = event.payload || {};
+  return eventDateKey_(payload.dateKey);
+}
+
+function getMissionEventItems_(event) {
+  const payload = event.payload || {};
+  return Array.isArray(payload.items) ? payload.items : [];
+}
+
+function getMissionEventIndices_(event) {
+  const payload = event.payload || {};
+  return Array.isArray(payload.indices) ? payload.indices : [];
+}
+
+function getMissionEventScore_(event) {
+  const payload = event.payload || {};
+  return Number(payload.score) || 0;
 }
 
 // ── raw_checkins 컬럼 구조 ────────────────────────
@@ -1128,31 +3008,27 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
     const cachedAfterWait = cacheGetJson_(requestCacheKey);
     if (cachedAfterWait) return cachedAfterWait;
   }
-  const ss       = getSpreadsheet();
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
-  const rawCol = getRawColumns_(rawSheet);
+  const effectiveWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
 
-  // 서버사이드 중복 제출 방지: 텍스트 + 인덱스 둘 다 체크
+  // 서버사이드 중복 제출 방지: Events payload의 텍스트 + 인덱스 둘 다 체크
   const submittedToday   = new Set();
   const submittedIndices = new Set();
-  const allRows = getRawRows_(rawSheet, 10);
+  const userEvents = Events_readByUser(userId);
+  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, effectiveWeekKey);
   let prevWeekScore = 0;
-  if (allRows.length) {
-    for (const row of allRows) {
-      if (String(row[rawCol.userId]) === userId && String(row[rawCol.weekTitle]) === config.weekTitle) {
-        prevWeekScore += Number(row[rawCol.score]) || 0;
-      }
-      const rowDateValue = row[rawCol.dateKey];
-      const rowDate = rowDateValue instanceof Date ? Utilities.formatDate(rowDateValue, 'Asia/Seoul', 'yyyy-MM-dd') : String(rowDateValue).trim();
-      if (String(row[rawCol.userId]) === userId && rowDate === today) {
-        try { JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
+  if (submittedEvents.length) {
+    for (const event of submittedEvents) {
+      prevWeekScore += getMissionEventScore_(event);
+      if (getMissionEventDateKey_(event) === today) {
+        getMissionEventItems_(event).forEach(function(item) {
           submittedToday.add(item);
           const idx = config.items.indexOf(item);
           if (idx >= 0) submittedIndices.add(idx);
-        }); } catch(e) {}
-        try { JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => { if (typeof idx === 'number') submittedIndices.add(idx); }); } catch(e) {}
+        });
+        getMissionEventIndices_(event).forEach(function(idx) {
+          if (typeof idx === 'number') submittedIndices.add(idx);
+        });
       }
     }
   }
@@ -1189,9 +3065,32 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   // J열: 이 제출로 처음 threshold 달성하면 1, 아니면 0
   const ticketEarned = (prevWeekScore < config.drawThreshold && weekCumScore >= config.drawThreshold) ? 1 : 0;
 
-  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
-  try { updateTicketCols(userId); } catch(e) {}
-  clearDashboardCache_();
+  const now = new Date();
+  Events_append_(EVENT_TYPES.MISSION_SUBMITTED, userId, {
+    timestamp: now,
+    weekKey: effectiveWeekKey,
+    payload: {
+      weekTitle: config.weekTitle,
+      dateKey: today,
+      score: newScore,
+      weekCumScore: weekCumScore,
+      items: newItems,
+      indices: newIndices,
+    },
+    source: EVENT_SOURCES.WEB,
+  });
+  if (ticketEarned === 1) {
+    Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+      timestamp: now,
+      timestampOffsetMs: 1,
+      amount: 1,
+      weekKey: effectiveWeekKey,
+      payload: { reason: 'week_complete' },
+      source: EVENT_SOURCES.WEB,
+    });
+    rebuildCollectionRow_(userId);
+  }
+  clearUserDerivedCaches_(userId);
   const result = {
     ok: true,
     savedItems: newItems,
@@ -1210,111 +3109,30 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
 
 // ── raw_checkins 헤더 설정 ────────────────────────────────────────────────────
 function setupRawCheckinsHeader() {
-  const ss        = getSpreadsheet();
-  const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
-
-  const headers = ['timestamp', 'weekTitle', 'items_json', 'userId', 'weekKey', 'dateKey', 'score', 'indices_json', 'weekCumScore', 'ticketEarned'];
-
-  // A1이 이미 헤더면 스킵, 아니면 1행 삽입 후 헤더 작성
-  const a1 = String(rawSheet.getRange(1, 1).getValue()).trim();
-  if (a1 !== 'timestamp') {
-    rawSheet.insertRowBefore(1);
-  }
-  rawSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  return { ok: true, message: '헤더 설정 완료' };
+  return { ok: false, error: 'deprecated_raw_checkins', message: 'raw_checkins는 더 이상 활성 쓰기 대상이 아닙니다.' };
 }
 
 // ── raw_checkins I·J열 소급 재계산 ───────────────────────────────────────────
 function backfillRawCheckinsCols() {
-  const ss        = getSpreadsheet();
-  const rawSheet  = ss.getSheetByName(RAW_SHEET_NAME);
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다');
-  const rawCol = getRawColumns_(rawSheet);
-
-  const lastRow = rawSheet.getLastRow();
-  if (lastRow < 2) return { ok: true, message: '데이터 없음' };
-
-  // 헤더 확인 (A1 = 'timestamp' 이면 데이터는 2행부터, 아니면 1행부터)
-  const a1 = String(rawSheet.getRange(1, 1).getValue()).trim();
-  const dataStart = (a1 === 'timestamp') ? 2 : 1;
-  const dataCount = lastRow - dataStart + 1;
-  if (dataCount <= 0) return { ok: true, message: '데이터 없음' };
-
-  // 전체 읽기 (10열)
-  const allData = rawSheet.getRange(dataStart, 1, dataCount, 10).getValues();
-
-  // threshold 맵: weekTitle → threshold
-  const configSheet  = ss.getSheetByName(CONFIG_SHEET_NAME);
-  const thresholdMap = {};
-  for (let w = 1; w <= 6; w++) {
-    const startRow = getConfigWeekStartRow_(w);
-    const title    = String(configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue()).trim();
-    const thr      = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-    if (title) thresholdMap[title] = thr;
-  }
-
-  // userId + weekTitle 별 누적 점수 추적
-  const cumMap = {}; // key: "userId__weekTitle" → 누적 점수
-
-  const updates = []; // { rowIndex (0-based in allData), weekCumScore, ticketEarned }
-
-  for (let i = 0; i < allData.length; i++) {
-    const row       = allData[i];
-    const userId    = String(row[rawCol.userId]).trim();
-    const weekTitle = String(row[rawCol.weekTitle]).trim();
-    const rowScore  = Number(row[rawCol.score]) || 0;
-
-    if (!userId || !weekTitle) continue;
-
-    const key       = userId + '__' + weekTitle;
-    const prevCum   = cumMap[key] || 0;
-    const newCum    = prevCum + rowScore;
-    cumMap[key]     = newCum;
-
-    const threshold   = thresholdMap[weekTitle] || 6;
-    const earned      = (prevCum < threshold && newCum >= threshold) ? 1 : 0;
-
-    updates.push({ i, weekCumScore: newCum, ticketEarned: earned });
-  }
-
-  // I·J열 일괄 쓰기
-  const ijValues = allData.map(function(row) { return [row[rawCol.weekCumScore], row[rawCol.ticketEarned]]; });
-  for (const u of updates) {
-    ijValues[u.i] = [u.weekCumScore, u.ticketEarned];
-  }
-  rawSheet.getRange(dataStart, rawCol.weekCumScore + 1, dataCount, 2).setValues(ijValues);
-
-  return { ok: true, message: `${updates.length}행 재계산 완료` };
+  return { ok: false, error: 'deprecated_raw_checkins', message: 'raw_checkins는 더 이상 활성 쓰기 대상이 아닙니다.' };
 }
 
 function getDashboardData() {
-  const ss       = getSpreadsheet();
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
   const config   = getConfig();
-  if (!rawSheet) throw new Error('raw_checkins 시트를 찾을 수 없습니다.');
-  const rawCol = getRawColumns_(rawSheet);
-
-  const values  = getRawRows_(rawSheet, 10);
-
-  const currentWeekRows = values.filter(row => String(row[rawCol.weekTitle]).trim() === config.weekTitle);
   const counts = {};
   config.items.forEach(item => counts[item] = 0);
+  const currentWeekEvents = getMissionSubmittedEventsForConfig_(Events_readAll_(), config, 'w' + config.currentWeek);
 
-  currentWeekRows.forEach(row => {
+  currentWeekEvents.forEach(event => {
     const counted = new Set();
     // 텍스트 기반 카운트
-    try {
-      JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
-        if (counts[item] !== undefined) counted.add(item);
-      });
-    } catch(e) {}
+    getMissionEventItems_(event).forEach(item => {
+      if (counts[item] !== undefined) counted.add(item);
+    });
     // 인덱스 기반 폴백 (텍스트 변경된 구 데이터 보완)
-    try {
-      JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => {
-        if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
-      });
-    } catch(e) {}
+    getMissionEventIndices_(event).forEach(idx => {
+      if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
+    });
     counted.forEach(item => { counts[item]++; });
   });
 
@@ -1327,7 +3145,7 @@ function getDashboardData() {
     drawThreshold:   config.drawThreshold,
     counts,
     totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
-    submissionCount: currentWeekRows.length,
+    submissionCount: currentWeekEvents.length,
     tabSettings:     getTabSettings()
   };
 }
@@ -1369,45 +3187,49 @@ function migrateHoldPrayToSheet() {
   return { ok: true, migrated: rows.length };
 }
 
-// ── 보너스 뽑기권 시트 ──────────────────────────────
-function getOrCreateBonusDrawsSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAMES.BONUS_DRAWS);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAMES.BONUS_DRAWS);
-    sheet.appendRow(getSchemaHeaders_(SCHEMA.BONUS_DRAWS));
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
+function getBonusDrawCount(userId) {
+  return Events_readByUser(userId).filter(function(event) {
+    return event.type === EVENT_TYPES.TICKET_GRANTED &&
+      !!String((event.payload && event.payload.legacySource) || '').trim();
+  }).length;
 }
 
-function getBonusDrawCount(userId) {
-  const sheet = getOrCreateBonusDrawsSheet();
-  const col = getBonusDrawColumns_(sheet);
-  return getBonusDrawRows_(sheet)
-    .filter(r => String(r[col.userId]) === userId).length;
+function hasBonusTicketGrant_(userId, legacySource, weekKey, userEvents) {
+  const cleanUserId = String(userId || '').trim();
+  const cleanSource = String(legacySource || '').trim();
+  const cleanWeekKey = String(weekKey || '').trim();
+  if (!cleanUserId || !cleanSource) return false;
+
+  try {
+    const events = userEvents || Events_readByUser(cleanUserId);
+    const matchedEvent = events.some(function(event) {
+      if (event.type !== EVENT_TYPES.TICKET_GRANTED) return false;
+      if (cleanWeekKey && String(event.weekKey || '') !== cleanWeekKey) return false;
+      return String((event.payload && event.payload.legacySource) || '') === cleanSource;
+    });
+    if (matchedEvent) return true;
+  } catch(e) {}
+
+  return false;
 }
 
 // ── 카드 시스템 ───────────────────────────────────
-function getOrCreateDrawSheet() {
-  const ss = getSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAMES.CARD_DRAWS);
-  if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAMES.CARD_DRAWS);
-    sheet.appendRow(getSchemaHeaders_(SCHEMA.CARD_DRAWS));
-  } else {
-    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), 6)).getValues()[0];
-    const col = getCardDrawColumns_(sheet);
-    if (String(header[col.received] || '') !== SCHEMA.CARD_DRAWS.columns.received) {
-      sheet.getRange(SCHEMA.CARD_DRAWS.headerRow, col.received + 1).setValue(SCHEMA.CARD_DRAWS.columns.received);
-    }
-  }
-  return sheet;
+function getUserStatusCached_(userId, weekKey) {
+  const cleanUserId = String(userId || '').trim();
+  const config = getConfig();
+  const cleanWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
+  if (!cleanUserId) return getUserStatus(cleanUserId, cleanWeekKey, config);
+  const key = cacheKey_('user_status_v1', cleanUserId + ':' + cleanWeekKey);
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getUserStatus(cleanUserId, cleanWeekKey, config);
+  cachePutJson_(key, data, 10);
+  return data;
 }
 
-function getUserStatus(userId, weekKey) {
-  const ss     = getSpreadsheet();
-  const config = getConfig();
+function getUserStatus(userId, weekKey, configOverride) {
+  const config = configOverride || getConfig();
+  weekKey = String(weekKey || ('w' + config.currentWeek)).trim();
   let weekScore = 0, drawnThisWeek = false, weekCard = null;
   const collection = [];
   const todayItems   = [];
@@ -1426,71 +3248,57 @@ function getUserStatus(userId, weekKey) {
   const weekStart = monday.toISOString().slice(0, 10);
   const weekEnd   = sunday.toISOString().slice(0, 10);
 
-  // raw_checkins 전체 읽기 (이번 주 점수 + 오늘 항목 + 이월 계산에 재사용)
-  // 10열까지 읽어 J열(ticketEarned) 포함
-  let allRows = [];
+  const userEvents = Events_readByUser(userId);
+  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, weekKey);
   let earnedTicketThisWeek = false;
-  try {
-    const raw     = ss.getSheetByName(RAW_SHEET_NAME);
-    const rawCol  = getRawColumns_(raw);
-    allRows = getRawRows_(raw, 10);
-    if (allRows.length) {
-      for (const row of allRows) {
-        if (String(row[rawCol.userId]) !== userId) continue;
-        if (String(row[rawCol.weekTitle]) === config.weekTitle) {
-          weekScore += Number(row[rawCol.score]) || 0;
-          if (Number(row[rawCol.ticketEarned]) === 1) earnedTicketThisWeek = true;
-          const rowDateValue = row[rawCol.dateKey];
-          const rowDate = rowDateValue instanceof Date ? Utilities.formatDate(rowDateValue, 'Asia/Seoul', 'yyyy-MM-dd') : String(rowDateValue).trim();
-          // 이번 주 제출 날짜 수집
-          if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
-            weekDates.push(rowDate);
-          }
-          if (rowDate === today) {
-            try { JSON.parse(row[rawCol.itemsJson] || '[]').forEach(item => {
-              todayItems.push(item);
-              // 인덱스 미저장 구 데이터: 현재 config 텍스트와 매칭해 인덱스 역추적
-              const idx = config.items.indexOf(item);
-              if (idx >= 0) todayIndices.push(idx);
-            }); } catch(e) {}
-            // 신규 데이터: 저장된 인덱스 추가 (텍스트 변경 후에도 유지)
-            try { JSON.parse(row[rawCol.indicesJson] || '[]').forEach(idx => { if (typeof idx === 'number') todayIndices.push(idx); }); } catch(e) {}
-          }
-        }
-      }
+  submittedEvents.forEach(function(event) {
+    weekScore += getMissionEventScore_(event);
+    const rowDate = getMissionEventDateKey_(event);
+    if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
+      weekDates.push(rowDate);
     }
-  } catch(e) {}
+    if (rowDate === today) {
+      getMissionEventItems_(event).forEach(function(item) {
+        todayItems.push(item);
+        // 인덱스 미저장 구 데이터: 현재 config 텍스트와 매칭해 인덱스 역추적
+        const idx = config.items.indexOf(item);
+        if (idx >= 0) todayIndices.push(idx);
+      });
+      getMissionEventIndices_(event).forEach(function(idx) {
+        if (typeof idx === 'number') todayIndices.push(idx);
+      });
+    }
+  });
+  userEvents.forEach(function(event) {
+    if (event.type !== EVENT_TYPES.TICKET_GRANTED) return;
+    if (String(event.weekKey || '') !== String(weekKey || '')) return;
+    if (String((event.payload && event.payload.reason) || '') === 'week_complete') {
+      earnedTicketThisWeek = true;
+    }
+  });
 
-  // 카드 뽑기 이력 (drawnThisWeek, weekCard, 총 뽑기 수 카운트용)
-  let totalDraws = 0;
+  // 카드 뽑기 이력 (drawnThisWeek, weekCard)
   try {
-    const draws = getOrCreateDrawSheet();
-    const drawCol = getCardDrawColumns_(draws);
-    const rows = getCardDrawRows_(draws);
-    if (rows.length) {
-      for (const row of rows) {
-        if (String(row[drawCol.userId]) !== userId) continue;
-        totalDraws++;
-        const card = SPIRIT_CARDS.find(c => c.id === Number(row[drawCol.cardId]));
+    if (userEvents.length) {
+      for (const event of userEvents) {
+        if (event.type !== EVENT_TYPES.CARD_DRAWN) continue;
+        if (String(event.weekKey) !== weekKey) continue;
+        const card = SPIRIT_CARDS.find(c => c.id === Number(event.refId));
         if (!card) continue;
-        if (String(row[drawCol.weekKey]) === weekKey) { drawnThisWeek = true; weekCard = card; }
+        drawnThisWeek = true;
+        weekCard = card;
       }
     }
   } catch(e) {}
 
-  // 컬렉션 (Collection 시트에서 읽기 — 교환 결과 반영됨)
-  try {
-    const collCounts = getUserCollection(userId);
-    SPIRIT_CARDS.forEach(card => {
-      const cnt = collCounts[card.id] || 0;
-      for (let j = 0; j < cnt; j++) collection.push({...card});
-    });
-  } catch(e) {}
-
-  // 뽑기권 현황: Collection 시트 D열(남은개수) 직접 읽기
   let pendingDraws = 0;
   try {
-    pendingDraws = getCollectionTickets(userId).remaining;
+    const snapshot = getCurrentCollectionSnapshot_(String(userId || '').trim());
+    pendingDraws = Number(snapshot.remaining) || 0;
+    SPIRIT_CARDS.forEach(card => {
+      const cnt = Number(snapshot.cardCounts[card.id]) || 0;
+      for (let j = 0; j < cnt; j++) collection.push({...card});
+    });
   } catch(e) {}
 
   return {
@@ -1524,12 +3332,10 @@ function drawCard(userId, weekKey, testMode, requestId) {
         try { return JSON.parse(cached); } catch(e) {}
       }
     }
+    weekKey = String(weekKey || ('w' + getCurrentWeek_())).trim();
 
-    const config = getConfig();
-    const ss     = getSpreadsheet();
-
-    // DEV 환경은 뽑기권 검증 스킵 (테스트 자유롭게)
-    if (!_devMode) {
+    const bypassTicketCheck = testMode === true && isTestDrawAllowed_();
+    if (!bypassTicketCheck) {
       const pendingDraws = getCollectionTickets(userId).remaining;
       if (pendingDraws <= 0) {
         const noTicketResult = { ok: false, error: '사용 가능한 뽑기권이 없습니다.' };
@@ -1541,18 +3347,37 @@ function drawCard(userId, weekKey, testMode, requestId) {
     const drawableCards = SPIRIT_CARDS.filter(function(c) { return c.id !== 10; });
     const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
 
-    // 뽑기 전 기존 보유 여부 확인 (isNew 계산용 — updateCollectionSheet 전에 읽어야 정확)
+    // 뽑기 전 기존 보유 여부 확인 (isNew 계산용)
     let isNew = true;
     try {
       const existingCounts = getUserCollection(userId);
       isNew = !(existingCounts[card.id] > 0);
     } catch(e) {}
 
-    // 항상 시트에 기록 (DEV → DEV 시트, PROD → PROD 시트)
-    const draws = getOrCreateDrawSheet();
-    draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
-    updateCollectionSheet(userId, card.id, 1);
-    try { updateTicketCols(userId); } catch(e) {}
+    const drawnAt = new Date().toISOString();
+    Events_append_(EVENT_TYPES.TICKET_CONSUMED, userId, {
+      timestamp: drawnAt,
+      amount: 1,
+      weekKey: weekKey,
+      payload: {
+        reason: 'card_draw',
+        testMode: bypassTicketCheck,
+      },
+      source: EVENT_SOURCES.WEB,
+    });
+    Events_append_(EVENT_TYPES.CARD_DRAWN, userId, {
+      timestamp: drawnAt,
+      timestampOffsetMs: 1,
+      amount: 1,
+      weekKey: weekKey,
+      refId: card.id,
+      payload: {
+        cardName: card.name,
+        isNew: isNew,
+      },
+      source: EVENT_SOURCES.WEB,
+    });
+    rebuildCollectionRow_(userId);
     const result = {
       ok: true,
       card,
@@ -1634,7 +3459,7 @@ function fixHoldPrayBlankNames() {
 }
 
 function getHoldPray(weekKey, nickname) {
-  if (!weekKey) weekKey = 'w' + (getConfig().currentWeek);
+  if (!weekKey) weekKey = 'w' + getCurrentWeek_();
   const entries = getYouthHpEntries();
   const hpRevision = String(hashStr(JSON.stringify(entries.map(function(e) {
     return [e.n, e.p, e.c, e.a === true, e.nick || ''];
@@ -1695,16 +3520,8 @@ function getHoldPray(weekKey, nickname) {
   let ticketAlreadyAwarded = false;
   let ticketCardIdx = -1;
   if (nickname && (weekKey === 'w3' || weekKey === 'w6')) {
-    const bonusSheet = getOrCreateBonusDrawsSheet();
-    const last = bonusSheet.getLastRow();
     const source = 'hp_' + weekKey;
-    if (last >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-      const bonusCol = getBonusDrawColumns_(bonusSheet);
-      const rows = getBonusDrawRows_(bonusSheet);
-      ticketAlreadyAwarded = rows.some(function(r) {
-        return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source;
-      });
-    }
+    ticketAlreadyAwarded = hasBonusTicketGrant_(nickname, source, weekKey);
     if (ticketAlreadyAwarded) {
       const guessSheet = getOrCreateHPGuessesSheet();
       const gLast = guessSheet.getLastRow();
@@ -1800,23 +3617,36 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
       });
     }
     if (!alreadyRecorded) {
-      guessSheet.appendRow([nickname, weekKey, ci, guess.trim(), new Date().toISOString()]);
+      const answeredAt = new Date().toISOString();
+      guessSheet.appendRow([nickname, weekKey, ci, guess.trim(), answeredAt]);
+      Events_append_(EVENT_TYPES.HP_GUESSED, nickname, {
+        timestamp: answeredAt,
+        weekKey: weekKey,
+        payload: {
+          cardIndex: ci,
+          guessedName: guess.trim(),
+        },
+        source: EVENT_SOURCES.WEB,
+      });
     }
   }
   let ticketAwarded = false;
   if (correct && (weekKey === 'w3' || weekKey === 'w6')) {
-    const bonusSheet = getOrCreateBonusDrawsSheet();
-    const last = bonusSheet.getLastRow();
     const source = 'hp_' + weekKey;
-    let alreadyAwarded = false;
-    if (last >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-      const bonusCol = getBonusDrawColumns_(bonusSheet);
-      const rows = getBonusDrawRows_(bonusSheet);
-      alreadyAwarded = rows.some(function(r) { return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source; });
-    }
+    const alreadyAwarded = hasBonusTicketGrant_(nickname, source, weekKey);
     if (!alreadyAwarded) {
-      bonusSheet.appendRow([nickname, source, new Date().toISOString()]);
-      try { updateTicketCols(nickname); } catch(e) {}
+      const awardedAt = new Date().toISOString();
+      Events_append_(EVENT_TYPES.TICKET_GRANTED, nickname, {
+        timestamp: awardedAt,
+        amount: 1,
+        weekKey: weekKey,
+        payload: {
+          reason: 'hp_correct',
+          legacySource: source,
+        },
+        source: EVENT_SOURCES.WEB,
+      });
+      rebuildCollectionRow_(nickname);
       ticketAwarded = true;
     }
   }
@@ -1855,21 +3685,9 @@ function getOrCreateTabSettingsSheet() {
   sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
-  // config B2/B3/D1에서 마이그레이션 (최초 1회)
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  var holdprayVal = true, secretVal = true, chatVal = false;
-  if (configSheet) {
-    const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
-    const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
-    const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
-    holdprayVal = (b2 === '') ? true : Boolean(b2);
-    secretVal   = (b3 === '') ? true : Boolean(b3);
-    chatVal     = (typeof d1 === 'boolean') ? d1 : false; // '1주차' 같은 문자열은 false로 처리
-    // 마이그레이션 후 config 시트에서 제거
-    configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).clearContent();
-    configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).clearContent();
-    configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).clearContent();
-  }
+  var holdprayVal = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, true) === true;
+  var secretVal   = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, true) === true;
+  var chatVal     = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, false) === true;
 
   sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, 3, 3).setValues([
     ['holdpray', 'Hold & Pray', holdprayVal],
@@ -1888,18 +3706,12 @@ function getOrCreateBBBSettingsSheet() {
   sheet.getRange(SCHEMA.BBB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.BBB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
-  // D2 JSON에서 마이그레이션 시도 (이전 저장값 복원)
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  var saved = {};
-  try {
-    const d2val = configSheet ? configSheet.getRange(CONFIG_LAYOUT.legacyBbbSectionsCell).getValue() : '';
-    if (d2val) saved = JSON.parse(d2val);
-  } catch(e) {}
-
   const rows = Object.keys(BBB_SECTIONS_DEFAULT).map(function(key) {
     const def = BBB_SECTIONS_DEFAULT[key];
-    const sv  = saved[key] || {};
-    return [key, sv.open === true, sv.text !== undefined ? sv.text : (def.text || '')];
+    const openValue = key === 'msgOpen'
+      ? getAppSetting_(APP_SETTING_KEYS.BBB_MESSAGE_OPEN, def.open === true) === true
+      : def.open === true;
+    return [key, openValue, def.text || ''];
   });
   sheet.getRange(SCHEMA.BBB_SETTINGS.dataStartRow, 1, rows.length, 3).setValues(rows);
   return sheet;
@@ -1918,10 +3730,10 @@ function isBBBMessageOpen() {
     }
   } catch(e) {}
 
-  // 구버전 config C1 설정 fallback
   try {
-    const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue() === true;
+    const appSettingValue = getAppSetting_(APP_SETTING_KEYS.BBB_MESSAGE_OPEN, null);
+    if (appSettingValue !== null && appSettingValue !== undefined) return appSettingValue === true;
+    return false;
   } catch(e) {
     return false;
   }
@@ -1939,16 +3751,12 @@ function getTabSettings() {
       if (Object.prototype.hasOwnProperty.call(tabMap, key)) tabMap[key] = r[tabCol.enabled] === true;
     });
   } else {
-    // TabSettings 생성 전에는 config의 기존 값을 읽기만 한다.
-    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    if (configSheet) {
-      const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
-      const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
-      const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
-      tabMap.holdpray = (b2 === '') ? true : b2 === true;
-      tabMap.secret   = (b3 === '') ? true : b3 === true;
-      tabMap.chat     = d1 === true;
-    }
+    const hpSetting = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, null);
+    const secretSetting = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, null);
+    const chatSetting = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, null);
+    if (hpSetting !== null && hpSetting !== undefined) tabMap.holdpray = hpSetting === true;
+    if (secretSetting !== null && secretSetting !== undefined) tabMap.secret = secretSetting === true;
+    if (chatSetting !== null && chatSetting !== undefined) tabMap.chat = chatSetting === true;
   }
 
   // BBBSettings 시트에서 현장미션 섹션 오픈 설정 읽기
@@ -1975,7 +3783,7 @@ function getTabSettings() {
 }
 
 function setTabSettings(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
 
   // TabSettings 시트 업데이트
   const tabSheet = getOrCreateTabSettingsSheet();
@@ -2011,15 +3819,13 @@ function setTabSettings(body) {
       bbbRange.setValues(bbbRows);
     }
   }
-  clearHotCaches_();
+  clearConfigCaches_();
   return { ok: true };
 }
 
 function getAppOpenDate() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const v = sheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue();
-  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+9', 'yyyy-MM-dd');
-  return String(v || '');
+  const value = getAppSetting_(APP_SETTING_KEYS.APP_OPEN_DATE, '');
+  return value ? eventDateKey_(value) : '';
 }
 
 // ── 유저 인증 ─────────────────────────────────────
@@ -2379,39 +4185,29 @@ function setCardReceivedQty(body) {
 }
 
 function setDrawReceived(body) {
-  var rowIndex = Number(body.rowIndex);
-  var received = body.received !== false;
-  if (!rowIndex || rowIndex < 2) return { error: 'invalid_row' };
-  var sheet = getOrCreateDrawSheet();
-  var col = getCardDrawColumns_(sheet);
-  sheet.getRange(rowIndex, col.received + 1).setValue(received ? 'TRUE' : '');
-  return { ok: true };
+  return { ok: false, error: 'deprecated_card_draws', message: 'CardDraws는 더 이상 활성 쓰기 대상이 아닙니다. CardReceived를 사용하세요.' };
 }
 
 function getCardStats() {
-  var ss = getSpreadsheet();
   var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
 
-  // 1. CardDraws → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
+  // 1. Events.card.drawn → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
   var cardCounts = {};
   var totalDraws = 0;
   var userDrawMap = {}; // nickname → { cardId: count }
   SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
   try {
-    var drawSheet = getOrCreateDrawSheet();
-    var drawCol = getCardDrawColumns_(drawSheet);
-    var drawRows = getCardDrawRows_(drawSheet);
-    if (drawRows.length) {
-      drawRows.forEach(function(row) {
-        var nick = String(row[drawCol.userId]);
-        var cid  = Number(row[drawCol.cardId]);
-        if (!nick || !cid) return;
-        cardCounts[cid] = (cardCounts[cid] || 0) + 1;
-        totalDraws++;
-        if (!userDrawMap[nick]) userDrawMap[nick] = {};
-        userDrawMap[nick][cid] = (userDrawMap[nick][cid] || 0) + 1;
-      });
-    }
+    Events_readAll_().forEach(function(event) {
+      if (event.type !== EVENT_TYPES.CARD_DRAWN) return;
+      var nick = String(event.userId || '').trim();
+      var cid = Number(event.refId);
+      var amount = eventAmount_(event, 1);
+      if (!nick || !cid || amount <= 0) return;
+      cardCounts[cid] = (cardCounts[cid] || 0) + amount;
+      totalDraws += amount;
+      if (!userDrawMap[nick]) userDrawMap[nick] = {};
+      userDrawMap[nick][cid] = (userDrawMap[nick][cid] || 0) + amount;
+    });
   } catch(e) {}
 
   // 2. CardReceived → 카드별 총 수령 수 + 유저별 수령 맵
@@ -2574,101 +4370,48 @@ const ALL_WEEK_DATA = [
 ];
 
 function setupAllWeeks() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-
-  // 헤더 세팅 (첫 실행 시)
-  sheet.getRange(CONFIG_LAYOUT.currentWeekLabelCell).setValue('current_week');
-  if (!sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(1);
-  // 탭 on/off → TabSettings 시트, 현장미션 섹션 → BBBSettings 시트
-
-  // 기존 주차 데이터 영역 초기화
-  sheet.getRange(CONFIG_LAYOUT.weekBlockClearRange).clearContent();
-
   ALL_WEEK_DATA.forEach((w, i) => {
-    const startRow = getConfigWeekStartRow_(i + 1);
-    sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).setValue(w.title);
-    sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).setValue(w.threshold);
-    w.items.forEach(([item, score, cat], j) => {
-      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionItemCol).setValue(item);
-      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionScoreCol).setValue(score);
-      sheet.getRange(startRow + 1 + j, CONFIG_LAYOUT.missionCategoryCol).setValue(cat || 'L');
+    setMissionConfigInDefinitions_({
+      week: i + 1,
+      title: w.title,
+      threshold: w.threshold,
+      items: w.items.map(function(item) {
+        return { item: item[0], score: item[1], cat: item[2] || 'L' };
+      }),
     });
   });
 
-  clearHotCaches_();
+  clearConfigCaches_();
   Logger.log('전체 주차 세팅 완료');
 }
 
 // ── 일회성 config/raw_checkins 복구 (B5/B6 충돌 수정 후 1회 실행) ───────────
 // GAS 에디터에서 직접 실행: fixConfigSheetConflict()
 function fixConfigSheetConflict() {
-  const ss          = getSpreadsheet();
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-
-  // 1) 1주차 config 복원 (B5: weekTitle, C5: threshold, A6:C11: items)
-  const startRow = getConfigWeekStartRow_(1);
-  configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).setValue('1주차');
-  configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).setValue(9);
-  const w1items = [
-    ['자기 전 1분 동안 무릎 꿇고 기도하기', 2, 'L'],
-    ['"하나님, 저는 오늘 ____이 필요합니다." 문장 완성하기', 1, 'L'],
-    ['이번주 예배 송리스트 전체 듣기', 2, 'L'],
-    ['손기도 기도제목 위에 손을 얹고 그 자리에서 중보기도하기', 1, 'L'],
-    ['교회 어른들께 먼저 인사하기', 1, 'MC'],
-    ['밥 먹기 전에 식기도하기', 1, 'MW'],
-  ];
-  configSheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(w1items);
-
-  // 3) raw_checkins B열: boolean false → '1주차' 마이그레이션
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
-  if (rawSheet && rawSheet.getLastRow() >= 2) {
-    const rawCol = getRawColumns_(rawSheet);
-    const dataStart = SCHEMA.RAW_CHECKINS.dataStartRow;
-    const lastRow = rawSheet.getLastRow();
-    const bCol = rawSheet.getRange(dataStart, rawCol.weekTitle + 1, lastRow - dataStart + 1, 1).getValues();
-    let fixed = 0;
-    bCol.forEach(function(r, i) {
-      const [weekTitle] = r;
-      if (weekTitle === false || weekTitle === '' || String(weekTitle).trim() === 'false') {
-        rawSheet.getRange(i + dataStart, rawCol.weekTitle + 1).setValue('1주차');
-        fixed++;
-      }
-    });
-    Logger.log('raw_checkins 마이그레이션: ' + fixed + '행 수정');
-  }
-
-  Logger.log('fixConfigSheetConflict 완료');
-  return { ok: true };
+  return { ok: false, error: 'deprecated_config_raw_checkins', message: 'config/raw_checkins 복구 도구는 Events 전환 이후 사용하지 않습니다.' };
 }
 
 // ── 미션 config 읽기/쓰기 ─────────────────────────
 function getMissionConfig(week) {
   if (week < 1 || week > 6) return { error: 'invalid_week' };
-  const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const startRow = getConfigWeekStartRow_(week);
-  const title     = sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue();
-  const threshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-  const rawItems  = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
-  const items = rawItems.map(([item, score, cat]) => ({ item: String(item || ''), score: Number(score) || 1, cat: String(cat || 'L') }));
-  return { ok: true, week, title, threshold, items };
+  const config = getMissionConfigModel_(week);
+  if (!config) return { error: 'not_found' };
+  const items = config.items.map(function(item) {
+    return {
+      item: String(item.item || ''),
+      score: Number(item.score) || 1,
+      cat: String(item.cat || 'L'),
+    };
+  });
+  return { ok: true, week: week, title: config.title, threshold: config.threshold, items: items };
 }
 
 function setMissionConfig(body) {
   const week = Number(body.week);
   if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
-  const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const startRow = getConfigWeekStartRow_(week);
-  sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
-  const items = Array.isArray(body.items) ? body.items : [];
-  const rows = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
-  for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
-    const it = items[i] || {};
-    if (!String(it.item || '').trim()) continue; // 빈 항목은 기존 값 유지
-    rows[i] = [String(it.item), Number(it.score) || 1, String(it.cat || 'L')];
-  }
-  sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(rows);
-  clearHotCaches_();
-  return { ok: true };
+  const result = setMissionConfigInDefinitions_(body);
+  clearConfigCaches_();
+  return result;
 }
 
 // ── 문의하기 ──────────────────────────────────────
@@ -2793,7 +4536,7 @@ function deleteInquiry(body) {
   for (let i = 0; i < rows.length; i++) {
     const rowIndex = i + SCHEMA.INQUIRIES.dataStartRow;
     if (String(rows[i][col.id]) !== id) continue;
-    if (body.adminPw === ADMIN_PASSWORD) {
+    if (isAdminAuthorized_(body.adminPw)) {
       sheet.deleteRow(rowIndex);
       return { ok: true };
     }
@@ -2808,7 +4551,7 @@ function deleteInquiry(body) {
 }
 
 function replyInquiry(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   const id    = String(body.id    || '');
   const reply = String(body.reply || '').trim();
   if (!id) return { error: 'missing_fields' };
@@ -2908,212 +4651,732 @@ function getTicketStats() {
   return { ok: true, users: users, totalRemaining: totalRemaining };
 }
 
-function updateCollectionSheet(userId, cardId, delta) {
-  const sheet = getOrCreateCollectionSheet();
-  const col = getCollectionColumns_(sheet);
-  const last = sheet.getLastRow();
-  let rowIndex = -1;
-  if (last >= SCHEMA.COLLECTION.dataStartRow) {
-    const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
-    for (let i = 0; i < ids.length; i++) {
-      if (String(ids[i][0]) === userId) { rowIndex = i + SCHEMA.COLLECTION.dataStartRow; break; }
-    }
-  }
-  const cardIdx = getCollectionCardIndex_(cardId, col);
-  const cardCol = cardIdx + 1;
-  if (rowIndex === -1) {
-    const newRow = new Array(COLLECTION_COL_COUNT).fill(0);
-    newRow[col.userId] = userId;
-    if (delta > 0) {
-      newRow[cardIdx] = delta;
-      newRow[col.totalCards] = delta;
-    }
-    sheet.appendRow(newRow);
-  } else {
-    const cardCell = sheet.getRange(rowIndex, cardCol);
-    const beforeCardCount = Number(cardCell.getValue()) || 0;
-    const afterCardCount = Math.max(0, beforeCardCount + delta);
-    const actualDelta = afterCardCount - beforeCardCount;
-    cardCell.setValue(afterCardCount);
-    const totalCell = sheet.getRange(rowIndex, col.totalCards + 1);
-    totalCell.setValue(Math.max(0, (Number(totalCell.getValue()) || 0) + actualDelta));
-  }
+function previewCollectionProjection(userId) {
+  const cleanUserId = String(userId || '').trim();
+  const inputs = getCollectionProjectionInputs_();
+  const events = inputs.events;
+  const userIds = cleanUserId ? [cleanUserId] : getCollectionProjectionCandidateUserIds_(events, inputs);
+  const comparisons = userIds.map(function(id) {
+    return compareCollectionProjectionForUser_(id, events, inputs);
+  });
+  const mismatches = comparisons.filter(function(item) { return item.diffs.length > 0; });
+  return logJsonResult_('previewCollectionProjection result', {
+    ok: true,
+    checked: comparisons.length,
+    mismatchCount: mismatches.length,
+    mismatches: mismatches.slice(0, 30),
+    samples: comparisons.slice(0, Math.min(5, comparisons.length)),
+  });
 }
 
-// 뽑기권 관련 컬럼(2~4) 재계산 후 업데이트
-function updateTicketCols(userId) {
-  try {
-    const ss = getSpreadsheet();
-    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    const currentWeek = Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
-
-    // 자격 주 수 계산
-    let qualifiedWeeks = 0;
-    const raw = ss.getSheetByName(RAW_SHEET_NAME);
-    const rawCol = raw ? getRawColumns_(raw) : null;
-    const allRaw = raw ? getRawRows_(raw, 10) : [];
-    for (let w = 1; w <= currentWeek; w++) {
-      const wTitle     = w + '주차';
-      const startRow   = getConfigWeekStartRow_(w);
-      const wThreshold = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-      const wScore     = allRaw
-        .filter(r => String(r[rawCol.userId]) === userId && String(r[rawCol.weekTitle]) === wTitle)
-        .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
-      if (wScore >= wThreshold) qualifiedWeeks++;
-    }
-
-    const bonusCount  = getBonusDrawCount(userId);
-    const totalEarned = qualifiedWeeks + bonusCount;
-
-    // 실제 뽑은 횟수
-    let totalDraws = 0;
-    const drawSheet = getOrCreateDrawSheet();
-    const drawCol = getCardDrawColumns_(drawSheet);
-    totalDraws = getCardDrawRows_(drawSheet)
-      .filter(r => String(r[drawCol.userId]) === userId).length;
-
-    const remaining = Math.max(0, totalEarned - totalDraws);
-
-    // Collection 시트 해당 row 업데이트 (없으면 생성)
-    const collSheet = getOrCreateCollectionSheet();
-    const collCol = getCollectionColumns_(collSheet);
-    const collLast  = collSheet.getLastRow();
-    let rowIndex = -1;
-    if (collLast >= SCHEMA.COLLECTION.dataStartRow) {
-      const ids = collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, collCol.userId + 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
-      for (let i = 0; i < ids.length; i++) {
-        if (String(ids[i][0]) === userId) { rowIndex = i + SCHEMA.COLLECTION.dataStartRow; break; }
-      }
-    }
-    if (rowIndex === -1) {
-      const newRow = new Array(COLLECTION_COL_COUNT).fill(0);
-      newRow[collCol.userId] = userId;
-      newRow[collCol.totalEarned] = totalEarned;
-      newRow[collCol.totalDrawn] = totalDraws;
-      newRow[collCol.remaining] = remaining;
-      collSheet.appendRow(newRow);
-    } else {
-      collSheet.getRange(rowIndex, collCol.totalEarned + 1, 1, 3).setValues([[totalEarned, totalDraws, remaining]]);
-    }
-  } catch(e) {
-    Logger.log('updateTicketCols error: ' + e);
-  }
-}
-
-// 전체 Collection 시트 재계산 (백필 / 비상 재정합용)
-function rebuildCollectionSheet() {
+function getCollectionProjectionInputs_() {
   const ss = getSpreadsheet();
+  const eventsSheet = getOrCreateEventsSheet();
+  const eventsCol = getEventsColumns_(eventsSheet);
+  const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
+  const userCol = usersSheet ? getUserColumns_(usersSheet) : null;
+  const collectionSheet = getOrCreateCollectionSheet();
+  const collectionCol = getCollectionColumns_(collectionSheet);
+  const rows = getBatchSheetRows_([
+    { key: 'events', sheet: eventsSheet, schema: SCHEMA.EVENTS, maxColumns: EVENTS_COL_COUNT },
+    { key: 'users', sheet: usersSheet, schema: SCHEMA.USERS },
+    { key: 'collection', sheet: collectionSheet, schema: SCHEMA.COLLECTION, maxColumns: COLLECTION_COL_COUNT },
+  ]);
+  const events = (rows.events || [])
+    .filter(function(row) {
+      return String(row[eventsCol.userId] || '').trim() ||
+        String(row[eventsCol.type] || '').trim() ||
+        String(row[eventsCol.eventId] || '').trim();
+    })
+    .map(function(row) { return Events_rowToObject_(row, eventsCol); });
+  return {
+    events: events,
+    usersRows: rows.users || [],
+    userCol: userCol,
+    collectionSheet: collectionSheet,
+    collectionCol: collectionCol,
+    collectionRows: rows.collection || [],
+    sheetsApiV4Available: isSheetsValuesApiAvailable_(),
+  };
+}
 
-  // 시트 헤더 재설정 + 데이터 클리어
-  const collSheet = getOrCreateCollectionSheet();
-  const collCol = getCollectionColumns_(collSheet);
-  const collLast = collSheet.getLastRow();
-  const hiddenMap = {};
-  if (collLast >= SCHEMA.COLLECTION.dataStartRow) {
-    getCollectionRows_(collSheet).forEach(function(r) {
-      const userId = String(r[collCol.userId]).trim();
-      const hidden = Number(r[collCol.hidden]) || 0;
-      if (userId && hidden > 0) hiddenMap[userId] = hidden;
+function getCollectionProjectionCandidateUserIds_(events, inputs) {
+  const ids = {};
+  if (inputs && inputs.userCol) {
+    const userCol = inputs.userCol;
+    (inputs.usersRows || []).forEach(function(row) {
+      const userId = String(row[userCol.nickname] || '').trim();
+      if (userId) ids[userId] = true;
+    });
+  } else {
+    const usersSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
+    if (usersSheet) {
+      const userCol = getUserColumns_(usersSheet);
+      getUserRows_(usersSheet).forEach(function(row) {
+        const userId = String(row[userCol.nickname] || '').trim();
+        if (userId) ids[userId] = true;
+      });
+    }
+  }
+
+  if (inputs && inputs.collectionCol) {
+    const collectionCol = inputs.collectionCol;
+    (inputs.collectionRows || []).forEach(function(row) {
+      const userId = String(row[collectionCol.userId] || '').trim();
+      if (userId) ids[userId] = true;
+    });
+  } else {
+    const collectionSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.COLLECTION);
+    if (collectionSheet) {
+      const collectionCol = getCollectionColumns_(collectionSheet);
+      getCollectionRows_(collectionSheet).forEach(function(row) {
+        const userId = String(row[collectionCol.userId] || '').trim();
+        if (userId) ids[userId] = true;
+      });
+    }
+  }
+
+  events.forEach(function(event) {
+    const userId = String(event.userId || '').trim();
+    if (userId) ids[userId] = true;
+    if (event.type === EVENT_TYPES.TRADE_REQUESTED) {
+      const target = String((event.payload && event.payload.target) || '').trim();
+      if (target) ids[target] = true;
+    }
+  });
+
+  return Object.keys(ids).sort();
+}
+
+function compareCollectionProjectionForUser_(userId, events, inputs) {
+  const current = getCurrentCollectionSnapshot_(userId, inputs);
+  const projected = buildCollectionProjectionFromEvents_(userId, events);
+  const diffs = diffCollectionSnapshots_(current, projected);
+  return {
+    userId: userId,
+    ok: diffs.length === 0,
+    diffs: diffs,
+    current: current,
+    projected: projected,
+  };
+}
+
+function getCurrentCollectionSnapshot_(userId, inputs) {
+  let col;
+  let rows;
+  if (inputs && inputs.collectionCol && inputs.collectionRows) {
+    col = inputs.collectionCol;
+    rows = inputs.collectionRows;
+  } else {
+    const sheet = getOrCreateCollectionSheet();
+    col = getCollectionColumns_(sheet);
+    rows = getCollectionRows_(sheet);
+  }
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[col.userId] || '').trim() !== userId) continue;
+    return collectionRowToSnapshot_(row, col, true);
+  }
+  return emptyCollectionSnapshot_(userId, false);
+}
+
+function collectionRowToSnapshot_(row, col, rowExists) {
+  const cardCounts = {};
+  for (let cardId = 1; cardId <= 9; cardId++) {
+    cardCounts[cardId] = Number(row[col['card' + cardId]]) || 0;
+  }
+  cardCounts[10] = Number(row[col.hidden]) || 0;
+  return {
+    rowExists: rowExists,
+    userId: String(row[col.userId] || ''),
+    totalEarned: Number(row[col.totalEarned]) || 0,
+    totalDrawn: Number(row[col.totalDrawn]) || 0,
+    remaining: Number(row[col.remaining]) || 0,
+    cardCounts: cardCounts,
+    totalCards: Number(row[col.totalCards]) || 0,
+  };
+}
+
+function emptyCollectionSnapshot_(userId, rowExists) {
+  const cardCounts = {};
+  for (let cardId = 1; cardId <= 10; cardId++) cardCounts[cardId] = 0;
+  return {
+    rowExists: rowExists,
+    userId: userId,
+    totalEarned: 0,
+    totalDrawn: 0,
+    remaining: 0,
+    cardCounts: cardCounts,
+    totalCards: 0,
+  };
+}
+
+function buildCollectionProjectionFromEvents_(userId, events) {
+  const snapshot = emptyCollectionSnapshot_(userId, true);
+  const tradeRequests = buildTradeRequestMapFromEvents_(events);
+  const acceptedTradeIds = {};
+
+  events.forEach(function(event) {
+    if (String(event.userId || '').trim() !== userId) return;
+    if (event.type === EVENT_TYPES.TICKET_GRANTED) {
+      snapshot.totalEarned += eventAmount_(event, 1);
+    } else if (event.type === EVENT_TYPES.TICKET_CONSUMED) {
+      snapshot.remaining -= eventAmount_(event, 1);
+    } else if (event.type === EVENT_TYPES.CARD_DRAWN) {
+      const cardId = Number(event.refId);
+      const amount = eventAmount_(event, 1);
+      snapshot.totalDrawn += amount;
+      if (cardId >= 1 && cardId <= 10) snapshot.cardCounts[cardId] += amount;
+    } else if (event.type === EVENT_TYPES.CARD_GRANTED) {
+      const cardId = Number(event.refId);
+      const amount = eventAmount_(event, 1);
+      if (cardId >= 1 && cardId <= 10) snapshot.cardCounts[cardId] += amount;
+    } else if (event.type === EVENT_TYPES.CARD_REMOVED) {
+      const cardId = Number(event.refId);
+      const amount = eventAmount_(event, 1);
+      adjustProjectedCardCount_(snapshot, cardId, -amount);
+    }
+  });
+
+  events.forEach(function(event) {
+    if (event.type !== EVENT_TYPES.TRADE_ACCEPTED) return;
+    const tradeId = String(event.refId || '').trim();
+    if (!tradeId || acceptedTradeIds[tradeId]) return;
+    const trade = tradeRequests[tradeId];
+    if (!trade) return;
+    acceptedTradeIds[tradeId] = true;
+    applyAcceptedTradeProjection_(snapshot, trade, userId);
+  });
+
+  snapshot.remaining = Math.max(0, snapshot.totalEarned + snapshot.remaining);
+  snapshot.totalCards = 0;
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    snapshot.cardCounts[cardId] = Math.max(0, Number(snapshot.cardCounts[cardId]) || 0);
+    snapshot.totalCards += snapshot.cardCounts[cardId];
+  }
+  return snapshot;
+}
+
+function eventAmount_(event, defaultValue) {
+  if (event.amount === '' || event.amount === null || event.amount === undefined) return defaultValue;
+  const amount = Number(event.amount);
+  return isNaN(amount) ? defaultValue : amount;
+}
+
+function buildTradeRequestMapFromEvents_(events) {
+  const trades = {};
+  events.forEach(function(event) {
+    if (event.type !== EVENT_TYPES.TRADE_REQUESTED) return;
+    const tradeId = String(event.refId || '').trim();
+    if (!tradeId) return;
+    const payload = event.payload || {};
+    trades[tradeId] = {
+      tradeId: tradeId,
+      requester: String(event.userId || '').trim(),
+      target: String(payload.target || '').trim(),
+      requesterCardId: Number(payload.requesterCardId) || 0,
+      targetCardId: Number(payload.targetCardId) || 0,
+    };
+  });
+  return trades;
+}
+
+function applyAcceptedTradeProjection_(snapshot, trade, userId) {
+  if (trade.requester === userId) {
+    adjustProjectedCardCount_(snapshot, trade.requesterCardId, -1);
+    adjustProjectedCardCount_(snapshot, trade.targetCardId, 1);
+  } else if (trade.target === userId) {
+    adjustProjectedCardCount_(snapshot, trade.targetCardId, -1);
+    adjustProjectedCardCount_(snapshot, trade.requesterCardId, 1);
+  }
+}
+
+function adjustProjectedCardCount_(snapshot, cardId, delta) {
+  if (cardId < 1 || cardId > 10) return;
+  snapshot.cardCounts[cardId] = Math.max(0, (Number(snapshot.cardCounts[cardId]) || 0) + delta);
+}
+
+function diffCollectionSnapshots_(current, projected) {
+  const diffs = [];
+  [
+    'totalEarned',
+    'totalDrawn',
+    'remaining',
+    'totalCards',
+  ].forEach(function(key) {
+    if (Number(current[key]) !== Number(projected[key])) {
+      diffs.push({ field: key, current: current[key], projected: projected[key] });
+    }
+  });
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    const currentCount = Number(current.cardCounts[cardId]) || 0;
+    const projectedCount = Number(projected.cardCounts[cardId]) || 0;
+    if (currentCount !== projectedCount) {
+      diffs.push({ field: 'card_' + cardId, current: currentCount, projected: projectedCount });
+    }
+  }
+  return diffs;
+}
+
+function rebuildCollectionRow(userId) {
+  const cleanUserId = String(userId || '').trim();
+  if (!cleanUserId) {
+    return logJsonResult_('rebuildCollectionRow result', {
+      ok: false,
+      error: 'missing_userId',
     });
   }
-  collSheet.getRange(SCHEMA.COLLECTION.headerRow, 1, 1, COLLECTION_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.COLLECTION)]);
-  if (collLast >= SCHEMA.COLLECTION.dataStartRow) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT).clearContent();
 
-  // 등록된 전체 유저
-  const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
-  const userCol    = usersSheet ? getUserColumns_(usersSheet) : null;
-  const userData   = usersSheet ? getUserRows_(usersSheet) : [];
-  const userIds    = [];
-  for (let i = 0; i < userData.length; i++) {
-    if (userData[i][userCol.nickname]) userIds.push(String(userData[i][userCol.nickname]).trim());
-  }
-  if (!userIds.length) return { ok: true, rebuilt: 0 };
-
-  // 원천 데이터 일괄 로드
-  const drawSheet  = getOrCreateDrawSheet();
-  const drawCol    = getCardDrawColumns_(drawSheet);
-  const allDraws   = getCardDrawRows_(drawSheet);
-
-  const tradeSheet = getOrCreateTradesSheet();
-  const tradeCol   = getTradesColumns_(tradeSheet);
-  const allTrades  = getTradesRows_(tradeSheet);
-
-  const bonusSheet = getOrCreateBonusDrawsSheet();
-  const bonusCol   = getBonusDrawColumns_(bonusSheet);
-  const allBonus   = getBonusDrawRows_(bonusSheet);
-
-  const rawSheet = ss.getSheetByName(RAW_SHEET_NAME);
-  const rawCol   = rawSheet ? getRawColumns_(rawSheet) : null;
-  const allRaw   = rawSheet ? getRawRows_(rawSheet, 10) : [];
-
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  const currentWeek = Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
-  const thresholds  = [];
-  for (let w = 1; w <= 6; w++) {
-    thresholds.push(Number(configSheet.getRange(getConfigWeekStartRow_(w), CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return logJsonResult_('rebuildCollectionRow result', {
+      ok: false,
+      error: '잠시 후 다시 시도해주세요.',
+    });
   }
 
-  // 유저별 행 계산
-  const rows = [];
-  for (const userId of userIds) {
-    let qualifiedWeeks = 0;
-    for (let w = 1; w <= currentWeek; w++) {
-      const wTitle     = w + '주차';
-      const wThreshold = thresholds[w - 1];
-      const wScore     = allRaw
-        .filter(r => String(r[rawCol.userId]) === userId && String(r[rawCol.weekTitle]) === wTitle)
-        .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
-      if (wScore >= wThreshold) qualifiedWeeks++;
-    }
+  try {
+    return logJsonResult_('rebuildCollectionRow result', rebuildCollectionRow_(cleanUserId));
+  } catch(e) {
+    Logger.log('rebuildCollectionRow error: ' + e);
+    return logJsonResult_('rebuildCollectionRow result', {
+      ok: false,
+      error: String(e),
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
 
-    const bonusCount  = allBonus.filter(r => String(r[bonusCol.userId]) === userId).length;
-    const totalEarned = qualifiedWeeks + bonusCount;
+function rebuildCollectionRow_(userId) {
+  const events = Events_readAll_();
+  const projected = buildCollectionProjectionFromEvents_(userId, events);
+  const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
+  const rowIndex = findCollectionRowIndex_(sheet, col, userId);
+  const current = rowIndex === -1
+    ? emptyCollectionSnapshot_(userId, false)
+    : collectionRowToSnapshot_(sheet.getRange(rowIndex, 1, 1, COLLECTION_COL_COUNT).getValues()[0], col, true);
+  const diffsBeforeWrite = diffCollectionSnapshots_(current, projected);
+  const row = collectionSnapshotToRow_(projected, col);
 
-    const userDraws = allDraws.filter(r => String(r[drawCol.userId]) === userId);
-    const totalDraws = userDraws.length;
-    const remaining  = Math.max(0, totalEarned - totalDraws);
+  if (rowIndex === -1) {
+    sheet.appendRow(row);
+  } else {
+    setSheetValues_(sheet, rowIndex, 1, [row]);
+  }
+  clearUserDerivedCaches_(userId);
 
-    const cardCounts = new Array(9).fill(0);
-    for (const d of userDraws) {
-      const cid = Number(d[drawCol.cardId]);
-      if (cid >= 1 && cid <= 9) cardCounts[cid - 1]++;
-    }
+  return {
+    ok: true,
+    userId: userId,
+    rowIndex: rowIndex === -1 ? sheet.getLastRow() : rowIndex,
+    created: rowIndex === -1,
+    diffCountBeforeWrite: diffsBeforeWrite.length,
+    diffsBeforeWrite: diffsBeforeWrite,
+    projected: projected,
+  };
+}
 
-    // accepted 교환 결과 반영: Collection 시트는 현재 보유 카드 기준이어야 함
-    for (const t of allTrades) {
-      if (String(t[tradeCol.status]) !== 'accepted') continue;
-      const requester = String(t[tradeCol.requester]);
-      const reqCardId = Number(t[tradeCol.requesterCardId]);
-      const target    = String(t[tradeCol.target]);
-      const tgtCardId = Number(t[tradeCol.targetCardId]);
-      if (requester === userId) {
-        if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1] = Math.max(0, cardCounts[reqCardId - 1] - 1);
-        if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1]++;
-      } else if (target === userId) {
-        if (tgtCardId >= 1 && tgtCardId <= 9) cardCounts[tgtCardId - 1] = Math.max(0, cardCounts[tgtCardId - 1] - 1);
-        if (reqCardId >= 1 && reqCardId <= 9) cardCounts[reqCardId - 1]++;
-      }
-    }
-
-    const hidden = hiddenMap[userId] || 0;
-    const totalCards = cardCounts.reduce((s, n) => s + n, 0) + hidden;
-
-    rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards, hidden]);
+function rebuildCollectionRowsFromEvents() {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return logJsonResult_('rebuildCollectionRowsFromEvents result', {
+      ok: false,
+      error: '잠시 후 다시 시도해주세요.',
+    });
   }
 
-  if (rows.length) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, COLLECTION_COL_COUNT).setValues(rows);
-  return { ok: true, rebuilt: rows.length };
+  try {
+    return logJsonResult_('rebuildCollectionRowsFromEvents result', rebuildCollectionRowsFromEvents_());
+  } catch(e) {
+    Logger.log('rebuildCollectionRowsFromEvents error: ' + e);
+    return logJsonResult_('rebuildCollectionRowsFromEvents result', {
+      ok: false,
+      error: String(e),
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rebuildCollectionRowsFromEvents_() {
+  const inputs = getCollectionProjectionInputs_();
+  const events = inputs.events;
+  const userIds = getCollectionProjectionCandidateUserIds_(events, inputs);
+  const sheet = inputs.collectionSheet;
+  const col = inputs.collectionCol;
+  const last = sheet.getLastRow();
+  if (last >= SCHEMA.COLLECTION.dataStartRow) {
+    clearSheetValues_(sheet, SCHEMA.COLLECTION.dataStartRow, 1, last - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT);
+  }
+  const rows = userIds.map(function(userId) {
+    return collectionSnapshotToRow_(buildCollectionProjectionFromEvents_(userId, events), col);
+  });
+  if (rows.length) {
+    setSheetValues_(sheet, SCHEMA.COLLECTION.dataStartRow, 1, rows);
+  }
+  clearDashboardCache_();
+  return {
+    ok: true,
+    rebuilt: rows.length,
+  };
+}
+
+function phase2EHealthCheck() {
+  return logJsonResult_('phase2EHealthCheck result', phase2EHealthCheck_({}));
+}
+
+function phase2EMeasurePerformance() {
+  return logJsonResult_('phase2EMeasurePerformance result', phase2EMeasurePerformance_({}));
+}
+
+function phase2EHealthCheck_(options) {
+  const opts = options || {};
+  const started = new Date().getTime();
+  const inputs = getCollectionProjectionInputs_();
+  const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
+  const comparisons = userIds.map(function(userId) {
+    return compareCollectionProjectionForUser_(userId, inputs.events, inputs);
+  });
+  const mismatches = comparisons.filter(function(item) { return item.diffs.length > 0; });
+  const performance = phase2EMeasurePerformance_(opts);
+  const legacySheets = getLegacySheetVisibilityStatus_();
+  return {
+    ok: mismatches.length === 0 &&
+      performance.ok === true &&
+      (opts.allowVisibleLegacySheets === true || legacySheets.every(function(item) { return !item.exists || item.hidden; })),
+    sheetsApiV4Available: isSheetsValuesApiAvailable_(),
+    legacySheets: legacySheets,
+    projection: {
+      checked: comparisons.length,
+      mismatchCount: mismatches.length,
+      mismatches: mismatches.slice(0, 20),
+    },
+    performance: performance,
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function phase2EMeasurePerformance_(options) {
+  const opts = options || {};
+  const timings = {};
+  const currentWeek = getCurrentWeek_();
+  const sampleUserId = String(opts.userId || opts.nickname || getFirstProjectionCandidateUserId_()).trim();
+  measurePhase2EStep_(timings, 'getTicketStats', function() { getTicketStats(); });
+  measurePhase2EStep_(timings, 'getCardStats', function() { getCardStats(); });
+  measurePhase2EStep_(timings, 'getDashboardDataUncached', function() { getDashboardData(); });
+  measurePhase2EStep_(timings, 'projectionPreview', function() {
+    const inputs = getCollectionProjectionInputs_();
+    const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
+    userIds.slice(0, Math.min(userIds.length, 50)).forEach(function(userId) {
+      compareCollectionProjectionForUser_(userId, inputs.events, inputs);
+    });
+  });
+  if (sampleUserId) {
+    measurePhase2EStep_(timings, 'getUserStatusSample', function() {
+      getUserStatus(sampleUserId, 'w' + currentWeek);
+    });
+  }
+  return {
+    ok: Object.keys(timings).every(function(key) { return timings[key].ok; }),
+    sampleUserId: sampleUserId,
+    timingsMs: timings,
+  };
+}
+
+function phase2EStressTestDraws(body) {
+  return logJsonResult_('phase2EStressTestDraws result', phase2EStressTestDraws_(body || {}));
+}
+
+function phase2EStressTestDraws_(body) {
+  const userId = String(body.userId || body.nickname || '').trim();
+  const count = Math.min(Math.max(Number(body.count) || 3, 1), 10);
+  const weekKey = String(body.weekKey || ('w' + getCurrentWeek_())).trim();
+  if (!userId) return { ok: false, error: 'missing_userId' };
+  if (!isTestAdminToolsEnabled_()) return { ok: false, error: 'test_admin_tools_disabled' };
+  if (!isTestDrawAllowed_()) return { ok: false, error: 'test_draws_disabled' };
+
+  const started = new Date().getTime();
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const requestId = 'phase2e_stress_' + started + '_' + i;
+    const drawStarted = new Date().getTime();
+    const result = drawCard(userId, weekKey, true, requestId);
+    results.push({
+      index: i + 1,
+      ok: result && result.ok === true,
+      error: result && result.error,
+      elapsedMs: new Date().getTime() - drawStarted,
+      cardId: result && result.card && result.card.id,
+    });
+    if (!result || result.ok !== true) break;
+  }
+
+  const health = phase2EHealthCheck_({ userId: userId });
+  return {
+    ok: results.every(function(result) { return result.ok; }) && health.ok,
+    userId: userId,
+    weekKey: weekKey,
+    requestedCount: count,
+    completedCount: results.filter(function(result) { return result.ok; }).length,
+    elapsedMs: new Date().getTime() - started,
+    results: results,
+    tickets: getCollectionTickets(userId),
+    projectionMismatchCount: health.projection.mismatchCount,
+  };
+}
+
+function prodCutoverDryRun() {
+  return logJsonResult_('prodCutoverDryRun result', prodCutoverDryRun_({}));
+}
+
+function prodCutoverApply(options) {
+  return logJsonResult_('prodCutoverApply result', prodCutoverApply_(options || {}));
+}
+
+function prodCutoverHealthCheck() {
+  return logJsonResult_('prodCutoverHealthCheck result', prodCutoverHealthCheck_({}));
+}
+
+function prodCutoverDryRun_(options) {
+  const started = new Date().getTime();
+  const rowLimit = Math.max(Number(options && options.rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const steps = {};
+  steps.scriptProperties = runCutoverStep_('scriptProperties', getScriptPropertiesStatus);
+  steps.splitConfig = runCutoverStep_('splitConfigDryRun', function() {
+    return migrate_step4_splitConfig({ dryRun: true });
+  });
+  steps.absorbToEvents = runCutoverStep_('absorbToEventsDryRun', function() {
+    return migrate_step5_absorbToEvents({ dryRun: true });
+  });
+  steps.sheetStatus = runCutoverStep_('sheetStatusReadOnly', getCutoverSheetStatus_);
+  return {
+    ok: areCutoverStepsOk_(steps),
+    dryRun: true,
+    confirmRequiredForApply: PROD_CUTOVER_CONFIRM,
+    rowLimit: rowLimit,
+    steps: steps,
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function prodCutoverApply_(options) {
+  const opts = options || {};
+  if (String(opts.confirm || '').trim() !== PROD_CUTOVER_CONFIRM) {
+    return {
+      ok: false,
+      error: 'missing_confirmation',
+      requiredConfirm: PROD_CUTOVER_CONFIRM,
+    };
+  }
+
+  const started = new Date().getTime();
+  const rowLimit = Math.max(Number(opts.rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const steps = {};
+
+  steps.backup = runCutoverStep_('backupSpreadsheet', backupSpreadsheet);
+  if (!steps.backup.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.splitConfig = runCutoverStep_('splitConfigApply', function() {
+    return migrate_step4_splitConfig({ dryRun: false });
+  });
+  if (!steps.splitConfig.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.absorbToEvents = runCutoverStep_('absorbToEventsApply', function() {
+    return migrate_step5_absorbToEvents({ dryRun: false });
+  });
+  if (!steps.absorbToEvents.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.rebuildCollection = runCutoverStep_('rebuildCollectionRowsFromEvents', rebuildCollectionRowsFromEvents_);
+  if (!steps.rebuildCollection.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.setupUserDashboard = runCutoverStep_('setupUserDashboard', function() {
+    return setupUserDashboard(rowLimit);
+  });
+  if (!steps.setupUserDashboard.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.applyFinalSheetVisibility = runCutoverStep_('applyFinalSheetVisibility', applyFinalSheetVisibility);
+  if (!steps.applyFinalSheetVisibility.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.healthCheck = runCutoverStep_('prodCutoverHealthCheck', function() {
+    return prodCutoverHealthCheck_({ rowLimit: rowLimit });
+  });
+  return finishCutoverApply_(steps, rowLimit, started);
+}
+
+function finishCutoverApply_(steps, rowLimit, started) {
+  return {
+    ok: areCutoverStepsOk_(steps),
+    dryRun: false,
+    rowLimit: rowLimit,
+    steps: steps,
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function prodCutoverHealthCheck_(options) {
+  const opts = options || {};
+  const started = new Date().getTime();
+  const props = getScriptPropertiesStatus();
+  const phase2E = phase2EHealthCheck_(opts);
+  const sheetStatus = getCutoverSheetStatus_();
+  const allowVisibleLegacySheets = opts.allowVisibleLegacySheets === true;
+  const requiredPropsOk = REQUIRED_SCRIPT_PROPERTY_KEYS.every(function(key) {
+    return props.properties[key] === true;
+  });
+  return {
+    ok: requiredPropsOk &&
+      phase2E.ok === true &&
+      sheetStatus.missingVisible.length === 0 &&
+      (allowVisibleLegacySheets || sheetStatus.visibleLegacySheets.length === 0),
+    allowVisibleLegacySheets: allowVisibleLegacySheets,
+    requiredProperties: props.properties,
+    phase2E: phase2E,
+    sheets: sheetStatus,
+    latestEvent: getLatestEventSummary_(),
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function runCutoverStep_(name, fn) {
+  const started = new Date().getTime();
+  try {
+    const result = fn();
+    return {
+      ok: !result || result.ok !== false,
+      name: name,
+      result: result,
+      elapsedMs: new Date().getTime() - started,
+    };
+  } catch(e) {
+    return {
+      ok: false,
+      name: name,
+      error: String(e),
+      elapsedMs: new Date().getTime() - started,
+    };
+  }
+}
+
+function areCutoverStepsOk_(steps) {
+  return Object.keys(steps).every(function(key) {
+    return steps[key] && steps[key].ok === true;
+  });
+}
+
+function getCutoverSheetStatus_() {
+  const ss = getSpreadsheet();
+  const visible = [];
+  const hidden = [];
+  const missingVisible = [];
+  const missingHidden = [];
+  const visibleLegacySheets = [];
+
+  FINAL_VISIBLE_SHEET_NAMES.forEach(function(name) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      missingVisible.push(name);
+    } else {
+      visible.push({ name: name, hidden: sheet.isSheetHidden(), lastRow: sheet.getLastRow() });
+    }
+  });
+
+  FINAL_HIDDEN_SHEET_NAMES.forEach(function(name) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      missingHidden.push(name);
+      return;
+    }
+    const item = { name: name, hidden: sheet.isSheetHidden(), lastRow: sheet.getLastRow() };
+    hidden.push(item);
+    if (!item.hidden) visibleLegacySheets.push(name);
+  });
+
+  return {
+    visible: visible,
+    hidden: hidden,
+    missingVisible: missingVisible,
+    missingHidden: missingHidden,
+    visibleLegacySheets: visibleLegacySheets,
+  };
+}
+
+function getLatestEventSummary_() {
+  const sheet = getOrCreateEventsSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < SCHEMA.EVENTS.dataStartRow) return null;
+  const col = getEventsColumns_(sheet);
+  const row = sheet.getRange(lastRow, 1, 1, EVENTS_COL_COUNT).getValues()[0];
+  return Events_rowToObject_(row, col);
+}
+
+function measurePhase2EStep_(timings, key, fn) {
+  const started = new Date().getTime();
+  try {
+    fn();
+    timings[key] = { ok: true, ms: new Date().getTime() - started };
+  } catch(e) {
+    timings[key] = { ok: false, ms: new Date().getTime() - started, error: String(e) };
+  }
+}
+
+function getFirstProjectionCandidateUserId_() {
+  const inputs = getCollectionProjectionInputs_();
+  const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
+  return userIds[0] || '';
+}
+
+function getLegacySheetVisibilityStatus_() {
+  const ss = getSpreadsheet();
+  return FINAL_HIDDEN_SHEET_NAMES.map(function(name) {
+    const sheet = ss.getSheetByName(name);
+    return {
+      name: name,
+      exists: !!sheet,
+      hidden: sheet ? sheet.isSheetHidden() : false,
+    };
+  });
+}
+
+function findCollectionRowIndex_(sheet, col, userId) {
+  const last = sheet.getLastRow();
+  if (last < SCHEMA.COLLECTION.dataStartRow) return -1;
+  const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i][0] || '').trim() === userId) return i + SCHEMA.COLLECTION.dataStartRow;
+  }
+  return -1;
+}
+
+function collectionSnapshotToRow_(snapshot, col) {
+  const row = new Array(COLLECTION_COL_COUNT).fill(0);
+  row[col.userId] = snapshot.userId;
+  row[col.totalEarned] = Number(snapshot.totalEarned) || 0;
+  row[col.totalDrawn] = Number(snapshot.totalDrawn) || 0;
+  row[col.remaining] = Number(snapshot.remaining) || 0;
+  for (let cardId = 1; cardId <= 9; cardId++) {
+    row[col['card' + cardId]] = Number(snapshot.cardCounts[cardId]) || 0;
+  }
+  row[col.totalCards] = Number(snapshot.totalCards) || 0;
+  row[col.hidden] = Number(snapshot.cardCounts[10]) || 0;
+  return row;
+}
+
+// 전체 Collection 캐시를 Events 기준으로 재계산하는 하위 호환 wrapper
+function rebuildCollectionSheet() {
+  return rebuildCollectionRowsFromEvents_();
 }
 
 // 어드민 래퍼 (adminPw 체크)
 function adminRebuildCollection(body) {
-  if (body.adminPw !== ADMIN_PASSWORD) return { error: 'unauthorized' };
-  return rebuildCollectionSheet();
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  return rebuildCollectionRowsFromEvents_();
 }
 
-// CardDraws → Collection 마이그레이션 (rebuildCollectionSheet로 대체됨 — 하위 호환용 유지)
+// Events → Collection 재계산. 기존 액션명은 하위 호환용으로 유지.
 function migrateCardDrawsToCollection() {
-  return rebuildCollectionSheet();
+  return rebuildCollectionRowsFromEvents_();
 }
 
 // ── Trades 시트 ───────────────────────────────────
@@ -3163,12 +5426,25 @@ function requestTrade(body) {
   const tgtColl = getUserCollection(target);
   if (!(tgtColl[targetCardId] >= 2)) return { error: '상대방이 해당 카드를 중복 보유하고 있지 않아요.' };
 
+  const createdAt = new Date().toISOString();
   const id = String(new Date().getTime());
   getOrCreateTradesSheet().appendRow([
     id, requester, requesterCardId, reqCard.name,
     target, targetCardId, tgtCard.name,
-    'pending', new Date().toISOString(), ''
+    'pending', createdAt, ''
   ]);
+  Events_append_(EVENT_TYPES.TRADE_REQUESTED, requester, {
+    timestamp: createdAt,
+    refId: id,
+    payload: {
+      target: target,
+      requesterCardId: requesterCardId,
+      requesterCardName: reqCard.name,
+      targetCardId: targetCardId,
+      targetCardName: tgtCard.name,
+    },
+    source: EVENT_SOURCES.WEB,
+  });
   return { ok: true, tradeId: id };
   } finally {
     lock.releaseLock();
@@ -3213,14 +5489,20 @@ function acceptTrade(body) {
       return { error: '내가 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
 
-    // 양쪽 컬렉션 업데이트
-    updateCollectionSheet(requester, requesterCardId, -1);
-    updateCollectionSheet(requester, targetCardId,    +1);
-    updateCollectionSheet(nickname,  targetCardId,    -1);
-    updateCollectionSheet(nickname,  requesterCardId, +1);
-
+    const resolvedAt = new Date().toISOString();
     sheet.getRange(rowIndex, col.status + 1).setValue('accepted');
-    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
+    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(resolvedAt);
+    Events_append_(EVENT_TYPES.TRADE_ACCEPTED, requester, {
+      timestamp: resolvedAt,
+      refId: tradeId,
+      payload: {
+        status: 'accepted',
+        target: nickname,
+      },
+      source: EVENT_SOURCES.WEB,
+    });
+    rebuildCollectionRow_(requester);
+    rebuildCollectionRow_(nickname);
     return { ok: true };
   }
   return { error: 'not_found' };
@@ -3436,15 +5718,9 @@ function backupSpreadsheet() {
 
     const dateStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd_HHmm');
 
-    // PROD 백업
-    DriveApp.getFileById(SPREADSHEET_ID)
-      .makeCopy('BeyondUs_PROD_' + dateStr, folder);
-    _cleanOldBackups(folder, 'BeyondUs_PROD_');
-
-    // DEV 백업
-    DriveApp.getFileById(DEV_SPREADSHEET_ID)
-      .makeCopy('BeyondUs_DEV_' + dateStr, folder);
-    _cleanOldBackups(folder, 'BeyondUs_DEV_');
+    DriveApp.getFileById(getSpreadsheetId_())
+      .makeCopy('BeyondUs_' + dateStr, folder);
+    _cleanOldBackups(folder, 'BeyondUs_');
 
     Logger.log('백업 완료: ' + dateStr);
     return { ok: true, backed_up: dateStr };
@@ -3552,16 +5828,9 @@ function uploadBBBPhoto(body) {
     photoSheet.getRange(existingRow, photoCol.uploadedAt + 1).setValue(now);
   }
 
-  // BonusDraws 이력 기준 중복 지급 방지
+  // Events 기준 중복 지급 방지
   const bonusSource = missionType === 'm1' ? 'bbb_photo' : 'bbb_' + missionType.split('_')[0];
-  const bonusSheet = getOrCreateBonusDrawsSheet();
-  const bLast = bonusSheet.getLastRow();
-  let alreadyRewarded = false;
-  if (bLast >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-    const bonusCol = getBonusDrawColumns_(bonusSheet);
-    const bRows = getBonusDrawRows_(bonusSheet);
-    alreadyRewarded = bRows.some(function(r) { return String(r[bonusCol.userId]) === userId && String(r[bonusCol.source]) === bonusSource; });
-  }
+  const alreadyRewarded = hasBonusTicketGrant_(userId, bonusSource, '');
 
   let rewarded = false;
   if (!alreadyRewarded) {
@@ -3581,13 +5850,33 @@ function uploadBBBPhoto(body) {
         }
       }
       if (filledSpots >= 7) {
-        bonusSheet.appendRow([userId, bonusSource, now]);
-        try { updateTicketCols(userId); } catch(e) {}
+        Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+          timestamp: now,
+          amount: 1,
+          weekKey: '',
+          payload: {
+            reason: 'bbb_mission',
+            legacySource: bonusSource,
+            missionType: missionType,
+          },
+          source: EVENT_SOURCES.WEB,
+        });
+        rebuildCollectionRow_(userId);
         rewarded = true;
       }
     } else {
-      bonusSheet.appendRow([userId, bonusSource, now]);
-      try { updateTicketCols(userId); } catch(e) {}
+      Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+        timestamp: now,
+        amount: 1,
+        weekKey: '',
+        payload: {
+          reason: bonusSource === 'bbb_photo' ? 'bbb_photo' : 'bbb_mission',
+          legacySource: bonusSource,
+          missionType: missionType,
+        },
+        source: EVENT_SOURCES.WEB,
+      });
+      rebuildCollectionRow_(userId);
       rewarded = true;
     }
   }
@@ -3740,17 +6029,9 @@ function getBBB(userId) {
   // M2/M3 뽑기권 수령 여부
   let m2Rewarded = false, m3Rewarded = false;
   try {
-    const bonusSheet = getOrCreateBonusDrawsSheet();
-    const bLast = bonusSheet.getLastRow();
-    if (bLast >= SCHEMA.BONUS_DRAWS.dataStartRow) {
-      const bonusCol = getBonusDrawColumns_(bonusSheet);
-      const bRows = getBonusDrawRows_(bonusSheet);
-      bRows.forEach(function(r) {
-        if (String(r[bonusCol.userId]) !== userId) return;
-        if (String(r[bonusCol.source]) === 'bbb_m2') m2Rewarded = true;
-        if (String(r[bonusCol.source]) === 'bbb_m3') m3Rewarded = true;
-      });
-    }
+    const userEvents = Events_readByUser(userId);
+    m2Rewarded = hasBonusTicketGrant_(userId, 'bbb_m2', '', userEvents);
+    m3Rewarded = hasBonusTicketGrant_(userId, 'bbb_m3', '', userEvents);
   } catch(e) {}
 
   return {
@@ -3936,7 +6217,7 @@ function adminSetBBBMessageOpen(body) {
     });
   }
   if (!updated) bbbSheet.appendRow(['msgOpen', open, '']);
-  clearHotCaches_();
+  clearConfigCaches_();
   return { ok: true, messageOpen: open };
 }
 

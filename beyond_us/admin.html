@@ -187,6 +187,8 @@
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="bbb">현장미션 (BBB)</button>
       <button class="drawer-item" data-panel="collection">카드 집계</button>
+      <button class="drawer-item" data-panel="events">Events 관리</button>
+      <button class="drawer-item" data-panel="system">시스템 상태</button>
     </nav>
 
     <div class="admin-wrap">
@@ -327,10 +329,14 @@
       <div id="tab-inquiry" class="tab-panel">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h2 class="card-title" style="margin:0;">문의 목록</h2>
+            <h2 class="card-title" style="margin:0;">개발자 문의</h2>
             <button class="btn btn-ghost btn-sm" id="refreshInquiryAdminBtn">새로고침</button>
           </div>
           <div id="inquiryAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom:14px;">H&amp;P 힌트</h2>
+          <div id="hpHintAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -389,34 +395,6 @@
         </div>
 
         <div class="card" style="margin-top:0;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div>
-              <h2 class="card-title" style="margin:0;">raw_checkins 헤더 설정</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
-                A1이 'timestamp'가 아니면 1행에 헤더를 삽입합니다.<br>
-                <strong>최초 1회만 실행.</strong>
-              </p>
-            </div>
-            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;white-space:nowrap;" id="setupRawHeaderBtn" onclick="runSetupRawHeader()">📋 헤더 설정</button>
-          </div>
-          <div id="setupRawHeaderStatus" class="status"></div>
-        </div>
-
-        <div class="card" style="margin-top:0;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div>
-              <h2 class="card-title" style="margin:0;">raw_checkins I·J열 소급 재계산</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
-                기존 행의 weekCumScore(I) · ticketEarned(J) 값을 재계산합니다.<br>
-                헤더 설정 후 실행.
-              </p>
-            </div>
-            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;white-space:nowrap;" id="backfillRawBtn" onclick="runBackfillRawCols()">🔢 I·J 재계산</button>
-          </div>
-          <div id="backfillRawStatus" class="status"></div>
-        </div>
-
-        <div class="card" style="margin-top:0;">
           <p style="font-size:13px;color:var(--sub);line-height:1.7;">
             <strong style="color:var(--text);">컬럼 구조 (14열)</strong><br>
             userId · 누적뽑기권 · 실제뽑은개수 · 남은개수 ·
@@ -426,6 +404,89 @@
             <strong style="color:var(--text);">실시간 업데이트 시점</strong><br>
             미션 제출 / 카드 뽑기 / BBB 사진 최초 업로드
           </p>
+        </div>
+
+      </div>
+
+      <!-- Events 관리 탭 -->
+      <div id="tab-events" class="tab-panel">
+
+        <div class="card">
+          <h2 class="card-title">카드 이벤트 생성</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px;">
+            <input type="text" id="eventCardUserId" class="input" placeholder="닉네임" />
+            <select id="eventCardId" class="input">
+              <option value="1">1 · 사랑</option>
+              <option value="2">2 · 희락</option>
+              <option value="3">3 · 화평</option>
+              <option value="4">4 · 오래참음</option>
+              <option value="5">5 · 자비</option>
+              <option value="6">6 · 양선</option>
+              <option value="7">7 · 충성</option>
+              <option value="8">8 · 온유</option>
+              <option value="9">9 · 절제</option>
+              <option value="10">10 · 히든</option>
+            </select>
+            <input type="number" id="eventCardAmount" class="input" min="1" max="20" value="1" placeholder="수량" />
+          </div>
+          <input type="text" id="eventCardReason" class="input" placeholder="사유 (예: trade_test_duplicate)" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-primary" id="grantCardEventBtn" onclick="createAdminCardEvent('add')">카드 추가 이벤트 생성</button>
+            <button class="btn btn-danger" id="removeCardEventBtn" onclick="createAdminCardEvent('remove')">카드 삭제 이벤트 생성</button>
+          </div>
+          <div id="cardEventStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">Events 기준 재계산</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
+                Collection 캐시와 UserDashboard 공식을 Events 기준으로 다시 만듭니다.
+              </p>
+            </div>
+            <button class="btn btn-primary" id="rebuildEventsDashboardBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="runRebuildEventDerivedViews()">재계산</button>
+          </div>
+          <input type="number" id="eventDashboardRows" class="input" min="1" max="1000" value="300" placeholder="UserDashboard row 수" />
+          <div id="rebuildEventsDashboardStatus" class="status"></div>
+        </div>
+
+      </div>
+
+      <!-- 시스템 상태 -->
+      <div id="tab-system" class="tab-panel">
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">시스템 상태</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">PROD 전환 전후 상태 확인과 최종 반영 실행.</p>
+            </div>
+            <button class="btn btn-secondary" id="systemHealthBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="loadSystemStatus()">상태 확인</button>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">전체 상태</div><div class="stat-value" id="systemOverall">-</div></div>
+            <div class="stat-card"><div class="stat-label">Projection mismatch</div><div class="stat-value" id="systemMismatch">-</div></div>
+            <div class="stat-card"><div class="stat-label">Legacy visible</div><div class="stat-value" id="systemLegacyVisible">-</div></div>
+            <div class="stat-card"><div class="stat-label">Elapsed</div><div class="stat-value" id="systemElapsed">-</div></div>
+          </div>
+          <div id="systemHealthStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">PROD 전환 실행</h2>
+          <input type="number" id="cutoverDashboardRows" class="input" min="1" max="1000" value="250" placeholder="UserDashboard row 수" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-secondary" id="cutoverDryRunBtn" onclick="runProdCutoverDryRun()">Dry-run</button>
+            <button class="btn btn-danger" id="cutoverApplyBtn" onclick="runProdCutoverApply()">Apply</button>
+          </div>
+          <input type="text" id="cutoverConfirmInput" class="input" placeholder="APPLY_PROD_CUTOVER" />
+          <div id="cutoverStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">결과</h2>
+          <pre id="systemResultJson" style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow:auto;">-</pre>
         </div>
 
       </div>
@@ -524,7 +585,6 @@
       const params = new URLSearchParams(location.search);
       const host = location.hostname;
       return params.get('dev') === '1' ||
-        params.get('devMode') === 'true' ||
         params.get('test') === '1' ||
         location.protocol === 'file:' ||
         host === 'localhost' ||
@@ -547,23 +607,6 @@
       document.getElementById('devBanner').style.display = 'block';
       document.getElementById('devBannerSpacer').style.display = 'block';
       document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 시트 사용 중</span>';
-
-      // Dev 모드 fetch 인터셉터 — API_BASE 요청에 devMode 자동 추가
-      const _origFetch = window.fetch.bind(window);
-      window.fetch = function(url, opts) {
-        if (typeof url === 'string' && url.startsWith(API_BASE)) {
-          if (opts && opts.method === 'POST' && opts.body) {
-            try {
-              const b = JSON.parse(opts.body);
-              b.devMode = true;
-              opts = Object.assign({}, opts, { body: JSON.stringify(b) });
-            } catch(e) {}
-          } else if (!url.includes('devMode')) {
-            url = url + (url.includes('?') ? '&' : '?') + 'devMode=true';
-          }
-        }
-        return _origFetch(url, opts);
-      };
     }
 
     /* ── 로그인 ── */
@@ -623,6 +666,7 @@
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
+      if (panelId === 'system')  loadSystemStatus();
     }
     document.getElementById('menuBtn').addEventListener('click', openDrawer);
     document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
@@ -1565,80 +1609,206 @@
       }
     }
 
-    /* ── raw_checkins 헤더 설정 ── */
-    async function runSetupRawHeader() {
-      if (!confirm('raw_checkins 시트에 헤더 행을 추가합니다.\nA1이 이미 "timestamp"이면 스킵됩니다. 진행할까요?')) return;
-      const btn = document.getElementById('setupRawHeaderBtn');
-      const statusEl = document.getElementById('setupRawHeaderStatus');
-      btn.disabled = true; btn.textContent = '처리 중...';
-      statusEl.textContent = ''; statusEl.className = 'status';
+    async function createAdminCardEvent(mode) {
+      const userId = document.getElementById('eventCardUserId').value.trim();
+      const cardId = Number(document.getElementById('eventCardId').value);
+      const amount = Number(document.getElementById('eventCardAmount').value) || 1;
+      const reason = document.getElementById('eventCardReason').value.trim() || (mode === 'remove' ? 'admin_card_remove' : 'admin_card_grant');
+      const statusEl = document.getElementById('cardEventStatus');
+      const grantBtn = document.getElementById('grantCardEventBtn');
+      const removeBtn = document.getElementById('removeCardEventBtn');
+      if (!userId) { statusEl.textContent = '닉네임을 입력해주세요.'; return; }
+      if (!(cardId >= 1 && cardId <= 10)) { statusEl.textContent = '카드를 선택해주세요.'; return; }
+      if (!(amount >= 1 && amount <= 20)) { statusEl.textContent = '수량은 1~20 사이로 입력해주세요.'; return; }
+      const actionText = mode === 'remove' ? '삭제' : '추가';
+      if (!confirm(`${userId}에게 ${cardId}번 카드 ${amount}장 ${actionText} 이벤트를 생성할까요?`)) return;
+
+      grantBtn.disabled = true;
+      removeBtn.disabled = true;
+      statusEl.textContent = '처리 중...';
+      statusEl.className = 'status';
       try {
-        const res = await post({ action: 'adminSetupRawHeader', adminPw });
+        const res = await post({
+          action: 'adminCreateCardEvent',
+          adminPw,
+          eventMode: mode,
+          userId,
+          cardId,
+          amount,
+          reason,
+        });
         if (res.ok) {
-          statusEl.textContent = '✅ ' + (res.message || '완료');
+          const count = res.collection && res.collection[cardId] ? res.collection[cardId] : 0;
+          statusEl.textContent = `✅ ${res.eventType} 생성 완료. 현재 ${cardId}번 카드 ${count}장`;
           statusEl.className = 'status ok';
+          await Promise.all([loadTicketStats(), loadCardStats()]);
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
-          statusEl.className = 'status';
         }
       } catch(e) {
         statusEl.textContent = '연결 오류';
-        statusEl.className = 'status';
       } finally {
-        btn.disabled = false; btn.textContent = '📋 헤더 설정';
+        grantBtn.disabled = false;
+        removeBtn.disabled = false;
       }
     }
 
-    /* ── raw_checkins I·J열 소급 재계산 ── */
-    async function runBackfillRawCols() {
-      if (!confirm('raw_checkins의 I열(weekCumScore)·J열(ticketEarned)을 전체 소급 재계산합니다.\n진행할까요?')) return;
-      const btn = document.getElementById('backfillRawBtn');
-      const statusEl = document.getElementById('backfillRawStatus');
-      btn.disabled = true; btn.textContent = '재계산 중...';
-      statusEl.textContent = ''; statusEl.className = 'status';
+    async function runRebuildEventDerivedViews() {
+      if (!confirm('Events 기준으로 Collection과 UserDashboard를 다시 계산합니다.\n진행할까요?')) return;
+      const btn = document.getElementById('rebuildEventsDashboardBtn');
+      const statusEl = document.getElementById('rebuildEventsDashboardStatus');
+      const rowLimit = Number(document.getElementById('eventDashboardRows').value) || 300;
+      btn.disabled = true;
+      btn.textContent = '재계산 중...';
+      statusEl.textContent = '';
+      statusEl.className = 'status';
       try {
-        const res = await post({ action: 'adminBackfillRawCols', adminPw });
+        const res = await post({ action: 'adminRebuildEventDerivedViews', adminPw, rowLimit });
         if (res.ok) {
-          statusEl.textContent = '✅ ' + (res.message || '완료');
+          statusEl.textContent = `✅ 완료. Collection ${res.collectionRebuilt}명, UserDashboard ${res.dashboardRows}행`;
           statusEl.className = 'status ok';
+          await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin()]);
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
-          statusEl.className = 'status';
         }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '재계산';
+      }
+    }
+
+    async function loadSystemStatus() {
+      const btn = document.getElementById('systemHealthBtn');
+      const statusEl = document.getElementById('systemHealthStatus');
+      btn.disabled = true;
+      statusEl.textContent = '확인 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'prodCutoverHealthCheck', adminPw, rowLimit: getCutoverRowLimit() });
+        renderSystemStatus(res);
+        statusEl.textContent = res.ok ? '정상' : '확인 필요';
+        statusEl.className = res.ok ? 'status ok' : 'status';
       } catch(e) {
         statusEl.textContent = '연결 오류';
         statusEl.className = 'status';
       } finally {
-        btn.disabled = false; btn.textContent = '🔢 I·J 재계산';
+        btn.disabled = false;
       }
+    }
+
+    async function runProdCutoverDryRun() {
+      const btn = document.getElementById('cutoverDryRunBtn');
+      const statusEl = document.getElementById('cutoverStatus');
+      btn.disabled = true;
+      statusEl.textContent = 'Dry-run 실행 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'prodCutoverDryRun', adminPw, rowLimit: getCutoverRowLimit() });
+        const statusResult = res.steps && res.steps.sheetStatus
+          ? { ok: res.ok, sheets: res.steps.sheetStatus.result, elapsedMs: res.elapsedMs }
+          : res;
+        renderSystemStatus(statusResult);
+        setSystemResult(res);
+        statusEl.textContent = res.ok ? 'Dry-run 정상' : 'Dry-run 확인 필요';
+        statusEl.className = res.ok ? 'status ok' : 'status';
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function runProdCutoverApply() {
+      const confirmText = document.getElementById('cutoverConfirmInput').value.trim();
+      const statusEl = document.getElementById('cutoverStatus');
+      if (confirmText !== 'APPLY_PROD_CUTOVER') {
+        statusEl.textContent = '확인 문자열을 입력해 주세요.';
+        statusEl.className = 'status';
+        return;
+      }
+      if (!confirm('PROD 전환 apply를 실행할까요? 백업 후 마이그레이션과 대시보드 재계산을 진행합니다.')) return;
+
+      const btn = document.getElementById('cutoverApplyBtn');
+      btn.disabled = true;
+      statusEl.textContent = 'Apply 실행 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({
+          action: 'prodCutoverApply',
+          adminPw,
+          rowLimit: getCutoverRowLimit(),
+          confirm: confirmText,
+        });
+        const health = res.steps && res.steps.healthCheck ? res.steps.healthCheck.result : res;
+        renderSystemStatus(health);
+        setSystemResult(res);
+        statusEl.textContent = res.ok ? 'Apply 완료' : 'Apply 확인 필요';
+        statusEl.className = res.ok ? 'status ok' : 'status';
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function getCutoverRowLimit() {
+      const input = document.getElementById('cutoverDashboardRows');
+      return Math.max(Number(input && input.value) || 250, 1);
+    }
+
+    function renderSystemStatus(res) {
+      const result = res || {};
+      const phase2E = result.phase2E || {};
+      const projection = phase2E.projection || {};
+      const sheets = result.sheets || {};
+      document.getElementById('systemOverall').textContent = result.ok ? 'OK' : 'CHECK';
+      document.getElementById('systemMismatch').textContent = projection.mismatchCount === undefined ? '-' : projection.mismatchCount;
+      document.getElementById('systemLegacyVisible').textContent = Array.isArray(sheets.visibleLegacySheets) ? sheets.visibleLegacySheets.length : '-';
+      document.getElementById('systemElapsed').textContent = result.elapsedMs === undefined ? '-' : result.elapsedMs + 'ms';
+      setSystemResult(result);
+    }
+
+    function setSystemResult(result) {
+      document.getElementById('systemResultJson').textContent = JSON.stringify(result || {}, null, 2);
     }
 
     async function loadAdminInquiries() {
       const listEl = document.getElementById('inquiryAdminList');
+      const hintListEl = document.getElementById('hpHintAdminList');
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      hintListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       try {
         const res = await get({ action: 'getInquiries' });
         if (!res.ok) throw new Error();
         renderAdminInquiries(res.inquiries);
       } catch(e) {
         listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+        hintListEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
       }
+    }
+
+    function isHpHintInquiry(inq) {
+      return inq.content.startsWith('[H&P 힌트 요청]');
     }
 
     function renderAdminInquiries(inquiries) {
       const listEl = document.getElementById('inquiryAdminList');
+      const hintListEl = document.getElementById('hpHintAdminList');
+      renderAdminInquiryList(listEl, inquiries.filter(inq => !isHpHintInquiry(inq)), '개발자 문의가 없어요.');
+      renderAdminInquiryList(hintListEl, inquiries.filter(isHpHintInquiry), 'H&P 힌트 요청이 없어요.');
+    }
+
+    function renderAdminInquiryList(listEl, inquiries, emptyText) {
       if (!inquiries.length) {
-        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">문의가 없어요.</p>';
+        listEl.innerHTML = `<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">${emptyText}</p>`;
         return;
       }
-      const sorted = [...inquiries].sort((a, b) => {
-        const aHint = a.content.startsWith('[H&P 힌트 요청]');
-        const bHint = b.content.startsWith('[H&P 힌트 요청]');
-        if (aHint !== bHint) return aHint ? -1 : 1;
-        return 0;
-      });
-      listEl.innerHTML = sorted.map(inq => {
-        const isHint = inq.content.startsWith('[H&P 힌트 요청]');
+      listEl.innerHTML = inquiries.map(inq => {
+        const isHint = isHpHintInquiry(inq);
         const hintAnswer = isHint ? (inq.content.match(/\| 정답: (.+)$/) || [])[1] : null;
         const hintMeta   = isHint ? (inq.content.match(/주차: ([^,]+), 카드: (\d+)번/) || []) : [];
         return `

@@ -102,21 +102,43 @@ website/
 
 #### 시트 구성
 
+> 마이그레이션 목표 기준. 상세 스키마는 `docs/sheet-restructure-context.md` 참조.
+
+**신규 시트 (마이그레이션으로 추가)**
+
 | 시트명 | 용도 |
 |--------|------|
-| `config` | 주차별 미션 정의(8행 단위 블록), B1=현재 주차, B4=app_open_date |
-| `raw_checkins` | 모든 미션 제출 이력 |
-| `Users` | 회원 정보 (닉네임/PW/교구/이름/isStaff) |
-| `CardDraws` | 카드 뽑기 이력 |
-| `Collection` | 사용자별 카드 보유 현황 + 응모권 누계 |
-| `BonusDraws` | 추가 뽑기권 지급 이력 (H&P 정답·H&P 카운트 보상 등) |
-| `HoldPray` | H&P 기도제목 (랜덤 노출 + 이름 빈칸 채우기) |
+| `Events` | 모든 변경 이력의 단일 truth source. append-only. LockService 보호 |
+| `AppSettings` | 앱 단일값 설정 Key-Value (current_week, app_open_date, bbb_message_open 등) |
+| `MissionDefinitions` | 주차별 미션 항목 정의 (1행 1미션, 6주 × 6항목 = 36행) |
+| `UserDashboard` | 유저 현황 대시보드. 읽기 전용, 시트 함수만 사용. GAS 미기록 |
+
+**기존 유지 시트**
+
+| 시트명 | 용도 |
+|--------|------|
+| `Users` | 회원 정보 (닉네임/PW/이름/교구/isStaff/isDev/세션) |
+| `raw_checkins` | 미션 제출 이력 (Events 백필 후 읽기 전용) |
+| `CardDraws` | 카드 뽑기 이력 (Events 백필 후 읽기 전용) |
+| `BonusDraws` | 보너스 뽑기권 적립 이력 (Events 백필 후 읽기 전용) |
+| `Collection` | 사용자별 카드 보유 현황 + 뽑기권 캐시 (Phase 2D 이후 Events 파생) |
+| `CardReceived` | 실물 카드 수령 수량 |
 | `Trades` | 카드 교환 요청·수락·기도 |
-| `BBB` | 비밀친구 매칭 (4단계 체인) |
-| `BBB_Messages` | 비밀친구 익명 메시지 |
-| `BBB_Photos` | 비밀친구 사진 업로드 |
+| `HoldPray` | H&P 기도제목 (entryId 추가, 2행 헤더 구조로 변경) |
+| `HPGuesses` | H&P 정답 제출 이력 |
+| `TabSettings` | 탭 활성화 설정 (Key-Value) |
+| `BBBSettings` | BBB 섹션 오픈 여부와 안내문 |
+| `BBB` | 비밀친구 매칭 관계 (4단계 체인) |
+| `BBBMessages` | 비밀친구 익명 메시지 |
+| `BBBPhotos` | 비밀친구 사진 업로드 |
 | `Notices` | 공지사항 (이미지 업로드 지원) |
 | `Inquiries` | 개발자 문의 (CRUD + 답글) |
+
+**폐기 예정**
+
+| 시트명 | 용도 |
+|--------|------|
+| ~~`config`~~ | AppSettings + MissionDefinitions로 분리. migrate_step4 실행 후 제거 |
 
 #### Action 목록
 
