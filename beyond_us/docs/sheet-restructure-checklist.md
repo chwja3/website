@@ -114,6 +114,8 @@
 - [ ] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
 - [ ] `setupUserDashboard()` 실행
 - [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A big-bang 백필이 잘 됐다면)
+- [x] 최종 구조에서 흡수될 legacy 시트 숨김 함수 구현 (`hideLegacyDevSheets`)
+- [ ] `hideLegacyDevSheets()` 실행 후 `config`, `raw_checkins`, `CardDraws`, `BonusDraws` 숨김 확인
 
 ### 2C — 스키마 정규화 + 마이그레이션
 

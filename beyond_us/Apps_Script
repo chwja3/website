@@ -510,6 +510,31 @@ const USER_DASHBOARD_DEFAULT_ROWS = 250;
 const USER_DASHBOARD_EVENT_MAX_ROW = 5000;
 const USER_DASHBOARD_DOMAIN_MAX_ROW = 1000;
 const USER_DASHBOARD_TAB_COLOR = '#3B82F6';
+const FINAL_VISIBLE_SHEET_NAMES = Object.freeze([
+  SHEET_NAMES.EVENTS,
+  SHEET_NAMES.USER_DASHBOARD,
+  SHEET_NAMES.USERS,
+  SHEET_NAMES.COLLECTION,
+  SHEET_NAMES.CARD_RECEIVED,
+  SHEET_NAMES.TRADES,
+  SHEET_NAMES.HOLD_PRAY,
+  SHEET_NAMES.HP_GUESSES,
+  'AppSettings',
+  'MissionDefinitions',
+  SHEET_NAMES.TAB_SETTINGS,
+  SHEET_NAMES.BBB_SETTINGS,
+  SHEET_NAMES.BBB,
+  SHEET_NAMES.BBB_MESSAGES,
+  SHEET_NAMES.BBB_PHOTOS,
+  SHEET_NAMES.NOTICES,
+  SHEET_NAMES.INQUIRIES,
+]);
+const FINAL_HIDDEN_SHEET_NAMES = Object.freeze([
+  SHEET_NAMES.CONFIG,
+  SHEET_NAMES.RAW_CHECKINS,
+  SHEET_NAMES.CARD_DRAWS,
+  SHEET_NAMES.BONUS_DRAWS,
+]);
 const CONFIG_LAYOUT = Object.freeze({
   currentWeekLabelCell: 'A1',
   currentWeekCell: 'B1',
@@ -1744,6 +1769,44 @@ function applyUserDashboardFormatting_(sheet, rowLimit) {
   sheet.getRange(1, 1, 2, USER_DASHBOARD_COL_COUNT).setFontWeight('bold');
   sheet.getRange(1, 1, 1, USER_DASHBOARD_COL_COUNT).setBackground('#DBEAFE');
   sheet.getRange(2, 1, 1, USER_DASHBOARD_COL_COUNT).setBackground('#EFF6FF');
+}
+
+function applyFinalSheetVisibility() {
+  const ss = getSpreadsheet();
+  const shown = [];
+  const hidden = [];
+  const missing = [];
+
+  FINAL_VISIBLE_SHEET_NAMES.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      missing.push(sheetName);
+      return;
+    }
+    sheet.showSheet();
+    shown.push(sheetName);
+  });
+
+  FINAL_HIDDEN_SHEET_NAMES.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      missing.push(sheetName);
+      return;
+    }
+    sheet.hideSheet();
+    hidden.push(sheetName);
+  });
+
+  return logJsonResult_('applyFinalSheetVisibility result', {
+    ok: true,
+    shown: shown,
+    hidden: hidden,
+    missing: missing,
+  });
+}
+
+function hideLegacyDevSheets() {
+  return applyFinalSheetVisibility();
 }
 
 function getUsersSheet_() {
