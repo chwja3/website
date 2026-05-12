@@ -1873,3 +1873,37 @@ const SHEET_NAMES = Object.freeze({
 - 2026-05-12. 사용자 DEV 확인 기준 Phase 2D 반영 후 `setupUserDashboard()` 재실행 완료. `previewCollectionProjection()`은 계속 `mismatchCount: 0`, UserDashboard 검증 컬럼도 ✓ 유지 확인.
 - 2026-05-12. DEV 교환 테스트 편의를 위해 `adminGrantTestCard`를 로컬 GAS에 추가. `ENABLE_TEST_ADMIN_TOOLS=true` Script Property가 있을 때만 동작하며, 테스트 카드 지급도 `card.granted` 이벤트를 남긴 뒤 `rebuildCollectionRow_()`로 `Collection` 캐시를 갱신한다.
 - 2026-05-12. admin 페이지에 `Events 관리` 패널 추가. 카드 추가는 `card.granted`, 카드 삭제는 `card.removed` 이벤트를 생성하고 해당 유저 `Collection` row를 재계산한다. `adminRebuildEventDerivedViews`는 Events 기준으로 전체 `Collection` 캐시를 다시 만들고 `setupUserDashboard()`를 실행한다.
+- 2026-05-12. BBB M1 케어버디 사진 업로드 보상 흐름 DEV 확인 완료. `uploadBBBPhoto(missionType='m1')`는 `BBBPhotos`에 사진을 저장하고, 최초 1회만 `BonusDraws`에 `bbb_photo`를 남기며, `Events`에 `ticket.granted`를 기록한 뒤 `rebuildCollectionRow_()`로 해당 유저 `Collection` 캐시를 갱신한다. 재업로드 시 중복 뽑기권은 지급되지 않는 것으로 확인.
+- 2026-05-12. 당장 보류한 항목을 명시. `adminGrantHiddenCard` 수동 지급 검증은 넘어가기로 했고, GAS 편집기에서 인자 없이 직접 실행하면 `body`가 없어 `adminPw` 오류가 날 수 있으므로 필요 시 admin action 또는 인자 있는 래퍼로만 실행한다. H&P 하드코딩 제거(`migrate_step6_externalizeHoldPray`)도 나중에 한 번에 처리한다.
+
+## 현재 상태 요약 — 2026-05-12
+
+### 완료.
+
+| 구분 | 상태 |
+|---|---|
+| Phase 2A | DEV Events 시트 생성, 과거 데이터 dry-run/실행/verify 흐름 확인 |
+| Phase 2B | `UserDashboard` 생성, Events 기반 공식, Collection 검증 컬럼 구성 |
+| Phase 2C | `AppSettings` / `MissionDefinitions` 구조와 read/write fallback 구현 |
+| Phase 2D | 주요 mutation 경로를 Events 기록 + `Collection` row rebuild 방식으로 전환 |
+| Dashboard 검증 | `previewCollectionProjection()` `mismatchCount: 0`, UserDashboard ✓ 유지 확인 |
+| Admin 보조 기능 | 테스트 카드 지급, 카드 추가/삭제 event 생성, Events 기준 재계산 패널 구현 |
+| BBB M1 사진 | 최초 업로드 보상 지급과 재업로드 중복 지급 방지 확인 |
+
+### 보류.
+
+| 항목 | 이유 | 다시 볼 때 |
+|---|---|---|
+| `migrate_step6_externalizeHoldPray()` | H&P 하드코딩 제거는 범위가 커서 나중에 한 번에 처리 | Phase 2C 잔여 정리 또는 별도 H&P 작업 |
+| `adminGrantHiddenCard` 수동 지급 검증 | 현재 급하지 않음. 인자 없는 직접 실행은 오류 위험 있음 | 실제 히든 카드 지급 운영 절차를 정할 때 |
+| PROD 반영 | 모든 Phase 완료 후 진행하기로 결정 | DEV 회귀 테스트와 2E 완료 후 |
+
+### 다음 작업.
+
+| 우선순위 | 작업 | 확인 기준 |
+|---|---|---|
+| 1 | admin `Events 관리` 패널 end-to-end 검증 | `card.granted` / `card.removed` 생성 후 앱 컬렉션 증감 확인 |
+| 2 | admin `Events 기준 재계산` 검증 | `Collection`과 `UserDashboard`가 같은 Events 기준으로 일치 |
+| 3 | DEV 전체 회귀 테스트 | 로그인, 미션 제출, 카드 뽑기, 교환, H&P, BBB 메시지, 공지, 문의 확인 |
+| 4 | Phase 2E 속도 최적화 | 카드 뽑기와 대시보드 응답 시간 측정 후 병목 개선 |
+| 5 | PROD Phase 3 적용 계획 확정 | 3A~3E 단계별 배포 순서와 롤백 기준 재확인 |

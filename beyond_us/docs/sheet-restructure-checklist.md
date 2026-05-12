@@ -111,9 +111,9 @@
   - [x] 마지막 활동 timestamp
 - [x] Collection 저장값과 비교하는 검증 컬럼 (✓/❌)
 - [x] 조건부 서식 — ❌ 행 빨갛게
-- [ ] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
-- [ ] `setupUserDashboard()` 실행
-- [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A big-bang 백필이 잘 됐다면)
+- [x] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
+- [x] `setupUserDashboard()` 실행
+- [x] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A big-bang 백필이 잘 됐다면)
 - [x] 최종 구조에서 흡수될 legacy 시트 숨김 함수 구현 (`hideLegacyDevSheets`)
 - [x] `hideLegacyDevSheets()` 실행 후 `config`, `raw_checkins`, `CardDraws`, `BonusDraws` 숨김 확인
 
@@ -166,6 +166,7 @@
   - [x] `acceptTrade` — `trade.accepted` 기록 후 양쪽 row rebuild
   - [x] `submitHoldPrayGuess` / `uploadBBBPhoto` 보너스 지급 — `ticket.granted` 기록 후 row rebuild
   - [x] `adminGrantHiddenCard` — `card.granted` 기록 후 row rebuild
+  - [~] `adminGrantHiddenCard` 수동 지급 검증은 보류. 구현은 완료, GAS 편집기에서 인자 없이 직접 실행하지 않음
   - [x] 기존 `updateCollectionSheet` / `updateTicketCols` 정의는 비상/호환용으로 보존
 - [x] DEV 교환 테스트용 `adminGrantTestCard` 추가
   - [x] `ENABLE_TEST_ADMIN_TOOLS=true` Script Property가 있을 때만 동작
@@ -178,13 +179,21 @@
 - [x] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
 - [x] `setupUserDashboard()` 재실행. `card.granted`를 반영하는 공식으로 갱신. 사용자 확인 기준
 - [x] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인. 사용자 확인 기준
-- [ ] DEV 전체 동작 테스트.
+- [~] DEV 전체 동작 테스트.
   - [ ] 로그인 / 회원가입 / 비밀번호 재설정
   - [ ] 미션 제출 / 새로고침
   - [ ] 카드 뽑기 / 컬렉션 조회 / 교환
   - [ ] H&P 카드 표시 / 정답 제출
-  - [ ] BBB 매칭 / 메시지 / 사진
+  - [~] BBB 매칭 / 메시지 / 사진
+    - [x] M1 케어버디 사진 업로드 시 `BBBPhotos` 저장 확인
+    - [x] M1 최초 업로드 시 `BonusDraws.bbb_photo` + `Events.ticket.granted` 생성 확인
+    - [x] M1 재업로드 시 중복 뽑기권 지급 없음 확인
+    - [ ] BBB 매칭 표시와 메시지 송수신은 별도 확인 필요
   - [ ] 공지사항 / 개발자 문의
+- [ ] admin `Events 관리` 패널 end-to-end 확인.
+  - [ ] 카드 추가 이벤트 생성 후 `Events.card.granted` + 앱 컬렉션 증가 확인
+  - [ ] 카드 삭제 이벤트 생성 후 `Events.card.removed` + 앱 컬렉션 감소 확인
+  - [ ] Events 기준 재계산 후 `Collection` + `UserDashboard` 정합성 확인
 
 ### 2E — 속도 최적화
 

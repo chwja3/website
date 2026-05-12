@@ -400,6 +400,19 @@ function migrate_runAll() / migrate_verify()
 - UserDashboard 검증 컬럼 ✓ 유지.
 - 카드 뽑기 응답 시간 측정 (2E 전 기준점).
 
+**현재 확인된 DEV 상태.**
+- `previewCollectionProjection()`은 사용자 확인 기준 `mismatchCount: 0`.
+- `setupUserDashboard()` 재실행 후 검증 컬럼 ✓ 유지.
+- BBB M1 케어버디 사진 업로드는 `BBBPhotos` 저장, `BonusDraws.bbb_photo`, `Events.ticket.granted`, `Collection` row rebuild까지 확인.
+- BBB M1 재업로드는 중복 뽑기권을 지급하지 않는 것으로 확인.
+- `adminGrantHiddenCard` 구현은 완료했지만 수동 지급 검증은 당장 보류. 필요 시 admin action 또는 인자 있는 래퍼로만 실행한다.
+- H&P 하드코딩 제거(`migrate_step6_externalizeHoldPray`)는 나중에 한 번에 처리하기로 보류.
+
+**다음 확인.**
+- admin `Events 관리` 패널에서 카드 추가와 삭제 event를 각각 생성하고 앱 컬렉션 반영을 확인.
+- admin `Events 기준 재계산`으로 `Collection`과 `UserDashboard` 정합성을 다시 확인.
+- 로그인, 미션 제출, 카드 뽑기, 교환, H&P, 공지, 문의까지 DEV 전체 회귀 테스트를 완료.
+
 ---
 
 ### 2E — 속도 최적화
