@@ -131,9 +131,16 @@
 - [x] `SHEET_NAMES.APP_SETTINGS`, `SHEET_NAMES.MISSION_DEFINITIONS` 추가
 - [x] `SCHEMA.APP_SETTINGS`, `SCHEMA.MISSION_DEFINITIONS` 추가 (Row 1 운영진 라벨 / Row 2 machine header)
 - [x] `migrate_step4_splitConfig_dryRun()` 구현
+- [x] `getAppSetting_()` / `setAppSetting_()` 헬퍼 구현
+- [x] `getMissionConfigFromDefinitions_()` / `getAllWeekMeta_()` 헬퍼 구현
 - [ ] DEV 시트 사본에서 dry-run
 - [ ] DEV 시트 본 실행 + verify
-- [ ] 현행 앱 read path를 기존 `config`에서 새 시트 기반으로 전환
+- [x] 현행 앱 read path를 기존 `config`에서 새 시트 기반으로 전환 (fallback 유지)
+  - [x] `getConfig()` → `AppSettings.current_week` + `MissionDefinitions`
+  - [x] `getCurrentWeek` / `setCurrentWeek` → `AppSettings.current_week`
+  - [x] `getMissionConfig` / `setMissionConfig` → `MissionDefinitions`
+  - [x] `getAppOpenDate()` → `AppSettings.app_open_date`
+  - [x] 티켓/Collection 재계산 threshold → `MissionDefinitions`
 - [ ] HoldPray 시트 기반 read 경로 동작 확인
 - [ ] AppSettings / MissionDefinitions 기반 read 경로 동작 확인
 

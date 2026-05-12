@@ -344,6 +344,8 @@ function migrate_runAll() / migrate_verify()
 
 **2C 적용 순서.** 첫 조각은 `migrate_step1_backup()` + `migrate_step4_splitConfig(_dryRun)` 로 제한한다. 즉 `AppSettings` / `MissionDefinitions` 시트를 만들고 기존 `config` 값을 복사하되, 앱의 read path는 아직 `config`에 둔다. DEV dry-run과 본 실행 결과를 확인한 뒤 `config` 읽기 함수를 새 시트 기반으로 전환한다.
 
+**2C-2 read path 전환 기준.** `AppSettings` / `MissionDefinitions`가 있으면 새 시트를 우선 사용하고, 없거나 비어 있으면 기존 `config`를 fallback으로 사용한다. admin 쓰기 경로는 새 시트에 쓰되 legacy `config`도 함께 동기화해서 DEV 검증 중 즉시 rollback 할 수 있게 둔다.
+
 **GAS 코드 갱신.**
 - `SHEET_NAMES`에 새 시트 추가 (`APP_SETTINGS`, `MISSION_DEFINITIONS`, `EVENTS`).
 - `SCHEMA` 의 `headerRow=2`, `dataStartRow=3` 으로 갱신 (Row 1은 운영진 라벨).

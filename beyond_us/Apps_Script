@@ -625,6 +625,15 @@ const CONFIG_LAYOUT = Object.freeze({
   missionCategoryCol: 3,
   weekBlockClearRange: 'A5:C200',
 });
+const APP_SETTING_KEYS = Object.freeze({
+  CURRENT_WEEK: 'current_week',
+  APP_OPEN_DATE: 'app_open_date',
+  BBB_MESSAGE_OPEN: 'bbb_message_open',
+  HOLD_PRAY_OPEN: 'hold_pray_open',
+  SECRET_OPEN: 'secret_open',
+  CHAT_OPEN: 'chat_open',
+  BBB_SECTIONS_OPEN: 'bbb_sections_open',
+});
 const SESSION_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 90;
 
 function getScriptProperty_(key) {
@@ -734,8 +743,7 @@ function doGet(e) {
   if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || '', e.parameter.nickname || ''));
   if (action === 'getCurrentWeek') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
-    const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return jsonOutput({ ok: true, week: Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1 });
+    return jsonOutput({ ok: true, week: getCurrentWeek_() });
   }
   if (action === 'getMissionConfig') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
@@ -845,10 +853,7 @@ function doPost(e) {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       const week = Number(body.week);
       if (!week || week < 1 || week > 6) return jsonOutput({ error: 'invalid_week' });
-      const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-      sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(week);
-      clearHotCaches_();
-      return jsonOutput({ ok: true, week });
+      return jsonOutput(setCurrentWeek_(week));
     }
     if (action === 'setMissionConfig') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
@@ -1550,6 +1555,274 @@ function countEnabledMissionRowsByWeek_(configSheet) {
     }).length;
   }
   return counts;
+}
+
+function getAppSetting_(key, defaultValue) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  if (!sheet || sheet.getLastRow() < SCHEMA.APP_SETTINGS.dataStartRow) return defaultValue;
+  const col = getAppSettingsColumns_(sheet);
+  const rows = getAppSettingsRows_(sheet);
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.key] || '').trim() === key) {
+      return coerceAppSettingValue_(rows[i][col.value], rows[i][col.type], defaultValue);
+    }
+  }
+  return defaultValue;
+}
+
+function setAppSetting_(key, value, type, note) {
+  const sheet = getOrCreateAppSettingsSheet_();
+  const col = getAppSettingsColumns_(sheet);
+  const rows = getAppSettingsRows_(sheet);
+  const cleanKey = String(key || '').trim();
+  if (!cleanKey) return { ok: false, error: 'missing_key' };
+
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.key] || '').trim() !== cleanKey) continue;
+    const rowIndex = i + SCHEMA.APP_SETTINGS.dataStartRow;
+    sheet.getRange(rowIndex, col.value + 1).setValue(value);
+    if (type) sheet.getRange(rowIndex, col.type + 1).setValue(type);
+    if (note) sheet.getRange(rowIndex, col.note + 1).setValue(note);
+    return { ok: true, key: cleanKey, updated: true };
+  }
+
+  const row = new Array(APP_SETTINGS_COL_COUNT).fill('');
+  row[col.key] = cleanKey;
+  row[col.value] = value;
+  row[col.type] = type || '';
+  row[col.note] = note || '';
+  sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.APP_SETTINGS.dataStartRow), 1, 1, APP_SETTINGS_COL_COUNT).setValues([row]);
+  return { ok: true, key: cleanKey, inserted: true };
+}
+
+function coerceAppSettingValue_(value, type, defaultValue) {
+  const typeName = String(type || '').trim().toLowerCase();
+  if (value === '' || value === null || value === undefined) return defaultValue;
+  if (typeName === 'number') {
+    const numberValue = Number(value);
+    return isNaN(numberValue) ? defaultValue : numberValue;
+  }
+  if (typeName === 'boolean') return isTruthyEventValue_(value);
+  if (typeName === 'date') return eventDateKey_(value);
+  return value;
+}
+
+function getLegacyCurrentWeek_() {
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) return 1;
+  return Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
+}
+
+function getCurrentWeek_() {
+  const appSettingWeek = getAppSetting_(APP_SETTING_KEYS.CURRENT_WEEK, null);
+  return Number(appSettingWeek === null || appSettingWeek === undefined ? getLegacyCurrentWeek_() : appSettingWeek) || 1;
+}
+
+function setCurrentWeek_(week) {
+  const cleanWeek = Number(week);
+  if (!cleanWeek || cleanWeek < 1 || cleanWeek > 6) return { error: 'invalid_week' };
+  setAppSetting_(
+    APP_SETTING_KEYS.CURRENT_WEEK,
+    cleanWeek,
+    'number',
+    '현재 진행 주차. AppSettings 기준값.'
+  );
+  syncLegacyCurrentWeek_(cleanWeek);
+  clearHotCaches_();
+  return { ok: true, week: cleanWeek };
+}
+
+function syncLegacyCurrentWeek_(week) {
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) return;
+  sheet.getRange(CONFIG_LAYOUT.currentWeekCell).setValue(week);
+}
+
+function getLegacyAppOpenDate_() {
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) return '';
+  const value = sheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue();
+  if (value instanceof Date) return Utilities.formatDate(value, 'GMT+9', 'yyyy-MM-dd');
+  return String(value || '');
+}
+
+function getMissionDefinitionRowInfos_(week) {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet || sheet.getLastRow() < SCHEMA.MISSION_DEFINITIONS.dataStartRow) return [];
+  const col = getMissionDefinitionsColumns_(sheet);
+  const rows = getMissionDefinitionsRows_(sheet);
+  const weekKey = 'w' + week;
+  return rows
+    .map(function(row, index) {
+      return {
+        rowIndex: index + SCHEMA.MISSION_DEFINITIONS.dataStartRow,
+        row: row,
+      };
+    })
+    .filter(function(info) {
+      return String(info.row[col.weekKey] || '').trim() === weekKey ||
+        Number(info.row[col.weekOrder]) === Number(week);
+    })
+    .sort(function(a, b) {
+      return (Number(a.row[col.itemNo]) || 0) - (Number(b.row[col.itemNo]) || 0);
+    });
+}
+
+function getMissionConfigFromDefinitions_(week) {
+  if (week < 1 || week > 6) return null;
+  const infos = getMissionDefinitionRowInfos_(week);
+  if (!infos.length) return null;
+  const col = getMissionDefinitionsColumns_(getSpreadsheet().getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS));
+  const first = infos[0].row;
+  const title = String(first[col.weekTitle] || (week + '주차')).trim();
+  const threshold = Number(first[col.drawThreshold]) || 6;
+  const byItemNo = {};
+  infos.forEach(function(info) {
+    const itemNo = Number(info.row[col.itemNo]) || 0;
+    if (itemNo >= 1 && itemNo <= CONFIG_LAYOUT.missionRowsPerWeek && !byItemNo[itemNo]) byItemNo[itemNo] = info;
+  });
+  const items = [];
+  for (let itemNo = 1; itemNo <= CONFIG_LAYOUT.missionRowsPerWeek; itemNo++) {
+    const info = byItemNo[itemNo];
+    if (!info) {
+      items.push({ item: '', score: 1, cat: 'L', enabled: false });
+      continue;
+    }
+    const row = info.row;
+    const itemText = String(row[col.itemText] || '').trim();
+    const enabledCell = row[col.enabled];
+    const enabled = enabledCell === '' ? itemText !== '' : isTruthyEventValue_(enabledCell);
+    items.push({
+      item: itemText,
+      score: Number(row[col.scoreWeight]) || 1,
+      cat: String(row[col.category] || 'L').trim(),
+      enabled: enabled,
+    });
+  }
+  return { ok: true, week: week, title: title, threshold: threshold, items: items };
+}
+
+function getLegacyMissionConfig_(week) {
+  if (week < 1 || week > 6) return null;
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) return null;
+  const startRow = getConfigWeekStartRow_(week);
+  const title = sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue();
+  const threshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
+  const rawItems = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
+  const items = rawItems.map(function(row) {
+    const itemText = String(row[0] || '');
+    return {
+      item: itemText,
+      score: Number(row[1]) || 1,
+      cat: String(row[2] || 'L'),
+      enabled: itemText.trim() !== '',
+    };
+  });
+  return { ok: true, week: week, title: title, threshold: threshold, items: items };
+}
+
+function getMissionConfigModel_(week) {
+  return getMissionConfigFromDefinitions_(week) || getLegacyMissionConfig_(week);
+}
+
+function getAllWeekMeta_() {
+  const weeks = [];
+  for (let week = 1; week <= 6; week++) {
+    const config = getMissionConfigModel_(week);
+    weeks.push({
+      week: week,
+      weekKey: 'w' + week,
+      title: config ? String(config.title || (week + '주차')).trim() : (week + '주차'),
+      threshold: config ? (Number(config.threshold) || 6) : 6,
+    });
+  }
+  return weeks;
+}
+
+function getMissionThresholdMap_() {
+  const thresholdMap = {};
+  getAllWeekMeta_().forEach(function(meta) {
+    if (meta.title) thresholdMap[meta.title] = meta.threshold;
+    thresholdMap[meta.weekKey] = meta.threshold;
+  });
+  return thresholdMap;
+}
+
+function ensureMissionDefinitionWeekRows_(sheet, week) {
+  const col = getMissionDefinitionsColumns_(sheet);
+  const existing = getMissionDefinitionRowInfos_(week);
+  const byItemNo = {};
+  existing.forEach(function(info) {
+    const itemNo = Number(info.row[col.itemNo]) || 0;
+    if (itemNo >= 1 && itemNo <= CONFIG_LAYOUT.missionRowsPerWeek && !byItemNo[itemNo]) byItemNo[itemNo] = info;
+  });
+
+  for (let itemNo = 1; itemNo <= CONFIG_LAYOUT.missionRowsPerWeek; itemNo++) {
+    if (byItemNo[itemNo]) continue;
+    const row = new Array(MISSION_DEFINITIONS_COL_COUNT).fill('');
+    row[col.weekKey] = 'w' + week;
+    row[col.weekOrder] = week;
+    row[col.weekTitle] = week + '주차';
+    row[col.drawThreshold] = 6;
+    row[col.itemNo] = itemNo;
+    row[col.enabled] = false;
+    const rowIndex = Math.max(sheet.getLastRow() + 1, SCHEMA.MISSION_DEFINITIONS.dataStartRow);
+    sheet.getRange(rowIndex, 1, 1, MISSION_DEFINITIONS_COL_COUNT).setValues([row]);
+    byItemNo[itemNo] = { rowIndex: rowIndex, row: row };
+  }
+
+  return Object.keys(byItemNo)
+    .map(function(itemNo) { return byItemNo[itemNo]; })
+    .sort(function(a, b) {
+      return (Number(a.row[col.itemNo]) || 0) - (Number(b.row[col.itemNo]) || 0);
+    });
+}
+
+function setMissionConfigInDefinitions_(body) {
+  const week = Number(body.week);
+  const sheet = getOrCreateMissionDefinitionsSheet_();
+  const col = getMissionDefinitionsColumns_(sheet);
+  const infos = ensureMissionDefinitionWeekRows_(sheet, week);
+  const title = String(body.title || '');
+  const threshold = Number(body.threshold) || 6;
+  const items = Array.isArray(body.items) ? body.items : [];
+
+  infos.forEach(function(info, index) {
+    const rowIndex = info.rowIndex;
+    sheet.getRange(rowIndex, col.weekKey + 1).setValue('w' + week);
+    sheet.getRange(rowIndex, col.weekOrder + 1).setValue(week);
+    sheet.getRange(rowIndex, col.weekTitle + 1).setValue(title);
+    sheet.getRange(rowIndex, col.drawThreshold + 1).setValue(threshold);
+    sheet.getRange(rowIndex, col.itemNo + 1).setValue(index + 1);
+
+    const item = items[index] || {};
+    if (!String(item.item || '').trim()) return;
+    sheet.getRange(rowIndex, col.itemText + 1).setValue(String(item.item));
+    sheet.getRange(rowIndex, col.scoreWeight + 1).setValue(Number(item.score) || 1);
+    sheet.getRange(rowIndex, col.category + 1).setValue(String(item.cat || 'L'));
+    sheet.getRange(rowIndex, col.enabled + 1).setValue(true);
+  });
+
+  return { ok: true };
+}
+
+function syncLegacyMissionConfig_(body) {
+  const week = Number(body.week);
+  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet || !week || week < 1 || week > 6) return;
+  const startRow = getConfigWeekStartRow_(week);
+  sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
+  const items = Array.isArray(body.items) ? body.items : [];
+  const rows = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
+  for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
+    const item = items[i] || {};
+    if (!String(item.item || '').trim()) continue;
+    rows[i] = [String(item.item), Number(item.score) || 1, String(item.cat || 'L')];
+  }
+  sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(rows);
 }
 
 function migrate_step5_absorbToEvents(options) {
@@ -2292,24 +2565,21 @@ function clearNoticesCache_() {
 }
 
 function getConfig() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  if (!sheet) throw new Error('config 시트를 찾을 수 없습니다.');
+  const currentWeek = getCurrentWeek_();
+  const missionConfig = getMissionConfigModel_(currentWeek);
+  if (!missionConfig) throw new Error('미션 설정을 찾을 수 없습니다.');
 
-  const currentWeek   = Number(sheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
-  const startRow      = getConfigWeekStartRow_(currentWeek);
-  const weekTitle     = String(sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue() || (currentWeek + '주차')).trim();
-  const drawThreshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-
-  const rawItems = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
+  const weekTitle = String(missionConfig.title || (currentWeek + '주차')).trim();
+  const drawThreshold = Number(missionConfig.threshold) || 6;
   const items  = [];
   const scores = {};
   const cats   = {};
-  rawItems.forEach(([item, score, cat]) => {
-    if (!item) return;
-    const key = String(item);
+  missionConfig.items.forEach(function(item) {
+    if (!item || !item.enabled || !item.item) return;
+    const key = String(item.item);
     items.push(key);
-    scores[key] = Number(score) || 1;
-    cats[key]   = String(cat || 'L');
+    scores[key] = Number(item.score) || 1;
+    cats[key] = String(item.cat || 'L');
   });
   return { weekTitle, items, scores, cats, drawThreshold, currentWeek };
 }
@@ -2456,15 +2726,8 @@ function backfillRawCheckinsCols() {
   // 전체 읽기 (10열)
   const allData = rawSheet.getRange(dataStart, 1, dataCount, 10).getValues();
 
-  // threshold 맵: weekTitle → threshold
-  const configSheet  = ss.getSheetByName(CONFIG_SHEET_NAME);
-  const thresholdMap = {};
-  for (let w = 1; w <= 6; w++) {
-    const startRow = getConfigWeekStartRow_(w);
-    const title    = String(configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue()).trim();
-    const thr      = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-    if (title) thresholdMap[title] = thr;
-  }
+  // threshold 맵: weekTitle/weekKey → threshold
+  const thresholdMap = getMissionThresholdMap_();
 
   // userId + weekTitle 별 누적 점수 추적
   const cumMap = {}; // key: "userId__weekTitle" → 누적 점수
@@ -2484,7 +2747,7 @@ function backfillRawCheckinsCols() {
     const newCum    = prevCum + rowScore;
     cumMap[key]     = newCum;
 
-    const threshold   = thresholdMap[weekTitle] || 6;
+    const threshold   = thresholdMap[weekTitle] || thresholdMap[String(row[rawCol.weekKey] || '').trim()] || 6;
     const earned      = (prevCum < threshold && newCum >= threshold) ? 1 : 0;
 
     updates.push({ i, weekCumScore: newCum, ticketEarned: earned });
@@ -3132,8 +3395,10 @@ function isBBBMessageOpen() {
 
   // 구버전 config C1 설정 fallback
   try {
+    const appSettingValue = getAppSetting_(APP_SETTING_KEYS.BBB_MESSAGE_OPEN, null);
+    if (appSettingValue !== null && appSettingValue !== undefined) return appSettingValue === true;
     const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-    return configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue() === true;
+    return configSheet && configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue() === true;
   } catch(e) {
     return false;
   }
@@ -3151,15 +3416,26 @@ function getTabSettings() {
       if (Object.prototype.hasOwnProperty.call(tabMap, key)) tabMap[key] = r[tabCol.enabled] === true;
     });
   } else {
-    // TabSettings 생성 전에는 config의 기존 값을 읽기만 한다.
-    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    if (configSheet) {
-      const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
-      const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
-      const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
-      tabMap.holdpray = (b2 === '') ? true : b2 === true;
-      tabMap.secret   = (b3 === '') ? true : b3 === true;
-      tabMap.chat     = d1 === true;
+    // TabSettings 생성 전에는 AppSettings 값을 우선 읽고, 없으면 config의 기존 값을 읽는다.
+    const hpSetting = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, null);
+    const secretSetting = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, null);
+    const chatSetting = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, null);
+    if (hpSetting !== null && hpSetting !== undefined) tabMap.holdpray = hpSetting === true;
+    if (secretSetting !== null && secretSetting !== undefined) tabMap.secret = secretSetting === true;
+    if (chatSetting !== null && chatSetting !== undefined) tabMap.chat = chatSetting === true;
+
+    if (hpSetting === null || hpSetting === undefined ||
+        secretSetting === null || secretSetting === undefined ||
+        chatSetting === null || chatSetting === undefined) {
+      const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+      if (configSheet) {
+        const b2 = configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue();
+        const b3 = configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue();
+        const d1 = configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue();
+        if (hpSetting === null || hpSetting === undefined) tabMap.holdpray = (b2 === '') ? true : b2 === true;
+        if (secretSetting === null || secretSetting === undefined) tabMap.secret = (b3 === '') ? true : b3 === true;
+        if (chatSetting === null || chatSetting === undefined) tabMap.chat = d1 === true;
+      }
     }
   }
 
@@ -3228,10 +3504,9 @@ function setTabSettings(body) {
 }
 
 function getAppOpenDate() {
-  const sheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const v = sheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue();
-  if (v instanceof Date) return Utilities.formatDate(v, 'GMT+9', 'yyyy-MM-dd');
-  return String(v || '');
+  const value = getAppSetting_(APP_SETTING_KEYS.APP_OPEN_DATE, '');
+  if (value) return eventDateKey_(value);
+  return getLegacyAppOpenDate_();
 }
 
 // ── 유저 인증 ─────────────────────────────────────
@@ -3856,31 +4131,25 @@ function fixConfigSheetConflict() {
 // ── 미션 config 읽기/쓰기 ─────────────────────────
 function getMissionConfig(week) {
   if (week < 1 || week > 6) return { error: 'invalid_week' };
-  const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const startRow = getConfigWeekStartRow_(week);
-  const title     = sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue();
-  const threshold = Number(sheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
-  const rawItems  = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
-  const items = rawItems.map(([item, score, cat]) => ({ item: String(item || ''), score: Number(score) || 1, cat: String(cat || 'L') }));
-  return { ok: true, week, title, threshold, items };
+  const config = getMissionConfigModel_(week);
+  if (!config) return { error: 'not_found' };
+  const items = config.items.map(function(item) {
+    return {
+      item: String(item.item || ''),
+      score: Number(item.score) || 1,
+      cat: String(item.cat || 'L'),
+    };
+  });
+  return { ok: true, week: week, title: config.title, threshold: config.threshold, items: items };
 }
 
 function setMissionConfig(body) {
   const week = Number(body.week);
   if (!week || week < 1 || week > 6) return { error: 'invalid_week' };
-  const sheet    = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
-  const startRow = getConfigWeekStartRow_(week);
-  sheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol, 1, 2).setValues([[String(body.title || ''), Number(body.threshold) || 6]]);
-  const items = Array.isArray(body.items) ? body.items : [];
-  const rows = sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).getValues();
-  for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
-    const it = items[i] || {};
-    if (!String(it.item || '').trim()) continue; // 빈 항목은 기존 값 유지
-    rows[i] = [String(it.item), Number(it.score) || 1, String(it.cat || 'L')];
-  }
-  sheet.getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3).setValues(rows);
+  const result = setMissionConfigInDefinitions_(body);
+  syncLegacyMissionConfig_(body);
   clearHotCaches_();
-  return { ok: true };
+  return result;
 }
 
 // ── 문의하기 ──────────────────────────────────────
@@ -4156,8 +4425,8 @@ function updateCollectionSheet(userId, cardId, delta) {
 function updateTicketCols(userId) {
   try {
     const ss = getSpreadsheet();
-    const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-    const currentWeek = Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
+    const currentWeek = getCurrentWeek_();
+    const weekMeta = getAllWeekMeta_();
 
     // 자격 주 수 계산
     let qualifiedWeeks = 0;
@@ -4165,13 +4434,14 @@ function updateTicketCols(userId) {
     const rawCol = raw ? getRawColumns_(raw) : null;
     const allRaw = raw ? getRawRows_(raw, 10) : [];
     for (let w = 1; w <= currentWeek; w++) {
-      const wTitle     = w + '주차';
-      const startRow   = getConfigWeekStartRow_(w);
-      const wThreshold = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
+      const meta = weekMeta[w - 1] || { weekKey: 'w' + w, title: w + '주차', threshold: 6 };
       const wScore     = allRaw
-        .filter(r => String(r[rawCol.userId]) === userId && String(r[rawCol.weekTitle]) === wTitle)
+        .filter(function(r) {
+          return String(r[rawCol.userId]) === userId &&
+            (String(r[rawCol.weekKey]) === meta.weekKey || String(r[rawCol.weekTitle]) === meta.title);
+        })
         .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
-      if (wScore >= wThreshold) qualifiedWeeks++;
+      if (wScore >= meta.threshold) qualifiedWeeks++;
     }
 
     const bonusCount  = getBonusDrawCount(userId);
@@ -4258,24 +4528,22 @@ function rebuildCollectionSheet() {
   const rawCol   = rawSheet ? getRawColumns_(rawSheet) : null;
   const allRaw   = rawSheet ? getRawRows_(rawSheet, 10) : [];
 
-  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
-  const currentWeek = Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1;
-  const thresholds  = [];
-  for (let w = 1; w <= 6; w++) {
-    thresholds.push(Number(configSheet.getRange(getConfigWeekStartRow_(w), CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6);
-  }
+  const currentWeek = getCurrentWeek_();
+  const weekMeta = getAllWeekMeta_();
 
   // 유저별 행 계산
   const rows = [];
   for (const userId of userIds) {
     let qualifiedWeeks = 0;
     for (let w = 1; w <= currentWeek; w++) {
-      const wTitle     = w + '주차';
-      const wThreshold = thresholds[w - 1];
+      const meta = weekMeta[w - 1] || { weekKey: 'w' + w, title: w + '주차', threshold: 6 };
       const wScore     = allRaw
-        .filter(r => String(r[rawCol.userId]) === userId && String(r[rawCol.weekTitle]) === wTitle)
+        .filter(function(r) {
+          return String(r[rawCol.userId]) === userId &&
+            (String(r[rawCol.weekKey]) === meta.weekKey || String(r[rawCol.weekTitle]) === meta.title);
+        })
         .reduce((s, r) => s + (Number(r[rawCol.score]) || 0), 0);
-      if (wScore >= wThreshold) qualifiedWeeks++;
+      if (wScore >= meta.threshold) qualifiedWeeks++;
     }
 
     const bonusCount  = allBonus.filter(r => String(r[bonusCol.userId]) === userId).length;
