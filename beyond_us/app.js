@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512x';
+    const APP_VERSION = '20260513a';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2355,12 +2355,14 @@
 
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
-      const { prayer, secret } = data.tabSettings;
+      const { prayer, secret, qt } = data.tabSettings;
       const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
       const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
+      const qtItem = document.querySelector('.drawer-item[data-section="qt"]');
       if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
+      if (qtItem) qtItem.style.display = (qt === false) ? 'none' : '';
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
-      if (secretItem) secretItem.style.display = '';
+      if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
     }
 
     function updateScoreProgress() {
@@ -2719,6 +2721,7 @@
       mission:    'sectionMission',
       collection: 'sectionCollection',
       prayer:     'sectionPrayer',
+      qt:         'sectionQt',
       secret:     'sectionSecret',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
