@@ -168,8 +168,8 @@
   - [x] `adminGrantHiddenCard` — `card.granted` 기록 후 row rebuild
   - [x] 기존 `updateCollectionSheet` / `updateTicketCols` 정의는 비상/호환용으로 보존
 - [x] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
-- [ ] `setupUserDashboard()` 재실행. `card.granted`를 반영하는 공식으로 갱신
-- [ ] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인
+- [x] `setupUserDashboard()` 재실행. `card.granted`를 반영하는 공식으로 갱신. 사용자 확인 기준
+- [x] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인. 사용자 확인 기준
 - [ ] DEV 전체 동작 테스트.
   - [ ] 로그인 / 회원가입 / 비밀번호 재설정
   - [ ] 미션 제출 / 새로고침
