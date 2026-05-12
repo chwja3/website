@@ -379,6 +379,8 @@ function migrate_runAll() / migrate_verify()
     // ... 합산 후 Collection row 통째로 setValues
   }
   ```
+- 현재 구현은 공개 함수 `rebuildCollectionRow(userId)`가 Lock을 잡고, 내부 헬퍼 `rebuildCollectionRow_(userId)`가 실제 upsert를 수행하는 구조다. 다음 단계에서 이미 Lock을 잡고 있는 mutation 함수들은 내부 헬퍼를 호출한다.
+- DEV 검증 편의를 위해 `adminRebuildCollectionRow` POST 액션도 추가한다. UI에는 노출하지 않고 수동 검증용으로만 사용한다.
 - mutation 경로에서 `updateCollectionSheet` / `updateTicketCols` 등의 직접 +1/-1 setValue 제거.
   - 패턴 통일.
     ```js

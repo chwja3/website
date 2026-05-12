@@ -153,8 +153,12 @@
   - [x] `previewCollectionProjection(userId)` 구현. 인자 없으면 전체 후보 유저 비교
   - [x] `ticket.granted`, `ticket.consumed`, `card.drawn`, `trade.accepted` 반영
   - [x] 기존 Collection row와 projected row의 field별 diff 출력
-- [ ] `previewCollectionProjection()` DEV 실행 후 mismatch 원인 확인
-- [ ] `rebuildCollectionRow(userId)` 함수 작성 — Events에서 그 유저 row 통째로 재계산
+- [x] `previewCollectionProjection()` DEV 실행 후 mismatch 원인 확인
+  - [x] 사용자 확인 기준 `mismatchCount: 0`
+- [x] `rebuildCollectionRow(userId)` 함수 작성 — Events에서 그 유저 row 통째로 재계산
+  - [x] `rebuildCollectionRow_` 내부 헬퍼 분리. 이후 Lock을 이미 잡은 mutation 경로에서 재사용 가능
+  - [x] `adminRebuildCollectionRow` 관리자 POST 액션 추가. UI 노출 없음
+- [ ] `rebuildCollectionRow(userId)` DEV 단건 실행 후 `diffCountBeforeWrite: 0` 확인
 - [ ] mutation 경로에서 Collection 직접 setValue 제거.
   - [ ] `updateCollectionSheet` (카드 뽑기 후)
   - [ ] `updateTicketCols` (티켓 변경 후)

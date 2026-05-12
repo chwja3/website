@@ -951,6 +951,10 @@ function doPost(e) {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(rebuildCollectionSheet());
     }
+    if (action === 'adminRebuildCollectionRow') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(rebuildCollectionRow(body.userId || body.nickname));
+    }
     if (action === 'adminSetupRawHeader') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupRawCheckinsHeader());
@@ -4677,6 +4681,90 @@ function diffCollectionSnapshots_(current, projected) {
     }
   }
   return diffs;
+}
+
+function rebuildCollectionRow(userId) {
+  const cleanUserId = String(userId || '').trim();
+  if (!cleanUserId) {
+    return logJsonResult_('rebuildCollectionRow result', {
+      ok: false,
+      error: 'missing_userId',
+    });
+  }
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return logJsonResult_('rebuildCollectionRow result', {
+      ok: false,
+      error: '잠시 후 다시 시도해주세요.',
+    });
+  }
+
+  try {
+    return logJsonResult_('rebuildCollectionRow result', rebuildCollectionRow_(cleanUserId));
+  } catch(e) {
+    Logger.log('rebuildCollectionRow error: ' + e);
+    return logJsonResult_('rebuildCollectionRow result', {
+      ok: false,
+      error: String(e),
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rebuildCollectionRow_(userId) {
+  const events = Events_readAll_();
+  const projected = buildCollectionProjectionFromEvents_(userId, events);
+  const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
+  const rowIndex = findCollectionRowIndex_(sheet, col, userId);
+  const current = rowIndex === -1
+    ? emptyCollectionSnapshot_(userId, false)
+    : collectionRowToSnapshot_(sheet.getRange(rowIndex, 1, 1, COLLECTION_COL_COUNT).getValues()[0], col, true);
+  const diffsBeforeWrite = diffCollectionSnapshots_(current, projected);
+  const row = collectionSnapshotToRow_(projected, col);
+
+  if (rowIndex === -1) {
+    sheet.appendRow(row);
+  } else {
+    sheet.getRange(rowIndex, 1, 1, COLLECTION_COL_COUNT).setValues([row]);
+  }
+  clearDashboardCache_();
+
+  return {
+    ok: true,
+    userId: userId,
+    rowIndex: rowIndex === -1 ? sheet.getLastRow() : rowIndex,
+    created: rowIndex === -1,
+    diffCountBeforeWrite: diffsBeforeWrite.length,
+    diffsBeforeWrite: diffsBeforeWrite,
+    projected: projected,
+  };
+}
+
+function findCollectionRowIndex_(sheet, col, userId) {
+  const last = sheet.getLastRow();
+  if (last < SCHEMA.COLLECTION.dataStartRow) return -1;
+  const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) {
+    if (String(ids[i][0] || '').trim() === userId) return i + SCHEMA.COLLECTION.dataStartRow;
+  }
+  return -1;
+}
+
+function collectionSnapshotToRow_(snapshot, col) {
+  const row = new Array(COLLECTION_COL_COUNT).fill(0);
+  row[col.userId] = snapshot.userId;
+  row[col.totalEarned] = Number(snapshot.totalEarned) || 0;
+  row[col.totalDrawn] = Number(snapshot.totalDrawn) || 0;
+  row[col.remaining] = Number(snapshot.remaining) || 0;
+  for (let cardId = 1; cardId <= 9; cardId++) {
+    row[col['card' + cardId]] = Number(snapshot.cardCounts[cardId]) || 0;
+  }
+  row[col.totalCards] = Number(snapshot.totalCards) || 0;
+  row[col.hidden] = Number(snapshot.cardCounts[10]) || 0;
+  return row;
 }
 
 function updateCollectionSheet(userId, cardId, delta) {
