@@ -188,6 +188,7 @@
       <button class="drawer-item" data-panel="bbb">현장미션 (BBB)</button>
       <button class="drawer-item" data-panel="collection">카드 집계</button>
       <button class="drawer-item" data-panel="events">Events 관리</button>
+      <button class="drawer-item" data-panel="system">시스템 상태</button>
     </nav>
 
     <div class="admin-wrap">
@@ -480,6 +481,44 @@
 
       </div>
 
+      <!-- 시스템 상태 -->
+      <div id="tab-system" class="tab-panel">
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">시스템 상태</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">PROD 전환 전후 상태 확인과 최종 반영 실행.</p>
+            </div>
+            <button class="btn btn-secondary" id="systemHealthBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="loadSystemStatus()">상태 확인</button>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="stat-label">전체 상태</div><div class="stat-value" id="systemOverall">-</div></div>
+            <div class="stat-card"><div class="stat-label">Projection mismatch</div><div class="stat-value" id="systemMismatch">-</div></div>
+            <div class="stat-card"><div class="stat-label">Legacy visible</div><div class="stat-value" id="systemLegacyVisible">-</div></div>
+            <div class="stat-card"><div class="stat-label">Elapsed</div><div class="stat-value" id="systemElapsed">-</div></div>
+          </div>
+          <div id="systemHealthStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">PROD 전환 실행</h2>
+          <input type="number" id="cutoverDashboardRows" class="input" min="1" max="1000" value="250" placeholder="UserDashboard row 수" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-secondary" id="cutoverDryRunBtn" onclick="runProdCutoverDryRun()">Dry-run</button>
+            <button class="btn btn-danger" id="cutoverApplyBtn" onclick="runProdCutoverApply()">Apply</button>
+          </div>
+          <input type="text" id="cutoverConfirmInput" class="input" placeholder="APPLY_PROD_CUTOVER" />
+          <div id="cutoverStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">결과</h2>
+          <pre id="systemResultJson" style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow:auto;">-</pre>
+        </div>
+
+      </div>
+
       <!-- ④ 탭 설정 -->
       <div id="tab-settings" class="tab-panel">
 
@@ -655,6 +694,7 @@
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
+      if (panelId === 'system')  loadSystemStatus();
     }
     document.getElementById('menuBtn').addEventListener('click', openDrawer);
     document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
@@ -1713,6 +1753,100 @@
         btn.disabled = false;
         btn.textContent = '재계산';
       }
+    }
+
+    async function loadSystemStatus() {
+      const btn = document.getElementById('systemHealthBtn');
+      const statusEl = document.getElementById('systemHealthStatus');
+      btn.disabled = true;
+      statusEl.textContent = '확인 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'prodCutoverHealthCheck', adminPw, rowLimit: getCutoverRowLimit() });
+        renderSystemStatus(res);
+        statusEl.textContent = res.ok ? '정상' : '확인 필요';
+        statusEl.className = res.ok ? 'status ok' : 'status';
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function runProdCutoverDryRun() {
+      const btn = document.getElementById('cutoverDryRunBtn');
+      const statusEl = document.getElementById('cutoverStatus');
+      btn.disabled = true;
+      statusEl.textContent = 'Dry-run 실행 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'prodCutoverDryRun', adminPw, rowLimit: getCutoverRowLimit() });
+        renderSystemStatus(res.steps && res.steps.healthCheck ? res.steps.healthCheck.result : res);
+        setSystemResult(res);
+        statusEl.textContent = res.ok ? 'Dry-run 정상' : 'Dry-run 확인 필요';
+        statusEl.className = res.ok ? 'status ok' : 'status';
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function runProdCutoverApply() {
+      const confirmText = document.getElementById('cutoverConfirmInput').value.trim();
+      const statusEl = document.getElementById('cutoverStatus');
+      if (confirmText !== 'APPLY_PROD_CUTOVER') {
+        statusEl.textContent = '확인 문자열을 입력해 주세요.';
+        statusEl.className = 'status';
+        return;
+      }
+      if (!confirm('PROD 전환 apply를 실행할까요? 백업 후 마이그레이션과 대시보드 재계산을 진행합니다.')) return;
+
+      const btn = document.getElementById('cutoverApplyBtn');
+      btn.disabled = true;
+      statusEl.textContent = 'Apply 실행 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({
+          action: 'prodCutoverApply',
+          adminPw,
+          rowLimit: getCutoverRowLimit(),
+          confirm: confirmText,
+        });
+        const health = res.steps && res.steps.healthCheck ? res.steps.healthCheck.result : res;
+        renderSystemStatus(health);
+        setSystemResult(res);
+        statusEl.textContent = res.ok ? 'Apply 완료' : 'Apply 확인 필요';
+        statusEl.className = res.ok ? 'status ok' : 'status';
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function getCutoverRowLimit() {
+      const input = document.getElementById('cutoverDashboardRows');
+      return Math.max(Number(input && input.value) || 250, 1);
+    }
+
+    function renderSystemStatus(res) {
+      const result = res || {};
+      const phase2E = result.phase2E || {};
+      const projection = phase2E.projection || {};
+      const sheets = result.sheets || {};
+      document.getElementById('systemOverall').textContent = result.ok ? 'OK' : 'CHECK';
+      document.getElementById('systemMismatch').textContent = projection.mismatchCount === undefined ? '-' : projection.mismatchCount;
+      document.getElementById('systemLegacyVisible').textContent = Array.isArray(sheets.visibleLegacySheets) ? sheets.visibleLegacySheets.length : '-';
+      document.getElementById('systemElapsed').textContent = result.elapsedMs === undefined ? '-' : result.elapsedMs + 'ms';
+      setSystemResult(result);
+    }
+
+    function setSystemResult(result) {
+      document.getElementById('systemResultJson').textContent = JSON.stringify(result || {}, null, 2);
     }
 
     async function loadAdminInquiries() {

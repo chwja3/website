@@ -467,6 +467,23 @@ function migrate_runAll() / migrate_verify()
 - 운영진에 단계별 일정 안내.
 - 각 단계는 가능하면 사용자 적은 시간대 (새벽 2~4시) 배포.
 - 배포 직전 PROD GAS 현재 배포 버전 메모 (롤백용).
+- DEV에서 모든 Phase 검증이 끝난 뒤에는 서버 닫는 시간을 줄이기 위해 아래 3.0A 빠른 전환 절차를 우선 사용.
+
+### 3.0A — 빠른 PROD 전환 절차
+
+> DEV에서 이미 기능 검증을 끝낸 뒤 main/PROD로 옮길 때 쓰는 짧은 작업 순서.
+
+1. 서버 또는 앱 안내를 maintenance 상태로 전환.
+2. PROD GAS Script Properties의 `SPREADSHEET_ID`, `ADMIN_PASSWORD` 확인.
+3. admin `시스템 상태`에서 `prodCutoverDryRun` 실행.
+4. dry-run 결과의 `ok`, `eventsPlanned`, `plannedByType`, `projection.mismatchCount`, `visibleLegacySheets` 확인.
+5. 문제가 없으면 PROD GAS 기존 배포를 새 버전으로 갱신하되 Web App URL은 유지.
+6. admin `시스템 상태`에서 `APPLY_PROD_CUTOVER` 확인 문자열 입력 후 `prodCutoverApply` 실행.
+7. `prodCutoverHealthCheck` 결과가 `ok: true`인지 확인.
+8. 로그인, 미션 제출, 카드 뽑기, Collection, admin dashboard, BBB 사진 업로드를 smoke test.
+9. main 배포와 버전 bump를 확인한 뒤 maintenance 해제.
+
+롤백 기준은 `prodCutoverApply` 전이면 아무 데이터 변경 없이 중단. `prodCutoverApply` 후 실패하면 백업 Drive 사본과 이전 GAS 배포 버전으로 되돌린다.
 
 ### 3A — PROD Events 시트 + Dual-Write 배포
 

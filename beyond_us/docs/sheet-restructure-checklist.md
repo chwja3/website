@@ -229,6 +229,24 @@
 
 ---
 
+### 2F PROD 전환 단축 도구.
+
+- [x] `prodCutoverDryRun()` 추가.
+  - [x] Script Properties 존재 여부 확인.
+  - [x] `migrate_step4_splitConfig({ dryRun: true })` 실행.
+  - [x] `migrate_step5_absorbToEvents({ dryRun: true })` 실행.
+  - [x] `prodCutoverHealthCheck()` 읽기 전용 확인.
+- [x] `prodCutoverApply(options)` 추가.
+  - [x] `confirm: "APPLY_PROD_CUTOVER"` 없이는 실행 차단.
+  - [x] Drive 백업 후 config split, Events 흡수, Collection 재계산, UserDashboard 재설정, legacy 탭 숨김, health check 순서로 실행.
+- [x] `prodCutoverHealthCheck()` 추가.
+  - [x] required Script Properties, Phase 2E projection, legacy hidden 상태, 최신 Events row 요약 반환.
+- [x] admin `시스템 상태` 패널 추가.
+  - [x] 상태 확인.
+  - [x] PROD cutover dry-run.
+  - [x] 확인 문자열 기반 PROD cutover apply.
+- [x] admin 변경에 맞춰 `version.txt`, `app.js` `APP_VERSION`, `sw.js` `CACHE`를 `20260512f`로 동기화.
+
 ## Phase 3 — PROD 적용 (단계별 배포)
 
 > Phase 2의 A→B→C→D→E 순으로 PROD에도 단계별 적용. 한 번에 다 안 옮김.

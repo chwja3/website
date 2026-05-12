@@ -584,6 +584,7 @@ const USER_DASHBOARD_DEFAULT_ROWS = 250;
 const USER_DASHBOARD_EVENT_MAX_ROW = 5000;
 const USER_DASHBOARD_DOMAIN_MAX_ROW = 1000;
 const USER_DASHBOARD_TAB_COLOR = '#3B82F6';
+const PROD_CUTOVER_CONFIRM = 'APPLY_PROD_CUTOVER';
 const FINAL_VISIBLE_SHEET_NAMES = Object.freeze([
   SHEET_NAMES.EVENTS,
   SHEET_NAMES.USER_DASHBOARD,
@@ -998,6 +999,18 @@ function doPost(e) {
     if (action === 'phase2EStressTestDraws') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(phase2EStressTestDraws_(body));
+    }
+    if (action === 'prodCutoverDryRun') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(prodCutoverDryRun_(body));
+    }
+    if (action === 'prodCutoverApply') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(prodCutoverApply_(body));
+    }
+    if (action === 'prodCutoverHealthCheck') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(prodCutoverHealthCheck_(body));
     }
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
@@ -5251,6 +5264,7 @@ function phase2EMeasurePerformance() {
 }
 
 function phase2EHealthCheck_(options) {
+  const opts = options || {};
   const started = new Date().getTime();
   const inputs = getCollectionProjectionInputs_();
   const userIds = getCollectionProjectionCandidateUserIds_(inputs.events, inputs);
@@ -5258,12 +5272,12 @@ function phase2EHealthCheck_(options) {
     return compareCollectionProjectionForUser_(userId, inputs.events, inputs);
   });
   const mismatches = comparisons.filter(function(item) { return item.diffs.length > 0; });
-  const performance = phase2EMeasurePerformance_(options || {});
+  const performance = phase2EMeasurePerformance_(opts);
   const legacySheets = getLegacySheetVisibilityStatus_();
   return {
     ok: mismatches.length === 0 &&
       performance.ok === true &&
-      legacySheets.every(function(item) { return !item.exists || item.hidden; }),
+      (opts.allowVisibleLegacySheets === true || legacySheets.every(function(item) { return !item.exists || item.hidden; })),
     sheetsApiV4Available: isSheetsValuesApiAvailable_(),
     legacySheets: legacySheets,
     projection: {
@@ -5343,6 +5357,192 @@ function phase2EStressTestDraws_(body) {
     tickets: getCollectionTickets(userId),
     projectionMismatchCount: health.projection.mismatchCount,
   };
+}
+
+function prodCutoverDryRun() {
+  return logJsonResult_('prodCutoverDryRun result', prodCutoverDryRun_({}));
+}
+
+function prodCutoverApply(options) {
+  return logJsonResult_('prodCutoverApply result', prodCutoverApply_(options || {}));
+}
+
+function prodCutoverHealthCheck() {
+  return logJsonResult_('prodCutoverHealthCheck result', prodCutoverHealthCheck_({}));
+}
+
+function prodCutoverDryRun_(options) {
+  const started = new Date().getTime();
+  const rowLimit = Math.max(Number(options && options.rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const steps = {};
+  steps.scriptProperties = runCutoverStep_('scriptProperties', getScriptPropertiesStatus);
+  steps.splitConfig = runCutoverStep_('splitConfigDryRun', function() {
+    return migrate_step4_splitConfig({ dryRun: true });
+  });
+  steps.absorbToEvents = runCutoverStep_('absorbToEventsDryRun', function() {
+    return migrate_step5_absorbToEvents({ dryRun: true });
+  });
+  steps.healthCheck = runCutoverStep_('healthCheckReadOnly', function() {
+    return prodCutoverHealthCheck_({ rowLimit: rowLimit, allowVisibleLegacySheets: true });
+  });
+  return {
+    ok: areCutoverStepsOk_(steps),
+    dryRun: true,
+    confirmRequiredForApply: PROD_CUTOVER_CONFIRM,
+    rowLimit: rowLimit,
+    steps: steps,
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function prodCutoverApply_(options) {
+  const opts = options || {};
+  if (String(opts.confirm || '').trim() !== PROD_CUTOVER_CONFIRM) {
+    return {
+      ok: false,
+      error: 'missing_confirmation',
+      requiredConfirm: PROD_CUTOVER_CONFIRM,
+    };
+  }
+
+  const started = new Date().getTime();
+  const rowLimit = Math.max(Number(opts.rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const steps = {};
+
+  steps.backup = runCutoverStep_('backupSpreadsheet', backupSpreadsheet);
+  if (!steps.backup.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.splitConfig = runCutoverStep_('splitConfigApply', function() {
+    return migrate_step4_splitConfig({ dryRun: false });
+  });
+  if (!steps.splitConfig.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.absorbToEvents = runCutoverStep_('absorbToEventsApply', function() {
+    return migrate_step5_absorbToEvents({ dryRun: false });
+  });
+  if (!steps.absorbToEvents.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.rebuildCollection = runCutoverStep_('rebuildCollectionRowsFromEvents', rebuildCollectionRowsFromEvents_);
+  if (!steps.rebuildCollection.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.setupUserDashboard = runCutoverStep_('setupUserDashboard', function() {
+    return setupUserDashboard(rowLimit);
+  });
+  if (!steps.setupUserDashboard.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.applyFinalSheetVisibility = runCutoverStep_('applyFinalSheetVisibility', applyFinalSheetVisibility);
+  if (!steps.applyFinalSheetVisibility.ok) return finishCutoverApply_(steps, rowLimit, started);
+
+  steps.healthCheck = runCutoverStep_('prodCutoverHealthCheck', function() {
+    return prodCutoverHealthCheck_({ rowLimit: rowLimit });
+  });
+  return finishCutoverApply_(steps, rowLimit, started);
+}
+
+function finishCutoverApply_(steps, rowLimit, started) {
+  return {
+    ok: areCutoverStepsOk_(steps),
+    dryRun: false,
+    rowLimit: rowLimit,
+    steps: steps,
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function prodCutoverHealthCheck_(options) {
+  const opts = options || {};
+  const started = new Date().getTime();
+  const props = getScriptPropertiesStatus();
+  const phase2E = phase2EHealthCheck_(opts);
+  const sheetStatus = getCutoverSheetStatus_();
+  const allowVisibleLegacySheets = opts.allowVisibleLegacySheets === true;
+  const requiredPropsOk = REQUIRED_SCRIPT_PROPERTY_KEYS.every(function(key) {
+    return props.properties[key] === true;
+  });
+  return {
+    ok: requiredPropsOk &&
+      phase2E.ok === true &&
+      sheetStatus.missingVisible.length === 0 &&
+      (allowVisibleLegacySheets || sheetStatus.visibleLegacySheets.length === 0),
+    allowVisibleLegacySheets: allowVisibleLegacySheets,
+    requiredProperties: props.properties,
+    phase2E: phase2E,
+    sheets: sheetStatus,
+    latestEvent: getLatestEventSummary_(),
+    elapsedMs: new Date().getTime() - started,
+  };
+}
+
+function runCutoverStep_(name, fn) {
+  const started = new Date().getTime();
+  try {
+    const result = fn();
+    return {
+      ok: !result || result.ok !== false,
+      name: name,
+      result: result,
+      elapsedMs: new Date().getTime() - started,
+    };
+  } catch(e) {
+    return {
+      ok: false,
+      name: name,
+      error: String(e),
+      elapsedMs: new Date().getTime() - started,
+    };
+  }
+}
+
+function areCutoverStepsOk_(steps) {
+  return Object.keys(steps).every(function(key) {
+    return steps[key] && steps[key].ok === true;
+  });
+}
+
+function getCutoverSheetStatus_() {
+  const ss = getSpreadsheet();
+  const visible = [];
+  const hidden = [];
+  const missingVisible = [];
+  const missingHidden = [];
+  const visibleLegacySheets = [];
+
+  FINAL_VISIBLE_SHEET_NAMES.forEach(function(name) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      missingVisible.push(name);
+    } else {
+      visible.push({ name: name, hidden: sheet.isSheetHidden(), lastRow: sheet.getLastRow() });
+    }
+  });
+
+  FINAL_HIDDEN_SHEET_NAMES.forEach(function(name) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      missingHidden.push(name);
+      return;
+    }
+    const item = { name: name, hidden: sheet.isSheetHidden(), lastRow: sheet.getLastRow() };
+    hidden.push(item);
+    if (!item.hidden) visibleLegacySheets.push(name);
+  });
+
+  return {
+    visible: visible,
+    hidden: hidden,
+    missingVisible: missingVisible,
+    missingHidden: missingHidden,
+    visibleLegacySheets: visibleLegacySheets,
+  };
+}
+
+function getLatestEventSummary_() {
+  const sheet = getOrCreateEventsSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < SCHEMA.EVENTS.dataStartRow) return null;
+  const col = getEventsColumns_(sheet);
+  const row = sheet.getRange(lastRow, 1, 1, EVENTS_COL_COUNT).getValues()[0];
+  return Events_rowToObject_(row, col);
 }
 
 function measurePhase2EStep_(timings, key, fn) {
