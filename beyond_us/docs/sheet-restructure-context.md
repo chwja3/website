@@ -383,6 +383,7 @@
 |---|---|---|---|---|---|
 | `card.drawn` | cardId (`1`~`9`) | 1 | optional | `cardName`, `isNew` (boolean) | `drawCard` |
 | `card.granted` | cardId (`hidden`/`10`) | 1 | — | `cardName`, `reason` | `adminGrantHiddenCard` |
+| `card.removed` | cardId (`1`~`10`) | 1 | — | `cardName`, `reason` | `adminCreateCardEvent` |
 | `card.received` | cardId | ✓ (수령 수량) | — | — | `setCardReceivedQty` (admin) |
 
 `card.received`는 실물 카드 수령. 기존 `CardReceived` 시트 데이터의 후계. amount가 누적 수량(현재 row의 절대값)인지 증분인지는 마이그레이션 규칙에서 결정 (현재는 절대값으로 갱신하는 패턴 → 매번 새 이벤트가 최신값).
@@ -1871,3 +1872,4 @@ const SHEET_NAMES = Object.freeze({
 - 2026-05-12. Phase 2D mutation 경로 로컬 전환. `Events_append()`에서 내부 `Events_append_()`를 분리해 Lock 내부에서도 안전하게 이벤트를 남길 수 있게 했다. `saveCheckin`, `drawCard`, `requestTrade`, `acceptTrade`, `submitHoldPrayGuess`, `uploadBBBPhoto`, `adminGrantHiddenCard`는 이제 관련 Events를 기록한 뒤 `rebuildCollectionRow_()`로 Collection row를 재계산한다. 관리자 히든 카드 지급은 실제 뽑은 횟수를 늘리지 않기 위해 신규 이벤트 `card.granted`로 분리했고, projection과 UserDashboard 공식 생성도 이를 반영한다.
 - 2026-05-12. 사용자 DEV 확인 기준 Phase 2D 반영 후 `setupUserDashboard()` 재실행 완료. `previewCollectionProjection()`은 계속 `mismatchCount: 0`, UserDashboard 검증 컬럼도 ✓ 유지 확인.
 - 2026-05-12. DEV 교환 테스트 편의를 위해 `adminGrantTestCard`를 로컬 GAS에 추가. `ENABLE_TEST_ADMIN_TOOLS=true` Script Property가 있을 때만 동작하며, 테스트 카드 지급도 `card.granted` 이벤트를 남긴 뒤 `rebuildCollectionRow_()`로 `Collection` 캐시를 갱신한다.
+- 2026-05-12. admin 페이지에 `Events 관리` 패널 추가. 카드 추가는 `card.granted`, 카드 삭제는 `card.removed` 이벤트를 생성하고 해당 유저 `Collection` row를 재계산한다. `adminRebuildEventDerivedViews`는 Events 기준으로 전체 `Collection` 캐시를 다시 만들고 `setupUserDashboard()`를 실행한다.

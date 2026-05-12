@@ -187,6 +187,7 @@
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="bbb">현장미션 (BBB)</button>
       <button class="drawer-item" data-panel="collection">카드 집계</button>
+      <button class="drawer-item" data-panel="events">Events 관리</button>
     </nav>
 
     <div class="admin-wrap">
@@ -426,6 +427,51 @@
             <strong style="color:var(--text);">실시간 업데이트 시점</strong><br>
             미션 제출 / 카드 뽑기 / BBB 사진 최초 업로드
           </p>
+        </div>
+
+      </div>
+
+      <!-- Events 관리 탭 -->
+      <div id="tab-events" class="tab-panel">
+
+        <div class="card">
+          <h2 class="card-title">카드 이벤트 생성</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px;">
+            <input type="text" id="eventCardUserId" class="input" placeholder="닉네임" />
+            <select id="eventCardId" class="input">
+              <option value="1">1 · 사랑</option>
+              <option value="2">2 · 희락</option>
+              <option value="3">3 · 화평</option>
+              <option value="4">4 · 오래참음</option>
+              <option value="5">5 · 자비</option>
+              <option value="6">6 · 양선</option>
+              <option value="7">7 · 충성</option>
+              <option value="8">8 · 온유</option>
+              <option value="9">9 · 절제</option>
+              <option value="10">10 · 히든</option>
+            </select>
+            <input type="number" id="eventCardAmount" class="input" min="1" max="20" value="1" placeholder="수량" />
+          </div>
+          <input type="text" id="eventCardReason" class="input" placeholder="사유 (예: trade_test_duplicate)" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button class="btn btn-primary" id="grantCardEventBtn" onclick="createAdminCardEvent('add')">카드 추가 이벤트 생성</button>
+            <button class="btn btn-danger" id="removeCardEventBtn" onclick="createAdminCardEvent('remove')">카드 삭제 이벤트 생성</button>
+          </div>
+          <div id="cardEventStatus" class="status"></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">Events 기준 재계산</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
+                Collection 캐시와 UserDashboard 공식을 Events 기준으로 다시 만듭니다.
+              </p>
+            </div>
+            <button class="btn btn-primary" id="rebuildEventsDashboardBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="runRebuildEventDerivedViews()">재계산</button>
+          </div>
+          <input type="number" id="eventDashboardRows" class="input" min="1" max="1000" value="300" placeholder="UserDashboard row 수" />
+          <div id="rebuildEventsDashboardStatus" class="status"></div>
         </div>
 
       </div>
@@ -1592,6 +1638,76 @@
         statusEl.className = 'status';
       } finally {
         btn.disabled = false; btn.textContent = '🔢 I·J 재계산';
+      }
+    }
+
+    async function createAdminCardEvent(mode) {
+      const userId = document.getElementById('eventCardUserId').value.trim();
+      const cardId = Number(document.getElementById('eventCardId').value);
+      const amount = Number(document.getElementById('eventCardAmount').value) || 1;
+      const reason = document.getElementById('eventCardReason').value.trim() || (mode === 'remove' ? 'admin_card_remove' : 'admin_card_grant');
+      const statusEl = document.getElementById('cardEventStatus');
+      const grantBtn = document.getElementById('grantCardEventBtn');
+      const removeBtn = document.getElementById('removeCardEventBtn');
+      if (!userId) { statusEl.textContent = '닉네임을 입력해주세요.'; return; }
+      if (!(cardId >= 1 && cardId <= 10)) { statusEl.textContent = '카드를 선택해주세요.'; return; }
+      if (!(amount >= 1 && amount <= 20)) { statusEl.textContent = '수량은 1~20 사이로 입력해주세요.'; return; }
+      const actionText = mode === 'remove' ? '삭제' : '추가';
+      if (!confirm(`${userId}에게 ${cardId}번 카드 ${amount}장 ${actionText} 이벤트를 생성할까요?`)) return;
+
+      grantBtn.disabled = true;
+      removeBtn.disabled = true;
+      statusEl.textContent = '처리 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({
+          action: 'adminCreateCardEvent',
+          adminPw,
+          eventMode: mode,
+          userId,
+          cardId,
+          amount,
+          reason,
+        });
+        if (res.ok) {
+          const count = res.collection && res.collection[cardId] ? res.collection[cardId] : 0;
+          statusEl.textContent = `✅ ${res.eventType} 생성 완료. 현재 ${cardId}번 카드 ${count}장`;
+          statusEl.className = 'status ok';
+          await Promise.all([loadTicketStats(), loadCardStats()]);
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      } finally {
+        grantBtn.disabled = false;
+        removeBtn.disabled = false;
+      }
+    }
+
+    async function runRebuildEventDerivedViews() {
+      if (!confirm('Events 기준으로 Collection과 UserDashboard를 다시 계산합니다.\n진행할까요?')) return;
+      const btn = document.getElementById('rebuildEventsDashboardBtn');
+      const statusEl = document.getElementById('rebuildEventsDashboardStatus');
+      const rowLimit = Number(document.getElementById('eventDashboardRows').value) || 300;
+      btn.disabled = true;
+      btn.textContent = '재계산 중...';
+      statusEl.textContent = '';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminRebuildEventDerivedViews', adminPw, rowLimit });
+        if (res.ok) {
+          statusEl.textContent = `✅ 완료. Collection ${res.collectionRebuilt}명, UserDashboard ${res.dashboardRows}행`;
+          statusEl.className = 'status ok';
+          await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin()]);
+        } else {
+          statusEl.textContent = '오류: ' + (res.error || '실패');
+        }
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '재계산';
       }
     }
 

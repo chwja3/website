@@ -170,6 +170,11 @@
 - [x] DEV 교환 테스트용 `adminGrantTestCard` 추가
   - [x] `ENABLE_TEST_ADMIN_TOOLS=true` Script Property가 있을 때만 동작
   - [x] `card.granted` 이벤트 기록 후 해당 유저 `Collection` row rebuild
+- [x] admin `Events 관리` 패널 추가
+  - [x] 카드 추가 이벤트 생성 (`card.granted`)
+  - [x] 카드 삭제 이벤트 생성 (`card.removed`)
+  - [x] Events 기준 Collection + UserDashboard 재계산
+  - [x] admin 변경분 버전 bump (`version.txt` + `sw.js` + `app.js`)
 - [x] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
 - [x] `setupUserDashboard()` 재실행. `card.granted`를 반영하는 공식으로 갱신. 사용자 확인 기준
 - [x] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인. 사용자 확인 기준

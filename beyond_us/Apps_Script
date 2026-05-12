@@ -533,6 +533,7 @@ const EVENT_TYPES = Object.freeze({
   TICKET_CONSUMED: 'ticket.consumed',
   CARD_DRAWN: 'card.drawn',
   CARD_GRANTED: 'card.granted',
+  CARD_REMOVED: 'card.removed',
   CARD_RECEIVED: 'card.received',
   TRADE_REQUESTED: 'trade.requested',
   TRADE_ACCEPTED: 'trade.accepted',
@@ -984,6 +985,8 @@ function doPost(e) {
 
     if (action === 'adminGrantHiddenCard') return jsonOutput(adminGrantHiddenCard(body));
     if (action === 'adminGrantTestCard') return jsonOutput(adminGrantTestCard(body));
+    if (action === 'adminCreateCardEvent') return jsonOutput(adminCreateCardEvent(body));
+    if (action === 'adminRebuildEventDerivedViews') return jsonOutput(adminRebuildEventDerivedViews(body));
 
     return jsonOutput({ ok: false, message: 'Unknown action' });
   } catch (err) {
@@ -1060,6 +1063,83 @@ function adminGrantTestCard(body) {
         ok: rebuild.ok,
         diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
       },
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminCreateCardEvent(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  if (!isTestAdminToolsEnabled_()) return { error: 'test_admin_tools_disabled' };
+
+  const eventMode = String(body.eventMode || body.mode || '').trim();
+  const userId = String(body.userId || body.nickname || '').trim();
+  const cardId = Number(body.cardId);
+  const amount = Math.floor(Number(body.amount) || 1);
+  if (eventMode !== 'add' && eventMode !== 'remove') return { error: 'invalid_eventMode' };
+  if (!userId) return { error: 'missing_userId' };
+  if (!(cardId >= 1 && cardId <= 10)) return { error: 'invalid_cardId' };
+  if (!(amount >= 1 && amount <= 20)) return { error: 'invalid_amount' };
+
+  const card = SPIRIT_CARDS.find(function(c) { return c.id === cardId; });
+  if (!card) return { error: 'invalid_cardId' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const now = new Date().toISOString();
+    const eventType = eventMode === 'remove' ? EVENT_TYPES.CARD_REMOVED : EVENT_TYPES.CARD_GRANTED;
+    const reason = String(body.reason || (eventMode === 'remove' ? 'admin_card_remove' : 'admin_card_grant')).trim();
+    const event = Events_append_(eventType, userId, {
+      timestamp: now,
+      amount: amount,
+      refId: cardId,
+      source: EVENT_SOURCES.ADMIN,
+      payload: {
+        cardName: card.name,
+        reason: reason,
+      },
+    });
+    const rebuild = rebuildCollectionRow_(userId);
+    return {
+      ok: true,
+      eventMode: eventMode,
+      eventType: eventType,
+      userId: userId,
+      cardId: cardId,
+      amount: amount,
+      eventId: event.event.eventId,
+      collection: getUserCollection(userId),
+      tickets: getCollectionTickets(userId),
+      rebuild: {
+        ok: rebuild.ok,
+        diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
+      },
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminRebuildEventDerivedViews(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+
+  const rowLimit = Math.max(Number(body.rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const collection = rebuildCollectionRowsFromEvents_();
+    const dashboard = setupUserDashboard(rowLimit);
+    clearDashboardCache_();
+    return {
+      ok: true,
+      collectionRebuilt: collection.rebuilt,
+      dashboardRows: dashboard.rowsPrepared,
+      collectionSheet: SHEET_NAMES.COLLECTION,
+      dashboardSheet: SHEET_NAMES.USER_DASHBOARD,
     };
   } finally {
     lock.releaseLock();
@@ -2397,7 +2477,10 @@ function buildUserDashboardFormulaRow_(sheetRow, userRow) {
   ];
 
   for (let cardId = 1; cardId <= 10; cardId++) {
-    row.push('=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '",' + eventsRefRange + ',"' + cardId + '")+SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_GRANTED + '",' + eventsRefRange + ',"' + cardId + '"))');
+    const drawnCount = 'COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '",' + eventsRefRange + ',"' + cardId + '")';
+    const grantedSum = 'SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_GRANTED + '",' + eventsRefRange + ',"' + cardId + '")';
+    const removedSum = 'SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_REMOVED + '",' + eventsRefRange + ',"' + cardId + '")';
+    row.push('=IF(' + userCell + '="","",MAX(0,' + drawnCount + '+' + grantedSum + '-' + removedSum + '))');
   }
 
   row.push(
@@ -4745,6 +4828,10 @@ function buildCollectionProjectionFromEvents_(userId, events) {
       const cardId = Number(event.refId);
       const amount = eventAmount_(event, 1);
       if (cardId >= 1 && cardId <= 10) snapshot.cardCounts[cardId] += amount;
+    } else if (event.type === EVENT_TYPES.CARD_REMOVED) {
+      const cardId = Number(event.refId);
+      const amount = eventAmount_(event, 1);
+      adjustProjectedCardCount_(snapshot, cardId, -amount);
     }
   });
 
@@ -4885,6 +4972,50 @@ function rebuildCollectionRow_(userId) {
     diffCountBeforeWrite: diffsBeforeWrite.length,
     diffsBeforeWrite: diffsBeforeWrite,
     projected: projected,
+  };
+}
+
+function rebuildCollectionRowsFromEvents() {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return logJsonResult_('rebuildCollectionRowsFromEvents result', {
+      ok: false,
+      error: '잠시 후 다시 시도해주세요.',
+    });
+  }
+
+  try {
+    return logJsonResult_('rebuildCollectionRowsFromEvents result', rebuildCollectionRowsFromEvents_());
+  } catch(e) {
+    Logger.log('rebuildCollectionRowsFromEvents error: ' + e);
+    return logJsonResult_('rebuildCollectionRowsFromEvents result', {
+      ok: false,
+      error: String(e),
+    });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rebuildCollectionRowsFromEvents_() {
+  const events = Events_readAll_();
+  const userIds = getCollectionProjectionCandidateUserIds_(events);
+  const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
+  const last = sheet.getLastRow();
+  if (last >= SCHEMA.COLLECTION.dataStartRow) {
+    sheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, last - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT).clearContent();
+  }
+  const rows = userIds.map(function(userId) {
+    return collectionSnapshotToRow_(buildCollectionProjectionFromEvents_(userId, events), col);
+  });
+  if (rows.length) {
+    sheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, COLLECTION_COL_COUNT).setValues(rows);
+  }
+  clearDashboardCache_();
+  return {
+    ok: true,
+    rebuilt: rows.length,
   };
 }
 
