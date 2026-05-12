@@ -1584,7 +1584,7 @@ function ensureEventsSheet_(sheet) {
 
 function Events_append(type, userId, options) {
   const lock = LockService.getScriptLock();
-  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
   try {
     return Events_append_(type, userId, options || {});
@@ -1598,6 +1598,24 @@ function Events_append_(type, userId, options) {
   const row = Events_buildRow_(type, userId, options || {});
   sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, 1, EVENTS_COL_COUNT).setValues([row]);
   return { ok: true, event: Events_rowToObject_(row) };
+}
+
+// 같은 호출 컨텍스트에서 N개 이벤트를 한 번의 setValues로 append.
+// drawCard(ticket.consumed + card.drawn) / saveCheckin(mission.submitted + ticket.granted)
+// 처럼 쌍으로 발생하는 이벤트들을 RPC 1회로 묶기 위함.
+// items: [{ type, userId, options }, ...]
+function Events_appendBatch_(items) {
+  if (!Array.isArray(items) || !items.length) return { ok: true, events: [] };
+  const sheet = getOrCreateEventsSheet();
+  const rows = items.map(function(item) {
+    return Events_buildRow_(item.type, item.userId, item.options || {});
+  });
+  const startRow = Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow);
+  sheet.getRange(startRow, 1, rows.length, EVENTS_COL_COUNT).setValues(rows);
+  return {
+    ok: true,
+    events: rows.map(function(row) { return Events_rowToObject_(row); }),
+  };
 }
 
 function Events_buildRow_(type, userId, options) {
@@ -2117,7 +2135,7 @@ function setMissionConfigInDefinitions_(body) {
 function migrate_step5_absorbToEvents(options) {
   const dryRun = options === true || !!(options && options.dryRun);
   const lock = LockService.getScriptLock();
-  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
   try {
     const sheet = getOrCreateEventsSheet();
@@ -2911,10 +2929,13 @@ function clearNoticesCache_() {
 function clearUserCache_(userId) {
   const cleanUserId = String(userId || '').trim();
   if (!cleanUserId) return;
+  // user_status_v1 캐시: 닉네임 단독 + 현재 주차 키만 invalidate.
+  // (이전 12주 루프는 매 mutation마다 13회 cacheRemove 호출했음)
   cacheRemove_(cacheKey_('user_status_v1', cleanUserId));
-  for (let week = 1; week <= 12; week++) {
-    cacheRemove_(cacheKey_('user_status_v1', cleanUserId + ':w' + week));
-  }
+  try {
+    const currentWeek = getCurrentWeek_();
+    cacheRemove_(cacheKey_('user_status_v1', cleanUserId + ':w' + currentWeek));
+  } catch(e) {}
   cacheRemove_(cacheKey_('collection_v1', cleanUserId));
 }
 
@@ -3066,28 +3087,40 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   const ticketEarned = (prevWeekScore < config.drawThreshold && weekCumScore >= config.drawThreshold) ? 1 : 0;
 
   const now = new Date();
-  Events_append_(EVENT_TYPES.MISSION_SUBMITTED, userId, {
-    timestamp: now,
-    weekKey: effectiveWeekKey,
-    payload: {
-      weekTitle: config.weekTitle,
-      dateKey: today,
-      score: newScore,
-      weekCumScore: weekCumScore,
-      items: newItems,
-      indices: newIndices,
-    },
-    source: EVENT_SOURCES.WEB,
-  });
-  if (ticketEarned === 1) {
-    Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+  // mission.submitted (+ ticketEarned 시 ticket.granted)를 setValues 1회로 묶음
+  const eventBatch = [{
+    type: EVENT_TYPES.MISSION_SUBMITTED,
+    userId: userId,
+    options: {
       timestamp: now,
-      timestampOffsetMs: 1,
-      amount: 1,
       weekKey: effectiveWeekKey,
-      payload: { reason: 'week_complete' },
+      payload: {
+        weekTitle: config.weekTitle,
+        dateKey: today,
+        score: newScore,
+        weekCumScore: weekCumScore,
+        items: newItems,
+        indices: newIndices,
+      },
       source: EVENT_SOURCES.WEB,
+    },
+  }];
+  if (ticketEarned === 1) {
+    eventBatch.push({
+      type: EVENT_TYPES.TICKET_GRANTED,
+      userId: userId,
+      options: {
+        timestamp: now,
+        timestampOffsetMs: 1,
+        amount: 1,
+        weekKey: effectiveWeekKey,
+        payload: { reason: 'week_complete' },
+        source: EVENT_SOURCES.WEB,
+      },
     });
+  }
+  Events_appendBatch_(eventBatch);
+  if (ticketEarned === 1) {
     rebuildCollectionRow_(userId);
   }
   clearUserDerivedCaches_(userId);
@@ -3355,28 +3388,33 @@ function drawCard(userId, weekKey, testMode, requestId) {
     } catch(e) {}
 
     const drawnAt = new Date().toISOString();
-    Events_append_(EVENT_TYPES.TICKET_CONSUMED, userId, {
-      timestamp: drawnAt,
-      amount: 1,
-      weekKey: weekKey,
-      payload: {
-        reason: 'card_draw',
-        testMode: bypassTicketCheck,
+    // ticket.consumed + card.drawn 두 이벤트를 setValues 1회로 묶음 (RPC 2 → 1)
+    Events_appendBatch_([
+      {
+        type: EVENT_TYPES.TICKET_CONSUMED,
+        userId: userId,
+        options: {
+          timestamp: drawnAt,
+          amount: 1,
+          weekKey: weekKey,
+          payload: { reason: 'card_draw', testMode: bypassTicketCheck },
+          source: EVENT_SOURCES.WEB,
+        },
       },
-      source: EVENT_SOURCES.WEB,
-    });
-    Events_append_(EVENT_TYPES.CARD_DRAWN, userId, {
-      timestamp: drawnAt,
-      timestampOffsetMs: 1,
-      amount: 1,
-      weekKey: weekKey,
-      refId: card.id,
-      payload: {
-        cardName: card.name,
-        isNew: isNew,
+      {
+        type: EVENT_TYPES.CARD_DRAWN,
+        userId: userId,
+        options: {
+          timestamp: drawnAt,
+          timestampOffsetMs: 1,
+          amount: 1,
+          weekKey: weekKey,
+          refId: card.id,
+          payload: { cardName: card.name, isNew: isNew },
+          source: EVENT_SOURCES.WEB,
+        },
       },
-      source: EVENT_SOURCES.WEB,
-    });
+    ]);
     // rebuild 결과의 projection snapshot을 그대로 응답에 사용 — Collection 시트 재조회 2회 제거
     const rebuildResult = rebuildCollectionRow_(userId);
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
@@ -5498,22 +5536,27 @@ function acceptTrade(body) {
     const requester       = String(rows[i][col.requester]);
     const requesterCardId = Number(rows[i][col.requesterCardId]);
     const targetCardId    = Number(rows[i][col.targetCardId]);
+    // status, createdAt, resolvedAt이 sheet 컬럼 H/I/J (인접)이므로
+    // setValue 2회 → setValues 1회로 묶기. createdAt은 기존값 그대로 보존.
+    const tradeRowSpan = col.resolvedAt - col.status + 1;
+    const writeTradeResolution = function(status, resolvedAt) {
+      sheet.getRange(rowIndex, col.status + 1, 1, tradeRowSpan).setValues([
+        [status, rows[i][col.createdAt], resolvedAt],
+      ]);
+    };
 
     // 카드 보유 재확인
     if (!(getUserCollection(requester)[requesterCardId] >= 2)) {
-      sheet.getRange(rowIndex, col.status + 1).setValue('실패 (카드 없음)');
-      sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
+      writeTradeResolution('실패 (카드 없음)', new Date().toISOString());
       return { error: '상대방이 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
     if (!(getUserCollection(nickname)[targetCardId] >= 2)) {
-      sheet.getRange(rowIndex, col.status + 1).setValue('실패 (카드 없음)');
-      sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
+      writeTradeResolution('실패 (카드 없음)', new Date().toISOString());
       return { error: '내가 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
 
     const resolvedAt = new Date().toISOString();
-    sheet.getRange(rowIndex, col.status + 1).setValue('accepted');
-    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(resolvedAt);
+    writeTradeResolution('accepted', resolvedAt);
     Events_append_(EVENT_TYPES.TRADE_ACCEPTED, requester, {
       timestamp: resolvedAt,
       refId: tradeId,
