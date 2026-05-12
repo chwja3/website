@@ -30,7 +30,7 @@
   - [ ] `raw_checkins` 전환
   - [ ] `Collection` 전환
   - [ ] `Trades` 전환
-- [ ] DEV 스프레드시트 (`19-2XZ3...`) 존재 여부 확인 및 동작 테스트
+- [x] DEV 스프레드시트 (`19-2XZ3...`) 존재 여부 확인 및 동작 테스트
 - [x] `admin.html` dev/local 접속 시 바뀐 DEV GAS를 참조하도록 `API_BASE` 분기 반영 확인
 - [ ] 동작 확인 후 dev 브랜치 커밋
 
@@ -38,11 +38,19 @@
 
 ## Phase 1.5 — 하드코딩 제거 준비
 
-- [ ] `SPREADSHEET_ID`, `DEV_SPREADSHEET_ID`, `ADMIN_PASSWORD` 를 Script Properties로 이동
-- [ ] `Users` 비밀번호 평문 저장을 `passwordHash` / `passwordSalt` 구조로 전환하는 마이그레이션 설계
+- [x] `SPREADSHEET_ID`, `ADMIN_PASSWORD` 를 Script Properties로 이동
+  - [x] GAS 코드에서 민감값 상수 제거
+  - [x] Script Properties 접근 헬퍼 추가
+  - [x] 관리자 인증 비교를 헬퍼 기반으로 전환
+  - [x] DEV Apps Script 프로젝트에 Properties 설정
+  - [x] DEV 배포 URL 새 버전 반영 및 smoke 테스트
+- [x] `DEV_SPREADSHEET_ID`, `_devMode`, `devMode=true` 요청 파라미터 제거
+- [ ] 수동 GAS 반영 후 DEV Properties를 `SPREADSHEET_ID=DEV 시트 ID`, `ADMIN_PASSWORD=관리자 비밀번호`, `ALLOW_TEST_DRAWS=true`로 확인
+- [ ] 수동 PROD 반영 시 PROD Properties를 `SPREADSHEET_ID=PROD 시트 ID`, `ADMIN_PASSWORD=관리자 비밀번호`로 확인
+- [~] `Users` 비밀번호 평문 저장을 `passwordHash` / `passwordSalt` 구조로 전환하는 마이그레이션 설계 — **스킵 (이벤트용 비밀번호, 실익 없음)**
 - [ ] `HOLD_PRAY_ENTRIES` 를 `HoldPray` 시트 원천 데이터로 전환
 - [ ] `AppSettings` / `MissionDefinitions` 목표 스키마 샘플 작성
-- [ ] `CardDefinitions` 외부화 여부 결정
+- [~] `CardDefinitions` 외부화 여부 결정 — **스킵 (10개 고정 카드, 이번 행사 내 변경 없음)**
 
 ---
 
