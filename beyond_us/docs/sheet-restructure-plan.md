@@ -342,6 +342,8 @@ function migrate_runAll() / migrate_verify()
 
 **중요.** `migrate_step5_absorbToEvents`는 과거 데이터를 Events에 backfill하는 1회성 작업. DEV에서는 2A big-bang으로 실행하고, eventId는 새로 부여하되 source는 `migration`.
 
+**2C 적용 순서.** 첫 조각은 `migrate_step1_backup()` + `migrate_step4_splitConfig(_dryRun)` 로 제한한다. 즉 `AppSettings` / `MissionDefinitions` 시트를 만들고 기존 `config` 값을 복사하되, 앱의 read path는 아직 `config`에 둔다. DEV dry-run과 본 실행 결과를 확인한 뒤 `config` 읽기 함수를 새 시트 기반으로 전환한다.
+
 **GAS 코드 갱신.**
 - `SHEET_NAMES`에 새 시트 추가 (`APP_SETTINGS`, `MISSION_DEFINITIONS`, `EVENTS`).
 - `SCHEMA` 의 `headerRow=2`, `dataStartRow=3` 으로 갱신 (Row 1은 운영진 라벨).

@@ -25,6 +25,8 @@ const SHEET_NAMES = Object.freeze({
   BBB_PHOTOS: 'BBBPhotos',
   NOTICES: 'Notices',
   INQUIRIES: 'Inquiries',
+  APP_SETTINGS: 'AppSettings',
+  MISSION_DEFINITIONS: 'MissionDefinitions',
   EVENTS: 'Events',
   USER_DASHBOARD: 'UserDashboard',
 });
@@ -245,6 +247,35 @@ const SCHEMA = Object.freeze({
       missionType: 'missionType',
     }),
   }),
+  APP_SETTINGS: Object.freeze({
+    sheetName: SHEET_NAMES.APP_SETTINGS,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      key: 'key',
+      value: 'value',
+      type: 'type',
+      note: 'note',
+    }),
+  }),
+  MISSION_DEFINITIONS: Object.freeze({
+    sheetName: SHEET_NAMES.MISSION_DEFINITIONS,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      weekKey: 'weekKey',
+      weekOrder: 'weekOrder',
+      weekTitle: 'weekTitle',
+      weekStartDate: 'weekStartDate',
+      weekEndDate: 'weekEndDate',
+      drawThreshold: 'drawThreshold',
+      itemNo: 'itemNo',
+      itemText: 'itemText',
+      scoreWeight: 'scoreWeight',
+      category: 'category',
+      enabled: 'enabled',
+    }),
+  }),
   EVENTS: Object.freeze({
     sheetName: SHEET_NAMES.EVENTS,
     headerRow: 2,
@@ -432,6 +463,46 @@ const BBB_PHOTOS_COLUMN_FALLBACK = Object.freeze({
   uploadedAt: 2,
   missionType: 3,
 });
+const APP_SETTINGS_COLUMN_FALLBACK = Object.freeze({
+  key: 0,
+  value: 1,
+  type: 2,
+  note: 3,
+});
+const MISSION_DEFINITIONS_COLUMN_FALLBACK = Object.freeze({
+  weekKey: 0,
+  weekOrder: 1,
+  weekTitle: 2,
+  weekStartDate: 3,
+  weekEndDate: 4,
+  drawThreshold: 5,
+  itemNo: 6,
+  itemText: 7,
+  scoreWeight: 8,
+  category: 9,
+  enabled: 10,
+});
+const APP_SETTINGS_LABELS = Object.freeze([
+  '설정 키',
+  '값',
+  '타입',
+  '설명',
+]);
+const APP_SETTINGS_COL_COUNT = Object.keys(SCHEMA.APP_SETTINGS.columns).length;
+const MISSION_DEFINITIONS_LABELS = Object.freeze([
+  '주차 키',
+  '주차 순서',
+  '주차 제목',
+  '주차 시작일',
+  '주차 종료일',
+  '뽑기권 기준 점수',
+  '항목 번호',
+  '미션 내용',
+  '점수',
+  '분류',
+  '사용 여부',
+]);
+const MISSION_DEFINITIONS_COL_COUNT = Object.keys(SCHEMA.MISSION_DEFINITIONS.columns).length;
 const EVENTS_LABELS = Object.freeze([
   '이벤트ID',
   '발생시각',
@@ -519,8 +590,8 @@ const FINAL_VISIBLE_SHEET_NAMES = Object.freeze([
   SHEET_NAMES.TRADES,
   SHEET_NAMES.HOLD_PRAY,
   SHEET_NAMES.HP_GUESSES,
-  'AppSettings',
-  'MissionDefinitions',
+  SHEET_NAMES.APP_SETTINGS,
+  SHEET_NAMES.MISSION_DEFINITIONS,
   SHEET_NAMES.TAB_SETTINGS,
   SHEET_NAMES.BBB_SETTINGS,
   SHEET_NAMES.BBB,
@@ -1067,6 +1138,22 @@ function getBbbPhotoRows_(sheet, maxColumns) {
   return getSheetRows(sheet, SCHEMA.BBB_PHOTOS, maxColumns || 4);
 }
 
+function getAppSettingsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.APP_SETTINGS, APP_SETTINGS_COLUMN_FALLBACK);
+}
+
+function getAppSettingsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.APP_SETTINGS, maxColumns || APP_SETTINGS_COL_COUNT);
+}
+
+function getMissionDefinitionsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_COLUMN_FALLBACK);
+}
+
+function getMissionDefinitionsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.MISSION_DEFINITIONS, maxColumns || MISSION_DEFINITIONS_COL_COUNT);
+}
+
 function getEventsColumns_(sheet) {
   return getResolvedColumns_(sheet, SCHEMA.EVENTS, EVENTS_COLUMN_FALLBACK);
 }
@@ -1103,6 +1190,40 @@ function getSheetRows(sheet, schemaOrHeaderRow, maxColumns) {
   if (lastRow < dataStartRow) return [];
   const width = maxColumns || sheet.getLastColumn();
   return sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, width).getValues();
+}
+
+function ensureTwoHeaderSheet_(sheet, schema, labels, colCount) {
+  if (sheet.getMaxColumns() < colCount) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), colCount - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < schema.headerRow) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), schema.headerRow - sheet.getMaxRows());
+  }
+  sheet.getRange(1, 1, 1, colCount).setValues([labels.slice()]);
+  sheet.getRange(schema.headerRow, 1, 1, colCount).setValues([getSchemaHeaders_(schema)]);
+  sheet.setFrozenRows(2);
+}
+
+function clearSheetDataRows_(sheet, schema, colCount) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < schema.dataStartRow) return;
+  sheet.getRange(schema.dataStartRow, 1, lastRow - schema.dataStartRow + 1, colCount).clearContent();
+}
+
+function getOrCreateAppSettingsSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.APP_SETTINGS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.APP_SETTINGS);
+  ensureTwoHeaderSheet_(sheet, SCHEMA.APP_SETTINGS, APP_SETTINGS_LABELS, APP_SETTINGS_COL_COUNT);
+  return sheet;
+}
+
+function getOrCreateMissionDefinitionsSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.MISSION_DEFINITIONS);
+  ensureTwoHeaderSheet_(sheet, SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_LABELS, MISSION_DEFINITIONS_COL_COUNT);
+  return sheet;
 }
 
 // Events append-only ledger.
@@ -1271,6 +1392,164 @@ function logMigrationResult_(label, result) {
 function logJsonResult_(label, result) {
   Logger.log(label + '\n' + JSON.stringify(result, null, 2));
   return result;
+}
+
+function migrate_step1_backup() {
+  return logJsonResult_('migrate_step1_backup result', backupSpreadsheet());
+}
+
+function migrate_step4_splitConfig(options) {
+  const dryRun = options === true || !!(options && options.dryRun);
+  const ss = getSpreadsheet();
+  const configSheet = ss.getSheetByName(CONFIG_SHEET_NAME);
+  if (!configSheet) {
+    return logJsonResult_('migrate_step4_splitConfig result', {
+      ok: false,
+      error: 'config_missing',
+    });
+  }
+
+  const plan = buildConfigSplitPlan_(configSheet);
+  if (dryRun) {
+    return logJsonResult_('migrate_step4_splitConfig dryRun', {
+      ok: true,
+      dryRun: true,
+      appSettingsPlanned: plan.appSettingsRows.length,
+      missionDefinitionsPlanned: plan.missionDefinitionRows.length,
+      appSettingKeys: plan.appSettingsRows.map(function(row) { return row[0]; }),
+      enabledMissionCounts: plan.enabledMissionCounts,
+    });
+  }
+
+  const appSettingsSheet = getOrCreateAppSettingsSheet_();
+  clearSheetDataRows_(appSettingsSheet, SCHEMA.APP_SETTINGS, APP_SETTINGS_COL_COUNT);
+  if (plan.appSettingsRows.length) {
+    appSettingsSheet
+      .getRange(SCHEMA.APP_SETTINGS.dataStartRow, 1, plan.appSettingsRows.length, APP_SETTINGS_COL_COUNT)
+      .setValues(plan.appSettingsRows);
+  }
+
+  const missionDefinitionsSheet = getOrCreateMissionDefinitionsSheet_();
+  clearSheetDataRows_(missionDefinitionsSheet, SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_COL_COUNT);
+  if (plan.missionDefinitionRows.length) {
+    missionDefinitionsSheet
+      .getRange(SCHEMA.MISSION_DEFINITIONS.dataStartRow, 1, plan.missionDefinitionRows.length, MISSION_DEFINITIONS_COL_COUNT)
+      .setValues(plan.missionDefinitionRows);
+  }
+
+  return logJsonResult_('migrate_step4_splitConfig result', {
+    ok: true,
+    dryRun: false,
+    appSettingsWritten: plan.appSettingsRows.length,
+    missionDefinitionsWritten: plan.missionDefinitionRows.length,
+    enabledMissionCounts: plan.enabledMissionCounts,
+  });
+}
+
+function migrate_step4_splitConfig_dryRun() {
+  return migrate_step4_splitConfig({ dryRun: true });
+}
+
+function buildConfigSplitPlan_(configSheet) {
+  return {
+    appSettingsRows: buildAppSettingsRowsFromConfig_(configSheet),
+    missionDefinitionRows: buildMissionDefinitionRowsFromConfig_(configSheet),
+    enabledMissionCounts: countEnabledMissionRowsByWeek_(configSheet),
+  };
+}
+
+function buildAppSettingsRowsFromConfig_(configSheet) {
+  return [
+    [
+      'current_week',
+      Number(configSheet.getRange(CONFIG_LAYOUT.currentWeekCell).getValue()) || 1,
+      'number',
+      '현재 진행 주차. 기존 config!B1에서 복사.',
+    ],
+    [
+      'app_open_date',
+      eventDateKey_(configSheet.getRange(CONFIG_LAYOUT.appOpenDateCell).getValue()),
+      'date',
+      '앱 공식 오픈일. 기존 config!B4에서 복사.',
+    ],
+    [
+      'bbb_message_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).getValue()),
+      'boolean',
+      '레거시 BBB 메시지 입력창 공개 여부. 기존 config!C1에서 복사.',
+    ],
+    [
+      'hold_pray_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyHoldPrayCell).getValue()),
+      'boolean',
+      '레거시 H&P 공개 여부. 기존 config!B2에서 복사.',
+    ],
+    [
+      'secret_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacySecretCell).getValue()),
+      'boolean',
+      '레거시 비밀친구 공개 여부. 기존 config!B3에서 복사.',
+    ],
+    [
+      'chat_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyChatCell).getValue()),
+      'boolean',
+      '레거시 채팅 공개 여부. 기존 config!D1에서 복사.',
+    ],
+    [
+      'bbb_sections_open',
+      isTruthyEventValue_(configSheet.getRange(CONFIG_LAYOUT.legacyBbbSectionsCell).getValue()),
+      'boolean',
+      '레거시 BBB 섹션 공개 여부. 기존 config!D2에서 복사.',
+    ],
+  ];
+}
+
+function buildMissionDefinitionRowsFromConfig_(configSheet) {
+  const rows = [];
+  for (let week = 1; week <= 6; week++) {
+    const startRow = getConfigWeekStartRow_(week);
+    const weekKey = 'w' + week;
+    const weekTitle = String(configSheet.getRange(startRow, CONFIG_LAYOUT.missionTitleCol).getValue() || (week + '주차')).trim();
+    const drawThreshold = Number(configSheet.getRange(startRow, CONFIG_LAYOUT.missionThresholdCol).getValue()) || 6;
+    const rawItems = configSheet
+      .getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 3)
+      .getValues();
+
+    for (let i = 0; i < CONFIG_LAYOUT.missionRowsPerWeek; i++) {
+      const itemText = String(rawItems[i][0] || '').trim();
+      const enabled = itemText !== '';
+      rows.push([
+        weekKey,
+        week,
+        weekTitle,
+        '',
+        '',
+        drawThreshold,
+        i + 1,
+        itemText,
+        enabled ? (Number(rawItems[i][1]) || 1) : '',
+        enabled ? String(rawItems[i][2] || 'L').trim() : '',
+        enabled,
+      ]);
+    }
+  }
+  return rows;
+}
+
+function countEnabledMissionRowsByWeek_(configSheet) {
+  const counts = {};
+  for (let week = 1; week <= 6; week++) {
+    const weekKey = 'w' + week;
+    const startRow = getConfigWeekStartRow_(week);
+    const items = configSheet
+      .getRange(startRow + 1, CONFIG_LAYOUT.missionItemCol, CONFIG_LAYOUT.missionRowsPerWeek, 1)
+      .getValues();
+    counts[weekKey] = items.filter(function(row) {
+      return String(row[0] || '').trim() !== '';
+    }).length;
+  }
+  return counts;
 }
 
 function migrate_step5_absorbToEvents(options) {

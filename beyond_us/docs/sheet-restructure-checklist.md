@@ -115,22 +115,25 @@
 - [ ] `setupUserDashboard()` 실행
 - [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A big-bang 백필이 잘 됐다면)
 - [x] 최종 구조에서 흡수될 legacy 시트 숨김 함수 구현 (`hideLegacyDevSheets`)
-- [ ] `hideLegacyDevSheets()` 실행 후 `config`, `raw_checkins`, `CardDraws`, `BonusDraws` 숨김 확인
+- [x] `hideLegacyDevSheets()` 실행 후 `config`, `raw_checkins`, `CardDraws`, `BonusDraws` 숨김 확인
 
 ### 2C — 스키마 정규화 + 마이그레이션
 
-- [ ] 마이그레이션 함수 작성 (모두 idempotent).
-  - [ ] `migrate_step1_backup()` — 모든 시트 백업 사본
+- [~] 마이그레이션 함수 작성 (모두 idempotent).
+  - [x] `migrate_step1_backup()` — Drive 스프레드시트 백업 래퍼
   - [ ] `migrate_step2_addSheetMetadata()` — 1행 운영진 라벨/설명
   - [ ] `migrate_step3_normalizeHeaders()` — 2행 machine header 영문 key 정규화
-  - [ ] `migrate_step4_splitConfig()` — `config` → `AppSettings` + `MissionDefinitions`
+  - [x] `migrate_step4_splitConfig()` — `config` → `AppSettings` + `MissionDefinitions` 복사 함수
   - [x] `migrate_step5_absorbToEvents()` — `raw_checkins` + `CardDraws` + `BonusDraws` + 관련 mutation 시트 → Events 백필 (Phase 2A에서 로컬 구현)
   - [ ] `migrate_step6_externalizeHoldPray()` — `HOLD_PRAY_ENTRIES` 하드코딩 → `HoldPray` 시트
   - [ ] `migrate_step7_orderAndColor()` — 시트 순서/탭 색상 적용
   - [ ] `migrate_runAll()` / `migrate_verify()`
+- [x] `SHEET_NAMES.APP_SETTINGS`, `SHEET_NAMES.MISSION_DEFINITIONS` 추가
+- [x] `SCHEMA.APP_SETTINGS`, `SCHEMA.MISSION_DEFINITIONS` 추가 (Row 1 운영진 라벨 / Row 2 machine header)
+- [x] `migrate_step4_splitConfig_dryRun()` 구현
 - [ ] DEV 시트 사본에서 dry-run
 - [ ] DEV 시트 본 실행 + verify
-- [ ] GAS 코드의 SHEET_NAMES / SCHEMA 새 키로 갱신
+- [ ] 현행 앱 read path를 기존 `config`에서 새 시트 기반으로 전환
 - [ ] HoldPray 시트 기반 read 경로 동작 확인
 - [ ] AppSettings / MissionDefinitions 기반 read 경로 동작 확인
 
