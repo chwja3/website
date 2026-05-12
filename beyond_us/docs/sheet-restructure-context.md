@@ -1150,6 +1150,163 @@ const SCHEMA = {
 
 ---
 
+## Phase 2.0 — (D) HoldPray 시트 정규화
+
+### D.0 현재 상태와 문제
+
+**현재 상태.**
+
+| 사항 | 내용 |
+|---|---|
+| 헤더 형식 | `이름(n)`, `교구(p)`, `기도제목(c)`, `익명(a)`, `닉네임(nick)` — 한글+약어 혼합 |
+| 헤더 행 수 | Row 1만 존재 (운영진 라벨/machine header 미분리) |
+| 행 ID | 없음. 배열 인덱스로만 참조 |
+| 원천 데이터 | `HOLD_PRAY_ENTRIES` 하드코딩 상수가 코드에 여전히 존재. `migrateHoldPrayToSheet()`로 시트에 올렸지만 fallback으로 상수가 남아 있음 |
+| 반환 형식 | `getYouthHpEntries()`가 `{ n, p, c, a, nick }` 구 약어 형식으로 반환 |
+
+**문제.**
+- 운영진이 시트 컬럼 의미를 약어로 읽어야 함.
+- row ID가 없어서 HPGuesses·Events에서 "어떤 기도제목 카드를 맞혔는가" 를 참조하기 어려움.
+- `HOLD_PRAY_ENTRIES` 상수가 GAS 소스에 117명 분량 JSON 블록으로 남아 있어 코드 가독성 저하.
+- `getYouthHpEntries()`의 반환 형식이 구 약어(`n/p/c/a/nick`)를 유지해야 하므로 컬럼명 변경 시 callers도 같이 수정해야 함.
+
+---
+
+### D.1 목표 HoldPray 스키마
+
+**시트명 (machine key)**: `HoldPray` (기존 유지)  
+**운영진 라벨**: `H&P 기도제목`  
+**헤더 구조**: Row 1 = 운영진 라벨, Row 2 = machine header, Row 3+ = 데이터  
+
+| 컬럼 (machine header) | 운영진 라벨 | 타입 | 설명 |
+|---|---|---|---|
+| `entryId` | 항목 ID | string | `hp-001` 형식. HPGuesses/Events에서 stable reference용 |
+| `name` | 이름 | string | 정답 이름. 익명이면 `무기명` |
+| `parish` | 교구 | string | 교구명. `목양*`, `초등*` 교구는 필터 대상 |
+| `content` | 기도제목 | string | 기도제목 본문 |
+| `anonymous` | 익명 여부 | boolean | `TRUE`면 이름 숨김. 이름이 비어 있거나 `무기명`이면 자동 TRUE 처리 |
+| `nickname` | 닉네임 | string | 해당 인물의 앱 계정 닉네임. 없으면 빈 문자열 |
+
+> `entryId` 생성 규칙. `hp-` + 0-padded 3자리 순번 (예. `hp-001`, `hp-117`). 행 추가 시 `hp-118`처럼 이어감.
+
+---
+
+### D.2 SCHEMA 상수 업데이트
+
+```js
+// 기존 SCHEMA.HOLD_PRAY (headerRow=1, 컬럼 한글 key)
+HOLD_PRAY: Object.freeze({
+  sheetName: SHEET_NAMES.HOLD_PRAY,
+  headerRow: 1,
+  dataStartRow: 2,
+  columns: Object.freeze({
+    name: '이름(n)',
+    parish: '교구(p)',
+    content: '기도제목(c)',
+    anonymous: '익명(a)',
+    nickname: '닉네임(nick)',
+  }),
+}),
+
+// 목표 SCHEMA.HOLD_PRAY (headerRow=2, 영문 machine key + entryId 추가)
+HOLD_PRAY: Object.freeze({
+  sheetName: SHEET_NAMES.HOLD_PRAY,
+  headerRow: 2,       // Row 1 = 운영진 라벨, Row 2 = machine header
+  dataStartRow: 3,
+  columns: Object.freeze({
+    entryId:   'entryId',
+    name:      'name',
+    parish:    'parish',
+    content:   'content',
+    anonymous: 'anonymous',
+    nickname:  'nickname',
+  }),
+}),
+```
+
+> `getHoldPrayColumns_` / `getHoldPrayRows_` 함수는 SCHEMA.HOLD_PRAY 변경만으로 자동 적응됨.  
+> 단, `getYouthHpEntries()`의 반환 형식(`n/p/c/a/nick`)은 callers가 많아 Phase 2C에서 한꺼번에 수정.  
+> migrate_step6 실행 전까지는 SCHEMA.HOLD_PRAY를 기존 그대로 유지. 마이그레이션 후 교체.
+
+---
+
+### D.3 migrate_step6_externalizeHoldPray() 구조
+
+```js
+/**
+ * HoldPray 시트를 목표 스키마로 변환한다.
+ * 1. entryId 컬럼 삽입 (맨 앞에)
+ * 2. Row 1(현재 헤더) 앞에 운영진 라벨 행 삽입
+ * 3. 기존 헤더 행을 machine header로 교체
+ * 4. 데이터 행에 entryId 채움 (hp-001~)
+ * 5. HOLD_PRAY_ENTRIES fallback은 별도 코드 수정으로 제거
+ * idempotent: entryId 컬럼이 이미 존재하면 skip.
+ */
+function migrate_step6_externalizeHoldPray() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.HOLD_PRAY);
+  if (!sheet) throw new Error('HoldPray 시트 없음');
+
+  const firstRow = sheet.getRange(1, 1, 2, 6).getValues();
+  // idempotent 체크: Row 2가 이미 machine header이면 skip
+  if (firstRow[1] && firstRow[1][0] === 'entryId') {
+    Logger.log('migrate_step6: 이미 완료된 상태. skip.');
+    return;
+  }
+
+  // Step 1: 맨 앞 컬럼에 entryId 삽입
+  sheet.insertColumnBefore(1);
+
+  // Step 2: 맨 위에 운영진 라벨 행 삽입
+  sheet.insertRowBefore(1);
+  const OPERATOR_LABELS = ['항목 ID', '이름', '교구', '기도제목', '익명 여부', '닉네임'];
+  sheet.getRange(1, 1, 1, OPERATOR_LABELS.length).setValues([OPERATOR_LABELS]);
+
+  // Step 3: Row 2 (원래 헤더였던 행)를 machine header로 교체
+  const MACHINE_HEADERS = ['entryId', 'name', 'parish', 'content', 'anonymous', 'nickname'];
+  sheet.getRange(2, 1, 1, MACHINE_HEADERS.length).setValues([MACHINE_HEADERS]);
+
+  // Step 4: 데이터 행 entryId 채움 (Row 3부터)
+  const dataStart = 3;
+  const lastRow = sheet.getLastRow();
+  const count = lastRow - dataStart + 1;
+  if (count > 0) {
+    const ids = Array.from({ length: count }, (_, i) =>
+      ['hp-' + String(i + 1).padStart(3, '0')]
+    );
+    sheet.getRange(dataStart, 1, count, 1).setValues(ids);
+  }
+
+  sheet.setFrozenRows(2);
+  Logger.log('migrate_step6 완료. ' + count + '개 항목에 entryId 부여.');
+}
+```
+
+---
+
+### D.4 getYouthHpEntries() 반환 형식 전환 계획
+
+현재 `getYouthHpEntries()`는 `{ n, p, c, a, nick }` 약어 형식을 반환한다.  
+이를 사용하는 callers는 `getHoldPray()`, `submitHoldPrayGuess()`, `adminWriteBBBRows()` 등 여러 곳이다.
+
+migrate_step6 이후 **Phase 2C** 에서 한꺼번에 전환한다.
+
+| 단계 | 내용 |
+|---|---|
+| migrate_step6 실행 전 | SCHEMA.HOLD_PRAY 기존 유지. `getYouthHpEntries()` → `{ n, p, c, a, nick }` |
+| migrate_step6 실행 후 | SCHEMA.HOLD_PRAY를 목표 schema로 교체. `getYouthHpEntries()` → `{ entryId, name, parish, content, anonymous, nickname }`. callers 일괄 수정 |
+| HOLD_PRAY_ENTRIES 상수 | migrate_step6 완료 + fallback 분기 제거 후 코드에서 삭제. GAS 파일 ~20KB 감소 |
+
+---
+
+### D.5 HPGuesses 스키마는 현재 유지
+
+HPGuesses는 `cardIndex`(0~2)로 어떤 기도제목 카드를 맞혔는지 기록한다.  
+`entryId` 직접 참조로 전환하면 Rendezvous hashing 로직 전체를 바꿔야 한다.  
+**이번 마이그레이션 범위에서 제외.** HPGuesses는 현행 schema 유지.
+
+---
+
 ## 결정 사항
 
 ### 합치기로 결정한 것
@@ -1265,3 +1422,4 @@ const SCHEMA = {
 - 2026-05-12. Phase 2.0 설계 시작. Events 시트 스키마 + event type 카탈로그 확정. 컬럼 구조는 하이브리드(`refId`/`amount`/`weekKey` 별도 컬럼 + `payload` JSON). append-only + LockService + ISO 8601 timestamp 채택.
 - 2026-05-12. Phase 2.0 (B) 과거 데이터 → Events 변환 규칙 확정. 시트별 변환 매트릭스 + 컬럼 매핑 + idempotent 함수 구조. BBB 메시지/사진은 raw content라서 Events 적재 제외. `BBBMessages`/`BBBPhotos`/`Notices`/`Inquiries` 는 도메인 시트로 standalone 유지. A.9 미해결 4개 모두 해소.
 - 2026-05-12. Phase 2.0 (C) AppSettings + MissionDefinitions 스키마 확정. `config` 시트 단일값 설정 → `AppSettings` (Key-Value 4컬럼), 8행 블록 미션 정의 → `MissionDefinitions` (1행 1미션 항목, denormalized). GAS 헬퍼 `getAppSetting_` / `setAppSetting_` / `getMissionItems_` / `getAllWeekMeta_` 설계. migrate_step4_splitConfig() 구조 작성.
+- 2026-05-12. Phase 2.0 (D) HoldPray 정규화 설계 확정. `entryId` 컬럼 추가 + 헤더를 영문 machine key로 교체 + 2행 헤더 구조(운영진 라벨/machine header)로 전환. migrate_step6_externalizeHoldPray() 구조 작성. `getYouthHpEntries()` 반환 형식(`n/p/c/a/nick` → 영문 key)은 Phase 2C 일괄 전환으로 분리. `HOLD_PRAY_ENTRIES` 상수 제거는 migrate_step6 + fallback 분기 제거 후 진행.

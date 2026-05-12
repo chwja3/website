@@ -48,7 +48,7 @@
 - [ ] 수동 GAS 반영 후 DEV Properties를 `SPREADSHEET_ID=DEV 시트 ID`, `ADMIN_PASSWORD=관리자 비밀번호`, `ALLOW_TEST_DRAWS=true`로 확인
 - [ ] 수동 PROD 반영 시 PROD Properties를 `SPREADSHEET_ID=PROD 시트 ID`, `ADMIN_PASSWORD=관리자 비밀번호`로 확인
 - [~] `Users` 비밀번호 평문 저장을 `passwordHash` / `passwordSalt` 구조로 전환하는 마이그레이션 설계 — **스킵 (이벤트용 비밀번호, 실익 없음)**
-- [ ] `HOLD_PRAY_ENTRIES` 를 `HoldPray` 시트 원천 데이터로 전환
+- [~] `HOLD_PRAY_ENTRIES` 를 `HoldPray` 시트 원천 데이터로 전환 — **설계 완료 (Phase 2.0 D). 실행은 migrate_step6 + Phase 2C 코드 전환**
 - [x] `AppSettings` / `MissionDefinitions` 목표 스키마 샘플 작성
 - [~] `CardDefinitions` 외부화 여부 결정 — **스킵 (10개 고정 카드, 이번 행사 내 변경 없음)**
 
