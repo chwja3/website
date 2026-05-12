@@ -303,6 +303,8 @@ const COLLECTION_COLUMN_FALLBACK = Object.freeze({
   totalCards: 13,
   hidden: 14,
 });
+// SCHEMA.COLLECTION.columns 키 수에서 자동 도출 — 하드코딩 15 대신 이 상수 사용
+const COLLECTION_COL_COUNT = Object.keys(SCHEMA.COLLECTION.columns).length;
 const TRADES_COLUMN_FALLBACK = Object.freeze({
   id: 0,
   requester: 1,
@@ -827,7 +829,7 @@ function getCollectionColumns_(sheet) {
 }
 
 function getCollectionRows_(sheet, maxColumns) {
-  return getSheetRows(sheet, SCHEMA.COLLECTION, maxColumns || 15);
+  return getSheetRows(sheet, SCHEMA.COLLECTION, maxColumns || COLLECTION_COL_COUNT);
 }
 
 function getTradesColumns_(sheet) {
@@ -2986,7 +2988,7 @@ function updateCollectionSheet(userId, cardId, delta) {
   const cardIdx = getCollectionCardIndex_(cardId, col);
   const cardCol = cardIdx + 1;
   if (rowIndex === -1) {
-    const newRow = new Array(15).fill(0);
+    const newRow = new Array(COLLECTION_COL_COUNT).fill(0);
     newRow[col.userId] = userId;
     if (delta > 0) {
       newRow[cardIdx] = delta;
@@ -3050,7 +3052,7 @@ function updateTicketCols(userId) {
       }
     }
     if (rowIndex === -1) {
-      const newRow = new Array(15).fill(0);
+      const newRow = new Array(COLLECTION_COL_COUNT).fill(0);
       newRow[collCol.userId] = userId;
       newRow[collCol.totalEarned] = totalEarned;
       newRow[collCol.totalDrawn] = totalDraws;
@@ -3080,8 +3082,8 @@ function rebuildCollectionSheet() {
       if (userId && hidden > 0) hiddenMap[userId] = hidden;
     });
   }
-  collSheet.getRange(SCHEMA.COLLECTION.headerRow, 1, 1, 15).setValues([getSchemaHeaders_(SCHEMA.COLLECTION)]);
-  if (collLast >= SCHEMA.COLLECTION.dataStartRow) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, 15).clearContent();
+  collSheet.getRange(SCHEMA.COLLECTION.headerRow, 1, 1, COLLECTION_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.COLLECTION)]);
+  if (collLast >= SCHEMA.COLLECTION.dataStartRow) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, collLast - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT).clearContent();
 
   // 등록된 전체 유저
   const usersSheet = ss.getSheetByName(SHEET_NAMES.USERS);
@@ -3165,7 +3167,7 @@ function rebuildCollectionSheet() {
     rows.push([userId, totalEarned, totalDraws, remaining, ...cardCounts, totalCards, hidden]);
   }
 
-  if (rows.length) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, 15).setValues(rows);
+  if (rows.length) collSheet.getRange(SCHEMA.COLLECTION.dataStartRow, 1, rows.length, COLLECTION_COL_COUNT).setValues(rows);
   return { ok: true, rebuilt: rows.length };
 }
 
@@ -3979,9 +3981,7 @@ function adminGetBBB() {
 // ─ 어드민: 메시지 오픈/클로즈 토글
 function adminSetBBBMessageOpen(body) {
   if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
-  const configSheet = getSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
   const open = body.open === true;
-  configSheet.getRange(CONFIG_LAYOUT.legacyBbbMessageOpenCell).setValue(open);
   const bbbSheet = getOrCreateBBBSettingsSheet();
   const bbbCol = getBbbSettingsColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
