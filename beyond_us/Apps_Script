@@ -1170,6 +1170,11 @@ function pushMigrationEvent_(rows, type, userId, options) {
   rows.push(Events_buildRow_(type, userId, opts));
 }
 
+function logMigrationResult_(label, result) {
+  Logger.log(label + '\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
 function migrate_step5_absorbToEvents(options) {
   const dryRun = options === true || !!(options && options.dryRun);
   const lock = LockService.getScriptLock();
@@ -1179,13 +1184,13 @@ function migrate_step5_absorbToEvents(options) {
     const sheet = getOrCreateEventsSheet();
     const migration = buildEventsMigrationRows_();
     if (dryRun) {
-      return {
+      return logMigrationResult_('migrate_step5_absorbToEvents dryRun', {
         ok: true,
         dryRun: true,
         eventsPlanned: migration.rows.length,
         plannedByType: migration.byType,
         sourceRows: migration.sourceRows,
-      };
+      });
     }
 
     const removedMigrationEvents = Events_clearMigrationEvents_();
@@ -1196,7 +1201,7 @@ function migrate_step5_absorbToEvents(options) {
     }
     sortEventsByTimestamp_(sheet);
     const verify = migrate_verify();
-    return {
+    return logMigrationResult_('migrate_step5_absorbToEvents result', {
       ok: verify.ok,
       dryRun: false,
       removedMigrationEvents: removedMigrationEvents,
@@ -1204,7 +1209,7 @@ function migrate_step5_absorbToEvents(options) {
       plannedByType: migration.byType,
       sourceRows: migration.sourceRows,
       verify: verify,
-    };
+    });
   } finally {
     lock.releaseLock();
   }
@@ -1230,7 +1235,7 @@ function migrate_verify() {
   if (orphanUserIds.length) issues.push('orphan_event_users: ' + orphanUserIds.join(', '));
   if (invalidTradeRefs.length) issues.push('invalid_trade_refs: ' + invalidTradeRefs.join(', '));
 
-  return {
+  return logMigrationResult_('migrate_verify result', {
     ok: issues.length === 0,
     expected: expected,
     actual: actual,
@@ -1239,7 +1244,7 @@ function migrate_verify() {
     issues: issues,
     orphanUserIds: orphanUserIds,
     invalidTradeRefs: invalidTradeRefs,
-  };
+  });
 }
 
 function buildEventsMigrationRows_() {
