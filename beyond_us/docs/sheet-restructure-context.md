@@ -335,6 +335,189 @@
 
 ---
 
+## Phase 2.0 — Event Sourcing 상세 설계
+
+> 새 아키텍처의 핵심. Events 시트가 단일 truth source. Collection은 Events에서 도출되는 pure projection. UserDashboard는 시트 함수 기반 검증 뷰.
+> 이 섹션은 (A) Events 시트 스키마 + event type 카탈로그를 명세한다. (B) 과거 데이터 변환 규칙, (C) AppSettings/MissionDefinitions, (D) HoldPray, (E) UserDashboard는 후속 섹션.
+
+### A.1 Events 시트 컬럼 구조 (하이브리드)
+
+| col | machine header | 타입 | 필수 | 설명 |
+|---|---|---|---|---|
+| A | `eventId` | string | ✓ | `Utilities.getUuid()` 생성 |
+| B | `timestamp` | ISO 8601 string | ✓ | 발생 시각 (`new Date().toISOString()`) |
+| C | `userId` | string | ✓ | 닉네임. 시스템 이벤트는 빈 문자열 가능 |
+| D | `type` | string | ✓ | 점 표기 event type (예: `card.drawn`) |
+| E | `refId` | string | optional | 이벤트가 가리키는 대상 ID. type에 따라 의미 다름 |
+| F | `amount` | number | optional | 수량. 티켓 ±, 카드 수령 수량 등 |
+| G | `weekKey` | string | optional | 주차 키 (`w1`~`w6`). 미션/티켓 관련 시 자주 채워짐 |
+| H | `payload` | JSON string | optional | 위 컬럼으로 못 담는 부수 정보 |
+| I | `source` | enum | ✓ | `web` / `admin` / `server` / `migration` |
+
+**원칙.**
+- `Events`는 **append-only**. 수정/삭제 금지. 정정은 새 이벤트로 (예: `trade.cancelled`).
+- 자주 쓰는 4개 필드(`refId`, `amount`, `weekKey`, `userId`)는 별도 컬럼이라 시트 함수 통계 쉬움.
+- 나머지 부수 정보는 `payload` JSON에. 새 type 추가 시 컬럼 안 늘림.
+- Row 1은 운영진용 라벨 (`이벤트ID`, `발생시각`, `사용자`, `유형`, `참조ID`, `수량`, `주차`, `상세`, `출처`), Row 2가 machine header, Row 3부터 데이터.
+
+### A.2 Event Type 카탈로그
+
+#### 미션 도메인
+
+| type | refId | amount | weekKey | payload 필드 | 발생 시점 |
+|---|---|---|---|---|---|
+| `mission.submitted` | — | — | ✓ | `items` (제출 항목 배열), `dateKey`, `score`, `indices` (선택), `weekTitle` (선택) | `submit` action |
+
+#### 티켓 도메인
+
+| type | refId | amount | weekKey | payload | 발생 시점 |
+|---|---|---|---|---|---|
+| `ticket.granted` | — | ✓ (+) | optional | `reason` (`week_complete` / `hp_correct` / `bbb_photo` / `bbb_m2` / `bbb_m3` / `admin`) | 주차 threshold 달성, H&P 정답, BBB 보상, 관리자 지급 |
+| `ticket.consumed` | — | ✓ (−) | optional | — | `drawCard` 시 |
+
+`amount`는 발급은 양수, 소모는 음수로 저장. 잔여 = `SUMIFS(amount, type IN [granted, consumed])`.
+
+#### 카드 도메인
+
+| type | refId | amount | weekKey | payload | 발생 시점 |
+|---|---|---|---|---|---|
+| `card.drawn` | cardId (`1`~`9`, `hidden`) | — | optional | `cardName`, `isNew` (boolean) | `drawCard` |
+| `card.received` | cardId | ✓ (수령 수량) | — | — | `setCardReceivedQty` (admin) |
+
+`card.received`는 실물 카드 수령. 기존 `CardReceived` 시트 데이터의 후계. amount가 누적 수량(현재 row의 절대값)인지 증분인지는 마이그레이션 규칙에서 결정 (현재는 절대값으로 갱신하는 패턴 → 매번 새 이벤트가 최신값).
+
+#### 교환 도메인
+
+| type | refId | amount | weekKey | payload | 발생 시점 |
+|---|---|---|---|---|---|
+| `trade.requested` | tradeId | — | — | `target`, `reqCardId`, `reqCardName`, `tgtCardId`, `tgtCardName` | `requestTrade` |
+| `trade.accepted` | tradeId | — | — | — | `acceptTrade` |
+| `trade.rejected` | tradeId | — | — | `reason` (optional) | `rejectTrade` |
+| `trade.cancelled` | tradeId | — | — | — | `cancelTrade` |
+| `trade.expired` | tradeId | — | — | — | `_expireOldTrades` (server) |
+| `trade.prayed` | tradeId | — | — | `side` (`requester` / `target`) | `prayForTrade` |
+
+교환 상태는 마지막 이벤트로 판단. 카드 보유 보정은 `trade.accepted` 시점에 양쪽 사용자에게 효과 (요청자: 줄 카드 −1, 받을 카드 +1 / 대상자: 반대).
+
+#### H&P 도메인
+
+| type | refId | amount | weekKey | payload | 발생 시점 |
+|---|---|---|---|---|---|
+| `hp.guessed` | hpRowId | — | ✓ | `cardIndex` (0/1/2), `guessedName`, `correct` (boolean) | `submitHoldPrayGuess` |
+
+#### BBB 도메인
+
+| type | refId | amount | weekKey | payload | 발생 시점 |
+|---|---|---|---|---|---|
+| `bbb.guessed` | — | — | — | `correct`, `guessedSecretBuddyId` (optional) | `guessBBBSecret` |
+| `bbb.message_sent` | msgId | — | — | `toUserId` | `sendBBBMessage` |
+| `bbb.photo_uploaded` | driveFileId | — | — | `missionType` (`m1` / `m2` / `m3_0` 등) | `uploadBBBPhoto` |
+| `bbb.photo_deleted` | driveFileId | — | — | — | `deleteBBBPhoto` |
+
+### A.3 refId 의미 매핑 (요약)
+
+`refId`는 type마다 의미가 달라서 별도 명세 필수.
+
+| type 군 | refId 의미 |
+|---|---|
+| `card.drawn`, `card.received` | cardId (`1`~`9` 또는 `hidden`) |
+| `trade.*` | tradeId |
+| `hp.guessed` | HoldPray 시트의 row ID |
+| `bbb.message_sent` | msgId |
+| `bbb.photo_uploaded`, `bbb.photo_deleted` | Drive file ID |
+| 그 외 | 빈 문자열 |
+
+### A.4 Source 카탈로그
+
+| source | 의미 | 예시 |
+|---|---|---|
+| `web` | 사용자가 앱에서 직접 트리거 | 미션 제출, 카드 뽑기 |
+| `admin` | 관리자 페이지 또는 admin GAS 함수 | `adminGrantHiddenCard`, 어드민 티켓 지급 |
+| `server` | 서버 자동 발급 | 주차 threshold 달성 시 `ticket.granted`, `trade.expired` |
+| `migration` | 1회성 마이그레이션 백필 | 과거 `raw_checkins` → `mission.submitted` 이벤트 복원 |
+
+### A.5 Append 헬퍼 설계
+
+```js
+// 모든 mutation은 이 헬퍼만 사용. 직접 sheet.appendRow 금지.
+function Events_append(type, userId, opts) {
+  // opts = { refId, amount, weekKey, payload, source, timestamp? }
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.EVENTS);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(5000);
+  try {
+    sheet.appendRow([
+      Utilities.getUuid(),
+      opts && opts.timestamp ? opts.timestamp : new Date().toISOString(),
+      userId || '',
+      type,
+      opts && opts.refId != null ? String(opts.refId) : '',
+      opts && opts.amount != null ? Number(opts.amount) : '',
+      opts && opts.weekKey ? opts.weekKey : '',
+      opts && opts.payload ? JSON.stringify(opts.payload) : '',
+      opts && opts.source ? opts.source : 'server',
+    ]);
+  } finally {
+    lock.releaseLock();
+  }
+}
+```
+
+- `LockService`로 동시 append 충돌 방지.
+- `timestamp` 인자는 마이그레이션 백필 시 과거 시각 지정용. 일반 호출은 자동.
+
+### A.6 자주 쓰는 조회 패턴
+
+| 질문 | 시트 함수 |
+|---|---|
+| 홍길동 카드 뽑은 수 | `=COUNTIFS(C:C, "홍길동", D:D, "card.drawn")` |
+| 홍길동 누적 티켓 발급 | `=SUMIFS(F:F, C:C, "홍길동", D:D, "ticket.granted")` |
+| 홍길동 누적 티켓 소모 | `=-SUMIFS(F:F, C:C, "홍길동", D:D, "ticket.consumed")` |
+| 홍길동 잔여 티켓 | granted − consumed |
+| 홍길동 사랑카드(id=1) 보유 | `=COUNTIFS(C:C, "홍길동", D:D, "card.drawn", E:E, "1")` − trade로 나간 1번 + trade로 받은 1번 |
+| 이번 주(w3) 미션 제출 인원 | `=COUNTIFS(D:D, "mission.submitted", G:G, "w3")` |
+| 홍길동 마지막 활동 | `=MAXIFS(B:B, C:C, "홍길동")` |
+
+코드 측에서는 `Events_readByUser(userId)` 같은 헬퍼로 캐시 후 forEach.
+
+### A.7 운영진 시각 (Events 시트 보기)
+
+Row 1 라벨이 한글이라 운영진이 펼쳐 보면.
+
+```
+| 이벤트ID | 발생시각          | 사용자  | 유형              | 참조ID | 수량 | 주차 | 상세                    | 출처   |
+| uuid-1   | 2026-05-12 14:23 | 홍길동  | mission.submitted | -      | -    | w3   | {"items":["1","3"],...} | web    |
+| uuid-2   | 2026-05-12 14:25 | 홍길동  | ticket.granted    | -      | 1    | w3   | {"reason":"week_..."}   | server |
+| uuid-3   | 2026-05-12 14:30 | 홍길동  | ticket.consumed   | -      | -1   | -    | -                       | web    |
+| uuid-4   | 2026-05-12 14:30 | 홍길동  | card.drawn        | 5      | -    | -    | {"cardName":"자비","isNew":true} | web |
+```
+
+한 사용자 행만 필터(`사용자` 컬럼 필터링) 하면 시계열로 무슨 일이 있었는지 한눈에 보임.
+
+### A.8 결정된 사항 요약
+
+| 항목 | 결정 |
+|---|---|
+| 컬럼 구조 | 하이브리드 (`refId`/`amount`/`weekKey` 별도 컬럼 + `payload` JSON) |
+| 시트 이름 | `Events` (영문 key) |
+| Row 1 | 운영진 한글 라벨 |
+| Row 2 | machine header |
+| dataStartRow | 3 |
+| timestamp 포맷 | ISO 8601 문자열 |
+| 동시성 | `LockService.getScriptLock()` 5초 |
+| 변경 정책 | append-only. 정정은 새 이벤트로 |
+| `amount` 부호 | granted = 양수, consumed = 음수. 합산으로 잔액 계산 |
+| trade 카드 효과 | `trade.accepted` 발생 시점에 카드 카운트 보정 (projection 단계에서 처리) |
+
+### A.9 미해결 — B 섹션에서 결정할 것
+
+- 과거 `BonusDraws.source` 값 (`hp_w3`, `bbb_m2` 등) 을 `ticket.granted.reason` 으로 변환할 때 매핑 규칙
+- 과거 `Trades.status` 가 임의 문자열(만료 사유 텍스트) 인 경우 어떤 type으로 변환할지
+- 과거 `CardReceived` 의 누적 수량을 `card.received` 단일 이벤트(절대값)로 만들지, 증분 이벤트로 분해할지 → 현재는 단일 이벤트 권장 (절대값 갱신 패턴 유지)
+- `mission.submitted` 의 `score` 가 클라이언트 계산값이라 신뢰 가능한지 검토 필요
+
+---
+
 ## 결정 사항
 
 ### 합치기로 결정한 것
@@ -446,3 +629,5 @@
 - 2026-05-12. Phase 1.5 시작. 이번 실행 범위는 `SPREADSHEET_ID`, `DEV_SPREADSHEET_ID`, `ADMIN_PASSWORD`의 Script Properties 전환으로 한정하고, 사용자 비밀번호 hash 전환과 행사 데이터 외부화는 별도 하위 Phase로 분리.
 - 2026-05-12. Phase 1.5 Script Properties 전환 완료. `Apps_Script`에서 민감값 리터럴을 제거하고 DEV Apps Script 프로젝트 Properties에 값을 설정한 뒤 기존 DEV 웹앱 배포를 version 5로 재배포. `adminLogin`, `getCurrentWeek`, `dashboard`, `getCardStats`, `getTabSettings` smoke 테스트 통과.
 - 2026-05-12. Phase 1.5 후속 정리. `DEV_SPREADSHEET_ID`, `_devMode`, 프론트의 `devMode=true` 자동 첨부를 제거하고, GAS 프로젝트별 `SPREADSHEET_ID` Property 하나로 DEV/PROD 시트를 구분하도록 로컬 코드 수정. 이후 GAS 반영과 Properties 확인은 사용자가 수동으로 진행.
+- 2026-05-12. Phase 2/3을 Event Sourcing 단계 구조(2A~2E / 3A~3E)로 재편. DEV는 활성 사용자 없으니 dual-write 단계 생략하고 big-bang 변환으로 가기로 결정. PROD는 활성 사용자 있어서 Phase 3에서 dual-write 안전 모드 유지.
+- 2026-05-12. Phase 2.0 설계 시작. Events 시트 스키마 + event type 카탈로그 확정. 컬럼 구조는 하이브리드(`refId`/`amount`/`weekKey` 별도 컬럼 + `payload` JSON). append-only + LockService + ISO 8601 timestamp 채택.
