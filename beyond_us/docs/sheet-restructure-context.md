@@ -509,12 +509,349 @@ Row 1 라벨이 한글이라 운영진이 펼쳐 보면.
 | `amount` 부호 | granted = 양수, consumed = 음수. 합산으로 잔액 계산 |
 | trade 카드 효과 | `trade.accepted` 발생 시점에 카드 카운트 보정 (projection 단계에서 처리) |
 
-### A.9 미해결 — B 섹션에서 결정할 것
+### A.9 미해결 — B 섹션에서 결정
 
-- 과거 `BonusDraws.source` 값 (`hp_w3`, `bbb_m2` 등) 을 `ticket.granted.reason` 으로 변환할 때 매핑 규칙
-- 과거 `Trades.status` 가 임의 문자열(만료 사유 텍스트) 인 경우 어떤 type으로 변환할지
-- 과거 `CardReceived` 의 누적 수량을 `card.received` 단일 이벤트(절대값)로 만들지, 증분 이벤트로 분해할지 → 현재는 단일 이벤트 권장 (절대값 갱신 패턴 유지)
-- `mission.submitted` 의 `score` 가 클라이언트 계산값이라 신뢰 가능한지 검토 필요
+(B.5 / B.6 / B.7 에서 결정. 아래 B 섹션 참조.)
+
+---
+
+## Phase 2.0 — (B) 과거 데이터 → Events 변환 규칙
+
+> PROD의 현재 시트 데이터를 Events로 backfill 할 때의 변환 규칙. `source='migration'` 으로 마킹.
+> Events에 들어가지 않는 도메인 시트(`BBBMessages`, `BBBPhotos`, `Notices`, `Inquiries`)는 그대로 복사. `Users` 도 그대로 유지.
+
+### B.0 변환 원칙
+
+| 원칙 | 내용 |
+|---|---|
+| **truth-source 분리** | Events는 *상태 변경 mutation* 만 담는다. 메시지 본문/사진 URL/공지 콘텐츠 같은 *원자료(document)* 는 도메인 시트에 그대로 둔다 |
+| **`source='migration'`** | 모든 backfill 이벤트의 출처 |
+| **timestamp 보존** | 원본 시각을 그대로 사용. 부족하면 추정 (B.2 참조) |
+| **`eventId` 새로 부여** | UUID 새로 생성. 원본 id는 `refId` 또는 `payload`에 보존 |
+| **idempotent** | 마이그레이션 함수는 여러 번 돌려도 같은 결과. 실행 전 `WHERE source='migration'` 으로 기존 backfill 이벤트 클리어 |
+
+### B.1 시트별 변환 매트릭스
+
+| 원본 시트 | 생성되는 Events | 도메인 시트 처리 |
+|---|---|---|
+| `raw_checkins` | `mission.submitted` + (조건부) `ticket.granted` | 원본 시트는 마이그레이션 후 제거 |
+| `CardDraws` | `ticket.consumed` + `card.drawn` (쌍) | 원본 시트는 마이그레이션 후 제거 |
+| `BonusDraws` | `ticket.granted` | 원본 시트는 마이그레이션 후 제거 |
+| `Trades` | `trade.requested` + 종료 이벤트 + `trade.prayed` × N | 원본 시트는 마이그레이션 후 제거 |
+| `HPGuesses` | `hp.guessed` | 원본 시트는 마이그레이션 후 제거 |
+| `CardReceived` | `card.received` | 원본 시트는 마이그레이션 후 제거 |
+| `Collection` | **변환 없음**. Events에서 projection으로 재계산 | 원본 시트는 헤더만 리셋 후 projection 결과로 채움 |
+| `BBBMessages` | (없음) | 그대로 복사 — Events 적재 안 함 |
+| `BBBPhotos` | (없음) | 그대로 복사 |
+| `Notices`, `Inquiries` | (없음) | 그대로 복사 |
+| `Users`, `BBB` | (없음) | 그대로 복사 |
+| `HoldPray` | (없음) | 그대로 복사. 하드코딩 제거는 D 섹션에서 |
+| `config` | (없음) | 분리 후 폐기. C 섹션 참조 |
+
+**결정.** BBB 메시지/사진은 Events에 안 넣음. 이유는 derived aggregation에 영향 없는 raw content라서. 같은 이유로 Notices/Inquiries도 standalone 유지.
+
+### B.2 `raw_checkins` → `mission.submitted` + `ticket.granted`
+
+원본 컬럼 (Phase 0 조사 기준).
+
+```
+A:timestamp | B:weekTitle | C:items_json | D:userId | E:weekKey
+F:dateKey | G:score | H:indices_json | I:weekCumScore | J:ticketEarned
+```
+
+각 row에 대해.
+
+**1) `mission.submitted` 이벤트 1건.**
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `A` (그대로) |
+| userId | `D` |
+| type | `mission.submitted` |
+| refId | (비움) |
+| amount | (비움) |
+| weekKey | `E` |
+| payload | `{ "items": <C 파싱>, "dateKey": F, "score": G, "weekTitle": B, "indices": <H 파싱 or null> }` |
+| source | `migration` |
+
+**2) 조건부 `ticket.granted` 이벤트 1건.**
+
+`J === true` 이면 (이 제출이 처음으로 threshold 넘긴 row 라면).
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `A + 1ms` (mission.submitted 직후) |
+| userId | `D` |
+| type | `ticket.granted` |
+| amount | `1` |
+| weekKey | `E` |
+| payload | `{ "reason": "week_complete" }` |
+| source | `migration` |
+
+**`mission.submitted.score` 신뢰성.** 클라이언트가 계산한 값이지만 J(ticketEarned)는 서버가 계산한 값이라 ticket 발급 자체는 신뢰 가능. score는 통계 참고용으로만 payload에 보존.
+
+### B.3 `CardDraws` → `ticket.consumed` + `card.drawn`
+
+원본.
+
+```
+A:userId | B:weekKey | C:cardId | D:cardName | E:drawnAt | F:received(legacy)
+```
+
+각 row 당 이벤트 2건 생성.
+
+**1) `ticket.consumed`.**
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `E` |
+| userId | `A` |
+| type | `ticket.consumed` |
+| amount | `-1` |
+| weekKey | `B` |
+| payload | (비움) |
+| source | `migration` |
+
+**2) `card.drawn` (직후).**
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `E + 1ms` |
+| userId | `A` |
+| type | `card.drawn` |
+| refId | `C` (cardId) |
+| weekKey | `B` |
+| payload | `{ "cardName": D, "isNew": null }` |
+| source | `migration` |
+
+**`isNew` 처리.** backfill에서는 `null`. 이유. 과거 데이터에서 isNew 복원하려면 사용자별 시계열 추적 필요한데, UI에서 backfill 결과를 다시 재생할 일 없음. 실시간 뽑기부터는 정확한 boolean.
+
+**`F:received(legacy)` 처리.** 무시. 실물 수령은 `CardReceived` 가 truth source.
+
+### B.4 `BonusDraws` → `ticket.granted`
+
+원본.
+
+```
+A:userId | B:source | C:awardedAt
+```
+
+각 row 당 `ticket.granted` 1건.
+
+**source → reason 매핑.**
+
+| 원본 `B:source` 값 | `payload.reason` | `weekKey` (있으면 채움) |
+|---|---|---|
+| `hp_w3` | `hp_correct` | `w3` |
+| `hp_w6` | `hp_correct` | `w6` |
+| `bbb_photo` | `bbb_photo` | (비움) |
+| `bbb_m2` | `bbb_m2` | (비움) |
+| `bbb_m3` | `bbb_m3` | (비움) |
+| 그 외 | 원본 문자열 그대로 | (비움) |
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `C` |
+| userId | `A` |
+| type | `ticket.granted` |
+| amount | `1` |
+| weekKey | 위 표 |
+| payload | `{ "reason": <매핑>, "legacySource": B }` |
+| source | `migration` |
+
+**원본 source 문자열을 `legacySource`로 보존.** 매핑 표가 향후 누락된 케이스 발견 시 추적 가능.
+
+### B.5 `Trades` → 최대 4개 이벤트
+
+원본.
+
+```
+A:id | B:requester | C:requesterCardId | D:requesterCardName
+E:target | F:targetCardId | G:targetCardName | H:status
+I:createdAt | J:resolvedAt | K:requesterPrayed | L:targetPrayed
+```
+
+각 row 당 다음 이벤트들을 조건부 생성.
+
+**1) `trade.requested` (항상).**
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `I` |
+| userId | `B` (requester) |
+| type | `trade.requested` |
+| refId | `A` (tradeId) |
+| payload | `{ "target": E, "reqCardId": C, "reqCardName": D, "tgtCardId": F, "tgtCardName": G }` |
+| source | `migration` |
+
+**2) 종료 이벤트 (`J:resolvedAt` 있고 `H:status !== 'pending'` 일 때).**
+
+`H:status` 분기 (임의 문자열 케이스 포함).
+
+| status 값 | event type | payload |
+|---|---|---|
+| `accepted` | `trade.accepted` | `{}` |
+| `rejected` | `trade.rejected` | `{ "reason": null }` |
+| `cancelled` | `trade.cancelled` | `{}` |
+| `expired` | `trade.expired` | `{}` |
+| **그 외 임의 문자열** | `trade.rejected` | `{ "reason": <status 원본 문자열>, "legacyStatus": true }` |
+
+**임의 문자열 케이스 결정.** 과거 운영 중 status에 거절 사유 등이 텍스트로 저장된 경우가 있었음 → `trade.rejected.payload.reason` 으로 변환하고 `legacyStatus: true` 마킹. 정확한 분류는 운영 후 분석으로 가능.
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `J` |
+| userId | `B` (이벤트 주체는 requester로 통일) |
+| type | 위 표 |
+| refId | `A` |
+| payload | 위 표 |
+| source | `migration` |
+
+**3) `trade.prayed` (조건부).**
+
+`K:requesterPrayed` 가 timestamp이면 1건.
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `K` |
+| userId | `B` |
+| type | `trade.prayed` |
+| refId | `A` |
+| payload | `{ "side": "requester" }` |
+| source | `migration` |
+
+`L:targetPrayed` 가 timestamp이면 1건.
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `L` |
+| userId | `E` |
+| type | `trade.prayed` |
+| refId | `A` |
+| payload | `{ "side": "target" }` |
+| source | `migration` |
+
+### B.6 `HPGuesses` → `hp.guessed`
+
+원본.
+
+```
+A:nickname | B:weekKey | C:cardIndex | D:guessedName | E:answeredAt
+```
+
+각 row 당 1건.
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `E` |
+| userId | `A` |
+| type | `hp.guessed` |
+| refId | (비움 — 원본에 hpRowId 없음) |
+| weekKey | `B` |
+| payload | `{ "cardIndex": C, "guessedName": D, "correct": null }` |
+| source | `migration` |
+
+**`correct` 처리.** backfill 시 `null`. 이유. HPGuesses에 정답 여부가 저장 안 돼 있고, 정답 매칭은 HoldPray + nickname 조인이 필요해 복잡. 실시간 hp.guessed부터는 boolean 채움. 과거 정답 통계는 `BonusDraws.hp_w*` 카운트로 대체.
+
+**`refId` 처리.** backfill 시 비움. 실시간부터는 HoldPray 시트 row ID 채움 (HoldPray에 row ID 컬럼 필요 — D 섹션에서 결정).
+
+### B.7 `CardReceived` → `card.received`
+
+원본.
+
+```
+A:nickname | B:cardId | C:receivedQty | D:updatedAt
+```
+
+각 row 당 1건. **누적 절대값 단일 이벤트** 패턴 유지.
+
+| 컬럼 | 값 |
+|---|---|
+| timestamp | `D` |
+| userId | `A` |
+| type | `card.received` |
+| refId | `B` (cardId) |
+| amount | `C` (절대값 수령 수량) |
+| payload | (비움) |
+| source | `migration` |
+
+**증분 아니라 절대값 결정 이유.** 현재 코드 패턴이 `setCardReceivedQty(nickname, cardId, qty)` — qty를 절대값으로 갱신. 증분 이벤트로 분해하면 과거 변경 이력을 복원 불가능 (최종값만 시트에 남음). 따라서 단일 이벤트 = 마지막 절대값. projection 단계에서 `(userId, cardId)` 별 가장 최근 `card.received.amount` 를 사용.
+
+### B.8 `Collection` 처리
+
+**변환 없음.** Collection은 Events에서 도출되는 projection. 마이그레이션 후.
+
+1. `Collection` 시트 헤더만 리셋 (또는 그대로).
+2. 모든 사용자에 대해 `rebuildCollectionRow(userId)` 실행 → Events 합산 결과로 채움.
+3. UserDashboard 검증 컬럼이 ✓ 떨어지는지 확인.
+
+### B.9 정렬 및 후처리
+
+**모든 이벤트 생성 후.**
+
+1. Events 시트를 `timestamp` 오름차순으로 정렬.
+2. `mission.submitted` 와 같은 timestamp에 발급된 `ticket.granted` 는 +1ms 보정 (B.2)으로 자연스럽게 mission 뒤로 정렬됨.
+3. `ticket.consumed` 와 `card.drawn` 도 같은 방식으로 쌍 보존 (B.3).
+
+### B.10 idempotent 마이그레이션 함수 구조
+
+```js
+function migrate_step5_absorbToEvents() {
+  // 1. 기존 source='migration' 이벤트 전부 제거 (재실행 안전)
+  clearMigrationEvents_();
+
+  // 2. 각 시트 변환
+  convertRawCheckins_();   // → mission.submitted + ticket.granted
+  convertCardDraws_();      // → ticket.consumed + card.drawn
+  convertBonusDraws_();     // → ticket.granted
+  convertTrades_();         // → trade.requested + terminal + prayed
+  convertHPGuesses_();      // → hp.guessed
+  convertCardReceived_();   // → card.received
+
+  // 3. 정렬
+  sortEventsByTimestamp_();
+
+  // 4. 검증
+  return verifyMigration_();
+}
+```
+
+`verifyMigration_()` 체크 항목.
+- `mission.submitted` 이벤트 수 === 원본 `raw_checkins` 행 수
+- `card.drawn` 이벤트 수 === 원본 `CardDraws` 행 수
+- `ticket.granted` 이벤트의 (사용자별 합) >= `BonusDraws` + 주차 완료 횟수
+- 모든 이벤트의 `userId` 가 `Users` 시트에 존재 (orphan 체크)
+- 모든 `trade.*` 이벤트의 `refId` 가 원본 `Trades.id` 와 1:N 매칭
+
+### B.11 결정 사항 요약 (A.9 해소)
+
+| A.9 미해결 항목 | 결정 |
+|---|---|
+| `BonusDraws.source` 매핑 | B.4 표대로. 알려진 5개는 영문 reason 매핑, 그 외는 원본 문자열 유지 + `legacySource` 보존 |
+| `Trades.status` 임의 문자열 | B.5. 알려진 4개(`accepted`/`rejected`/`cancelled`/`expired`)는 정상 매핑, 그 외는 `trade.rejected` + `legacyStatus: true` |
+| `CardReceived` 누적 vs 증분 | B.7. 절대값 단일 이벤트 (현재 코드 패턴 유지) |
+| `mission.submitted.score` 신뢰성 | B.2. 통계 참고용으로 payload에 보존. 티켓 발급은 `J:ticketEarned` (서버 계산값) 기준이므로 무관 |
+
+### B.12 BBB 도메인 처리 (정정)
+
+**A.2의 BBB 이벤트 타입 (`bbb.message_sent`, `bbb.photo_uploaded`, `bbb.photo_deleted`) 은 Events에 적재 안 함.**
+
+이유.
+- raw content (메시지 본문, 사진 URL) 라서 derived aggregation에 영향 없음.
+- `BBBMessages`, `BBBPhotos` 시트가 이미 단일 source — 이중화 불필요.
+
+**유지하는 BBB 이벤트.** `bbb.guessed` 만. 이건 "secret 추측 시도" 라는 상태 변경이라 audit 가치 있음.
+
+**A.2 카탈로그 정정.**
+
+```
+~~bbb.message_sent~~  (제외)
+~~bbb.photo_uploaded~~ (제외)
+~~bbb.photo_deleted~~  (제외)
+bbb.guessed  (유지)
+```
+
+`BBBMessages`, `BBBPhotos`, `Notices`, `Inquiries` 는 도메인 시트로 standalone 유지. 마이그레이션 시 그대로 복사만.
 
 ---
 
@@ -631,3 +968,4 @@ Row 1 라벨이 한글이라 운영진이 펼쳐 보면.
 - 2026-05-12. Phase 1.5 후속 정리. `DEV_SPREADSHEET_ID`, `_devMode`, 프론트의 `devMode=true` 자동 첨부를 제거하고, GAS 프로젝트별 `SPREADSHEET_ID` Property 하나로 DEV/PROD 시트를 구분하도록 로컬 코드 수정. 이후 GAS 반영과 Properties 확인은 사용자가 수동으로 진행.
 - 2026-05-12. Phase 2/3을 Event Sourcing 단계 구조(2A~2E / 3A~3E)로 재편. DEV는 활성 사용자 없으니 dual-write 단계 생략하고 big-bang 변환으로 가기로 결정. PROD는 활성 사용자 있어서 Phase 3에서 dual-write 안전 모드 유지.
 - 2026-05-12. Phase 2.0 설계 시작. Events 시트 스키마 + event type 카탈로그 확정. 컬럼 구조는 하이브리드(`refId`/`amount`/`weekKey` 별도 컬럼 + `payload` JSON). append-only + LockService + ISO 8601 timestamp 채택.
+- 2026-05-12. Phase 2.0 (B) 과거 데이터 → Events 변환 규칙 확정. 시트별 변환 매트릭스 + 컬럼 매핑 + idempotent 함수 구조. BBB 메시지/사진은 raw content라서 Events 적재 제외. `BBBMessages`/`BBBPhotos`/`Notices`/`Inquiries` 는 도메인 시트로 standalone 유지. A.9 미해결 4개 모두 해소.
