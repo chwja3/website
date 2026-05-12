@@ -5363,7 +5363,7 @@ function getFirstProjectionCandidateUserId_() {
 
 function getLegacySheetVisibilityStatus_() {
   const ss = getSpreadsheet();
-  return LEGACY_SHEETS_TO_HIDE.map(function(name) {
+  return FINAL_HIDDEN_SHEET_NAMES.map(function(name) {
     const sheet = ss.getSheetByName(name);
     return {
       name: name,
