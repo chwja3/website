@@ -87,29 +87,32 @@
   - [x] BBB 메시지/사진/공지/문의는 raw content라 Events 백필 제외
 - [x] `migrate_step5_absorbToEvents_dryRun()` 구현
 - [x] `migrate_verify()` 로 Events 백필 결과와 기존 시트 집계 비교 구현
-- [ ] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
-- [ ] DEV 시트 사본 또는 DEV 시트에서 dry-run 실행
-- [ ] `migrate_step5_absorbToEvents()` 실제 실행
-- [ ] `migrate_verify()` 결과 `ok: true` 확인
-- [ ] 샘플 유저별 mission/draw/ticket/trade 집계 확인
-- [ ] dev 브랜치 커밋
+- [x] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
+- [x] DEV 시트 사본 또는 DEV 시트에서 dry-run 실행
+- [x] `migrate_step5_absorbToEvents()` 실제 실행
+- [x] `migrate_verify()` 결과 `ok: true` 확인
+- [x] 샘플 유저별 mission/draw/ticket/trade 집계 확인
+- [x] dev 브랜치 커밋
 
 ### 2B — UserDashboard 시트 추가 [read-only]
 
-> 시트 함수만 박는다. 코드 변경 거의 없음.
+> 앱 동작 경로 변경 없음. GAS에는 시트 생성용 setup 함수만 추가.
 
-- [ ] `UserDashboard` 시트 생성 + 컬럼 헤더
-- [ ] Users 목록을 한 행씩 자동 펼치는 함수 (`Users!A:A` 참조)
-- [ ] Events에서 계산되는 컬럼 (시트 함수)
-  - [ ] 미션 제출 수
-  - [ ] 누적 티켓 획득
-  - [ ] 카드 뽑은 수
-  - [ ] 남은 뽑기권
-  - [ ] 카드 종류별 보유 (Events 합산)
-  - [ ] 교환 진행중 건수
-  - [ ] 마지막 활동 timestamp
-- [ ] Collection 저장값과 비교하는 검증 컬럼 (✓/❌)
-- [ ] 조건부 서식 — ❌ 행 빨갛게
+- [x] 로컬 GAS에 `setupUserDashboard(rowLimit)` 구현
+- [x] `UserDashboard` 시트 생성 + 컬럼 헤더
+- [x] Users 목록을 한 행씩 자동 펼치는 함수 (`UserDashboard` 3행 → `Users` 2행)
+- [x] Events에서 계산되는 컬럼 (시트 함수)
+  - [x] 미션 제출 수
+  - [x] 누적 티켓 획득
+  - [x] 카드 뽑은 수
+  - [x] 남은 뽑기권
+  - [x] 카드 종류별 보유 (Events 합산)
+  - [x] 교환 진행중 건수
+  - [x] 마지막 활동 timestamp
+- [x] Collection 저장값과 비교하는 검증 컬럼 (✓/❌)
+- [x] 조건부 서식 — ❌ 행 빨갛게
+- [ ] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
+- [ ] `setupUserDashboard()` 실행
 - [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A big-bang 백필이 잘 됐다면)
 
 ### 2C — 스키마 정규화 + 마이그레이션

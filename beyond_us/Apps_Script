@@ -26,6 +26,7 @@ const SHEET_NAMES = Object.freeze({
   NOTICES: 'Notices',
   INQUIRIES: 'Inquiries',
   EVENTS: 'Events',
+  USER_DASHBOARD: 'UserDashboard',
 });
 const RAW_SHEET_NAME = SHEET_NAMES.RAW_CHECKINS;
 const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
@@ -260,6 +261,40 @@ const SCHEMA = Object.freeze({
       source: 'source',
     }),
   }),
+  USER_DASHBOARD: Object.freeze({
+    sheetName: SHEET_NAMES.USER_DASHBOARD,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      userId: 'userId',
+      name: 'name',
+      parish: 'parish',
+      missionCount: 'missionCount',
+      ticketsEarned: 'ticketsEarned',
+      ticketsConsumed: 'ticketsConsumed',
+      ticketsRemaining: 'ticketsRemaining',
+      cardsDrawn: 'cardsDrawn',
+      card1: 'card_1',
+      card2: 'card_2',
+      card3: 'card_3',
+      card4: 'card_4',
+      card5: 'card_5',
+      card6: 'card_6',
+      card7: 'card_7',
+      card8: 'card_8',
+      card9: 'card_9',
+      card10: 'card_10',
+      totalCards: 'totalCards',
+      activeTrades: 'activeTrades',
+      lastActivity: 'lastActivity',
+      colTicketsRemaining: 'col_ticketsRemaining',
+      colTotalCards: 'col_totalCards',
+      colCardsDrawn: 'col_cardsDrawn',
+      validTickets: 'valid_tickets',
+      validCards: 'valid_cards',
+      validDrawn: 'valid_drawn',
+    }),
+  }),
 });
 const USER_COLUMN_FALLBACK = Object.freeze({
   nickname: 0,
@@ -441,6 +476,40 @@ const EVENT_SOURCES = Object.freeze({
   SERVER: 'server',
   MIGRATION: 'migration',
 });
+const USER_DASHBOARD_LABELS = Object.freeze([
+  '닉네임',
+  '이름',
+  '교구',
+  '미션 제출 수',
+  '누적 획득 뽑기권',
+  '사용 뽑기권',
+  '남은 뽑기권',
+  '뽑은 총 횟수',
+  '사랑',
+  '희락',
+  '화평',
+  '오래참음',
+  '자비',
+  '양선',
+  '충성',
+  '온유',
+  '절제',
+  '히든',
+  '총 카드 수',
+  '진행중 교환',
+  '마지막 활동',
+  '[컬렉션] 남은 뽑기권',
+  '[컬렉션] 총 카드 수',
+  '[컬렉션] 뽑은 횟수',
+  '뽑기권 일치',
+  '카드 수 일치',
+  '뽑기 횟수 일치',
+]);
+const USER_DASHBOARD_COL_COUNT = Object.keys(SCHEMA.USER_DASHBOARD.columns).length;
+const USER_DASHBOARD_DEFAULT_ROWS = 250;
+const USER_DASHBOARD_EVENT_MAX_ROW = 5000;
+const USER_DASHBOARD_DOMAIN_MAX_ROW = 1000;
+const USER_DASHBOARD_TAB_COLOR = '#3B82F6';
 const CONFIG_LAYOUT = Object.freeze({
   currentWeekLabelCell: 'A1',
   currentWeekCell: 'B1',
@@ -1171,6 +1240,10 @@ function pushMigrationEvent_(rows, type, userId, options) {
 }
 
 function logMigrationResult_(label, result) {
+  return logJsonResult_(label, result);
+}
+
+function logJsonResult_(label, result) {
   Logger.log(label + '\n' + JSON.stringify(result, null, 2));
   return result;
 }
@@ -1559,6 +1632,118 @@ function eventTradeTerminalType_(status) {
   if (text === 'cancelled' || text === 'canceled' || text.indexOf('취소') !== -1) return EVENT_TYPES.TRADE_CANCELLED;
   if (text === 'expired' || text.indexOf('시간') !== -1 || text.indexOf('초과') !== -1) return EVENT_TYPES.TRADE_EXPIRED;
   return EVENT_TYPES.TRADE_REJECTED;
+}
+
+function setupUserDashboard(rowLimit) {
+  const limit = Math.max(Number(rowLimit) || USER_DASHBOARD_DEFAULT_ROWS, 1);
+  const sheet = getOrCreateUserDashboardSheet_();
+  ensureUserDashboardSheet_(sheet, limit);
+  const result = {
+    ok: true,
+    sheetName: SHEET_NAMES.USER_DASHBOARD,
+    rowsPrepared: limit,
+    dataRange: 'A' + SCHEMA.USER_DASHBOARD.dataStartRow + ':AA' + (SCHEMA.USER_DASHBOARD.dataStartRow + limit - 1),
+    firstUserFormula: sheet.getRange(SCHEMA.USER_DASHBOARD.dataStartRow, 1).getFormula(),
+  };
+  return logJsonResult_('setupUserDashboard result', result);
+}
+
+function getOrCreateUserDashboardSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.USER_DASHBOARD);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.USER_DASHBOARD);
+  return sheet;
+}
+
+function ensureUserDashboardSheet_(sheet, rowLimit) {
+  const schema = SCHEMA.USER_DASHBOARD;
+  const requiredRows = schema.dataStartRow + rowLimit - 1;
+  if (sheet.getMaxColumns() < USER_DASHBOARD_COL_COUNT) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), USER_DASHBOARD_COL_COUNT - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < requiredRows) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), requiredRows - sheet.getMaxRows());
+  }
+
+  sheet.getRange(1, 1, requiredRows, USER_DASHBOARD_COL_COUNT).clearContent();
+  sheet.getRange(1, 1, 1, USER_DASHBOARD_COL_COUNT).setValues([USER_DASHBOARD_LABELS.slice()]);
+  sheet.getRange(schema.headerRow, 1, 1, USER_DASHBOARD_COL_COUNT).setValues([getSchemaHeaders_(schema)]);
+  sheet.getRange(schema.dataStartRow, 1, rowLimit, USER_DASHBOARD_COL_COUNT).setFormulas(buildUserDashboardFormulas_(rowLimit));
+  sheet.setFrozenRows(2);
+  sheet.setFrozenColumns(3);
+  sheet.setTabColor(USER_DASHBOARD_TAB_COLOR);
+  applyUserDashboardFormatting_(sheet, rowLimit);
+}
+
+function buildUserDashboardFormulas_(rowLimit) {
+  const formulas = [];
+  for (let i = 0; i < rowLimit; i++) {
+    const sheetRow = SCHEMA.USER_DASHBOARD.dataStartRow + i;
+    const userRow = SCHEMA.USERS.dataStartRow + i;
+    formulas.push(buildUserDashboardFormulaRow_(sheetRow, userRow));
+  }
+  return formulas;
+}
+
+function buildUserDashboardFormulaRow_(sheetRow, userRow) {
+  const userCell = 'A' + sheetRow;
+  const eventsUserRange = 'Events!C$3:C$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsTypeRange = 'Events!D$3:D$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsRefRange = 'Events!E$3:E$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsAmountRange = 'Events!F$3:F$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const eventsTimeRange = 'Events!B$3:B$' + USER_DASHBOARD_EVENT_MAX_ROW;
+  const tradesRequesterRange = 'Trades!B$2:B$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
+  const tradesTargetRange = 'Trades!E$2:E$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
+  const tradesStatusRange = 'Trades!H$2:H$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
+
+  const row = [
+    '=IF(Users!A' + userRow + '="","",Users!A' + userRow + ')',
+    '=IFERROR(VLOOKUP(' + userCell + ',Users!A:C,3,0),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Users!A:D,4,0),"")',
+    '=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.MISSION_SUBMITTED + '"))',
+    '=IF(' + userCell + '="","",SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.TICKET_GRANTED + '"))',
+    '=IF(' + userCell + '="","",SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.TICKET_CONSUMED + '"))',
+    '=IF(' + userCell + '="","",E' + sheetRow + '-F' + sheetRow + ')',
+    '=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '"))',
+  ];
+
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    row.push('=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '",' + eventsRefRange + ',"' + cardId + '"))');
+  }
+
+  row.push(
+    '=IF(' + userCell + '="","",SUM(I' + sheetRow + ':R' + sheetRow + '))',
+    '=IF(' + userCell + '="","",COUNTIFS(' + tradesRequesterRange + ',' + userCell + ',' + tradesStatusRange + ',"pending")+COUNTIFS(' + tradesTargetRange + ',' + userCell + ',' + tradesStatusRange + ',"pending"))',
+    '=IFERROR(INDEX(SORT(FILTER(' + eventsTimeRange + ',' + eventsUserRange + '=' + userCell + '),1,FALSE),1),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Collection!A:D,4,0),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Collection!A:N,14,0),"")',
+    '=IFERROR(VLOOKUP(' + userCell + ',Collection!A:C,3,0),"")',
+    '=IF(' + userCell + '="","",IF(N(G' + sheetRow + ')=N(V' + sheetRow + '),"✓","❌"))',
+    '=IF(' + userCell + '="","",IF(N(S' + sheetRow + ')=N(W' + sheetRow + '),"✓","❌"))',
+    '=IF(' + userCell + '="","",IF(N(H' + sheetRow + ')=N(X' + sheetRow + '),"✓","❌"))'
+  );
+  return row;
+}
+
+function applyUserDashboardFormatting_(sheet, rowLimit) {
+  const schema = SCHEMA.USER_DASHBOARD;
+  const dataRange = sheet.getRange(schema.dataStartRow, 1, rowLimit, USER_DASHBOARD_COL_COUNT);
+  const checkRange = sheet.getRange(schema.dataStartRow, 25, rowLimit, 3);
+  const rowRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenFormulaSatisfied('=OR($Y3="❌",$Z3="❌",$AA3="❌")')
+    .setBackground('#FFE0E0')
+    .setRanges([dataRange])
+    .build();
+  const cellRule = SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo('❌')
+    .setBackground('#FF4444')
+    .setFontColor('#FFFFFF')
+    .setRanges([checkRange])
+    .build();
+  sheet.setConditionalFormatRules([rowRule, cellRule]);
+  sheet.getRange(1, 1, 2, USER_DASHBOARD_COL_COUNT).setFontWeight('bold');
+  sheet.getRange(1, 1, 1, USER_DASHBOARD_COL_COUNT).setBackground('#DBEAFE');
+  sheet.getRange(2, 1, 1, USER_DASHBOARD_COL_COUNT).setBackground('#EFF6FF');
 }
 
 function getUsersSheet_() {
