@@ -74,20 +74,23 @@
 
 > DEV 시트 백업 후 기존 데이터를 Events로 한 번에 백필한다. 장기간 dual-write 모니터링은 생략.
 
-- [ ] DEV 시트에 `Events` 시트 생성 (헤더: eventId / timestamp / userId / type / payload / source)
-- [ ] `Events.append(type, userId, payload, source)` 헬퍼 작성
-- [ ] 기존 mutation 시트 데이터를 Events로 백필.
-  - [ ] `submit` (mission.submitted)
-  - [ ] `drawCard` (card.drawn) + 티켓 차감 (ticket.consumed)
-  - [ ] 미션 주차 완료 시 티켓 발급 (ticket.granted, reason=week_complete)
-  - [ ] `submitHoldPrayGuess` (hp.guessed) + 정답 보상 티켓 (ticket.granted, reason=hp_correct)
-  - [ ] `requestTrade` / `acceptTrade` / `rejectTrade` / `cancelTrade` / `prayForTrade` (trade.*)
-  - [ ] `sendBBBMessage` (bbb.message_sent)
-  - [ ] `guessBBBSecret` (bbb.guessed)
-  - [ ] `uploadBBBPhoto` (bbb.photo_uploaded)
-  - [ ] 관리자 티켓 지급 등 보너스 액션 (ticket.granted, reason=admin)
-- [ ] DEV 시트 사본에서 dry-run
-- [ ] `migrate_verify()` 로 Events 백필 결과와 기존 시트 집계 비교
+- [x] 로컬 GAS에 `Events` 시트 생성 코드 추가 (Row 1 운영진 라벨 / Row 2 machine header / Row 3+ 데이터)
+- [x] `Events_append(type, userId, options)` 헬퍼 작성
+- [x] 기존 mutation 시트 데이터를 Events로 백필하는 함수 구현.
+  - [x] `raw_checkins` → `mission.submitted`
+  - [x] `raw_checkins.ticketEarned` → `ticket.granted` (reason=week_complete)
+  - [x] `CardDraws` → `ticket.consumed` + `card.drawn`
+  - [x] `BonusDraws` → `ticket.granted` (legacy source 기반 reason)
+  - [x] `Trades` → `trade.requested` + terminal status + `trade.prayed`
+  - [x] `HPGuesses` → `hp.guessed`
+  - [x] `CardReceived` → `card.received`
+  - [x] BBB 메시지/사진/공지/문의는 raw content라 Events 백필 제외
+- [x] `migrate_step5_absorbToEvents_dryRun()` 구현
+- [x] `migrate_verify()` 로 Events 백필 결과와 기존 시트 집계 비교 구현
+- [ ] 사용자가 DEV GAS 편집기에 로컬 `Apps_Script` 변경분 수동 반영
+- [ ] DEV 시트 사본 또는 DEV 시트에서 dry-run 실행
+- [ ] `migrate_step5_absorbToEvents()` 실제 실행
+- [ ] `migrate_verify()` 결과 `ok: true` 확인
 - [ ] 샘플 유저별 mission/draw/ticket/trade 집계 확인
 - [ ] dev 브랜치 커밋
 
@@ -116,7 +119,7 @@
   - [ ] `migrate_step2_addSheetMetadata()` — 1행 운영진 라벨/설명
   - [ ] `migrate_step3_normalizeHeaders()` — 2행 machine header 영문 key 정규화
   - [ ] `migrate_step4_splitConfig()` — `config` → `AppSettings` + `MissionDefinitions`
-  - [ ] `migrate_step5_absorbToEvents()` — `raw_checkins` + `CardDraws` + `BonusDraws` → Events 백필
+  - [x] `migrate_step5_absorbToEvents()` — `raw_checkins` + `CardDraws` + `BonusDraws` + 관련 mutation 시트 → Events 백필 (Phase 2A에서 로컬 구현)
   - [ ] `migrate_step6_externalizeHoldPray()` — `HOLD_PRAY_ENTRIES` 하드코딩 → `HoldPray` 시트
   - [ ] `migrate_step7_orderAndColor()` — 시트 순서/탭 색상 적용
   - [ ] `migrate_runAll()` / `migrate_verify()`

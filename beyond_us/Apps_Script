@@ -25,6 +25,7 @@ const SHEET_NAMES = Object.freeze({
   BBB_PHOTOS: 'BBBPhotos',
   NOTICES: 'Notices',
   INQUIRIES: 'Inquiries',
+  EVENTS: 'Events',
 });
 const RAW_SHEET_NAME = SHEET_NAMES.RAW_CHECKINS;
 const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
@@ -243,6 +244,22 @@ const SCHEMA = Object.freeze({
       missionType: 'missionType',
     }),
   }),
+  EVENTS: Object.freeze({
+    sheetName: SHEET_NAMES.EVENTS,
+    headerRow: 2,
+    dataStartRow: 3,
+    columns: Object.freeze({
+      eventId: 'eventId',
+      timestamp: 'timestamp',
+      userId: 'userId',
+      type: 'type',
+      refId: 'refId',
+      amount: 'amount',
+      weekKey: 'weekKey',
+      payload: 'payload',
+      source: 'source',
+    }),
+  }),
 });
 const USER_COLUMN_FALLBACK = Object.freeze({
   nickname: 0,
@@ -379,6 +396,50 @@ const BBB_PHOTOS_COLUMN_FALLBACK = Object.freeze({
   photoBase64: 1,
   uploadedAt: 2,
   missionType: 3,
+});
+const EVENTS_LABELS = Object.freeze([
+  '이벤트ID',
+  '발생시각',
+  '사용자',
+  '유형',
+  '참조ID',
+  '수량',
+  '주차',
+  '상세',
+  '출처',
+]);
+const EVENTS_COLUMN_FALLBACK = Object.freeze({
+  eventId: 0,
+  timestamp: 1,
+  userId: 2,
+  type: 3,
+  refId: 4,
+  amount: 5,
+  weekKey: 6,
+  payload: 7,
+  source: 8,
+});
+const EVENTS_COL_COUNT = Object.keys(SCHEMA.EVENTS.columns).length;
+const EVENT_TYPES = Object.freeze({
+  MISSION_SUBMITTED: 'mission.submitted',
+  TICKET_GRANTED: 'ticket.granted',
+  TICKET_CONSUMED: 'ticket.consumed',
+  CARD_DRAWN: 'card.drawn',
+  CARD_RECEIVED: 'card.received',
+  TRADE_REQUESTED: 'trade.requested',
+  TRADE_ACCEPTED: 'trade.accepted',
+  TRADE_REJECTED: 'trade.rejected',
+  TRADE_CANCELLED: 'trade.cancelled',
+  TRADE_EXPIRED: 'trade.expired',
+  TRADE_PRAYED: 'trade.prayed',
+  HP_GUESSED: 'hp.guessed',
+  BBB_GUESSED: 'bbb.guessed',
+});
+const EVENT_SOURCES = Object.freeze({
+  WEB: 'web',
+  ADMIN: 'admin',
+  SERVER: 'server',
+  MIGRATION: 'migration',
 });
 const CONFIG_LAYOUT = Object.freeze({
   currentWeekLabelCell: 'A1',
@@ -912,6 +973,14 @@ function getBbbPhotoRows_(sheet, maxColumns) {
   return getSheetRows(sheet, SCHEMA.BBB_PHOTOS, maxColumns || 4);
 }
 
+function getEventsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.EVENTS, EVENTS_COLUMN_FALLBACK);
+}
+
+function getEventsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.EVENTS, maxColumns || EVENTS_COL_COUNT);
+}
+
 function getConfigWeekStartRow_(week) {
   return (week - 1) * CONFIG_LAYOUT.weekBlockSize + CONFIG_LAYOUT.weekBlockFirstRow;
 }
@@ -940,6 +1009,551 @@ function getSheetRows(sheet, schemaOrHeaderRow, maxColumns) {
   if (lastRow < dataStartRow) return [];
   const width = maxColumns || sheet.getLastColumn();
   return sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, width).getValues();
+}
+
+// Events append-only ledger.
+function getOrCreateEventsSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.EVENTS);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAMES.EVENTS);
+  ensureEventsSheet_(sheet);
+  return sheet;
+}
+
+function ensureEventsSheet_(sheet) {
+  if (sheet.getMaxColumns() < EVENTS_COL_COUNT) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), EVENTS_COL_COUNT - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < SCHEMA.EVENTS.headerRow) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), SCHEMA.EVENTS.headerRow - sheet.getMaxRows());
+  }
+  sheet.getRange(1, 1, 1, EVENTS_COL_COUNT).setValues([EVENTS_LABELS.slice()]);
+  sheet.getRange(SCHEMA.EVENTS.headerRow, 1, 1, EVENTS_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.EVENTS)]);
+  sheet.setFrozenRows(2);
+}
+
+function Events_append(type, userId, options) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
+
+  try {
+    const sheet = getOrCreateEventsSheet();
+    const row = Events_buildRow_(type, userId, options || {});
+    sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, 1, EVENTS_COL_COUNT).setValues([row]);
+    return { ok: true, event: Events_rowToObject_(row) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function Events_buildRow_(type, userId, options) {
+  const opts = options || {};
+  const amount = Object.prototype.hasOwnProperty.call(opts, 'amount') ? opts.amount : '';
+  return [
+    opts.eventId || Utilities.getUuid(),
+    eventTimestampIso_(opts.timestamp, opts.timestampOffsetMs || 0),
+    String(userId || '').trim(),
+    String(type || '').trim(),
+    opts.refId === null || opts.refId === undefined ? '' : String(opts.refId),
+    amount === null || amount === undefined ? '' : amount,
+    opts.weekKey === null || opts.weekKey === undefined ? '' : String(opts.weekKey),
+    eventPayloadJson_(opts.payload),
+    opts.source || EVENT_SOURCES.SERVER,
+  ];
+}
+
+function Events_rowToObject_(row, columns) {
+  const col = columns || EVENTS_COLUMN_FALLBACK;
+  return {
+    eventId: String(row[col.eventId] || ''),
+    timestamp: String(row[col.timestamp] || ''),
+    userId: String(row[col.userId] || ''),
+    type: String(row[col.type] || ''),
+    refId: String(row[col.refId] || ''),
+    amount: row[col.amount],
+    weekKey: String(row[col.weekKey] || ''),
+    payload: parseEventPayload_(row[col.payload]),
+    source: String(row[col.source] || ''),
+  };
+}
+
+function Events_readByUser(userId) {
+  const clean = String(userId || '').trim();
+  if (!clean) return [];
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  return getEventsRows_(sheet)
+    .filter(function(row) { return String(row[col.userId] || '').trim() === clean; })
+    .map(function(row) { return Events_rowToObject_(row, col); });
+}
+
+function Events_clearMigrationEvents_() {
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  const rows = getEventsRows_(sheet);
+  let removed = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][col.source] || '') === EVENT_SOURCES.MIGRATION) {
+      sheet.deleteRow(i + SCHEMA.EVENTS.dataStartRow);
+      removed++;
+    }
+  }
+  return removed;
+}
+
+function eventTimestampIso_(value, offsetMs) {
+  let date;
+  if (value instanceof Date) {
+    date = value;
+  } else {
+    const text = String(value || '').trim();
+    date = text ? new Date(text) : new Date();
+  }
+  if (!date || isNaN(date.getTime())) date = new Date();
+  if (offsetMs) date = new Date(date.getTime() + offsetMs);
+  return date.toISOString();
+}
+
+function eventPayloadJson_(payload) {
+  if (payload === null || payload === undefined || payload === '') return '{}';
+  if (typeof payload === 'string') return payload;
+  return JSON.stringify(payload);
+}
+
+function parseEventPayload_(payload) {
+  const text = String(payload || '').trim();
+  if (!text) return {};
+  try { return JSON.parse(text); } catch(e) { return { raw: text }; }
+}
+
+function parseJsonSafe_(value, fallback) {
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+  try { return JSON.parse(text); } catch(e) { return fallback; }
+}
+
+function isTruthyEventValue_(value) {
+  const text = String(value || '').trim().toLowerCase();
+  return value === true || Number(value) === 1 || text === 'true' || text === 'yes' || text === 'y';
+}
+
+function nonEmptyValue_(value) {
+  return String(value === null || value === undefined ? '' : value).trim() !== '';
+}
+
+function countEventRowsByType_(rows) {
+  const counts = {};
+  const typeIndex = EVENTS_COLUMN_FALLBACK.type;
+  rows.forEach(function(row) {
+    const type = String(row[typeIndex] || '');
+    if (!type) return;
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  return counts;
+}
+
+function sortEventsByTimestamp_(sheet) {
+  const last = sheet.getLastRow();
+  if (last < SCHEMA.EVENTS.dataStartRow) return;
+  const col = getEventsColumns_(sheet);
+  sheet
+    .getRange(SCHEMA.EVENTS.dataStartRow, 1, last - SCHEMA.EVENTS.dataStartRow + 1, EVENTS_COL_COUNT)
+    .sort([
+      { column: col.timestamp + 1, ascending: true },
+      { column: col.type + 1, ascending: true },
+    ]);
+}
+
+function pushMigrationEvent_(rows, type, userId, options) {
+  const opts = options || {};
+  opts.source = EVENT_SOURCES.MIGRATION;
+  rows.push(Events_buildRow_(type, userId, opts));
+}
+
+function migrate_step5_absorbToEvents(options) {
+  const dryRun = options === true || !!(options && options.dryRun);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
+
+  try {
+    const sheet = getOrCreateEventsSheet();
+    const migration = buildEventsMigrationRows_();
+    if (dryRun) {
+      return {
+        ok: true,
+        dryRun: true,
+        eventsPlanned: migration.rows.length,
+        plannedByType: migration.byType,
+        sourceRows: migration.sourceRows,
+      };
+    }
+
+    const removedMigrationEvents = Events_clearMigrationEvents_();
+    if (migration.rows.length) {
+      sheet
+        .getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, migration.rows.length, EVENTS_COL_COUNT)
+        .setValues(migration.rows);
+    }
+    sortEventsByTimestamp_(sheet);
+    const verify = migrate_verify();
+    return {
+      ok: verify.ok,
+      dryRun: false,
+      removedMigrationEvents: removedMigrationEvents,
+      eventsWritten: migration.rows.length,
+      plannedByType: migration.byType,
+      sourceRows: migration.sourceRows,
+      verify: verify,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function migrate_step5_absorbToEvents_dryRun() {
+  return migrate_step5_absorbToEvents({ dryRun: true });
+}
+
+function migrate_verify() {
+  const expectedMigration = buildEventsMigrationRows_();
+  const expected = expectedMigration.byType;
+  const sheet = getOrCreateEventsSheet();
+  const col = getEventsColumns_(sheet);
+  const migrationRows = getEventsRows_(sheet).filter(function(row) {
+    return String(row[col.source] || '') === EVENT_SOURCES.MIGRATION;
+  });
+  const actual = countEventRowsByType_(migrationRows);
+  const issues = compareEventCounts_(expected, actual);
+  const orphanUserIds = findOrphanEventUsers_(migrationRows);
+  const invalidTradeRefs = findInvalidTradeEventRefs_(migrationRows);
+
+  if (orphanUserIds.length) issues.push('orphan_event_users: ' + orphanUserIds.join(', '));
+  if (invalidTradeRefs.length) issues.push('invalid_trade_refs: ' + invalidTradeRefs.join(', '));
+
+  return {
+    ok: issues.length === 0,
+    expected: expected,
+    actual: actual,
+    eventsChecked: migrationRows.length,
+    sourceRows: expectedMigration.sourceRows,
+    issues: issues,
+    orphanUserIds: orphanUserIds,
+    invalidTradeRefs: invalidTradeRefs,
+  };
+}
+
+function buildEventsMigrationRows_() {
+  const ss = getSpreadsheet();
+  const rows = [];
+  const sourceRows = {};
+
+  collectRawCheckinEvents_(ss, rows, sourceRows);
+  collectCardDrawEvents_(ss, rows, sourceRows);
+  collectBonusDrawEvents_(ss, rows, sourceRows);
+  collectTradeEvents_(ss, rows, sourceRows);
+  collectHpGuessEvents_(ss, rows, sourceRows);
+  collectCardReceivedEvents_(ss, rows, sourceRows);
+
+  rows.sort(compareEventRows_);
+  return {
+    rows: rows,
+    byType: countEventRowsByType_(rows),
+    sourceRows: sourceRows,
+  };
+}
+
+function getMigrationSheetContext_(ss, sheetName, columnFn, rowsFn, maxColumns) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return null;
+  return {
+    sheet: sheet,
+    col: columnFn(sheet),
+    rows: rowsFn(sheet, maxColumns),
+  };
+}
+
+function collectRawCheckinEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.RAW_CHECKINS, getRawColumns_, getRawRows_, 10);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const userId = String(row[ctx.col.userId] || '').trim();
+      if (!userId) return;
+      converted++;
+      const timestamp = row[ctx.col.timestamp];
+      const weekKey = String(row[ctx.col.weekKey] || '').trim();
+      pushMigrationEvent_(eventRows, EVENT_TYPES.MISSION_SUBMITTED, userId, {
+        timestamp: timestamp,
+        weekKey: weekKey,
+        payload: {
+          weekTitle: String(row[ctx.col.weekTitle] || ''),
+          dateKey: eventDateKey_(row[ctx.col.dateKey]),
+          score: Number(row[ctx.col.score]) || 0,
+          weekCumScore: Number(row[ctx.col.weekCumScore]) || 0,
+          items: parseJsonSafe_(row[ctx.col.itemsJson], []),
+          indices: parseJsonSafe_(row[ctx.col.indicesJson], []),
+        },
+      });
+      if (isTruthyEventValue_(row[ctx.col.ticketEarned])) {
+        pushMigrationEvent_(eventRows, EVENT_TYPES.TICKET_GRANTED, userId, {
+          timestamp: timestamp,
+          timestampOffsetMs: 1,
+          amount: 1,
+          weekKey: weekKey,
+          payload: { reason: 'week_complete' },
+        });
+      }
+    });
+  }
+  sourceRows[SHEET_NAMES.RAW_CHECKINS] = converted;
+}
+
+function collectCardDrawEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.CARD_DRAWS, getCardDrawColumns_, getCardDrawRows_, 6);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const userId = String(row[ctx.col.userId] || '').trim();
+      const cardId = String(row[ctx.col.cardId] || '').trim();
+      if (!userId || !cardId) return;
+      converted++;
+      const timestamp = row[ctx.col.drawnAt];
+      const weekKey = String(row[ctx.col.weekKey] || '').trim();
+      pushMigrationEvent_(eventRows, EVENT_TYPES.TICKET_CONSUMED, userId, {
+        timestamp: timestamp,
+        amount: 1,
+        weekKey: weekKey,
+        payload: { reason: 'card_draw' },
+      });
+      pushMigrationEvent_(eventRows, EVENT_TYPES.CARD_DRAWN, userId, {
+        timestamp: timestamp,
+        timestampOffsetMs: 1,
+        amount: 1,
+        weekKey: weekKey,
+        refId: cardId,
+        payload: {
+          cardName: String(row[ctx.col.cardName] || ''),
+          received: isTruthyEventValue_(row[ctx.col.received]),
+        },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.CARD_DRAWS] = converted;
+}
+
+function collectBonusDrawEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.BONUS_DRAWS, getBonusDrawColumns_, getBonusDrawRows_, 3);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const userId = String(row[ctx.col.userId] || '').trim();
+      const source = String(row[ctx.col.source] || '').trim();
+      if (!userId || !source) return;
+      converted++;
+      pushMigrationEvent_(eventRows, EVENT_TYPES.TICKET_GRANTED, userId, {
+        timestamp: row[ctx.col.awardedAt],
+        amount: 1,
+        weekKey: eventWeekKeyFromBonusSource_(source),
+        payload: {
+          reason: eventReasonFromBonusSource_(source),
+          legacySource: source,
+        },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.BONUS_DRAWS] = converted;
+}
+
+function collectTradeEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.TRADES, getTradesColumns_, getTradesRows_, 12);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const tradeId = String(row[ctx.col.id] || '').trim();
+      if (!tradeId) return;
+      converted++;
+      const requester = String(row[ctx.col.requester] || '').trim();
+      const target = String(row[ctx.col.target] || '').trim();
+      const status = String(row[ctx.col.status] || '').trim();
+      pushMigrationEvent_(eventRows, EVENT_TYPES.TRADE_REQUESTED, requester, {
+        timestamp: row[ctx.col.createdAt],
+        refId: tradeId,
+        payload: {
+          target: target,
+          requesterCardId: Number(row[ctx.col.requesterCardId]) || '',
+          requesterCardName: String(row[ctx.col.requesterCardName] || ''),
+          targetCardId: Number(row[ctx.col.targetCardId]) || '',
+          targetCardName: String(row[ctx.col.targetCardName] || ''),
+        },
+      });
+
+      const terminalType = eventTradeTerminalType_(status);
+      if (terminalType && nonEmptyValue_(row[ctx.col.resolvedAt])) {
+        pushMigrationEvent_(eventRows, terminalType, requester, {
+          timestamp: row[ctx.col.resolvedAt],
+          refId: tradeId,
+          payload: {
+            target: target,
+            status: status,
+          },
+        });
+      }
+      if (nonEmptyValue_(row[ctx.col.requesterPrayed])) {
+        pushMigrationEvent_(eventRows, EVENT_TYPES.TRADE_PRAYED, requester, {
+          timestamp: row[ctx.col.requesterPrayed],
+          refId: tradeId,
+          payload: { side: 'requester' },
+        });
+      }
+      if (nonEmptyValue_(row[ctx.col.targetPrayed])) {
+        pushMigrationEvent_(eventRows, EVENT_TYPES.TRADE_PRAYED, target, {
+          timestamp: row[ctx.col.targetPrayed],
+          refId: tradeId,
+          payload: { side: 'target' },
+        });
+      }
+    });
+  }
+  sourceRows[SHEET_NAMES.TRADES] = converted;
+}
+
+function collectHpGuessEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.HP_GUESSES, getHpGuessColumns_, getHpGuessRows_, 5);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const nickname = String(row[ctx.col.nickname] || '').trim();
+      const guessedName = String(row[ctx.col.guessedName] || '').trim();
+      if (!nickname || !guessedName) return;
+      converted++;
+      pushMigrationEvent_(eventRows, EVENT_TYPES.HP_GUESSED, nickname, {
+        timestamp: row[ctx.col.answeredAt],
+        weekKey: String(row[ctx.col.weekKey] || '').trim(),
+        payload: {
+          cardIndex: Number(row[ctx.col.cardIndex]),
+          guessedName: guessedName,
+        },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.HP_GUESSES] = converted;
+}
+
+function collectCardReceivedEvents_(ss, eventRows, sourceRows) {
+  const ctx = getMigrationSheetContext_(ss, SHEET_NAMES.CARD_RECEIVED, getCardReceivedColumns_, getCardReceivedRows_, 4);
+  let converted = 0;
+  if (ctx) {
+    ctx.rows.forEach(function(row) {
+      const nickname = String(row[ctx.col.nickname] || '').trim();
+      const cardId = String(row[ctx.col.cardId] || '').trim();
+      if (!nickname || !cardId) return;
+      converted++;
+      pushMigrationEvent_(eventRows, EVENT_TYPES.CARD_RECEIVED, nickname, {
+        timestamp: row[ctx.col.updatedAt],
+        amount: Number(row[ctx.col.receivedQty]) || 0,
+        refId: cardId,
+        payload: { cardId: cardId },
+      });
+    });
+  }
+  sourceRows[SHEET_NAMES.CARD_RECEIVED] = converted;
+}
+
+function compareEventRows_(a, b) {
+  const col = EVENTS_COLUMN_FALLBACK;
+  const timeCompare = String(a[col.timestamp] || '').localeCompare(String(b[col.timestamp] || ''));
+  if (timeCompare !== 0) return timeCompare;
+  return String(a[col.type] || '').localeCompare(String(b[col.type] || ''));
+}
+
+function compareEventCounts_(expected, actual) {
+  const issues = [];
+  const keys = {};
+  Object.keys(expected).forEach(function(key) { keys[key] = true; });
+  Object.keys(actual).forEach(function(key) { keys[key] = true; });
+  Object.keys(keys).sort().forEach(function(key) {
+    const expectedCount = expected[key] || 0;
+    const actualCount = actual[key] || 0;
+    if (expectedCount !== actualCount) {
+      issues.push(key + ': expected ' + expectedCount + ', actual ' + actualCount);
+    }
+  });
+  return issues;
+}
+
+function findOrphanEventUsers_(eventRows) {
+  const userIds = getKnownUserIdSet_();
+  const col = EVENTS_COLUMN_FALLBACK;
+  const orphans = {};
+  eventRows.forEach(function(row) {
+    const userId = String(row[col.userId] || '').trim();
+    if (userId && !userIds[userId]) orphans[userId] = true;
+  });
+  return Object.keys(orphans).sort();
+}
+
+function findInvalidTradeEventRefs_(eventRows) {
+  const tradeIds = getTradeIdSet_();
+  const col = EVENTS_COLUMN_FALLBACK;
+  const invalid = {};
+  eventRows.forEach(function(row) {
+    const type = String(row[col.type] || '');
+    const refId = String(row[col.refId] || '').trim();
+    if (type.indexOf('trade.') === 0 && refId && !tradeIds[refId]) invalid[refId] = true;
+  });
+  return Object.keys(invalid).sort();
+}
+
+function getKnownUserIdSet_() {
+  const set = {};
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
+  if (!sheet) return set;
+  const col = getUserColumns_(sheet);
+  getUserRows_(sheet).forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (nickname) set[nickname] = true;
+  });
+  return set;
+}
+
+function getTradeIdSet_() {
+  const set = {};
+  const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.TRADES);
+  if (!sheet) return set;
+  const col = getTradesColumns_(sheet);
+  getTradesRows_(sheet).forEach(function(row) {
+    const id = String(row[col.id] || '').trim();
+    if (id) set[id] = true;
+  });
+  return set;
+}
+
+function eventDateKey_(value) {
+  if (value instanceof Date) return Utilities.formatDate(value, 'Asia/Seoul', 'yyyy-MM-dd');
+  return String(value || '').trim();
+}
+
+function eventWeekKeyFromBonusSource_(source) {
+  const match = String(source || '').match(/^hp_(w\d+)$/);
+  return match ? match[1] : '';
+}
+
+function eventReasonFromBonusSource_(source) {
+  const text = String(source || '');
+  if (text.indexOf('hp_') === 0) return 'hp_correct';
+  if (text === 'bbb_photo') return 'bbb_photo';
+  if (text.indexOf('bbb_') === 0) return 'bbb_mission';
+  return text || 'bonus';
+}
+
+function eventTradeTerminalType_(status) {
+  const text = String(status || '').trim().toLowerCase();
+  if (!text || text === 'pending') return '';
+  if (text === 'accepted') return EVENT_TYPES.TRADE_ACCEPTED;
+  if (text === 'rejected' || text.indexOf('거절') !== -1) return EVENT_TYPES.TRADE_REJECTED;
+  if (text === 'cancelled' || text === 'canceled' || text.indexOf('취소') !== -1) return EVENT_TYPES.TRADE_CANCELLED;
+  if (text === 'expired' || text.indexOf('시간') !== -1 || text.indexOf('초과') !== -1) return EVENT_TYPES.TRADE_EXPIRED;
+  return EVENT_TYPES.TRADE_REJECTED;
 }
 
 function getUsersSheet_() {
