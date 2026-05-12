@@ -342,6 +342,8 @@ function migrate_runAll() / migrate_verify()
 
 **중요.** `migrate_step5_absorbToEvents`는 과거 데이터를 Events에 backfill하는 1회성 작업. DEV에서는 2A big-bang으로 실행하고, eventId는 새로 부여하되 source는 `migration`.
 
+**HoldPray 처리.** `migrate_step6_externalizeHoldPray()`는 사용자가 나중에 한 번에 처리하기로 결정했으므로, Phase 2C 진행 중에는 보류한다. H&P read path와 `HOLD_PRAY_ENTRIES` 제거는 별도 묶음으로 다룬다.
+
 **2C 적용 순서.** 첫 조각은 `migrate_step1_backup()` + `migrate_step4_splitConfig(_dryRun)` 로 제한한다. 즉 `AppSettings` / `MissionDefinitions` 시트를 만들고 기존 `config` 값을 복사하되, 앱의 read path는 아직 `config`에 둔다. DEV dry-run과 본 실행 결과를 확인한 뒤 `config` 읽기 함수를 새 시트 기반으로 전환한다.
 
 **2C-2 read path 전환 기준.** `AppSettings` / `MissionDefinitions`가 있으면 새 시트를 우선 사용하고, 없거나 비어 있으면 기존 `config`를 fallback으로 사용한다. admin 쓰기 경로는 새 시트에 쓰되 legacy `config`도 함께 동기화해서 DEV 검증 중 즉시 rollback 할 수 있게 둔다.

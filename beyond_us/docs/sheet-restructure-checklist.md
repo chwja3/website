@@ -125,8 +125,8 @@
   - [ ] `migrate_step3_normalizeHeaders()` — 2행 machine header 영문 key 정규화
   - [x] `migrate_step4_splitConfig()` — `config` → `AppSettings` + `MissionDefinitions` 복사 함수
   - [x] `migrate_step5_absorbToEvents()` — `raw_checkins` + `CardDraws` + `BonusDraws` + 관련 mutation 시트 → Events 백필 (Phase 2A에서 로컬 구현)
-  - [ ] `migrate_step6_externalizeHoldPray()` — `HOLD_PRAY_ENTRIES` 하드코딩 → `HoldPray` 시트
-  - [ ] `migrate_step7_orderAndColor()` — 시트 순서/탭 색상 적용
+  - [ ] `migrate_step6_externalizeHoldPray()` — `HOLD_PRAY_ENTRIES` 하드코딩 → `HoldPray` 시트. **보류. 나중에 한 번에 처리**
+  - [x] `migrate_step7_orderAndColor()` — 시트 순서/탭 색상 적용 함수 구현
   - [ ] `migrate_runAll()` / `migrate_verify()`
 - [x] `SHEET_NAMES.APP_SETTINGS`, `SHEET_NAMES.MISSION_DEFINITIONS` 추가
 - [x] `SCHEMA.APP_SETTINGS`, `SCHEMA.MISSION_DEFINITIONS` 추가 (Row 1 운영진 라벨 / Row 2 machine header)
@@ -143,6 +143,7 @@
   - [x] 티켓/Collection 재계산 threshold → `MissionDefinitions`
 - [ ] HoldPray 시트 기반 read 경로 동작 확인
 - [ ] AppSettings / MissionDefinitions 기반 read 경로 동작 확인
+- [ ] `migrate_step7_orderAndColor()` DEV 실행 후 시트 순서/탭 색상 확인
 
 ### 2D — Read Path 전환 (Collection을 Projection으로)
 

@@ -606,6 +606,28 @@ const FINAL_HIDDEN_SHEET_NAMES = Object.freeze([
   SHEET_NAMES.CARD_DRAWS,
   SHEET_NAMES.BONUS_DRAWS,
 ]);
+const FINAL_SHEET_TABS = Object.freeze([
+  Object.freeze({ name: SHEET_NAMES.EVENTS, color: '#9333EA' }),
+  Object.freeze({ name: SHEET_NAMES.USER_DASHBOARD, color: USER_DASHBOARD_TAB_COLOR }),
+  Object.freeze({ name: SHEET_NAMES.USERS, color: '#22C55E' }),
+  Object.freeze({ name: SHEET_NAMES.COLLECTION, color: '#22C55E' }),
+  Object.freeze({ name: SHEET_NAMES.RAW_CHECKINS, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.CARD_DRAWS, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.BONUS_DRAWS, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.CARD_RECEIVED, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.TRADES, color: '#F59E0B' }),
+  Object.freeze({ name: SHEET_NAMES.HOLD_PRAY, color: '#F97316' }),
+  Object.freeze({ name: SHEET_NAMES.HP_GUESSES, color: '#F97316' }),
+  Object.freeze({ name: SHEET_NAMES.APP_SETTINGS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.MISSION_DEFINITIONS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.TAB_SETTINGS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.BBB_SETTINGS, color: '#64748B' }),
+  Object.freeze({ name: SHEET_NAMES.BBB, color: '#EF4444' }),
+  Object.freeze({ name: SHEET_NAMES.BBB_MESSAGES, color: '#EF4444' }),
+  Object.freeze({ name: SHEET_NAMES.BBB_PHOTOS, color: '#EF4444' }),
+  Object.freeze({ name: SHEET_NAMES.NOTICES, color: '#FFFFFF' }),
+  Object.freeze({ name: SHEET_NAMES.INQUIRIES, color: '#FFFFFF' }),
+]);
 const CONFIG_LAYOUT = Object.freeze({
   currentWeekLabelCell: 'A1',
   currentWeekCell: 'B1',
@@ -2359,6 +2381,58 @@ function applyFinalSheetVisibility() {
 
 function hideLegacyDevSheets() {
   return applyFinalSheetVisibility();
+}
+
+function migrate_step7_orderAndColor() {
+  const ss = getSpreadsheet();
+  const ordered = [];
+  const colored = [];
+  const missing = [];
+  const orderIssues = [];
+
+  FINAL_SHEET_TABS.forEach(function(tab) {
+    const sheet = ss.getSheetByName(tab.name);
+    if (!sheet) {
+      missing.push(tab.name);
+      return;
+    }
+    sheet.showSheet();
+  });
+
+  FINAL_SHEET_TABS.forEach(function(tab, index) {
+    const sheet = ss.getSheetByName(tab.name);
+    if (!sheet) return;
+
+    try {
+      ss.setActiveSheet(sheet);
+      ss.moveActiveSheet(index + 1);
+      ordered.push(tab.name);
+    } catch(e) {
+      orderIssues.push(tab.name + ': ' + e);
+    }
+
+    try {
+      sheet.setTabColor(tab.color);
+      colored.push(tab.name);
+    } catch(e) {
+      orderIssues.push(tab.name + ' color: ' + e);
+    }
+  });
+
+  const visibility = applyFinalSheetVisibility();
+  visibility.missing.forEach(function(sheetName) {
+    if (missing.indexOf(sheetName) === -1) missing.push(sheetName);
+  });
+
+  return logJsonResult_('migrate_step7_orderAndColor result', {
+    ok: orderIssues.length === 0,
+    ordered: ordered,
+    colored: colored,
+    shown: visibility.shown,
+    hidden: visibility.hidden,
+    missing: missing,
+    orderIssues: orderIssues,
+  });
 }
 
 function getUsersSheet_() {
