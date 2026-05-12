@@ -29,7 +29,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512o';
+    const APP_VERSION = '20260512p';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !(location.hostname.includes('dev.') || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
