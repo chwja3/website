@@ -3377,13 +3377,15 @@ function drawCard(userId, weekKey, testMode, requestId) {
       },
       source: EVENT_SOURCES.WEB,
     });
-    rebuildCollectionRow_(userId);
+    // rebuild 결과의 projection snapshot을 그대로 응답에 사용 — Collection 시트 재조회 2회 제거
+    const rebuildResult = rebuildCollectionRow_(userId);
+    const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const result = {
       ok: true,
       card,
       isNew,
-      collection: getUserCollection(userId),
-      tickets: getCollectionTickets(userId)
+      collection: response.collection,
+      tickets: response.tickets
     };
     if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(result), 600);
     return result;
@@ -4811,6 +4813,26 @@ function emptyCollectionSnapshot_(userId, rowExists) {
   };
 }
 
+// projection snapshot → drawCard/응답용 { collection: {cardId: count}, tickets: {...} } 변환
+// rebuildCollectionRow_ 직후 Collection 시트 재조회를 생략하기 위해 사용
+function collectionResponseFromSnapshot_(snapshot) {
+  const collection = {};
+  if (snapshot && snapshot.cardCounts) {
+    for (let cardId = 1; cardId <= 10; cardId++) {
+      const cnt = Number(snapshot.cardCounts[cardId]) || 0;
+      if (cnt > 0) collection[cardId] = cnt;
+    }
+  }
+  return {
+    collection: collection,
+    tickets: {
+      totalEarned: snapshot ? (Number(snapshot.totalEarned) || 0) : 0,
+      totalDrawn:  snapshot ? (Number(snapshot.totalDrawn)  || 0) : 0,
+      remaining:   snapshot ? (Number(snapshot.remaining)   || 0) : 0,
+    },
+  };
+}
+
 function buildCollectionProjectionFromEvents_(userId, events) {
   const snapshot = emptyCollectionSnapshot_(userId, true);
   const tradeRequests = buildTradeRequestMapFromEvents_(events);
@@ -4948,8 +4970,8 @@ function rebuildCollectionRow(userId) {
   }
 }
 
-function rebuildCollectionRow_(userId) {
-  const events = Events_readAll_();
+function rebuildCollectionRow_(userId, eventsOverride) {
+  const events = eventsOverride || Events_readAll_();
   const projected = buildCollectionProjectionFromEvents_(userId, events);
   const sheet = getOrCreateCollectionSheet();
   const col = getCollectionColumns_(sheet);
@@ -5501,8 +5523,10 @@ function acceptTrade(body) {
       },
       source: EVENT_SOURCES.WEB,
     });
-    rebuildCollectionRow_(requester);
-    rebuildCollectionRow_(nickname);
+    // 양쪽 사용자 rebuild에 공유할 events 1회 읽기 — 전체 Events 스캔 2회 → 1회
+    const sharedEvents = Events_readAll_();
+    rebuildCollectionRow_(requester, sharedEvents);
+    rebuildCollectionRow_(nickname, sharedEvents);
     return { ok: true };
   }
   return { error: 'not_found' };
