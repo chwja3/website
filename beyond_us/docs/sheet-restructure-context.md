@@ -1517,6 +1517,230 @@ A3 셀: =ARRAYFORMULA(IF(Users!A3:A="","",Users!A3:A))
 
 ---
 
+## 최종 스키마 — 전체 시트 참조표
+
+> 마이그레이션 완료 후 목표 상태 기준. GAS 코드의 `SHEET_NAMES` / `SCHEMA` 와 1:1 대응.
+
+---
+
+### F.1 시트 전체 목록
+
+| 시트명 (machine key) | 운영진 라벨 | 상태 | headerRow | dataStartRow | 비고 |
+|---|---|---|---|---|---|
+| `Events` | 이벤트 이력 | **신규** | 2 | 3 | append-only, LockService |
+| `Users` | 회원 정보 | 기존 유지 | 1 | 2 | |
+| `raw_checkins` | 미션 제출 이력 | 기존 유지 | 1 | 2 | Events 백필 후 읽기 전용 |
+| `CardDraws` | 카드 뽑기 이력 | 기존 유지 | 1 | 2 | Events 백필 후 읽기 전용 |
+| `BonusDraws` | 보너스 뽑기권 이력 | 기존 유지 | 1 | 2 | Events 백필 후 읽기 전용 |
+| `Collection` | 카드 보유 현황 (캐시) | **헤더 정규화** | 1 | 2 | Phase 2D 이후 Events 파생 |
+| `CardReceived` | 실물 카드 수령 수량 | 기존 유지 | 1 | 2 | |
+| `Trades` | 카드 교환 요청·처리 | 기존 유지 | 1 | 2 | |
+| `HoldPray` | H&P 기도제목 | **스키마 변경** | 2 | 3 | entryId 추가, Phase 2.0 D |
+| `HPGuesses` | H&P 정답 제출 이력 | 기존 유지 | 1 | 2 | |
+| `AppSettings` | 앱 설정 (Key-Value) | **신규** | 2 | 3 | config 분리 |
+| `MissionDefinitions` | 주차별 미션 항목 | **신규** | 2 | 3 | config 분리 |
+| `UserDashboard` | 유저 현황 대시보드 | **신규** | 2 | 3 | 읽기 전용, 시트 함수 |
+| `TabSettings` | 탭 활성화 설정 | 기존 유지 | 1 | 2 | |
+| `BBBSettings` | BBB 섹션 설정 | 기존 유지 | 1 | 2 | |
+| `BBB` | BBB 매칭 관계 | 기존 유지 | 1 | 2 | |
+| `BBBMessages` | BBB 익명 메시지 | 기존 유지 | 1 | 2 | |
+| `BBBPhotos` | BBB 사진 업로드 | 기존 유지 | 1 | 2 | |
+| `Notices` | 공지사항 | 기존 유지 | 1 | 2 | |
+| `Inquiries` | 개발자 문의 | 기존 유지 | 1 | 2 | |
+| ~~`config`~~ | ~~주차/미션 설정~~ | **폐기** | — | — | AppSettings + MissionDefinitions로 대체 |
+
+---
+
+### F.2 신규 시트 — 컬럼 상세 (상세 설계는 Phase 2.0 해당 섹션 참조)
+
+#### Events
+> 상세 설계: Phase 2.0 (A) 섹션
+
+| machine header | 운영진 라벨 | 타입 | 필수 |
+|---|---|---|---|
+| `eventId` | 이벤트 ID | string | ✓ |
+| `timestamp` | 발생 시각 | string (ISO 8601) | ✓ |
+| `userId` | 닉네임 | string | ✓ |
+| `type` | 이벤트 타입 | string | ✓ |
+| `weekKey` | 주차 키 | string | |
+| `refId` | 참조 ID (카드ID·교환ID 등) | string | |
+| `amount` | 수량 (티켓 수 등, 항상 양수) | number | |
+| `payload` | 추가 데이터 JSON | string | |
+| `source` | 발생 주체 | string | ✓ |
+
+#### AppSettings
+> 상세 설계: Phase 2.0 (C) 섹션
+
+| machine header | 운영진 라벨 | 초기 key 예시 |
+|---|---|---|
+| `key` | 설정 키 | `current_week`, `app_open_date`, `bbb_message_open`, `allow_test_draws` |
+| `value` | 값 | |
+| `type` | 타입 힌트 | `number`, `date`, `boolean`, `string` |
+| `note` | 설명 | |
+
+#### MissionDefinitions
+> 상세 설계: Phase 2.0 (C) 섹션
+
+| machine header | 운영진 라벨 | 타입 |
+|---|---|---|
+| `weekKey` | 주차 키 | string |
+| `weekOrder` | 주차 순서 | number |
+| `weekTitle` | 주차 제목 | string |
+| `weekStartDate` | 시작일 | date |
+| `weekEndDate` | 종료일 | date |
+| `drawThreshold` | 뽑기권 발급 기준 점수 | number |
+| `itemNo` | 항목 번호 | number |
+| `itemText` | 항목 내용 | string |
+| `scoreWeight` | 배점 | number |
+| `category` | 분류 | string |
+| `enabled` | 활성화 | boolean |
+
+#### UserDashboard
+> 상세 설계: Phase 2.0 (E) 섹션 — A~AA 27컬럼
+
+| 그룹 | machine header | 운영진 라벨 | 소스 |
+|---|---|---|---|
+| 유저 | `userId` | 닉네임 | Users |
+| 유저 | `name` | 이름 | Users |
+| 유저 | `parish` | 교구 | Users |
+| 미션 | `missionCount` | 미션 제출 수 | Events |
+| 뽑기권 | `ticketsEarned` | 누적 획득 뽑기권 | Events |
+| 뽑기권 | `ticketsConsumed` | 사용 뽑기권 | Events |
+| 뽑기권 | `ticketsRemaining` | 남은 뽑기권 | 계산 |
+| 카드 | `cardsDrawn` | 뽑은 총 횟수 | Events |
+| 카드 | `card_1`~`card_10` | 사랑~히든 (10컬럼) | Events |
+| 카드 | `totalCards` | 총 카드 수 | 계산 |
+| 교환 | `activeTrades` | 진행중 교환 건수 | Trades |
+| 활동 | `lastActivity` | 마지막 활동 시각 | Events |
+| 검증 | `col_ticketsRemaining` | [컬렉션] 남은 뽑기권 | Collection |
+| 검증 | `col_totalCards` | [컬렉션] 총 카드 수 | Collection |
+| 검증 | `col_cardsDrawn` | [컬렉션] 뽑기 횟수 | Collection |
+| 검증 | `valid_tickets` | 뽑기권 일치 ✓/❌ | 계산 |
+| 검증 | `valid_cards` | 카드 수 일치 ✓/❌ | 계산 |
+| 검증 | `valid_drawn` | 뽑기 횟수 일치 ✓/❌ | 계산 |
+
+---
+
+### F.3 헤더 정규화 대상 시트
+
+마이그레이션 전/후 비교. `migrate_step3_normalizeHeaders()`로 일괄 처리.
+
+#### Collection — 헤더 정규화
+
+현재 시트 헤더(한글)를 machine header(영문)로 교체. SCHEMA.COLLECTION.columns 값도 함께 업데이트.
+
+| GAS 코드 key | 현재 시트 헤더 | 목표 시트 헤더 (machine header) | 운영진 라벨 |
+|---|---|---|---|
+| `userId` | `userId` | `userId` | 닉네임 |
+| `totalEarned` | `누적뽑기권` | `totalEarned` | 누적 획득 뽑기권 |
+| `totalDrawn` | `실제뽑은개수` | `totalDrawn` | 뽑기 횟수 |
+| `remaining` | `남은개수` | `remaining` | 남은 뽑기권 |
+| `card_1` *(card1 → card_1)* | `사랑` | `card_1` | 사랑 |
+| `card_2` *(card2 → card_2)* | `희락` | `card_2` | 희락 |
+| `card_3` *(card3 → card_3)* | `화평` | `card_3` | 화평 |
+| `card_4` *(card4 → card_4)* | `오래참음` | `card_4` | 오래참음 |
+| `card_5` *(card5 → card_5)* | `자비` | `card_5` | 자비 |
+| `card_6` *(card6 → card_6)* | `양선` | `card_6` | 양선 |
+| `card_7` *(card7 → card_7)* | `충성` | `card_7` | 충성 |
+| `card_8` *(card8 → card_8)* | `온유` | `card_8` | 온유 |
+| `card_9` *(card9 → card_9)* | `절제` | `card_9` | 절제 |
+| `totalCards` | `총카드수` | `totalCards` | 총 카드 수 |
+| `card_10` *(hidden → card_10)* | `히든` | `card_10` | 히든 카드 |
+
+> **GAS 코드 key도 변경됨**: `card1`→`card_1`, `hidden`→`card_10`. SCHEMA.COLLECTION.columns과 이를 참조하는 `getCollectionCardIndex_`, `rebuildCollectionSheet`, `updateCollectionSheet` 등을 Phase 2C에서 일괄 수정.  
+> `card_N` 인덱스 = Events의 `refId` 문자열 `"N"`과 1:1 대응.
+
+#### HoldPray — 헤더 정규화
+> 상세 설계: Phase 2.0 (D) 섹션
+
+현재 `이름(n)`, `교구(p)` 등 한글+약어 → `name`, `parish` 등 영문 machine header.  
+`entryId` 컬럼 추가 (맨 앞). 헤더 구조가 1행 → 2행으로 변경.
+
+---
+
+### F.4 기존 유지 시트 — 컬럼 요약
+
+Phase 0 조사 결과와 동일. 헤더는 이미 영문 machine key이며 추가 정규화 불필요.
+
+| 시트 | 컬럼 (machine header) |
+|---|---|
+| `Users` | userId · password · name · parish · createdAt · isStaff · isDev · sessionToken · sessionUpdatedAt |
+| `raw_checkins` | timestamp · weekTitle · items_json · userId · weekKey · dateKey · score · indices_json · weekCumScore · ticketEarned |
+| `CardDraws` | userId · weekKey · cardId · cardName · drawnAt · received |
+| `BonusDraws` | userId · source · awardedAt |
+| `CardReceived` | nickname · cardId · receivedQty · updatedAt |
+| `Trades` | id · requester · requesterCardId · requesterCardName · target · targetCardId · targetCardName · status · createdAt · resolvedAt · requesterPrayed · targetPrayed |
+| `HPGuesses` | nickname · weekKey · cardIndex · guessedName · answeredAt |
+| `TabSettings` | tab_key · label · enabled |
+| `BBBSettings` | key · open · text |
+| `BBB` | userId · careBuddyId · careBuddyName · guessedCorrect · secretBuddyId · secretBuddyName |
+| `BBBMessages` | msgId · fromUserId · toUserId · message · createdAt |
+| `BBBPhotos` | userId · photoBase64 · uploadedAt · missionType |
+| `Notices` | id · title · content · createdAt · imageUrl · updatedAt |
+| `Inquiries` | id · nickname · content · createdAt · reply · repliedAt |
+
+---
+
+### F.5 SHEET_NAMES 최종 상수
+
+```js
+const SHEET_NAMES = Object.freeze({
+  // ── 신규 ─────────────────────────────────────────
+  EVENTS:              'Events',
+  APP_SETTINGS:        'AppSettings',
+  MISSION_DEFINITIONS: 'MissionDefinitions',
+  USER_DASHBOARD:      'UserDashboard',
+  // ── 기존 유지 ─────────────────────────────────────
+  USERS:         'Users',
+  RAW_CHECKINS:  'raw_checkins',
+  CARD_DRAWS:    'CardDraws',
+  BONUS_DRAWS:   'BonusDraws',
+  COLLECTION:    'Collection',
+  CARD_RECEIVED: 'CardReceived',
+  TRADES:        'Trades',
+  HOLD_PRAY:     'HoldPray',
+  HP_GUESSES:    'HPGuesses',
+  TAB_SETTINGS:  'TabSettings',
+  BBB_SETTINGS:  'BBBSettings',
+  BBB:           'BBB',
+  BBB_MESSAGES:  'BBBMessages',
+  BBB_PHOTOS:    'BBBPhotos',
+  NOTICES:       'Notices',
+  INQUIRIES:     'Inquiries',
+  // ── 폐기 예정 ─────────────────────────────────────
+  CONFIG:        'config',  // migrate_step4 후 제거
+});
+```
+
+---
+
+### F.6 시트 탭 순서 + 색상 (migrate_step7_orderAndColor 기준)
+
+| 순서 | 시트명 | 탭 색상 | 비고 |
+|---|---|---|---|
+| 1 | `Events` | 🟣 보라 | Truth source, 핵심 |
+| 2 | `UserDashboard` | 🔵 파랑 | 읽기 전용 |
+| 3 | `Users` | 🟢 초록 | 회원 |
+| 4 | `Collection` | 🟢 초록 | 회원 |
+| 5 | `raw_checkins` | 🟡 노랑 | 도메인 |
+| 6 | `CardDraws` | 🟡 노랑 | 도메인 |
+| 7 | `BonusDraws` | 🟡 노랑 | 도메인 |
+| 8 | `CardReceived` | 🟡 노랑 | 도메인 |
+| 9 | `Trades` | 🟡 노랑 | 도메인 |
+| 10 | `HoldPray` | 🟠 주황 | H&P |
+| 11 | `HPGuesses` | 🟠 주황 | H&P |
+| 12 | `AppSettings` | ⚫ 회색 | 설정 |
+| 13 | `MissionDefinitions` | ⚫ 회색 | 설정 |
+| 14 | `TabSettings` | ⚫ 회색 | 설정 |
+| 15 | `BBBSettings` | ⚫ 회색 | 설정 |
+| 16 | `BBB` | 🔴 빨강 | BBB |
+| 17 | `BBBMessages` | 🔴 빨강 | BBB |
+| 18 | `BBBPhotos` | 🔴 빨강 | BBB |
+| 19 | `Notices` | ⬜ 흰색 | 커뮤니티 |
+| 20 | `Inquiries` | ⬜ 흰색 | 커뮤니티 |
+
+---
+
 ## 결정 사항
 
 ### 합치기로 결정한 것
@@ -1634,3 +1858,4 @@ A3 셀: =ARRAYFORMULA(IF(Users!A3:A="","",Users!A3:A))
 - 2026-05-12. Phase 2.0 (C) AppSettings + MissionDefinitions 스키마 확정. `config` 시트 단일값 설정 → `AppSettings` (Key-Value 4컬럼), 8행 블록 미션 정의 → `MissionDefinitions` (1행 1미션 항목, denormalized). GAS 헬퍼 `getAppSetting_` / `setAppSetting_` / `getMissionItems_` / `getAllWeekMeta_` 설계. migrate_step4_splitConfig() 구조 작성.
 - 2026-05-12. Phase 2.0 (D) HoldPray 정규화 설계 확정. `entryId` 컬럼 추가 + 헤더를 영문 machine key로 교체 + 2행 헤더 구조(운영진 라벨/machine header)로 전환. migrate_step6_externalizeHoldPray() 구조 작성. `getYouthHpEntries()` 반환 형식(`n/p/c/a/nick` → 영문 key)은 Phase 2C 일괄 전환으로 분리. `HOLD_PRAY_ENTRIES` 상수 제거는 migrate_step6 + fallback 분기 제거 후 진행.
 - 2026-05-12. Phase 2.0 (E) UserDashboard 컬럼 명세 + 시트 함수 설계 완료. A~AA 27컬럼 구성: 유저 식별(A~C) / 미션(D) / 뽑기권(E~G) / 카드(H~S, 카드별 10종) / 교환(T) / 마지막 활동(U) / Collection 검증값(V~X) / 검증 ✓/❌(Y~AA). amount 양수 저장 정책, Users 단순 참조 방식, 조건부 서식 설정 순서, 성능 고려사항 포함.
+- 2026-05-12. 최종 스키마 (F) 확정. 전체 21개 시트 목록(신규 4 + 기존 16 + 폐기 1), Collection 헤더 정규화 매핑(card1→card_1, hidden→card_10), SHEET_NAMES 최종 상수, 시트 탭 순서 + 색상 정의. CLAUDE.md 시트 구성표도 함께 갱신.

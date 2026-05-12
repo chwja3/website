@@ -68,7 +68,7 @@
 - [x] `AppSettings` 스키마 샘플 (Key-Value 행) — Phase 2.0 C
 - [x] `MissionDefinitions` 스키마 샘플 (1행=1항목, denormalized 채택) — Phase 2.0 C
 - [x] UserDashboard 컬럼 명세 + 시트 함수 초안 (COUNTIFS / SUMIFS / VLOOKUP) — Phase 2.0 E
-- [ ] 전체 영문 key 시트명 + 운영진 라벨 + machine header 명세 확정 (`sheet-restructure-context.md` "최종 스키마")
+- [x] 전체 영문 key 시트명 + 운영진 라벨 + machine header 명세 확정 (`sheet-restructure-context.md` F섹션 "최종 스키마")
 
 ### 2A — Events 시트 + Dual-Write [non-breaking]
 
