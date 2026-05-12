@@ -76,6 +76,11 @@
     }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { color: var(--primary); background: var(--primary-soft); }
+    .drawer-section-label {
+      padding: 16px 20px 6px; font-size: 11px; font-weight: 900;
+      color: var(--sub); letter-spacing: .08em; text-transform: uppercase;
+    }
+    .drawer-section-divider { height: 10px; border-bottom: 1px solid var(--line); background: #faf6ef; }
 
     /* ── 패널 ── */
     .tab-panel { display: none; }
@@ -179,16 +184,19 @@
     <div class="drawer-overlay" id="drawerOverlay"></div>
     <nav class="admin-drawer" id="adminDrawer">
       <div class="drawer-head">메뉴 <button class="drawer-close" id="drawerCloseBtn">✕</button></div>
+      <div class="drawer-section-label">운영</div>
+      <button class="drawer-item active" data-panel="checkin">대시보드</button>
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
-      <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
-      <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
-      <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
-      <button class="drawer-item" data-panel="bbb">현장미션 (BBB)</button>
-      <button class="drawer-item" data-panel="collection">카드 집계</button>
+      <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
+      <div class="drawer-section-divider"></div>
+      <div class="drawer-section-label">개발자</div>
+      <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
+      <button class="drawer-item" data-panel="bbb">B.B.B 미션</button>
       <button class="drawer-item" data-panel="events">Events 관리</button>
       <button class="drawer-item" data-panel="system">시스템 상태</button>
+      <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
     </nav>
 
     <div class="admin-wrap">
@@ -377,37 +385,6 @@
 
       </div>
 
-      <!-- Collection 집계 탭 -->
-      <div id="tab-collection" class="tab-panel">
-
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-            <div>
-              <h2 class="card-title" style="margin:0;">Collection 집계 시트</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
-                스프레드시트 Collection 탭을 전체 재계산합니다.<br>
-                최초 백필 또는 데이터 불일치 발생 시 1회 실행.
-              </p>
-            </div>
-            <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;white-space:nowrap;" id="rebuildCollectionBtn" onclick="runRebuildCollection()">🔄 전체 재계산</button>
-          </div>
-          <div id="rebuildCollectionStatus" class="status"></div>
-        </div>
-
-        <div class="card" style="margin-top:0;">
-          <p style="font-size:13px;color:var(--sub);line-height:1.7;">
-            <strong style="color:var(--text);">컬럼 구조 (14열)</strong><br>
-            userId · 누적뽑기권 · 실제뽑은개수 · 남은개수 ·
-            사랑 · 희락 · 화평 · 오래참음 · 자비 · 양선 · 충성 · 온유 · 절제 · 총카드수
-          </p>
-          <p style="font-size:13px;color:var(--sub);margin-top:10px;line-height:1.7;">
-            <strong style="color:var(--text);">실시간 업데이트 시점</strong><br>
-            미션 제출 / 카드 뽑기 / BBB 사진 최초 업로드
-          </p>
-        </div>
-
-      </div>
-
       <!-- Events 관리 탭 -->
       <div id="tab-events" class="tab-panel">
 
@@ -549,12 +526,8 @@
               <input type="checkbox" id="togglePrayer" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
             <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">현장미션</span>
+              <span style="font-size:15px; font-weight:700;">B.B.B 미션</span>
               <input type="checkbox" id="toggleSecret" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">채팅방</span>
-              <input type="checkbox" id="toggleChat" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
           </div>
 
@@ -1129,7 +1102,6 @@
         if (res.ok) {
           document.getElementById('togglePrayer').checked = res.prayer !== false;
           document.getElementById('toggleSecret').checked = res.secret !== false;
-          document.getElementById('toggleChat').checked   = res.chat   !== false;
         }
       } catch(e) {}
     }
@@ -1145,8 +1117,7 @@
           action: 'setTabSettings',
           adminPw,
           prayer: document.getElementById('togglePrayer').checked,
-          secret: document.getElementById('toggleSecret').checked,
-          chat:   document.getElementById('toggleChat').checked
+          secret: document.getElementById('toggleSecret').checked
         });
         if (res.ok) {
           statusEl.className = 'status ok';
@@ -1570,7 +1541,6 @@
         const res = await post({ action: 'setTabSettings', adminPw,
           prayer: document.getElementById('togglePrayer')?.checked !== false,
           secret: document.getElementById('toggleSecret')?.checked !== false,
-          chat:   document.getElementById('toggleChat')?.checked   !== false,
           bbbSections: sections,
         });
         if (!res.ok) { statusEl.textContent = '오류: ' + (res.error || ''); return; }
@@ -1578,30 +1548,6 @@
         statusEl.textContent = '✅ 저장 완료';
         setTimeout(() => { statusEl.textContent = ''; }, 2000);
       } catch(e) { statusEl.textContent = '연결 오류'; }
-    }
-
-    /* ── Collection 재계산 ── */
-    async function runRebuildCollection() {
-      if (!confirm('Collection 시트를 전체 재계산합니다.\n기존 데이터가 덮어씌워집니다. 진행할까요?')) return;
-      const btn = document.getElementById('rebuildCollectionBtn');
-      const statusEl = document.getElementById('rebuildCollectionStatus');
-      btn.disabled = true; btn.textContent = '재계산 중...';
-      statusEl.textContent = ''; statusEl.className = 'status';
-      try {
-        const res = await post({ action: 'adminRebuildCollection', adminPw });
-        if (res.ok) {
-          statusEl.textContent = `✅ 완료! ${res.rebuilt}명 데이터 재계산됨`;
-          statusEl.className = 'status ok';
-        } else {
-          statusEl.textContent = '오류: ' + (res.error || '실패');
-          statusEl.className = 'status';
-        }
-      } catch(e) {
-        statusEl.textContent = '연결 오류';
-        statusEl.className = 'status';
-      } finally {
-        btn.disabled = false; btn.textContent = '🔄 전체 재계산';
-      }
     }
 
     async function createAdminCardEvent(mode) {

@@ -1421,6 +1421,7 @@
       cursor: pointer; color: var(--sub);
       border-radius: 12px; margin: 2px 8px;
       transition: background .15s;
+      font-family: inherit;
     }
     .drawer-item::before { content: "•"; flex-shrink: 0; }
     .drawer-label { display: block; white-space: nowrap; }
@@ -1431,8 +1432,43 @@
       background: #ef4444; display: none; flex-shrink: 0;
     }
     .drawer-notice-dot.visible { display: block; }
+    .drawer-utility {
+      padding: 10px 16px 6px;
+      border-top: 1px solid var(--line);
+    }
+    .drawer-utility .drawer-item {
+      border: 1px solid var(--line);
+      background: none;
+      width: 100%;
+      justify-content: center;
+      margin: 0;
+    }
+    .drawer-utility .drawer-item::before { content: none; }
+    .drawer-utility .drawer-item:hover,
+    .drawer-utility .drawer-item.active {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border-color: rgba(123, 79, 166, 0.22);
+    }
+    .drawer-util-main {
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 8px !important;
+    }
+    .drawer-util-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .drawer-util-link {
+      padding: 9px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 10px;
+    }
     .drawer-logout {
-      padding: 4px 16px 12px;
+      padding: 6px 16px 12px;
     }
     .drawer-logout-btn {
       width: 100%; padding: 11px; border-radius: 12px;
