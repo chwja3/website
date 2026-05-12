@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512v';
+    const APP_VERSION = '20260512w';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -900,6 +900,11 @@
       if (!ticketBadge) return;
       const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
       ticketBadge.textContent = `🎫 ${pending}`;
+    }
+
+    function syncTicketBadgeFromServer() {
+      if (!currentNickname) return Promise.resolve();
+      return loadUserStatus({ silent: true }).catch(() => {});
     }
 
     /* ════ 뽑기 섹션 렌더 ════ */
@@ -2350,14 +2355,12 @@
 
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
-      const { prayer, secret, chat } = data.tabSettings;
+      const { prayer, secret } = data.tabSettings;
       const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
       const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
-      const chatItem   = document.querySelector('.drawer-item[data-section="chat"]');
       if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
       if (secretItem) secretItem.style.display = '';
-      if (chatItem)   chatItem.style.display   = (chat   === false) ? 'none' : '';
     }
 
     function updateScoreProgress() {
@@ -2630,7 +2633,6 @@
           userStatus.todayIndices = [...new Set([...(userStatus.todayIndices || []), ...savedIndices])];
           if (saved?.ticketEarned) {
             userStatus.earnedTicketThisWeek = true;
-            userStatus.pendingDraws = (Number(userStatus.pendingDraws) || 0) + 1;
           }
         }
         if (lastConfigData) renderConfig(lastConfigData);
@@ -2642,7 +2644,7 @@
 
         // 백그라운드에서 서버 데이터 동기화
         loadAll({ silent: true }).catch(() => {});
-        loadUserStatus().then(() => loadTrades()).catch(() => {});
+        syncTicketBadgeFromServer().then(() => loadTrades()).catch(() => {});
       } catch(err) {
         restoreOptimisticState();
         if (lastConfigData) renderConfig(lastConfigData);
@@ -3326,6 +3328,7 @@
               stopAnimDots(dotsTimer, statusEl, res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료');
               statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
               statusEl.style.fontWeight = res.rewarded ? '600' : '500';
+              if (res.rewarded) syncTicketBadgeFromServer();
             } else {
               stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패');
             }
@@ -3438,7 +3441,7 @@
             stopAnimDots(dotsTimer, statusEl, res.rewarded ? '뽑기권 1개 지급됐어요 🎫' : '✓ 뽑기권 획득 완료');
             statusEl.style.color = res.rewarded ? 'var(--primary)' : 'var(--sub)';
             statusEl.style.fontWeight = res.rewarded ? '600' : '500';
-            if (res.rewarded) loadUserStatus();
+            if (res.rewarded) syncTicketBadgeFromServer();
           } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
         } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
         finally { label.style.pointerEvents = ''; }
@@ -3498,7 +3501,7 @@
           if (_bbbData) { _bbbData.myPhotoM3 = _bbbData.myPhotoM3 || [null,null,null,null,null,null,null]; _bbbData.myPhotoM3[spotIdx] = base64; if (res.rewarded) _bbbData.m3Rewarded = true; }
           _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], res.rewarded || (_bbbData && _bbbData.m3Rewarded));
           stopAnimDots(dotsTimer, statusEl, '');
-          if (res.rewarded) { loadUserStatus(); }
+          if (res.rewarded) { syncTicketBadgeFromServer(); }
         } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
     }
@@ -3974,11 +3977,6 @@
             _hpTicketAlreadyAwarded = true;
             _hpTicketCardIdx = cardIdx;
             updateHpBadge();
-            const ticketBadge = document.getElementById('ticketBadge');
-            if (ticketBadge) {
-              const cur = parseInt(ticketBadge.textContent.replace(/\D/g, '')) || 0;
-              ticketBadge.textContent = `🎫 ${cur + 1}`;
-            }
             if (slot) {
               const toast = document.createElement('button');
               toast.className = 'hp-ticket-notice';
@@ -3986,7 +3984,7 @@
               toast.onclick = () => switchSection('mission');
               (slot.querySelector('.hp-guess-box') || slot.querySelector('.hp-bottom-area'))?.appendChild(toast);
             }
-            loadUserStatus();
+            syncTicketBadgeFromServer();
           }
         } else {
           if (result) { result.textContent = '아니에요. 1층 로비 현수막에서 한번 찾아봐요! 👀'; result.className = 'hp-result-inline wrong'; result.style.display = ''; }

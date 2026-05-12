@@ -549,12 +549,8 @@
               <input type="checkbox" id="togglePrayer" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
             <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">현장미션</span>
+              <span style="font-size:15px; font-weight:700;">B.B.B 미션</span>
               <input type="checkbox" id="toggleSecret" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">채팅방</span>
-              <input type="checkbox" id="toggleChat" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
           </div>
 
@@ -1129,7 +1125,6 @@
         if (res.ok) {
           document.getElementById('togglePrayer').checked = res.prayer !== false;
           document.getElementById('toggleSecret').checked = res.secret !== false;
-          document.getElementById('toggleChat').checked   = res.chat   !== false;
         }
       } catch(e) {}
     }
@@ -1145,8 +1140,7 @@
           action: 'setTabSettings',
           adminPw,
           prayer: document.getElementById('togglePrayer').checked,
-          secret: document.getElementById('toggleSecret').checked,
-          chat:   document.getElementById('toggleChat').checked
+          secret: document.getElementById('toggleSecret').checked
         });
         if (res.ok) {
           statusEl.className = 'status ok';
@@ -1570,7 +1564,6 @@
         const res = await post({ action: 'setTabSettings', adminPw,
           prayer: document.getElementById('togglePrayer')?.checked !== false,
           secret: document.getElementById('toggleSecret')?.checked !== false,
-          chat:   document.getElementById('toggleChat')?.checked   !== false,
           bbbSections: sections,
         });
         if (!res.ok) { statusEl.textContent = '오류: ' + (res.error || ''); return; }
