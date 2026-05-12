@@ -591,8 +591,7 @@
         host === '127.0.0.1' ||
         host.includes('dev.') ||
         host.startsWith('dev-') ||
-        host.includes('-dev') ||
-        host.endsWith('.pages.dev');
+        host.includes('-dev');
     }
 
     const IS_DEV_ENV = isDevEnvironment();
