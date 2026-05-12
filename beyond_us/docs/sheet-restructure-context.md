@@ -1875,6 +1875,7 @@ const SHEET_NAMES = Object.freeze({
 - 2026-05-12. admin 페이지에 `Events 관리` 패널 추가. 카드 추가는 `card.granted`, 카드 삭제는 `card.removed` 이벤트를 생성하고 해당 유저 `Collection` row를 재계산한다. `adminRebuildEventDerivedViews`는 Events 기준으로 전체 `Collection` 캐시를 다시 만들고 `setupUserDashboard()`를 실행한다.
 - 2026-05-12. BBB M1 케어버디 사진 업로드 보상 흐름 DEV 확인 완료. `uploadBBBPhoto(missionType='m1')`는 `BBBPhotos`에 사진을 저장하고, 최초 1회만 `BonusDraws`에 `bbb_photo`를 남기며, `Events`에 `ticket.granted`를 기록한 뒤 `rebuildCollectionRow_()`로 해당 유저 `Collection` 캐시를 갱신한다. 재업로드 시 중복 뽑기권은 지급되지 않는 것으로 확인.
 - 2026-05-12. 당장 보류한 항목을 명시. `adminGrantHiddenCard` 수동 지급 검증은 넘어가기로 했고, GAS 편집기에서 인자 없이 직접 실행하면 `body`가 없어 `adminPw` 오류가 날 수 있으므로 필요 시 admin action 또는 인자 있는 래퍼로만 실행한다. H&P 하드코딩 제거(`migrate_step6_externalizeHoldPray`)도 나중에 한 번에 처리한다.
+- 2026-05-12. 사용자 확인 기준 DEV 전체 회귀 테스트 완료. admin `Events 관리` 패널에서 카드 추가(`card.granted`), 카드 삭제(`card.removed`), Events 기준 재계산을 확인했고, 로그인/회원가입/비밀번호 재설정, 미션 제출/새로고침, 카드 뽑기/컬렉션/교환, H&P 카드/정답 제출, BBB 매칭/메시지/사진, 공지사항, 개발자 문의, H&P 힌트 분리 표시까지 통과.
 
 ## 현재 상태 요약 — 2026-05-12
 
@@ -1889,6 +1890,7 @@ const SHEET_NAMES = Object.freeze({
 | Dashboard 검증 | `previewCollectionProjection()` `mismatchCount: 0`, UserDashboard ✓ 유지 확인 |
 | Admin 보조 기능 | 테스트 카드 지급, 카드 추가/삭제 event 생성, Events 기준 재계산 패널 구현 |
 | BBB M1 사진 | 최초 업로드 보상 지급과 재업로드 중복 지급 방지 확인 |
+| DEV 회귀 테스트 | 로그인부터 문의/H&P 힌트까지 전체 통과 |
 
 ### 보류.
 
@@ -1896,14 +1898,12 @@ const SHEET_NAMES = Object.freeze({
 |---|---|---|
 | `migrate_step6_externalizeHoldPray()` | H&P 하드코딩 제거는 범위가 커서 나중에 한 번에 처리 | Phase 2C 잔여 정리 또는 별도 H&P 작업 |
 | `adminGrantHiddenCard` 수동 지급 검증 | 현재 급하지 않음. 인자 없는 직접 실행은 오류 위험 있음 | 실제 히든 카드 지급 운영 절차를 정할 때 |
-| PROD 반영 | 모든 Phase 완료 후 진행하기로 결정 | DEV 회귀 테스트와 2E 완료 후 |
+| PROD 반영 | 모든 Phase 완료 후 진행하기로 결정 | 2E 완료 후 Phase 3 계획 재확인 |
 
 ### 다음 작업.
 
 | 우선순위 | 작업 | 확인 기준 |
 |---|---|---|
-| 1 | admin `Events 관리` 패널 end-to-end 검증 | `card.granted` / `card.removed` 생성 후 앱 컬렉션 증감 확인 |
-| 2 | admin `Events 기준 재계산` 검증 | `Collection`과 `UserDashboard`가 같은 Events 기준으로 일치 |
-| 3 | DEV 전체 회귀 테스트 | 로그인, 미션 제출, 카드 뽑기, 교환, H&P, BBB 메시지, 공지, 문의 확인 |
-| 4 | Phase 2E 속도 최적화 | 카드 뽑기와 대시보드 응답 시간 측정 후 병목 개선 |
-| 5 | PROD Phase 3 적용 계획 확정 | 3A~3E 단계별 배포 순서와 롤백 기준 재확인 |
+| 1 | Phase 2E 속도 최적화 | 카드 뽑기와 대시보드 응답 시간 측정 후 병목 개선 |
+| 2 | PROD Phase 3 적용 계획 확정 | 3A~3E 단계별 배포 순서와 롤백 기준 재확인 |
+| 3 | PROD 적용 전 최종 DEV 백업/스냅샷 | DEV 정상 상태를 되돌릴 수 있게 보존 |

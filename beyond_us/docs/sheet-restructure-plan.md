@@ -409,9 +409,10 @@ function migrate_runAll() / migrate_verify()
 - H&P 하드코딩 제거(`migrate_step6_externalizeHoldPray`)는 나중에 한 번에 처리하기로 보류.
 
 **다음 확인.**
-- admin `Events 관리` 패널에서 카드 추가와 삭제 event를 각각 생성하고 앱 컬렉션 반영을 확인.
-- admin `Events 기준 재계산`으로 `Collection`과 `UserDashboard` 정합성을 다시 확인.
-- 로그인, 미션 제출, 카드 뽑기, 교환, H&P, 공지, 문의까지 DEV 전체 회귀 테스트를 완료.
+- admin `Events 관리` 패널에서 카드 추가와 삭제 event를 각각 생성하고 앱 컬렉션 반영 확인 완료.
+- admin `Events 기준 재계산`으로 `Collection`과 `UserDashboard` 정합성 확인 완료.
+- 로그인, 회원가입, 비밀번호 재설정, 미션 제출, 카드 뽑기, 교환, H&P, BBB, 공지, 개발자 문의까지 DEV 전체 회귀 테스트 완료.
+- 다음 작업은 Phase 2E 속도 최적화 또는 PROD Phase 3 적용 전 최종 정리.
 
 ---
 

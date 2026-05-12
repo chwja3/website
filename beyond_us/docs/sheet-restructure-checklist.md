@@ -179,21 +179,22 @@
 - [x] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
 - [x] `setupUserDashboard()` 재실행. `card.granted`를 반영하는 공식으로 갱신. 사용자 확인 기준
 - [x] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인. 사용자 확인 기준
-- [~] DEV 전체 동작 테스트.
-  - [ ] 로그인 / 회원가입 / 비밀번호 재설정
-  - [ ] 미션 제출 / 새로고침
-  - [ ] 카드 뽑기 / 컬렉션 조회 / 교환
-  - [ ] H&P 카드 표시 / 정답 제출
-  - [~] BBB 매칭 / 메시지 / 사진
+- [x] DEV 전체 동작 테스트. 사용자 확인 기준 전체 통과
+  - [x] 로그인 / 회원가입 / 비밀번호 재설정
+  - [x] 미션 제출 / 새로고침
+  - [x] 카드 뽑기 / 컬렉션 조회 / 교환
+  - [x] H&P 카드 표시 / 정답 제출
+  - [x] BBB 매칭 / 메시지 / 사진
     - [x] M1 케어버디 사진 업로드 시 `BBBPhotos` 저장 확인
     - [x] M1 최초 업로드 시 `BonusDraws.bbb_photo` + `Events.ticket.granted` 생성 확인
     - [x] M1 재업로드 시 중복 뽑기권 지급 없음 확인
-    - [ ] BBB 매칭 표시와 메시지 송수신은 별도 확인 필요
-  - [ ] 공지사항 / 개발자 문의
-- [ ] admin `Events 관리` 패널 end-to-end 확인.
-  - [ ] 카드 추가 이벤트 생성 후 `Events.card.granted` + 앱 컬렉션 증가 확인
-  - [ ] 카드 삭제 이벤트 생성 후 `Events.card.removed` + 앱 컬렉션 감소 확인
-  - [ ] Events 기준 재계산 후 `Collection` + `UserDashboard` 정합성 확인
+    - [x] BBB 매칭 표시와 메시지 송수신 확인
+  - [x] 공지사항 / 개발자 문의
+  - [x] 개발자 문의와 H&P 힌트 admin 분리 표시 확인
+- [x] admin `Events 관리` 패널 end-to-end 확인.
+  - [x] 카드 추가 이벤트 생성 후 `Events.card.granted` + 앱 컬렉션 증가 확인
+  - [x] 카드 삭제 이벤트 생성 후 `Events.card.removed` + 앱 컬렉션 감소 확인
+  - [x] Events 기준 재계산 후 `Collection` + `UserDashboard` 정합성 확인
 
 ### 2E — 속도 최적화
 
