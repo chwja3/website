@@ -62,12 +62,12 @@
 
 ### 2.0 사전 설계 (문서 작업)
 
-- [ ] Events 시트 스키마 확정 (`sheet-restructure-context.md` "Events 스키마" 섹션)
-  - [ ] event type 카탈로그 (mission.submitted, ticket.granted, card.drawn, trade.*, hp.guessed, bbb.* 등)
-  - [ ] payload JSON 구조 명세
-- [ ] `AppSettings` 스키마 샘플 (Key-Value 행)
-- [ ] `MissionDefinitions` 스키마 샘플 (1행=1항목 vs 1행=1주차 결정)
-- [ ] UserDashboard 컬럼 명세 + 시트 함수 초안 (COUNTIFS / SUMIFS / VLOOKUP)
+- [x] Events 시트 스키마 확정 (`sheet-restructure-context.md` Phase 2.0 A 섹션)
+  - [x] event type 카탈로그 (mission.submitted, ticket.granted, card.drawn, trade.*, hp.guessed, bbb.* 등)
+  - [x] payload JSON 구조 명세 (하이브리드: refId/amount/weekKey 별도 컬럼 + payload JSON)
+- [x] `AppSettings` 스키마 샘플 (Key-Value 행) — Phase 2.0 C
+- [x] `MissionDefinitions` 스키마 샘플 (1행=1항목, denormalized 채택) — Phase 2.0 C
+- [x] UserDashboard 컬럼 명세 + 시트 함수 초안 (COUNTIFS / SUMIFS / VLOOKUP) — Phase 2.0 E
 - [ ] 전체 영문 key 시트명 + 운영진 라벨 + machine header 명세 확정 (`sheet-restructure-context.md` "최종 스키마")
 
 ### 2A — Events 시트 + Dual-Write [non-breaking]
