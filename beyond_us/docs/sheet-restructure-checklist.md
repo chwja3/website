@@ -158,13 +158,17 @@
 - [x] `rebuildCollectionRow(userId)` 함수 작성 — Events에서 그 유저 row 통째로 재계산
   - [x] `rebuildCollectionRow_` 내부 헬퍼 분리. 이후 Lock을 이미 잡은 mutation 경로에서 재사용 가능
   - [x] `adminRebuildCollectionRow` 관리자 POST 액션 추가. UI 노출 없음
-- [ ] `rebuildCollectionRow(userId)` DEV 단건 실행 후 `diffCountBeforeWrite: 0` 확인
-- [ ] mutation 경로에서 Collection 직접 setValue 제거.
-  - [ ] `updateCollectionSheet` (카드 뽑기 후)
-  - [ ] `updateTicketCols` (티켓 변경 후)
-  - [ ] 교환 수락 시 Collection 보정
-  - [ ] 모든 setValue → Events.append + rebuildCollectionRow(userId)
-- [ ] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
+- [x] `rebuildCollectionRow(userId)` DEV 단건 실행 후 `diffCountBeforeWrite: 0` 확인. 사용자 확인 기준
+- [x] mutation 경로에서 Collection 직접 setValue 제거.
+  - [x] `saveCheckin` — `mission.submitted` + 조건부 `ticket.granted` 기록 후 row rebuild
+  - [x] `drawCard` — `ticket.consumed` + `card.drawn` 기록 후 row rebuild
+  - [x] `requestTrade` — `trade.requested` 기록
+  - [x] `acceptTrade` — `trade.accepted` 기록 후 양쪽 row rebuild
+  - [x] `submitHoldPrayGuess` / `uploadBBBPhoto` 보너스 지급 — `ticket.granted` 기록 후 row rebuild
+  - [x] `adminGrantHiddenCard` — `card.granted` 기록 후 row rebuild
+  - [x] 기존 `updateCollectionSheet` / `updateTicketCols` 정의는 비상/호환용으로 보존
+- [x] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
+- [ ] `setupUserDashboard()` 재실행. `card.granted`를 반영하는 공식으로 갱신
 - [ ] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인
 - [ ] DEV 전체 동작 테스트.
   - [ ] 로그인 / 회원가입 / 비밀번호 재설정

@@ -381,7 +381,8 @@
 
 | type | refId | amount | weekKey | payload | 발생 시점 |
 |---|---|---|---|---|---|
-| `card.drawn` | cardId (`1`~`9`, `hidden`) | — | optional | `cardName`, `isNew` (boolean) | `drawCard` |
+| `card.drawn` | cardId (`1`~`9`) | 1 | optional | `cardName`, `isNew` (boolean) | `drawCard` |
+| `card.granted` | cardId (`hidden`/`10`) | 1 | — | `cardName`, `reason` | `adminGrantHiddenCard` |
 | `card.received` | cardId | ✓ (수령 수량) | — | — | `setCardReceivedQty` (admin) |
 
 `card.received`는 실물 카드 수령. 기존 `CardReceived` 시트 데이터의 후계. amount가 누적 수량(현재 row의 절대값)인지 증분인지는 마이그레이션 규칙에서 결정 (현재는 절대값으로 갱신하는 패턴 → 매번 새 이벤트가 최신값).
@@ -1414,8 +1415,8 @@ Collection 시트는 Row 1 = 헤더, Row 2+ = 데이터.
 | R | `card_10` | 히든 | `=COUNTIFS(Events!C3:C,A3,Events!D3:D,"card.drawn",Events!E3:E,"10")` |
 | S | `totalCards` | 총 카드 수 | `=SUM(I3:R3)` |
 
-> `card.received` 이벤트(현장 카드 수령, 절대량 저장)는 별도 집계 필요 시 추가.  
-> 이번 설계에서는 `card.drawn` 기준 (온라인 뽑기 횟수)만 집계. 현장 카드는 CardReceived 시트 그대로 참조.
+> Phase 2D 이후 `card_1`~`card_10` 실제 생성 공식은 위 `card.drawn` COUNTIFS에 `card.granted` SUMIFS를 더한다.<br>
+> `card.granted`는 관리자 히든 카드 지급처럼 실제 뽑기권 소모가 없는 카드 지급만 표현한다. `card.received` 이벤트(현장 카드 수령, 절대량 저장)는 별도 집계 필요 시 추가.
 
 #### 그룹 5 — 교환
 
@@ -1867,3 +1868,4 @@ const SHEET_NAMES = Object.freeze({
 - 2026-05-12. Phase 2C H&P 하드코딩 제거(`migrate_step6_externalizeHoldPray`)는 사용자의 결정으로 보류. 대신 로직 영향이 낮은 `migrate_step7_orderAndColor()`를 로컬 GAS에 추가. F.6의 시트 순서와 색상 기준으로 탭을 정렬하고 색상을 지정한 뒤, 마지막에 `applyFinalSheetVisibility()`를 호출해 `config`, `raw_checkins`, `CardDraws`, `BonusDraws` 숨김 정책을 다시 적용한다.
 - 2026-05-12. Phase 2D 시작. 쓰기 경로 전환 전에 비교 전용 `previewCollectionProjection(userId)`를 로컬 GAS에 추가. 인자 없이 실행하면 Users/Collection/Events에서 후보 유저를 모아 기존 Collection row와 Events 기반 projection을 비교한다. projection은 `ticket.granted`, `ticket.consumed`, `card.drawn`, `trade.requested`+`trade.accepted`를 반영하고, field별 diff를 로그로 반환한다. 아직 `updateCollectionSheet`, `updateTicketCols`, `rebuildCollectionSheet`의 실제 쓰기 경로는 변경하지 않았다.
 - 2026-05-12. 사용자 DEV 확인 기준 `previewCollectionProjection()` 결과 `mismatchCount: 0`. 이어서 `rebuildCollectionRow(userId)`를 로컬 GAS에 추가. 공개 함수는 Lock을 잡고, 내부 `rebuildCollectionRow_(userId)`가 Events projection을 Collection row에 upsert한다. 기존 mutation 경로는 아직 변경하지 않았고, 수동 검증용 관리자 POST 액션 `adminRebuildCollectionRow`만 추가했다.
+- 2026-05-12. Phase 2D mutation 경로 로컬 전환. `Events_append()`에서 내부 `Events_append_()`를 분리해 Lock 내부에서도 안전하게 이벤트를 남길 수 있게 했다. `saveCheckin`, `drawCard`, `requestTrade`, `acceptTrade`, `submitHoldPrayGuess`, `uploadBBBPhoto`, `adminGrantHiddenCard`는 이제 관련 Events를 기록한 뒤 `rebuildCollectionRow_()`로 Collection row를 재계산한다. 관리자 히든 카드 지급은 실제 뽑은 횟수를 늘리지 않기 위해 신규 이벤트 `card.granted`로 분리했고, projection과 UserDashboard 공식 생성도 이를 반영한다.

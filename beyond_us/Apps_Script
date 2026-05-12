@@ -531,6 +531,7 @@ const EVENT_TYPES = Object.freeze({
   TICKET_GRANTED: 'ticket.granted',
   TICKET_CONSUMED: 'ticket.consumed',
   CARD_DRAWN: 'card.drawn',
+  CARD_GRANTED: 'card.granted',
   CARD_RECEIVED: 'card.received',
   TRADE_REQUESTED: 'trade.requested',
   TRADE_ACCEPTED: 'trade.accepted',
@@ -989,7 +990,18 @@ function adminGrantHiddenCard(body) {
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
   try {
-  updateCollectionSheet(userId, 10, 1);
+  const now = new Date().toISOString();
+  Events_append_(EVENT_TYPES.CARD_GRANTED, userId, {
+    timestamp: now,
+    amount: 1,
+    refId: 10,
+    source: EVENT_SOURCES.ADMIN,
+    payload: {
+      cardName: '히든',
+      reason: 'admin_hidden_grant',
+    },
+  });
+  rebuildCollectionRow_(userId);
   return { ok: true };
   } finally {
     lock.releaseLock();
@@ -1283,13 +1295,17 @@ function Events_append(type, userId, options) {
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '?좎떆 ???ㅼ떆 ?쒕룄?댁＜?몄슂.' }; }
 
   try {
-    const sheet = getOrCreateEventsSheet();
-    const row = Events_buildRow_(type, userId, options || {});
-    sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, 1, EVENTS_COL_COUNT).setValues([row]);
-    return { ok: true, event: Events_rowToObject_(row) };
+    return Events_append_(type, userId, options || {});
   } finally {
     lock.releaseLock();
   }
+}
+
+function Events_append_(type, userId, options) {
+  const sheet = getOrCreateEventsSheet();
+  const row = Events_buildRow_(type, userId, options || {});
+  sheet.getRange(Math.max(sheet.getLastRow() + 1, SCHEMA.EVENTS.dataStartRow), 1, 1, EVENTS_COL_COUNT).setValues([row]);
+  return { ok: true, event: Events_rowToObject_(row) };
 }
 
 function Events_buildRow_(type, userId, options) {
@@ -2323,7 +2339,7 @@ function buildUserDashboardFormulaRow_(sheetRow, userRow) {
   ];
 
   for (let cardId = 1; cardId <= 10; cardId++) {
-    row.push('=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '",' + eventsRefRange + ',"' + cardId + '"))');
+    row.push('=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_DRAWN + '",' + eventsRefRange + ',"' + cardId + '")+SUMIFS(' + eventsAmountRange + ',' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.CARD_GRANTED + '",' + eventsRefRange + ',"' + cardId + '"))');
   }
 
   row.push(
@@ -2761,8 +2777,32 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   // J열: 이 제출로 처음 threshold 달성하면 1, 아니면 0
   const ticketEarned = (prevWeekScore < config.drawThreshold && weekCumScore >= config.drawThreshold) ? 1 : 0;
 
-  rawSheet.appendRow([new Date(), config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
-  try { updateTicketCols(userId); } catch(e) {}
+  const now = new Date();
+  rawSheet.appendRow([now, config.weekTitle, JSON.stringify(newItems), userId, weekKey, today, newScore, JSON.stringify(newIndices), weekCumScore, ticketEarned]);
+  Events_append_(EVENT_TYPES.MISSION_SUBMITTED, userId, {
+    timestamp: now,
+    weekKey: weekKey,
+    payload: {
+      weekTitle: config.weekTitle,
+      dateKey: today,
+      score: newScore,
+      weekCumScore: weekCumScore,
+      items: newItems,
+      indices: newIndices,
+    },
+    source: EVENT_SOURCES.WEB,
+  });
+  if (ticketEarned === 1) {
+    Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+      timestamp: now,
+      timestampOffsetMs: 1,
+      amount: 1,
+      weekKey: weekKey,
+      payload: { reason: 'week_complete' },
+      source: EVENT_SOURCES.WEB,
+    });
+    rebuildCollectionRow_(userId);
+  }
   clearDashboardCache_();
   const result = {
     ok: true,
@@ -3114,10 +3154,32 @@ function drawCard(userId, weekKey, testMode, requestId) {
     } catch(e) {}
 
     // 항상 현재 GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
+    const drawnAt = new Date().toISOString();
     const draws = getOrCreateDrawSheet();
-    draws.appendRow([userId, weekKey, card.id, card.name, new Date().toISOString()]);
-    updateCollectionSheet(userId, card.id, 1);
-    try { updateTicketCols(userId); } catch(e) {}
+    draws.appendRow([userId, weekKey, card.id, card.name, drawnAt]);
+    Events_append_(EVENT_TYPES.TICKET_CONSUMED, userId, {
+      timestamp: drawnAt,
+      amount: 1,
+      weekKey: weekKey,
+      payload: {
+        reason: 'card_draw',
+        testMode: bypassTicketCheck,
+      },
+      source: EVENT_SOURCES.WEB,
+    });
+    Events_append_(EVENT_TYPES.CARD_DRAWN, userId, {
+      timestamp: drawnAt,
+      timestampOffsetMs: 1,
+      amount: 1,
+      weekKey: weekKey,
+      refId: card.id,
+      payload: {
+        cardName: card.name,
+        isNew: isNew,
+      },
+      source: EVENT_SOURCES.WEB,
+    });
+    rebuildCollectionRow_(userId);
     const result = {
       ok: true,
       card,
@@ -3365,7 +3427,17 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
       });
     }
     if (!alreadyRecorded) {
-      guessSheet.appendRow([nickname, weekKey, ci, guess.trim(), new Date().toISOString()]);
+      const answeredAt = new Date().toISOString();
+      guessSheet.appendRow([nickname, weekKey, ci, guess.trim(), answeredAt]);
+      Events_append_(EVENT_TYPES.HP_GUESSED, nickname, {
+        timestamp: answeredAt,
+        weekKey: weekKey,
+        payload: {
+          cardIndex: ci,
+          guessedName: guess.trim(),
+        },
+        source: EVENT_SOURCES.WEB,
+      });
     }
   }
   let ticketAwarded = false;
@@ -3380,8 +3452,19 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
       alreadyAwarded = rows.some(function(r) { return String(r[bonusCol.userId]) === nickname && String(r[bonusCol.source]) === source; });
     }
     if (!alreadyAwarded) {
-      bonusSheet.appendRow([nickname, source, new Date().toISOString()]);
-      try { updateTicketCols(nickname); } catch(e) {}
+      const awardedAt = new Date().toISOString();
+      bonusSheet.appendRow([nickname, source, awardedAt]);
+      Events_append_(EVENT_TYPES.TICKET_GRANTED, nickname, {
+        timestamp: awardedAt,
+        amount: 1,
+        weekKey: weekKey,
+        payload: {
+          reason: 'hp_correct',
+          legacySource: source,
+        },
+        source: EVENT_SOURCES.WEB,
+      });
+      rebuildCollectionRow_(nickname);
       ticketAwarded = true;
     }
   }
@@ -4600,6 +4683,10 @@ function buildCollectionProjectionFromEvents_(userId, events) {
       const amount = eventAmount_(event, 1);
       snapshot.totalDrawn += amount;
       if (cardId >= 1 && cardId <= 10) snapshot.cardCounts[cardId] += amount;
+    } else if (event.type === EVENT_TYPES.CARD_GRANTED) {
+      const cardId = Number(event.refId);
+      const amount = eventAmount_(event, 1);
+      if (cardId >= 1 && cardId <= 10) snapshot.cardCounts[cardId] += amount;
     }
   });
 
@@ -5021,12 +5108,25 @@ function requestTrade(body) {
   const tgtColl = getUserCollection(target);
   if (!(tgtColl[targetCardId] >= 2)) return { error: '상대방이 해당 카드를 중복 보유하고 있지 않아요.' };
 
+  const createdAt = new Date().toISOString();
   const id = String(new Date().getTime());
   getOrCreateTradesSheet().appendRow([
     id, requester, requesterCardId, reqCard.name,
     target, targetCardId, tgtCard.name,
-    'pending', new Date().toISOString(), ''
+    'pending', createdAt, ''
   ]);
+  Events_append_(EVENT_TYPES.TRADE_REQUESTED, requester, {
+    timestamp: createdAt,
+    refId: id,
+    payload: {
+      target: target,
+      requesterCardId: requesterCardId,
+      requesterCardName: reqCard.name,
+      targetCardId: targetCardId,
+      targetCardName: tgtCard.name,
+    },
+    source: EVENT_SOURCES.WEB,
+  });
   return { ok: true, tradeId: id };
   } finally {
     lock.releaseLock();
@@ -5071,14 +5171,20 @@ function acceptTrade(body) {
       return { error: '내가 더 이상 해당 카드를 중복 보유하지 않아요.' };
     }
 
-    // 양쪽 컬렉션 업데이트
-    updateCollectionSheet(requester, requesterCardId, -1);
-    updateCollectionSheet(requester, targetCardId,    +1);
-    updateCollectionSheet(nickname,  targetCardId,    -1);
-    updateCollectionSheet(nickname,  requesterCardId, +1);
-
+    const resolvedAt = new Date().toISOString();
     sheet.getRange(rowIndex, col.status + 1).setValue('accepted');
-    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
+    sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(resolvedAt);
+    Events_append_(EVENT_TYPES.TRADE_ACCEPTED, requester, {
+      timestamp: resolvedAt,
+      refId: tradeId,
+      payload: {
+        status: 'accepted',
+        target: nickname,
+      },
+      source: EVENT_SOURCES.WEB,
+    });
+    rebuildCollectionRow_(requester);
+    rebuildCollectionRow_(nickname);
     return { ok: true };
   }
   return { error: 'not_found' };
@@ -5434,12 +5540,34 @@ function uploadBBBPhoto(body) {
       }
       if (filledSpots >= 7) {
         bonusSheet.appendRow([userId, bonusSource, now]);
-        try { updateTicketCols(userId); } catch(e) {}
+        Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+          timestamp: now,
+          amount: 1,
+          weekKey: '',
+          payload: {
+            reason: 'bbb_mission',
+            legacySource: bonusSource,
+            missionType: missionType,
+          },
+          source: EVENT_SOURCES.WEB,
+        });
+        rebuildCollectionRow_(userId);
         rewarded = true;
       }
     } else {
       bonusSheet.appendRow([userId, bonusSource, now]);
-      try { updateTicketCols(userId); } catch(e) {}
+      Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+        timestamp: now,
+        amount: 1,
+        weekKey: '',
+        payload: {
+          reason: bonusSource === 'bbb_photo' ? 'bbb_photo' : 'bbb_mission',
+          legacySource: bonusSource,
+          missionType: missionType,
+        },
+        source: EVENT_SOURCES.WEB,
+      });
+      rebuildCollectionRow_(userId);
       rewarded = true;
     }
   }
