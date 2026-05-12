@@ -756,7 +756,7 @@ function doGet(e) {
     const weekKey = e.parameter.weekKey || '';
     const auth = requireSessionForUser_(e.parameter, userId);
     if (auth) return jsonOutput(auth);
-    return jsonOutput(getUserStatus(userId, weekKey));
+    return jsonOutput(getUserStatusCached_(userId, weekKey));
   }
   if (action === 'getUsers') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
@@ -2912,6 +2912,9 @@ function clearUserCache_(userId) {
   const cleanUserId = String(userId || '').trim();
   if (!cleanUserId) return;
   cacheRemove_(cacheKey_('user_status_v1', cleanUserId));
+  for (let week = 1; week <= 12; week++) {
+    cacheRemove_(cacheKey_('user_status_v1', cleanUserId + ':w' + week));
+  }
   cacheRemove_(cacheKey_('collection_v1', cleanUserId));
 }
 
@@ -3211,8 +3214,21 @@ function hasBonusTicketGrant_(userId, legacySource, weekKey, userEvents) {
 }
 
 // ── 카드 시스템 ───────────────────────────────────
-function getUserStatus(userId, weekKey) {
+function getUserStatusCached_(userId, weekKey) {
+  const cleanUserId = String(userId || '').trim();
   const config = getConfig();
+  const cleanWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
+  if (!cleanUserId) return getUserStatus(cleanUserId, cleanWeekKey, config);
+  const key = cacheKey_('user_status_v1', cleanUserId + ':' + cleanWeekKey);
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getUserStatus(cleanUserId, cleanWeekKey, config);
+  cachePutJson_(key, data, 10);
+  return data;
+}
+
+function getUserStatus(userId, weekKey, configOverride) {
+  const config = configOverride || getConfig();
   weekKey = String(weekKey || ('w' + config.currentWeek)).trim();
   let weekScore = 0, drawnThisWeek = false, weekCard = null;
   const collection = [];
@@ -3275,19 +3291,14 @@ function getUserStatus(userId, weekKey) {
     }
   } catch(e) {}
 
-  // 컬렉션 (Collection 시트에서 읽기 — 교환 결과 반영됨)
-  try {
-    const collCounts = getUserCollection(userId);
-    SPIRIT_CARDS.forEach(card => {
-      const cnt = collCounts[card.id] || 0;
-      for (let j = 0; j < cnt; j++) collection.push({...card});
-    });
-  } catch(e) {}
-
-  // 뽑기권 현황: Collection 시트 D열(남은개수) 직접 읽기
   let pendingDraws = 0;
   try {
-    pendingDraws = getCollectionTickets(userId).remaining;
+    const snapshot = getCurrentCollectionSnapshot_(String(userId || '').trim());
+    pendingDraws = Number(snapshot.remaining) || 0;
+    SPIRIT_CARDS.forEach(card => {
+      const cnt = Number(snapshot.cardCounts[card.id]) || 0;
+      for (let j = 0; j < cnt; j++) collection.push({...card});
+    });
   } catch(e) {}
 
   return {

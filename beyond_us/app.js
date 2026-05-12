@@ -29,7 +29,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260512g';
+    const APP_VERSION = '20260512h';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -1451,7 +1451,24 @@
       const opts = options || {};
       if (!currentNickname) { renderDrawSection(); return; }
       const prevSig = getUserStatusRenderSignature(userStatus);
-      if (!opts.silent) renderDrawSection(); // 로딩 상태
+      let usedCachedStatus = false;
+      if (!opts.silent) {
+        try {
+          const cached = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + currentNickname) || 'null');
+          if (cached && cached.ok) {
+            userStatus = cached;
+            usedCachedStatus = true;
+            renderDrawSection();
+            renderCollection();
+            updateScoreProgress();
+            if (lastConfigData) renderConfig(lastConfigData);
+          } else {
+            renderDrawSection();
+          }
+        } catch(e) {
+          renderDrawSection();
+        }
+      }
       try {
         const res = await fetch(
           `${API_BASE}?action=userStatus&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
@@ -1475,7 +1492,7 @@
           renderWeekCal();
         }
       } catch(e) {
-        userStatus = { error: true };
+        if (!usedCachedStatus) userStatus = { error: true };
       }
       const nextSig = getUserStatusRenderSignature(userStatus);
       const changed = prevSig !== nextSig;
@@ -2494,10 +2511,11 @@
 
     let _serverSyncPromise = null;
     let _lastServerSyncAt = 0;
+    const SERVER_SYNC_MIN_INTERVAL_MS = 45000;
     function syncServerChanges(force) {
       if (!currentNickname) return Promise.resolve();
       const now = Date.now();
-      if (!force && now - _lastServerSyncAt < 15000) return _serverSyncPromise || Promise.resolve();
+      if (!force && now - _lastServerSyncAt < SERVER_SYNC_MIN_INTERVAL_MS) return _serverSyncPromise || Promise.resolve();
       if (_serverSyncPromise) return _serverSyncPromise;
       _lastServerSyncAt = now;
       _serverSyncPromise = Promise.all([
@@ -2505,10 +2523,7 @@
         loadNotices().catch(() => {}),
         loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {}),
         _currentSection === 'secret' ? loadBBB(true).catch(() => {}) : Promise.resolve(),
-        (_currentSection === 'prayer'
-          ? loadHoldPray(true).then(markHoldPraySeen)
-          : loadHoldPray(true)
-        ).catch(() => {})
+        _currentSection === 'prayer' ? loadHoldPray(true).then(markHoldPraySeen).catch(() => {}) : Promise.resolve()
       ]).finally(() => { _serverSyncPromise = null; });
       return _serverSyncPromise;
     }
@@ -2527,12 +2542,44 @@
       refreshBtn.disabled = true;
       setStatus('저장하고 있어요...');
       const submitRequestId = 'submit_' + getTodayKey() + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      const checkedScore = checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0);
+      const checkedIndices = checked.map(item => allItems.indexOf(item)).filter(i => i >= 0);
+      const todayKey = getTodayKey();
+      const optimisticKeys = [
+        'beyondus_submitted_' + todayKey,
+        'beyondus_submitted_idx_' + todayKey,
+        'beyondus_check_dates',
+        'beyondus_last_check_date'
+      ];
+      const optimisticStorage = {};
+      optimisticKeys.forEach(key => { optimisticStorage[key] = localStorage.getItem(key); });
+      const optimisticUserStatus = userStatus ? JSON.parse(JSON.stringify(userStatus)) : userStatus;
+      function restoreOptimisticState() {
+        optimisticKeys.forEach(key => {
+          if (optimisticStorage[key] === null) localStorage.removeItem(key);
+          else localStorage.setItem(key, optimisticStorage[key]);
+        });
+        userStatus = optimisticUserStatus ? JSON.parse(JSON.stringify(optimisticUserStatus)) : optimisticUserStatus;
+      }
+
+      saveSubmittedItems(checked);
+      saveCheckDate();
+      if (userStatus && !userStatus.error) {
+        userStatus.weekScore = (Number(userStatus.weekScore) || 0) + checkedScore;
+        userStatus.todayItems = [...new Set([...(userStatus.todayItems || []), ...checked])];
+        userStatus.todayIndices = [...new Set([...(userStatus.todayIndices || []), ...checkedIndices])];
+      }
+      if (lastConfigData) renderConfig(lastConfigData);
+      updateScoreProgress();
+      renderWeekCal();
+      submitBtn.disabled = true;
+      refreshBtn.disabled = true;
 
       try {
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checked.reduce((s, item) => s + ((lastConfigData?.scores?.[item]) || 1), 0), requestId: submitRequestId }))
+          body: JSON.stringify(withSession({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checkedScore, requestId: submitRequestId }))
         });
         if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
         const saved = await res.json();
@@ -2540,6 +2587,7 @@
         const savedItems = Array.isArray(saved?.savedItems) ? saved.savedItems : checked;
         const savedIndices = Array.isArray(saved?.savedIndices) ? saved.savedIndices : savedItems.map(item => lastConfigData?.items?.indexOf(item)).filter(i => i >= 0);
 
+        restoreOptimisticState();
         if (savedItems.length) {
           saveSubmittedItems(savedItems);
           saveCheckDate();
@@ -2563,6 +2611,10 @@
         loadAll({ silent: true }).catch(() => {});
         loadUserStatus().then(() => loadTrades()).catch(() => {});
       } catch(err) {
+        restoreOptimisticState();
+        if (lastConfigData) renderConfig(lastConfigData);
+        updateScoreProgress();
+        renderWeekCal();
         setStatus(err.message || '오류가 발생했습니다.', 'error');
         submitBtn.disabled = false;
       } finally {
@@ -2654,7 +2706,7 @@
       if (name === 'inquiry') loadInquiries();
       if (name === 'prayer') {
         markHoldPraySeen();
-        loadHoldPray(true).then(markHoldPraySeen).catch(() => {});
+        loadHoldPray(false).then(markHoldPraySeen).catch(() => {});
       }
       if (name === 'collection') {
         renderCollection();
@@ -3125,12 +3177,21 @@
       }
     }
 
-    async function loadBBB(silent = false) {
+    let _bbbLoadPromise = null;
+    let _bbbLoadedOnce = false;
+    let _bbbLastLoadedAt = 0;
+    const BBB_REFRESH_TTL_MS = 60000;
+
+    async function loadBBB(silent = false, forceRefresh = false) {
       const nickname = localStorage.getItem('beyondus_nickname') || '';
       if (!nickname) return;
+      const now = Date.now();
+      if (!forceRefresh && _bbbLoadedOnce && now - _bbbLastLoadedAt < BBB_REFRESH_TTL_MS) return;
+      if (_bbbLoadPromise) return _bbbLoadPromise;
+      _bbbLoadPromise = (async () => {
 
       // 주기 동기화(silent) 시에는 로딩 UI를 띄우지 않아 깜빡임 방지
-      if (!silent) {
+      if (!silent && !_bbbLoadedOnce) {
         document.getElementById('bbbLoading').style.display = '';
         document.getElementById('bbbContent').style.display = 'none';
         document.getElementById('bbbNoMatch').style.display = 'none';
@@ -3144,6 +3205,8 @@
         ]);
 
         document.getElementById('bbbLoading').style.display = 'none';
+        _bbbLoadedOnce = true;
+        _bbbLastLoadedAt = Date.now();
 
         // 섹션별 Coming Soon / 오픈 토글 — 매칭 여부와 무관하게 먼저 적용
         // [key, csId, liveId, csDisplay, updateText]
@@ -3272,6 +3335,8 @@
           document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
         }
       }
+      })().finally(() => { _bbbLoadPromise = null; });
+      return _bbbLoadPromise;
     }
 
     /* ── MISSION 2 ── */
@@ -3633,6 +3698,7 @@
             </div>
           </div>`;
       }
+      if (hpHasCache && !forceRefresh) return;
 
       try {
         const [res] = await Promise.all([

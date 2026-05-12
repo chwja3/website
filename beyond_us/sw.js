@@ -1,4 +1,4 @@
-const CACHE = 'beyondus-20260512g';
+const CACHE = 'beyondus-20260512h';
 const ASSETS = [
   './',
   './index.html',

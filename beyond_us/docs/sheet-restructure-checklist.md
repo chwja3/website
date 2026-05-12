@@ -240,6 +240,12 @@
   - [ ] DEV에서 측정 결과 기록
 - [x] DEV 스트레스 테스트용 `phase2EStressTestDraws(body)` 추가
   - [ ] DEV에서 테스트 유저로 연속 뽑기 실행 후 `projectionMismatchCount: 0` 확인
+- [x] 사용자 화면 체감 최적화 추가
+  - [x] 사전미션 제출은 서버 응답 전 로컬 화면에 즉시 반영하고 실패 시 rollback
+  - [x] `syncServerChanges()` 최소 간격을 45초로 완화하고 비활성 H&P 강제 호출 제거
+  - [x] H&P는 로컬 캐시가 있으면 탭 진입 시 즉시 렌더하고 불필요한 재요청 생략
+  - [x] BBB는 재진입 시 기존 화면을 유지하고 60초 TTL 안에서는 중복 호출 생략
+  - [x] `userStatus` GET에 짧은 GAS 캐시와 Collection 단일 읽기 적용
 
 ---
 
