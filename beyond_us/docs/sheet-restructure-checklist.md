@@ -54,19 +54,89 @@
 
 ---
 
-## Phase 2 — 새 스키마 정의 + 마이그레이션 스크립트
+## Phase 2 — 새 스키마 + Event Sourcing 도입 (DEV)
 
-- [ ] 영문 key 시트명 / 운영진 라벨 / machine header 명세 확정 (`sheet-restructure-context.md` 의 "최종 스키마" 섹션)
-- [ ] 마이그레이션 함수 작성.
-  - [ ] `migrateAddSheetMetadata()` — Row 1 운영진 라벨/설명 추가
-  - [ ] `migrateNormalizeHeaders()` — machine header를 안정적인 영문 key로 정규화
-  - [ ] `migrateMergeCardDrawsBonusDraws()` — 두 시트 통합 (`CardLedger` 생성 여부 결정 후)
-  - [ ] `migrateSplitConfig()` — `config` → `AppSettings` + `MissionDefinitions`
-  - [ ] `migrateSheetOrderAndColor()` — 시트 순서/색상 일괄 적용
-- [ ] DEV 시트에서 마이그레이션 dry-run 실행
-- [ ] DEV 시트에서 마이그레이션 본 실행 + 결과 검증
-- [ ] GAS 코드의 `SHEET_NAMES` / 컬럼 헤더 새 값으로 갱신
-- [ ] DEV 환경에서 전체 동작 테스트.
+> Event Sourcing + Dual Projection 구조 도입.
+> Events 시트가 단일 truth source. Collection은 pure projection. UserDashboard는 시트 함수 기반 검증 뷰.
+> 단계별로 위험도 차이가 커서 2A~2E로 쪼개고, 각 단계 끝마다 DEV에서 모니터링 후 다음 단계.
+
+### 2.0 사전 설계 (문서 작업)
+
+- [ ] Events 시트 스키마 확정 (`sheet-restructure-context.md` "Events 스키마" 섹션)
+  - [ ] event type 카탈로그 (mission.submitted, ticket.granted, card.drawn, trade.*, hp.guessed, bbb.* 등)
+  - [ ] payload JSON 구조 명세
+- [ ] `AppSettings` 스키마 샘플 (Key-Value 행)
+- [ ] `MissionDefinitions` 스키마 샘플 (1행=1항목 vs 1행=1주차 결정)
+- [ ] UserDashboard 컬럼 명세 + 시트 함수 초안 (COUNTIFS / SUMIFS / VLOOKUP)
+- [ ] 전체 영문 key 시트명 + 운영진 라벨 + machine header 명세 확정 (`sheet-restructure-context.md` "최종 스키마")
+
+### 2A — Events 시트 + Dual-Write [non-breaking]
+
+> 모든 mutation을 Events에도 같이 적는다. 기존 동작은 그대로.
+
+- [ ] DEV 시트에 `Events` 시트 생성 (헤더: eventId / timestamp / userId / type / payload / source)
+- [ ] `Events.append(type, userId, payload, source)` 헬퍼 작성
+- [ ] mutation 경로 dual-write 패치.
+  - [ ] `submit` (mission.submitted)
+  - [ ] `drawCard` (card.drawn) + 티켓 차감 (ticket.consumed)
+  - [ ] 미션 주차 완료 시 티켓 발급 (ticket.granted, reason=week_complete)
+  - [ ] `submitHoldPrayGuess` (hp.guessed) + 정답 보상 티켓 (ticket.granted, reason=hp_correct)
+  - [ ] `requestTrade` / `acceptTrade` / `rejectTrade` / `cancelTrade` / `prayForTrade` (trade.*)
+  - [ ] `sendBBBMessage` (bbb.message_sent)
+  - [ ] `guessBBBSecret` (bbb.guessed)
+  - [ ] `uploadBBBPhoto` (bbb.photo_uploaded)
+  - [ ] 관리자 티켓 지급 등 보너스 액션 (ticket.granted, reason=admin)
+- [ ] DEV 며칠 모니터링 — Events vs 기존 시트 비교 스크립트로 누락/불일치 확인
+- [ ] dev 브랜치 커밋
+
+### 2B — UserDashboard 시트 추가 [read-only]
+
+> 시트 함수만 박는다. 코드 변경 거의 없음.
+
+- [ ] `UserDashboard` 시트 생성 + 컬럼 헤더
+- [ ] Users 목록을 한 행씩 자동 펼치는 함수 (`Users!A:A` 참조)
+- [ ] Events에서 계산되는 컬럼 (시트 함수)
+  - [ ] 미션 제출 수
+  - [ ] 누적 티켓 획득
+  - [ ] 카드 뽑은 수
+  - [ ] 남은 뽑기권
+  - [ ] 카드 종류별 보유 (Events 합산)
+  - [ ] 교환 진행중 건수
+  - [ ] 마지막 활동 timestamp
+- [ ] Collection 저장값과 비교하는 검증 컬럼 (✓/❌)
+- [ ] 조건부 서식 — ❌ 행 빨갛게
+- [ ] 모든 행이 ✓ 떨어지는지 확인 (Phase 2A dual-write가 잘 됐다면)
+
+### 2C — 스키마 정규화 + 마이그레이션
+
+- [ ] 마이그레이션 함수 작성 (모두 idempotent).
+  - [ ] `migrate_step1_backup()` — 모든 시트 백업 사본
+  - [ ] `migrate_step2_addSheetMetadata()` — 1행 운영진 라벨/설명
+  - [ ] `migrate_step3_normalizeHeaders()` — 2행 machine header 영문 key 정규화
+  - [ ] `migrate_step4_splitConfig()` — `config` → `AppSettings` + `MissionDefinitions`
+  - [ ] `migrate_step5_absorbToEvents()` — `raw_checkins` + `CardDraws` + `BonusDraws` → Events 백필
+  - [ ] `migrate_step6_externalizeHoldPray()` — `HOLD_PRAY_ENTRIES` 하드코딩 → `HoldPray` 시트
+  - [ ] `migrate_step7_orderAndColor()` — 시트 순서/탭 색상 적용
+  - [ ] `migrate_runAll()` / `migrate_verify()`
+- [ ] DEV 시트 사본에서 dry-run
+- [ ] DEV 시트 본 실행 + verify
+- [ ] GAS 코드의 SHEET_NAMES / SCHEMA 새 키로 갱신
+- [ ] HoldPray 시트 기반 read 경로 동작 확인
+- [ ] AppSettings / MissionDefinitions 기반 read 경로 동작 확인
+
+### 2D — Read Path 전환 (Collection을 Projection으로)
+
+> Collection 직접 mutation을 전부 제거하고, Events 기반 재계산으로 대체.
+
+- [ ] `rebuildCollectionRow(userId)` 함수 작성 — Events에서 그 유저 row 통째로 재계산
+- [ ] mutation 경로에서 Collection 직접 setValue 제거.
+  - [ ] `updateCollectionSheet` (카드 뽑기 후)
+  - [ ] `updateTicketCols` (티켓 변경 후)
+  - [ ] 교환 수락 시 Collection 보정
+  - [ ] 모든 setValue → Events.append + rebuildCollectionRow(userId)
+- [ ] 기존 `rebuildCollectionSheet` (전체) 는 검증/긴급 정비용으로 보존
+- [ ] UserDashboard의 검증 컬럼이 ✓ 유지되는지 확인
+- [ ] DEV 전체 동작 테스트.
   - [ ] 로그인 / 회원가입 / 비밀번호 재설정
   - [ ] 미션 제출 / 새로고침
   - [ ] 카드 뽑기 / 컬렉션 조회 / 교환
@@ -74,20 +144,63 @@
   - [ ] BBB 매칭 / 메시지 / 사진
   - [ ] 공지사항 / 개발자 문의
 
+### 2E — 속도 최적화
+
+- [ ] Sheets API v4 (Advanced Service) 활성화
+- [ ] `batchGet` / `batchUpdate` 도입 — 함수당 RPC 횟수 감소
+- [ ] 캐시 키 정밀화 — 유저 단위로 무효화 (`clearHotCaches_` 광범위 invalidate 제거)
+- [ ] 함수당 `getSpreadsheet()` 호출 1회로 통합
+- [ ] 카드 뽑기 응답 시간 측정 — 2D 직후 vs 2E 후 비교
+- [ ] DEV 스트레스 테스트 (연속 뽑기 등)
+
 ---
 
-## Phase 3 — PROD 적용
+## Phase 3 — PROD 적용 (단계별 배포)
 
-- [ ] 운영진에 사전 공지 (마이그레이션 시간대)
-- [ ] PROD 스프레드시트 백업.
-  - [ ] 모든 시트 복제 → `백업_YYYYMMDD_원본명`
-- [ ] PROD 마이그레이션 함수 실행
-- [ ] GAS 새 버전 배포 (기존 배포 편집 → URL 유지 시도)
+> Phase 2의 A→B→C→D→E 순으로 PROD에도 단계별 적용. 한 번에 다 안 옮김.
+
+### 3.0 사전 공지
+
+- [ ] 운영진에 단계별 마이그레이션 일정 안내
+- [ ] 단계별 PROD 백업 정책 합의
+
+### 3A — PROD Events 시트 + Dual-Write 배포
+
+- [ ] PROD 시트에 `Events` 시트 생성
+- [ ] PROD GAS에 dual-write 코드 배포 (기존 배포 편집 → URL 유지)
+- [ ] 며칠 모니터링 — Events 채워지는지, 기존 시트와 불일치 없는지
+
+### 3B — PROD UserDashboard 추가
+
+- [ ] PROD 시트에 `UserDashboard` 추가 + 시트 함수
+- [ ] 검증 컬럼 ✓ 떨어지는지 운영진과 함께 확인
+- [ ] 불일치 발견 시 원인 추적
+
+### 3C — PROD 스키마 마이그레이션
+
+- [ ] PROD 시트 전체 백업 (백업 시트 + Drive 사본 1부)
+- [ ] PROD GAS에서 `migrate_runAll()` 실행
+- [ ] `migrate_verify()` 검증
+- [ ] HoldPray / AppSettings / MissionDefinitions 동작 확인
+
+### 3D — PROD Collection Projection 전환
+
+- [ ] PROD GAS에 Phase 2D 코드 배포
+- [ ] 카드 뽑기 / 미션 제출 스모크 테스트
+- [ ] UserDashboard 검증 컬럼 ✓ 확인
+- [ ] 1시간 활성 사용자 모니터링
+
+### 3E — PROD 속도 최적화
+
+- [ ] PROD GAS에 Phase 2E 코드 배포
+- [ ] 응답 시간 개선 측정
+- [ ] 사용자 체감 보고 수집
+
+### 3.9 마무리
+
 - [ ] `app.js` + `admin.html` 의 DEV/PROD `API_BASE` 갱신 (URL 바뀐 경우만)
-- [ ] `admin.html` dev/local 접속은 DEV GAS, PROD 접속은 PROD GAS를 참조하는지 확인
 - [ ] 버전 bump (`YYYYMMDD?`) + `version.txt` + `sw.js` + `app.js` `APP_VERSION` 동기화
-- [ ] `git push origin dev`
-- [ ] 스모크 테스트 (실 사용자 계정으로 로그인 → 메인 → 미션 제출 → 카드 뽑기)
+- [ ] `git push origin dev` → main 머지
 - [ ] 운영진에 완료 보고 + 변경 내역 가이드 전달
 - [ ] 백업 시트 1주일 보관 후 제거
 
