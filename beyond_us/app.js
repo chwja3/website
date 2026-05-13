@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260514j';
+    const APP_VERSION = '20260514k';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2255,7 +2255,7 @@
         var rect = tearZone.getBoundingClientRect();
         var pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
         tearLight.style.width = (pct * 100) + '%';
-        if (pct >= 0.88) { active = false; completeTear(); }
+        if (pct >= 0.80) { active = false; completeTear(); }
       });
       tearZone.addEventListener('pointerup',     function() { active = false; });
       tearZone.addEventListener('pointercancel', function() { active = false; });
@@ -2361,9 +2361,9 @@
           ease: 'power1.out'
         }, 0.03)
         .fromTo('#packCardPreview',
-          { opacity: 0, scale: 0.9, y: 20 },
-          { opacity: 0.92, scale: 1.04, y: -10, duration: 0.34, ease: 'power2.out' },
-          0.08
+          { opacity: 0, scale: 0.88, y: 56 },
+          { opacity: 0.95, scale: 1.04, y: -32, duration: 0.42, ease: 'power2.out' },
+          0.06
         )
         .to('#packTopPiece', {
           y: -78,
@@ -2390,10 +2390,10 @@
         .to('#packCardPreview', {
           opacity: 0,
           scale: 1.08,
-          y: -46,
+          y: -72,
           duration: 0.34,
           ease: 'power2.in'
-        }, 0.34);
+        }, 0.40);
       }
     })();
 
