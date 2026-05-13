@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513e';
+    const APP_VERSION = '20260513f';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -3237,7 +3237,7 @@
       return error || '업로드 실패';
     }
     function _bbbApprovalStatusText(status, rewarded) {
-      if (rewarded || status === 'approved') return '✓ 뽑기권 획득 완료';
+      if (rewarded || status === 'approved') return '✓ 특별 카드팩 획득 완료';
       if (status === 'rejected') return '승인 거절됨. 사진을 삭제하거나 다시 올려주세요.';
       return '운영진 확인 대기 중';
     }
@@ -3406,7 +3406,7 @@
             const res = await REDIRECT.json();
             if (res.ok) {
               _bbbShowPhoto(base64);
-              stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 뽑기권이 지급돼요.' : '✓ 제출 완료');
+              stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 특별 카드팩이 지급돼요.' : '✓ 제출 완료');
               statusEl.style.color = 'var(--primary)';
               statusEl.style.fontWeight = '600';
               if (res.rewarded) syncTicketBadgeFromServer();
@@ -3519,7 +3519,7 @@
           const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm2' })), redirect: 'follow' })).json();
           if (res.ok) {
             _bbbShowM2Photo(base64);
-            stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 뽑기권이 지급돼요.' : '✓ 제출 완료');
+            stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 특별 카드팩이 지급돼요.' : '✓ 제출 완료');
             statusEl.style.color = 'var(--primary)';
             statusEl.style.fontWeight = '600';
             if (res.rewarded) syncTicketBadgeFromServer();
@@ -3562,7 +3562,7 @@
       const filled = photos.filter(Boolean).length;
       const statusEl = document.getElementById('bbbM3Status');
       if (statusEl) {
-        statusEl.textContent = m3Rewarded ? '✓ 뽑기권 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
+        statusEl.textContent = m3Rewarded ? '✓ 특별 카드팩 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
         statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
       }
     }
