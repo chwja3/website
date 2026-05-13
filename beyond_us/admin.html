@@ -333,14 +333,13 @@
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="attendanceTotalUsers">-</div></div>
           <div class="stat-card"><div class="stat-label">참석 체크</div><div class="stat-value" id="attendanceCheckedUsers">-</div></div>
-          <div class="stat-card"><div class="stat-label">전체 추첨권</div><div class="stat-value" id="attendanceTotalRaffle">-</div></div>
         </div>
 
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
             <div>
               <h2 class="card-title" style="margin:0;">수련회 참석자 명단</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">체크하면 해당 유저에게 참석 추첨권 1장이 반영됩니다.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">참석 여부 기록용입니다. 추첨권에는 반영되지 않습니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshAttendanceBtn">새로고침</button>
           </div>
@@ -785,7 +784,6 @@
         _raffleAttendanceUsers = res.users || [];
         document.getElementById('attendanceTotalUsers').textContent = res.totalUsers || 0;
         document.getElementById('attendanceCheckedUsers').textContent = res.attendedCount || 0;
-        document.getElementById('attendanceTotalRaffle').textContent = res.totalRaffleTickets || 0;
         renderRaffleAttendanceRows(_raffleAttendanceUsers);
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="4" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
@@ -833,12 +831,9 @@
         if (!res.ok) throw new Error(res.error || 'save_failed');
         const user = _raffleAttendanceUsers.find(u => u.nickname === nickname);
         if (user) {
-          const before = user.attended === true;
           user.attended = attended;
-          user.raffleTickets = Math.max(0, (Number(user.raffleTickets) || 0) + (attended === before ? 0 : (attended ? 1 : -1)));
         }
         document.getElementById('attendanceCheckedUsers').textContent = _raffleAttendanceUsers.filter(u => u.attended).length;
-        document.getElementById('attendanceTotalRaffle').textContent = _raffleAttendanceUsers.reduce((sum, u) => sum + (Number(u.raffleTickets) || 0), 0);
         statusEl.textContent = '저장됐어요.';
         statusEl.className = 'status ok';
         setTimeout(() => {
