@@ -1592,10 +1592,10 @@
       height: 68px;
       background:
         radial-gradient(circle at 20% 35%, rgba(255,255,255,0.95) 0 2px, transparent 3px),
-        radial-gradient(circle at 72% 18%, rgba(255,214,234,0.95) 0 2px, transparent 3px),
-        radial-gradient(circle at 86% 62%, rgba(255,255,255,0.85) 0 1px, transparent 3px),
-        radial-gradient(circle at 44% 72%, rgba(244,114,182,0.88) 0 2px, transparent 4px);
-      filter: drop-shadow(0 0 8px rgba(244,114,182,0.62));
+        radial-gradient(circle at 72% 18%, rgba(255,244,170,0.9) 0 2px, transparent 3px),
+        radial-gradient(circle at 86% 62%, rgba(255,255,255,0.82) 0 1px, transparent 3px),
+        radial-gradient(circle at 44% 72%, rgba(255,213,80,0.86) 0 2px, transparent 4px);
+      filter: drop-shadow(0 0 8px rgba(255,218,76,0.62));
       opacity: 0.78;
       pointer-events: none;
       animation: raffleSparkle 1.6s ease-in-out infinite;
@@ -1745,16 +1745,16 @@
       0%, 100% {
         filter:
           brightness(1)
-          drop-shadow(0 0 6px rgba(244, 114, 182, 0.85))
-          drop-shadow(0 0 12px rgba(219, 39, 119, 0.55))
-          drop-shadow(0 3px 6px rgba(112, 17, 65, 0.22));
+          drop-shadow(0 0 6px rgba(255, 237, 120, 0.85))
+          drop-shadow(0 0 12px rgba(255, 193, 7, 0.55))
+          drop-shadow(0 3px 6px rgba(99, 62, 0, 0.22));
       }
       50% {
         filter:
           brightness(1.18)
-          drop-shadow(0 0 9px rgba(255, 220, 235, 0.95))
-          drop-shadow(0 0 18px rgba(232, 60, 140, 0.8))
-          drop-shadow(0 3px 8px rgba(112, 17, 65, 0.28));
+          drop-shadow(0 0 9px rgba(255, 255, 205, 0.95))
+          drop-shadow(0 0 18px rgba(255, 183, 28, 0.85))
+          drop-shadow(0 3px 8px rgba(99, 62, 0, 0.28));
       }
     }
     @keyframes raffleSparkle {
