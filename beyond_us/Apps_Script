@@ -6300,8 +6300,12 @@ function validateBBBPhotoUpload_(userId, missionType) {
   return normalized;
 }
 
+function isBBBMissionRewardEventType_(type) {
+  return type === EVENT_TYPES.TICKET_GRANTED || type === EVENT_TYPES.SPECIAL_PACK_GRANTED;
+}
+
 function isBBBPhotoRewardEvent_(event) {
-  if (!event || event.type !== EVENT_TYPES.TICKET_GRANTED) return false;
+  if (!event || !isBBBMissionRewardEventType_(event.type)) return false;
   const legacySource = String((event.payload && event.payload.legacySource) || '').trim();
   return BBB_PHOTO_REWARD_SOURCES.indexOf(legacySource) !== -1 && eventAmount_(event, 1) > 0;
 }
@@ -6321,7 +6325,7 @@ function hasBBBRewardRevokeEvent_(eventId, events) {
   const cleanEventId = String(eventId || '').trim();
   if (!cleanEventId) return false;
   return (events || []).some(function(event) {
-    if (event.type !== EVENT_TYPES.TICKET_GRANTED) return false;
+    if (!isBBBMissionRewardEventType_(event.type)) return false;
     if (eventAmount_(event, 1) >= 0) return false;
     return String((event.payload && event.payload.revokedEventId) || '').trim() === cleanEventId;
   });
@@ -6344,6 +6348,7 @@ function auditBBBPhotoRewardSecurity_() {
       timestamp: event.timestamp,
       userId: event.userId,
       amount: eventAmount_(event, 1),
+      rewardType: event.type,
       legacySource: String((event.payload && event.payload.legacySource) || '').trim(),
       missionType: missionType,
       error: validation.error,
@@ -6391,13 +6396,17 @@ function revokeInvalidBBBPhotoRewardsApply() {
     const revoked = [];
     invalidRewards.forEach(function(item) {
       const amount = Math.max(1, Math.abs(Number(item.amount) || 1));
-      const event = Events_append_(EVENT_TYPES.TICKET_GRANTED, item.userId, {
+      const revokeType = item.rewardType === EVENT_TYPES.SPECIAL_PACK_GRANTED
+        ? EVENT_TYPES.SPECIAL_PACK_GRANTED
+        : EVENT_TYPES.TICKET_GRANTED;
+      const event = Events_append_(revokeType, item.userId, {
         timestamp: now,
         amount: -amount,
         weekKey: '',
         payload: {
           reason: 'bbb_security_revoke',
           revokedEventId: item.eventId,
+          revokedRewardType: item.rewardType || EVENT_TYPES.TICKET_GRANTED,
           revokedLegacySource: item.legacySource,
           missionType: item.missionType,
           validationError: item.error,
@@ -6405,7 +6414,7 @@ function revokeInvalidBBBPhotoRewardsApply() {
         source: EVENT_SOURCES.ADMIN,
       });
       affectedUsers[item.userId] = true;
-      revoked.push({ revokedEventId: item.eventId, revokeEventId: event.event.eventId, userId: item.userId, amount: amount });
+      revoked.push({ revokedEventId: item.eventId, revokeEventId: event.event.eventId, userId: item.userId, amount: amount, rewardType: revokeType });
     });
     Object.keys(affectedUsers).forEach(function(userId) {
       rebuildCollectionRow_(userId);
@@ -6430,11 +6439,9 @@ function getBBBPhotoRewardEventMap_() {
   const map = {};
   const events = Events_readAll_();
   events.forEach(function(event) {
-    if (event.type !== EVENT_TYPES.TICKET_GRANTED) return;
-    if (eventAmount_(event, 1) <= 0) return;
+    if (!isBBBPhotoRewardEvent_(event)) return;
     if (hasBBBRewardRevokeEvent_(event.eventId, events)) return;
     const legacySource = String((event.payload && event.payload.legacySource) || '').trim();
-    if (legacySource !== 'bbb_photo' && legacySource !== 'bbb_m2') return;
     const key = getBBBPhotoRewardEventKey_(event.userId, legacySource);
     if (!map[key]) map[key] = event;
   });
@@ -6462,6 +6469,25 @@ function getBBBPhotoApprovalStatus_(row, col, rewardEvent) {
 
 function hasActiveBBBPhotoReward_(userId, legacySource) {
   return !!getBBBPhotoRewardEventMap_()[getBBBPhotoRewardEventKey_(userId, legacySource)];
+}
+
+function grantBBBSpecialPack_(userId, legacySource, missionType, options) {
+  const opts = options || {};
+  const payload = {
+    reason: opts.reason || 'bbb_mission',
+    legacySource: legacySource,
+    missionType: missionType,
+    reward: 'special_pack',
+    packType: 'special',
+  };
+  if (opts.approvedBy) payload.approvedBy = opts.approvedBy;
+  return Events_append_(EVENT_TYPES.SPECIAL_PACK_GRANTED, userId, {
+    timestamp: opts.timestamp || new Date().toISOString(),
+    amount: 1,
+    weekKey: '',
+    payload: payload,
+    source: opts.source || EVENT_SOURCES.WEB,
+  });
 }
 
 function adminGetBBBPhotoApprovals() {
@@ -6558,16 +6584,10 @@ function adminApproveBBBPhoto(body) {
       return { ok: true, rewarded: false, alreadyRewarded: true };
     }
 
-    const appended = Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+    const appended = grantBBBSpecialPack_(userId, validation.bonusSource, missionType, {
       timestamp: now,
-      amount: 1,
-      weekKey: '',
-      payload: {
-        reason: 'bbb_photo_approved',
-        legacySource: validation.bonusSource,
-        missionType: missionType,
-        approvedBy: String(body.adminId || 'admin'),
-      },
+      reason: 'bbb_photo_approved',
+      approvedBy: String(body.adminId || 'admin'),
       source: EVENT_SOURCES.ADMIN,
     });
     const rewardEventId = appended && appended.event ? appended.event.eventId : '';
@@ -6641,9 +6661,7 @@ function uploadBBBPhoto(body) {
     const now = new Date().toISOString();
     const bonusSource = validation.bonusSource;
     const approvalRequired = isBBBPhotoApprovalRequired_(validation.missionType);
-    const alreadyRewarded = approvalRequired
-      ? hasActiveBBBPhotoReward_(userId, bonusSource)
-      : hasBonusTicketGrant_(userId, bonusSource, '');
+    const alreadyRewarded = hasActiveBBBPhotoReward_(userId, bonusSource);
 
     if (approvalRequired && alreadyRewarded && existingRow !== -1) {
       return { ok: false, error: 'already_approved', approvalStatus: 'approved' };
@@ -6687,30 +6705,18 @@ function uploadBBBPhoto(body) {
           }
         }
         if (filledSpots >= 7) {
-          Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+          grantBBBSpecialPack_(userId, bonusSource, missionType, {
             timestamp: now,
-            amount: 1,
-            weekKey: '',
-            payload: {
-              reason: 'bbb_mission',
-              legacySource: bonusSource,
-              missionType: missionType,
-            },
+            reason: 'bbb_mission',
             source: EVENT_SOURCES.WEB,
           });
           rebuildCollectionRow_(userId);
           rewarded = true;
         }
       } else {
-        Events_append_(EVENT_TYPES.TICKET_GRANTED, userId, {
+        grantBBBSpecialPack_(userId, bonusSource, missionType, {
           timestamp: now,
-          amount: 1,
-          weekKey: '',
-          payload: {
-            reason: bonusSource === 'bbb_photo' ? 'bbb_photo' : 'bbb_mission',
-            legacySource: bonusSource,
-            missionType: missionType,
-          },
+          reason: bonusSource === 'bbb_photo' ? 'bbb_photo' : 'bbb_mission',
           source: EVENT_SOURCES.WEB,
         });
         rebuildCollectionRow_(userId);
@@ -6880,10 +6886,9 @@ function getBBB(userId) {
   let m1Rewarded = false, m2Rewarded = false, m3Rewarded = false;
   try {
     const bbbPhotoRewardMap = getBBBPhotoRewardEventMap_();
-    const userEvents = Events_readByUser(userId);
     m1Rewarded = !!bbbPhotoRewardMap[getBBBPhotoRewardEventKey_(userId, 'bbb_photo')];
     m2Rewarded = !!bbbPhotoRewardMap[getBBBPhotoRewardEventKey_(userId, 'bbb_m2')];
-    m3Rewarded = hasBonusTicketGrant_(userId, 'bbb_m3', '', userEvents);
+    m3Rewarded = !!bbbPhotoRewardMap[getBBBPhotoRewardEventKey_(userId, 'bbb_m3')];
   } catch(e) {}
 
   return {

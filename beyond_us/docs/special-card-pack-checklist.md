@@ -11,4 +11,5 @@
 - [x] GAS `userStatus.pendingSpecialPacks` 응답 추가.
 - [x] GAS `drawSpecialCard` 액션 추가.
 - [x] UserDashboard에 특별팩 획득·사용·잔여 수 컬럼 추가.
-- [ ] 현장 미션 성공 시 `special_pack.granted` 자동 지급 연결.
+- [x] BBB MISSION 1, 2, 3 성공 시 각각 `special_pack.granted` 자동 지급 연결.
+- [x] BBB 사진 승인 화면과 사용자 앱 문구를 특별 카드팩 기준으로 수정.
