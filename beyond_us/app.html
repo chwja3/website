@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260513g" />
+  <link rel="stylesheet" href="app.css?v=20260513h" />
 </head>
 <body>
 
@@ -430,7 +430,7 @@
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card" id="drawSection">
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span class="draw-title-actions"><span id="ticketBadge" class="draw-ticket-badge">🎫 0</span><span id="specialPackBadge" class="draw-ticket-badge special-pack-badge hidden">💜 0</span><button onclick="switchSection('collection')" class="draw-collection-link">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!<br><br>뽑은 카드는 5/17(일)부터 1층 로비 부스에서 실물 카드를 수령할 수 있어요. (TF 팀에게 뽑은 카드를 보여주세요.)</span></span></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span class="draw-title-actions"><span id="ticketBadge" class="draw-ticket-badge">🎫 0</span><button onclick="switchSection('collection')" class="draw-collection-link">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!<br><br>뽑은 카드는 5/17(일)부터 1층 로비 부스에서 실물 카드를 수령할 수 있어요. (TF 팀에게 뽑은 카드를 보여주세요.)</span></span></span></h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -876,7 +876,7 @@
                   <div style="display:flex;align-items:flex-start;gap:14px;margin-top:8px;">
                     <div style="flex:1;min-width:0;">
                       <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">케어버디와 사진 찍기</p>
-                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 특별 카드팩 +1 (최초 1회)</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 카드팩 +1 (최초 1회)</p>
                       <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                     </div>
                     <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
@@ -910,7 +910,7 @@
                     <div style="flex:1;min-width:0;">
                       <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">H&amp;P 카드에 손 얹고 기도 인증</p>
                       <p style="font-size:12px;color:var(--sub);margin:0 0 2px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
-                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 특별 카드팩 +1 (최초 1회)</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 카드팩 +1 (최초 1회)</p>
                       <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                     </div>
                     <label id="bbbM2Label" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
@@ -952,7 +952,7 @@
               </div>
               <div id="bbbM3Live">
                 <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
-                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 특별 카드팩 +1</p>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 카드팩 +1</p>
                 <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
                   <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
@@ -998,7 +998,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260513g" defer></script>
+  <script src="app.js?v=20260513h" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

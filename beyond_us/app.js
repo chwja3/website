@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513g';
+    const APP_VERSION = '20260513h';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -900,17 +900,21 @@
       return Math.max(0, Number(status?.pendingSpecialPacks) || 0);
     }
 
+    function getNextDrawPackType(status) {
+      const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
+      const specialPending = specialPackOpen && status && !status.error ? getSpecialPackCount(status) : 0;
+      if (pending > 0) return 'normal';
+      if (specialPending > 0) return 'special';
+      if (TEST_MODE || IS_DEV_ENV) return 'normal';
+      return '';
+    }
+
     function updateTicketBadge(status) {
       const ticketBadge = document.getElementById('ticketBadge');
-      const specialBadge = document.getElementById('specialPackBadge');
       if (!ticketBadge) return;
       const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
-      ticketBadge.textContent = `🎫 ${pending}`;
-      if (specialBadge) {
-        const specialPending = status && !status.error ? getSpecialPackCount(status) : 0;
-        specialBadge.textContent = `💜 ${specialPending}`;
-        specialBadge.classList.toggle('hidden', !specialPackOpen);
-      }
+      const specialPending = specialPackOpen && status && !status.error ? getSpecialPackCount(status) : 0;
+      ticketBadge.textContent = `🎫 ${pending + specialPending}`;
     }
 
     function syncTicketBadgeFromServer() {
@@ -944,20 +948,16 @@
       const specialPending = getSpecialPackCount(userStatus);
 
       if (specialPackOpen) {
-        const normalEnabled = pending > 0 || IS_DEV_ENV;
-        const specialEnabled = specialPending > 0;
-        const emptyMsg = (!normalEnabled && !specialEnabled)
+        const nextPackType = getNextDrawPackType(userStatus);
+        const devOnlyNormal = nextPackType === 'normal' && pending <= 0 && specialPending <= 0 && (TEST_MODE || IS_DEV_ENV);
+        const emptyMsg = !nextPackType
           ? `<p class="draw-pack-empty-msg">사용 가능한 카드팩이 없어요.</p>`
           : '';
         el.innerHTML = `
           ${testBadge}
-          <div class="draw-pack-actions">
-            <button class="btn btn-primary" id="openDrawBtn" ${normalEnabled ? '' : 'disabled'}>일반 카드팩</button>
-            <button class="btn btn-primary draw-pack-special-btn" id="openSpecialDrawBtn" ${specialEnabled ? '' : 'disabled'}>특별 카드팩</button>
-          </div>
+          <button class="btn btn-primary" style="width:100%;" id="openDrawBtn" ${nextPackType ? '' : 'disabled'}>카드 뽑기${devOnlyNormal ? ' (DEV)' : ''}</button>
           ${emptyMsg}`;
-        if (normalEnabled) document.getElementById('openDrawBtn').onclick = () => openDrawOverlay('normal');
-        if (specialEnabled) document.getElementById('openSpecialDrawBtn').onclick = () => openDrawOverlay('special');
+        if (nextPackType) document.getElementById('openDrawBtn').onclick = () => openDrawOverlay(nextPackType);
         return;
       }
 
@@ -3237,7 +3237,7 @@
       return error || '업로드 실패';
     }
     function _bbbApprovalStatusText(status, rewarded) {
-      if (rewarded || status === 'approved') return '✓ 특별 카드팩 획득 완료';
+      if (rewarded || status === 'approved') return '✓ 카드팩 획득 완료';
       if (status === 'rejected') return '승인 거절됨. 사진을 삭제하거나 다시 올려주세요.';
       return '운영진 확인 대기 중';
     }
@@ -3406,7 +3406,7 @@
             const res = await REDIRECT.json();
             if (res.ok) {
               _bbbShowPhoto(base64);
-              stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 특별 카드팩이 지급돼요.' : '✓ 제출 완료');
+              stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 카드팩이 지급돼요.' : '✓ 제출 완료');
               statusEl.style.color = 'var(--primary)';
               statusEl.style.fontWeight = '600';
               if (res.rewarded) syncTicketBadgeFromServer();
@@ -3519,7 +3519,7 @@
           const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm2' })), redirect: 'follow' })).json();
           if (res.ok) {
             _bbbShowM2Photo(base64);
-            stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 특별 카드팩이 지급돼요.' : '✓ 제출 완료');
+            stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 카드팩이 지급돼요.' : '✓ 제출 완료');
             statusEl.style.color = 'var(--primary)';
             statusEl.style.fontWeight = '600';
             if (res.rewarded) syncTicketBadgeFromServer();
@@ -3562,7 +3562,7 @@
       const filled = photos.filter(Boolean).length;
       const statusEl = document.getElementById('bbbM3Status');
       if (statusEl) {
-        statusEl.textContent = m3Rewarded ? '✓ 특별 카드팩 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
+        statusEl.textContent = m3Rewarded ? '✓ 카드팩 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
         statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
       }
     }
