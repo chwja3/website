@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260513p" />
+  <link rel="stylesheet" href="app.css?v=20260513q" />
 </head>
 <body>
 
@@ -350,6 +350,7 @@
         <li class="drawer-item" data-section="prayer"><span class="drawer-label">Hold &amp; Pray</span><span id="drawerPrayerDot" class="drawer-notice-dot"></span></li>
         <li class="drawer-item" data-section="qt"><span class="drawer-label">Q.T. 말씀 묵상</span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">B.B.B 미션</span></li>
+        <li class="drawer-item" data-section="pilgrim"><span class="drawer-label">천로역정</span></li>
       </ul>
       <div class="drawer-utility">
         <button type="button" class="drawer-item drawer-util-main" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:6px;vertical-align:middle;flex-shrink:0;display:none;"></span></button>
@@ -860,19 +861,6 @@
                 </div>
               </div>
 
-              <!-- 익명 메시지 보내기 -->
-              <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
-                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">To. CARE BUDDY..</span>
-                <div id="bbbSentMsgList" style="margin-top:8px;"></div>
-                <p style="font-size:12px;color:var(--sub);margin:6px 0 10px;line-height:1.6;">오늘 케어버디에게 따뜻한 위로와 칭찬을 전해봐요.<br><span style="font-size:11px;color:var(--line);">(케어버디에게는 익명으로 전달됩니다)</span></p>
-                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
-                  style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;resize:none;height:72px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
-                <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-                  <button id="bbbMsgSendBtn" onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;min-width:64px;">보내기</button>
-                </div>
-                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:4px 0 0;"></p>
-              </div>
-
               <!-- 시크릿버디 -->
               <div style="background:var(--primary-soft);border-radius:14px;padding:18px 20px 14px;border-left:3px solid #facc15;">
                 <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">SECRET BUDDY</span>
@@ -894,6 +882,19 @@
                     <p id="bbbGuessMsg" style="font-size:12px;color:var(--sub);margin:6px 0 0;"></p>
                   </div>
                 </div>
+              </div>
+
+              <!-- 익명 메시지 보내기 -->
+              <div id="bbbMsgSendWrap" style="display:none;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;">
+                <span style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:0.12em;">To. CARE BUDDY..</span>
+                <div id="bbbSentMsgList" style="margin-top:8px;"></div>
+                <p style="font-size:12px;color:var(--sub);margin:6px 0 10px;line-height:1.6;">오늘 케어버디에게 따뜻한 위로와 칭찬을 전해봐요.<br><span style="font-size:11px;color:var(--line);">(케어버디에게는 익명으로 전달됩니다)</span></p>
+                <textarea id="bbbMsgInput" placeholder="따뜻한 한마디 (최대 300자)" maxlength="300"
+                  style="width:100%;box-sizing:border-box;background:var(--primary-soft);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;resize:none;height:72px;outline:none;font-family:inherit;line-height:1.6;"></textarea>
+                <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+                  <button id="bbbMsgSendBtn" onclick="sendBBBMsg()" style="padding:8px 20px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;min-width:64px;">보내기</button>
+                </div>
+                <p id="bbbMsgSendResult" style="font-size:12px;color:var(--sub);margin:4px 0 0;"></p>
               </div>
 
               <!-- 받은 메시지 -->
@@ -978,8 +979,13 @@
 
           </section>
 
-          <!-- ── Box 2: 현장 미션 (Mission 3) ── -->
-          <section class="card" id="bbbFieldMissionCard" style="display:none;margin-top:0;">
+        </div>
+      </div>
+
+      <!-- ⑨ 천로역정 (분리된 섹션) -->
+      <div id="sectionPilgrim" class="section hidden">
+        <div class="wrap">
+          <section class="card" id="bbbFieldMissionCard" style="margin-top:0;">
             <h2 style="font-size:20px;font-weight:800;color:var(--text);margin:0 0 20px;letter-spacing:-.01em;">천로역정</h2>
 
             <!-- MISSION 3: 필그림하우스 스팟 7곳 -->
@@ -1026,9 +1032,7 @@
               </div>
               </div><!-- /bbbM3Live -->
             </div>
-
           </section>
-
         </div>
       </div>
 
@@ -1037,7 +1041,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260513p" defer></script>
+  <script src="app.js?v=20260513q" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

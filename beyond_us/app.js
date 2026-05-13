@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513p';
+    const APP_VERSION = '20260513q';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -3007,6 +3007,7 @@
       prayer:     'sectionPrayer',
       qt:         'sectionQt',
       secret:     'sectionSecret',
+      pilgrim:    'sectionPilgrim',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
       faq:        'sectionFaq',
@@ -3035,6 +3036,7 @@
         loadUserStatus({ silent: true }).then(() => { renderCollection(); loadTrades(); }).catch(() => {});
       }
       if (name === 'secret') { loadBBB(); }
+      if (name === 'pilgrim') { loadBBB(); }
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
       _currentSection = name;
@@ -3539,7 +3541,6 @@
         document.getElementById('bbbLoading').style.display = '';
         document.getElementById('bbbContent').style.display = 'none';
         document.getElementById('bbbNoMatch').style.display = 'none';
-        document.getElementById('bbbFieldMissionCard').style.display = 'none';
       }
 
       try {
@@ -3593,7 +3594,6 @@
         if (!bbbRes.ok) {
           if (anyLocked || _isDev) {
             document.getElementById('bbbContent').style.display = 'flex';
-            document.getElementById('bbbFieldMissionCard').style.display = '';
             if (_isDev) _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
@@ -3603,7 +3603,6 @@
 
         _bbbData = bbbRes;
         document.getElementById('bbbContent').style.display = 'flex';
-        document.getElementById('bbbFieldMissionCard').style.display = '';
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name + ' 🗣️👂';
