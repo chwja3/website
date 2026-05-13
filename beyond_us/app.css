@@ -1797,7 +1797,7 @@
     }
     .drawer-item::before { content: "•"; flex-shrink: 0; }
     .drawer-label { display: block; white-space: nowrap; }
-    .drawer-nav .drawer-label { min-width: 8em; }
+    .drawer-nav .drawer-label { min-width: 10em; }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
     .drawer-notice-dot {
