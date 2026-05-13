@@ -3488,6 +3488,12 @@ function getMissingRegularCardsFromSnapshot_(snapshot) {
   });
 }
 
+function getRegularDrawableCards_() {
+  return SPIRIT_CARDS.filter(function(card) {
+    return card.id >= 1 && card.id <= 9;
+  });
+}
+
 function drawCard(userId, weekKey, testMode, requestId) {
   if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
   const cleanRequestId = String(requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
@@ -3515,7 +3521,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
       }
     }
 
-    const drawableCards = SPIRIT_CARDS.filter(function(c) { return c.id !== 10; });
+    const drawableCards = getRegularDrawableCards_();
     const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
 
     // 뽑기 전 기존 보유 여부 확인 (isNew 계산용)
@@ -3597,20 +3603,13 @@ function drawSpecialCard(userId, weekKey, requestId) {
     }
 
     const snapshot = buildCollectionProjectionFromEvents_(cleanUserId, events);
-    const drawableCards = getMissingRegularCardsFromSnapshot_(snapshot);
-    if (!drawableCards.length) {
-      const noMissingResult = {
-        ok: false,
-        error: 'no_missing_cards',
-        message: '미보유 카드가 없습니다. 운영진에게 문의하세요.',
-        specialPacks: specialPackStats,
-        specialPacksRemaining: specialPackStats.remaining,
-      };
-      if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(noMissingResult), 600);
-      return noMissingResult;
-    }
+    const missingRegularCards = getMissingRegularCardsFromSnapshot_(snapshot);
+    const guaranteesMissingCard = missingRegularCards.length > 0;
+    const drawableCards = guaranteesMissingCard ? missingRegularCards : getRegularDrawableCards_();
 
     const card = drawableCards[Math.floor(Math.random() * drawableCards.length)];
+    const isNew = guaranteesMissingCard ? true : !(Number((snapshot.cardCounts || {})[card.id]) > 0);
+    const drawMode = guaranteesMissingCard ? 'missing_regular_card' : 'regular_random_fallback';
     const drawnAt = new Date().toISOString();
     Events_appendBatch_([
       {
@@ -3620,7 +3619,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
           timestamp: drawnAt,
           amount: 1,
           weekKey: weekKey,
-          payload: { reason: 'special_card_draw', guarantee: 'missing_regular_card' },
+          payload: { reason: 'special_card_draw', mode: drawMode },
           source: EVENT_SOURCES.WEB,
         },
       },
@@ -3633,7 +3632,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
           amount: 1,
           weekKey: weekKey,
           refId: card.id,
-          payload: { cardName: card.name, isNew: true, packType: 'special', guarantee: 'missing_regular_card' },
+          payload: { cardName: card.name, isNew: isNew, packType: 'special', mode: drawMode },
           source: EVENT_SOURCES.WEB,
         },
       },
@@ -3648,7 +3647,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
     const result = {
       ok: true,
       card: card,
-      isNew: true,
+      isNew: isNew,
       collection: response.collection,
       tickets: response.tickets,
       specialPacks: nextSpecialPackStats,
