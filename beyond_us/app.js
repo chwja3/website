@@ -705,12 +705,15 @@
         const data = await res.json();
         if (data.ok) {
           stopAnimDots(dotsTimerReg, statusEl, '');
-          saveAuth(nickname, data.sessionToken || '', parish);
-          localStorage.setItem('beyondus_is_staff', 'false');
-          localStorage.setItem('beyondus_is_dev',   'false');
-          const aod = localStorage.getItem('beyondus_app_open_date') || '';
+          const registeredParish = data.parish || parish;
+          const isStaff = data.isStaff === true;
+          const appOpenDate = data.appOpenDate || '';
+          saveAuth(nickname, data.sessionToken || '', registeredParish);
+          localStorage.setItem('beyondus_is_staff', String(isStaff));
+          localStorage.setItem('beyondus_is_dev',   String(data.isDev === true));
+          localStorage.setItem('beyondus_app_open_date', appOpenDate);
           updateUserBadge();
-          if (shouldEnterApp(false, aod)) {
+          if (shouldEnterApp(isStaff, appOpenDate)) {
             showApp(); syncInitialData().catch(() => {});
           } else {
             showComingSoon();
