@@ -4361,7 +4361,14 @@ function registerUser(body) {
   const rowIndex = sheet.getLastRow();
   setUserPassword_(sheet, rowIndex, password);
   const sessionToken = issueSessionToken_(sheet, rowIndex);
-  return { ok: true, sessionToken };
+  return {
+    ok: true,
+    parish: parish,
+    isStaff: false,
+    isDev: false,
+    appOpenDate: getAppOpenDate(),
+    sessionToken: sessionToken,
+  };
 }
 
 function loginUser(body) {
