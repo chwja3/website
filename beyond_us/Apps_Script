@@ -730,6 +730,33 @@ function isTestDrawAllowed_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS).toLowerCase() === 'true';
 }
 
+// 진단용: GAS 에디터에서 직접 실행 (배포 불필요)
+// 함수 드롭다운 → debugDev 선택 → ▶ → 하단 실행 로그 확인
+function debugDev() {
+  Logger.log('=== 1. 함수 존재 여부 ===');
+  Logger.log('isUserDev_ 타입: ' + (typeof isUserDev_));
+  Logger.log('devResetCards 타입: ' + (typeof devResetCards));
+
+  if (typeof isUserDev_ !== 'function') {
+    Logger.log('❌ isUserDev_ 함수 없음 → 코드가 안 들어옴');
+    return;
+  }
+
+  Logger.log('=== 2. 닉네임 조회 결과 ===');
+  Logger.log('isUserDev_("카니보어시즌2"): ' + isUserDev_('카니보어시즌2'));
+
+  Logger.log('=== 3. Users 시트 isDev=TRUE 행 ===');
+  const sheet = getUsersSheet_();
+  const data = sheet.getDataRange().getValues();
+  data.forEach(function(row, i) {
+    if (i === 0) return;
+    if (!row[0]) return;
+    if (row[6] === true || String(row[6]).toUpperCase() === 'TRUE') {
+      Logger.log('Row ' + (i + 1) + ': nick="' + row[0] + '" isDev=' + JSON.stringify(row[6]) + ' (' + typeof row[6] + ')');
+    }
+  });
+}
+
 function isUserDev_(userId) {
   const nickname = String(userId || '').trim();
   if (!nickname) return false;
