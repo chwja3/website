@@ -11,15 +11,21 @@
 - admin 탭 활성화에서 특별 카드팩 토글을 켰을 때만 보인다.
 - 토글이 꺼져 있으면 기존 일반 카드팩 화면 그대로 유지한다.
 
+## GAS 반영 내용
+
+- `TabSettings` 기본 행에 `specialPack`을 추가했다.
+- `getTabSettings()` 응답에 `specialPack` boolean을 추가했다.
+- `setTabSettings()`에서 `specialPack` 저장을 처리한다.
+- `userStatus` 응답에 `pendingSpecialPacks`를 추가했다.
+- `drawSpecialCard` POST 액션을 추가했다.
+- `drawSpecialCard`는 Lock 내부에서 Events 전체 projection을 다시 계산하고, 일반 카드 9종 중 미보유 카드만 후보로 삼는다.
+- 성공 시 `special_pack.consumed`와 `card.drawn` 이벤트를 함께 기록하고, Collection row를 재계산한다.
+- 미보유 카드가 없으면 특별 카드팩을 소비하지 않고 “미보유 카드가 없습니다. 운영진에게 문의하세요.” 메시지를 반환한다.
+- UserDashboard 끝에 특별팩 획득·사용·잔여 수 컬럼을 추가했다.
+
 ## 아직 필요한 GAS 작업
 
-- `TabSettings` 또는 설정 응답에 `specialPack` boolean 추가.
-- `userStatus` 응답에 `pendingSpecialPacks` 추가.
 - 현장 미션 성공 시 `special_pack.granted` 이벤트 기록.
-- 특별 카드팩 개봉 시 `drawSpecialCard` 액션 추가.
-- `drawSpecialCard`는 Lock 내부에서 최신 Collection을 다시 계산한 뒤 미보유 일반 카드 9종만 후보로 삼는다.
-- 성공 시 `special_pack.consumed`와 `card.drawn` 이벤트를 기록하고 Collection row를 재계산한다.
-- 미보유 카드가 없으면 특별 카드팩을 소비하지 않고 “미보유 카드가 없습니다. 운영진에게 문의하세요.” 메시지를 반환한다.
 
 ## 보류
 
