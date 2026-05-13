@@ -1797,7 +1797,14 @@
     }
     .drawer-item::before { content: "•"; flex-shrink: 0; }
     .drawer-label { display: block; white-space: nowrap; }
-    .drawer-nav .drawer-label { min-width: 10em; }
+    .drawer-nav .drawer-label {
+      display: block;
+      width: 8em;
+      white-space: normal;
+      text-align: justify;
+      text-align-last: justify;
+      text-justify: inter-character;
+    }
     .drawer-item:hover { background: var(--primary-soft); }
     .drawer-item.active { background: var(--primary-soft); color: var(--primary); }
     .drawer-notice-dot {
