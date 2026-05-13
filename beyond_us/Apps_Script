@@ -9,6 +9,8 @@ const REQUIRED_SCRIPT_PROPERTY_KEYS = Object.freeze([
   SCRIPT_PROPERTY_KEYS.SPREADSHEET_ID,
   SCRIPT_PROPERTY_KEYS.ADMIN_PASSWORD,
 ]);
+const RAFFLE_VISUAL_CAP = 1000;
+const RAFFLE_VISUAL_MAX_FILL_PERCENT = 90;
 const SHEET_NAMES = Object.freeze({
   USERS: 'Users',
   CONFIG: 'config',
@@ -3365,7 +3367,7 @@ function getUserStatusCached_(userId, weekKey) {
   const config = getConfig();
   const cleanWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
   if (!cleanUserId) return getUserStatus(cleanUserId, cleanWeekKey, config);
-  const key = cacheKey_('user_status_v1', cleanUserId + ':' + cleanWeekKey);
+  const key = cacheKey_('user_status_v2', cleanUserId + ':' + cleanWeekKey);
   const cached = cacheGetJson_(key);
   if (cached) return cached;
   const data = getUserStatus(cleanUserId, cleanWeekKey, config);
@@ -3423,6 +3425,7 @@ function getUserStatus(userId, weekKey, configOverride) {
     }
   });
   const specialPackStats = getSpecialPackStatsFromEvents_(userEvents, userId);
+  let raffle = getEmptyRaffleStats_();
 
   // 카드 뽑기 이력 (drawnThisWeek, weekCard)
   try {
@@ -3440,12 +3443,17 @@ function getUserStatus(userId, weekKey, configOverride) {
 
   let pendingDraws = 0;
   try {
-    const snapshot = getCurrentCollectionSnapshot_(String(userId || '').trim());
+    const cleanUserId = String(userId || '').trim();
+    const collectionSheet = getOrCreateCollectionSheet();
+    const collectionCol = getCollectionColumns_(collectionSheet);
+    const collectionRows = getCollectionRows_(collectionSheet);
+    const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUserId, collectionRows, collectionCol);
     pendingDraws = Number(snapshot.remaining) || 0;
     SPIRIT_CARDS.forEach(card => {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;
       for (let j = 0; j < cnt; j++) collection.push({...card});
     });
+    raffle = getRaffleStatsFromCollectionRows_(cleanUserId, collectionRows, collectionCol, snapshot);
   } catch(e) {}
 
   return {
@@ -3459,6 +3467,7 @@ function getUserStatus(userId, weekKey, configOverride) {
     drawnThisWeek,
     weekCard,
     collection,
+    raffle,
     todayItems,
     todayIndices,
     weekDates
@@ -5026,6 +5035,69 @@ function getCollectionTickets(userId) {
   return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
 }
 
+function getEmptyRaffleStats_() {
+  return {
+    myTickets: 0,
+    totalTickets: 0,
+    participantCount: 0,
+    uniqueCards: 0,
+    visualCap: RAFFLE_VISUAL_CAP,
+    fillPercent: 0,
+  };
+}
+
+function getRaffleTicketInfoFromCardCounts_(cardCounts) {
+  let uniqueCards = 0;
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    if (Number(cardCounts && cardCounts[cardId]) > 0) uniqueCards++;
+  }
+  let tickets = 0;
+  if (uniqueCards >= 3) tickets += 1;
+  if (uniqueCards >= 5) tickets += 3;
+  if (uniqueCards >= 8) tickets += 4;
+  return {
+    tickets: tickets,
+    uniqueCards: uniqueCards,
+  };
+}
+
+function getRaffleFillPercent_(totalTickets) {
+  const total = Math.max(0, Number(totalTickets) || 0);
+  if (total <= 0) return 0;
+  return Math.min(
+    RAFFLE_VISUAL_MAX_FILL_PERCENT,
+    Math.max(4, Math.round((total / RAFFLE_VISUAL_CAP) * RAFFLE_VISUAL_MAX_FILL_PERCENT))
+  );
+}
+
+function getRaffleStatsFromCollectionRows_(userId, rows, col, currentSnapshot) {
+  const cleanUserId = String(userId || '').trim();
+  const stats = getEmptyRaffleStats_();
+  let foundCurrentUser = false;
+  (rows || []).forEach(function(row) {
+    const rowUserId = String(row[col.userId] || '').trim();
+    if (!rowUserId) return;
+    const snapshot = collectionRowToSnapshot_(row, col, true);
+    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts);
+    stats.totalTickets += info.tickets;
+    if (info.tickets > 0) stats.participantCount++;
+    if (rowUserId === cleanUserId) {
+      stats.myTickets = info.tickets;
+      stats.uniqueCards = info.uniqueCards;
+      foundCurrentUser = true;
+    }
+  });
+
+  if (!foundCurrentUser && currentSnapshot) {
+    const info = getRaffleTicketInfoFromCardCounts_(currentSnapshot.cardCounts);
+    stats.myTickets = info.tickets;
+    stats.uniqueCards = info.uniqueCards;
+  }
+
+  stats.fillPercent = getRaffleFillPercent_(stats.totalTickets);
+  return stats;
+}
+
 // delta: +1 추가, -1 제거
 // cardId 1~9 → col 5~13(idx 4~12), 히든(10) → col 15(idx 14), 총카드수 = col 14(idx 13)
 function getTicketStats() {
@@ -5169,6 +5241,10 @@ function getCurrentCollectionSnapshot_(userId, inputs) {
     col = getCollectionColumns_(sheet);
     rows = getCollectionRows_(sheet);
   }
+  return getCurrentCollectionSnapshotFromRows_(userId, rows, col);
+}
+
+function getCurrentCollectionSnapshotFromRows_(userId, rows, col) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     if (String(row[col.userId] || '').trim() !== userId) continue;

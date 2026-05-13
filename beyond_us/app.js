@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513i';
+    const APP_VERSION = '20260513j';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1006,7 +1006,19 @@
       const spiritUnique = SPIRIT_CARDS.filter(c => counts[c.id] > 0).length;
       const hiddenCnt    = counts[10] || 0;
       const totalUnique  = spiritUnique + (hiddenCnt > 0 ? 1 : 0);
-      sub.textContent = `${currentNickname}님의 컬렉션 · ${totalUnique}/10종 보유`;
+      const raffle = getRaffleStatsFromStatus(userStatus);
+      sub.classList.add('collection-summary');
+      sub.innerHTML = '';
+      const summaryText = document.createElement('span');
+      summaryText.textContent = `${currentNickname}님의 컬렉션 · ${totalUnique}/10종 보유`;
+      const raffleBtn = document.createElement('button');
+      raffleBtn.type = 'button';
+      raffleBtn.className = 'raffle-badge-btn';
+      raffleBtn.setAttribute('aria-label', `내 추첨권 ${raffle.myTickets}장 보기`);
+      raffleBtn.innerHTML = `<span class="raffle-badge-icon">🎟️</span><span>${formatRaffleNumber(raffle.myTickets)}</span>`;
+      raffleBtn.onclick = openRaffleModal;
+      sub.appendChild(summaryText);
+      sub.appendChild(raffleBtn);
       document.getElementById('collSubNormal').style.display = '';
 
       grid.innerHTML = SPIRIT_CARDS.map(card => {
@@ -1036,6 +1048,107 @@
       }).join('');
 
       renderHiddenSection(hiddenCnt);
+    }
+
+    function getRaffleStatsFromStatus(status) {
+      const raw = (status && status.raffle) || {};
+      const totalTickets = Math.max(0, Number(raw.totalTickets) || 0);
+      const myTickets = Math.max(0, Number(raw.myTickets) || 0);
+      const visualCap = Math.max(1, Number(raw.visualCap) || 1000);
+      let fillPercent = Number(raw.fillPercent);
+      if (!Number.isFinite(fillPercent)) {
+        fillPercent = totalTickets <= 0 ? 0 : Math.min(90, Math.max(4, Math.round((totalTickets / visualCap) * 90)));
+      }
+      return {
+        myTickets,
+        totalTickets,
+        participantCount: Math.max(0, Number(raw.participantCount) || 0),
+        uniqueCards: Math.max(0, Number(raw.uniqueCards) || 0),
+        visualCap,
+        fillPercent: Math.max(0, Math.min(90, fillPercent)),
+      };
+    }
+
+    function formatRaffleNumber(value) {
+      return (Math.max(0, Number(value) || 0)).toLocaleString('ko-KR');
+    }
+
+    function openRaffleModal() {
+      renderRaffleModal();
+      const overlay = document.getElementById('raffleOverlay');
+      if (!overlay) return;
+      overlay.classList.remove('hidden');
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeRaffleModal() {
+      const overlay = document.getElementById('raffleOverlay');
+      if (!overlay) return;
+      overlay.classList.add('hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    function renderRaffleModal() {
+      const stats = getRaffleStatsFromStatus(userStatus);
+      const totalEl = document.getElementById('raffleTotalCount');
+      const myEl = document.getElementById('raffleMyCount');
+      const noteEl = document.getElementById('raffleNote');
+      const binEl = document.getElementById('raffleBin');
+      const stackEl = document.getElementById('raffleTicketStack');
+      if (totalEl) totalEl.textContent = formatRaffleNumber(stats.totalTickets);
+      if (myEl) myEl.textContent = formatRaffleNumber(stats.myTickets);
+      if (noteEl) {
+        noteEl.textContent = `${stats.uniqueCards}/10종 기준 추첨권이에요. 전체 ${stats.visualCap}장 이상이면 추첨통은 90%로 고정돼요.`;
+      }
+      if (binEl) binEl.style.setProperty('--raffle-fill', `${stats.fillPercent}%`);
+      if (!stackEl) return;
+
+      stackEl.innerHTML = '';
+      const layerCount = stats.totalTickets > 0 ? Math.max(3, Math.min(26, Math.ceil(stats.fillPercent / 4))) : 0;
+      for (let i = 0; i < layerCount; i++) {
+        const paper = document.createElement('span');
+        paper.className = 'raffle-paper';
+        paper.style.setProperty('--x', `${18 + ((i * 23) % 64)}%`);
+        paper.style.setProperty('--y', `${Math.min(86, 3 + i * 3.5)}%`);
+        paper.style.setProperty('--r', `${((i % 7) - 3) * 4}deg`);
+        stackEl.appendChild(paper);
+      }
+
+      if (stats.myTickets <= 0) return;
+      const myLayer = document.createElement('div');
+      myLayer.className = 'raffle-my-ticket-layer';
+      const visibleMyTickets = Math.min(stats.myTickets, 24);
+      for (let i = 0; i < visibleMyTickets; i++) {
+        const ticket = document.createElement('span');
+        ticket.className = 'raffle-my-ticket';
+        ticket.style.setProperty('--x', `${26 + ((i * 17) % 50)}%`);
+        ticket.style.setProperty('--y', `${Math.min(28, (i % 6) * 4)}px`);
+        ticket.style.setProperty('--r', `${((i % 5) - 2) * 5}deg`);
+        myLayer.appendChild(ticket);
+      }
+      if (stats.myTickets > visibleMyTickets) {
+        const more = document.createElement('span');
+        more.className = 'raffle-more';
+        more.textContent = `+${formatRaffleNumber(stats.myTickets - visibleMyTickets)}`;
+        myLayer.appendChild(more);
+      }
+      stackEl.appendChild(myLayer);
+    }
+
+    function initRaffleOverlay() {
+      const overlay = document.getElementById('raffleOverlay');
+      const closeBtn = document.getElementById('raffleCloseBtn');
+      if (closeBtn) closeBtn.onclick = closeRaffleModal;
+      if (overlay) {
+        overlay.addEventListener('click', function(e) {
+          if (e.target === overlay) closeRaffleModal();
+        });
+      }
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeRaffleModal();
+      });
     }
 
     function renderHiddenSection(hiddenCnt) {
@@ -1506,6 +1619,8 @@
         status.weekScore || 0,
         status.pendingDraws || 0,
         getSpecialPackCount(status),
+        (status.raffle && status.raffle.myTickets) || 0,
+        (status.raffle && status.raffle.totalTickets) || 0,
         status.earnedTicketThisWeek ? 1 : 0,
         status.drawnThisWeek ? 1 : 0,
         (status.todayIndices || []).join(','),
@@ -4427,6 +4542,7 @@
     document.addEventListener('contextmenu', function(e) {
       if (e.target.tagName === 'IMG') e.preventDefault();
     });
+    initRaffleOverlay();
     updateMainInstallGuide();
     renderWeekCal();
     autoLogin();
