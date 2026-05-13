@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260514e" />
+  <link rel="stylesheet" href="app.css?v=20260514f" />
 </head>
 <body>
 
@@ -518,11 +518,15 @@
       <div id="raffleOverlay" class="raffle-overlay hidden" aria-hidden="true">
         <section class="raffle-panel" role="dialog" aria-modal="true" aria-labelledby="raffleTitle">
           <button type="button" class="raffle-close-btn" id="raffleCloseBtn" aria-label="추첨권 창 닫기">✕</button>
-          <div class="raffle-heading">
-            <p class="raffle-eyebrow">Beyond Us Lucky Draw</p>
-            <h2 id="raffleTitle">추첨권</h2>
-            <p>수련회에서 맥북 네오를 받을 수 있는 기회!</p>
-          </div>
+
+          <header class="raffle-hero">
+            <p class="raffle-eyebrow">Beyond Us Raffle</p>
+            <h2 class="raffle-hero-title" id="raffleTitle">내 추첨권</h2>
+            <div class="raffle-hero-count">
+              <strong id="raffleMyCount">0</strong><span class="raffle-hero-unit">장</span>
+            </div>
+          </header>
+
           <div class="raffle-bin-wrap">
             <div class="raffle-bin" id="raffleBin">
               <div class="raffle-bin-back"></div>
@@ -531,21 +535,15 @@
               <div class="raffle-bin-shine"></div>
             </div>
           </div>
-          <div class="raffle-stat-row">
-            <div class="raffle-stat">
-              <span class="raffle-stat-label">전체 추첨권</span>
-              <strong id="raffleTotalCount">0</strong>
-            </div>
-            <div class="raffle-stat">
-              <span class="raffle-stat-label">내 추첨권</span>
-              <strong id="raffleMyCount">0</strong>
-            </div>
-          </div>
-          <div class="raffle-condition-box">
-            <h3>추첨권 조건</h3>
-            <div class="raffle-condition-list" id="raffleConditionList"></div>
-          </div>
-          <p class="raffle-note" id="raffleNote">조건을 채울 때마다 추첨권이 추가돼요.</p>
+
+          <p class="raffle-total-line">청년교구 전체 <strong id="raffleTotalCount">0</strong>장 모였어요</p>
+
+          <section class="raffle-conditions">
+            <h3>추첨권 얻는 방법</h3>
+            <ul class="raffle-condition-list" id="raffleConditionList"></ul>
+          </section>
+
+          <p class="raffle-footer-note" id="raffleNote">수련회 당일 오프라인 추첨으로 진행돼요.<br><span>🥇 1등 <strong>MacBook Neo</strong></span></p>
         </section>
       </div>
 
@@ -1041,7 +1039,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260514e" defer></script>
+  <script src="app.js?v=20260514f" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
