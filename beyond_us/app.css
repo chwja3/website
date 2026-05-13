@@ -1912,6 +1912,16 @@
     }
     .help-tooltip.tip-right { left: auto; right: 0; transform: none; }
     .help-tooltip.tip-right::before { left: auto; right: 3px; transform: none; }
+    .help-tooltip.tip-left {
+      top: auto; bottom: calc(100% + 8px);
+      left: auto; right: 0; transform: none;
+      max-width: calc(100vw - 32px);
+    }
+    .help-tooltip.tip-left::before {
+      top: 100%; bottom: auto;
+      left: auto; right: 3px; transform: none;
+      border-color: transparent; border-top-color: #2c2c2e;
+    }
     .help-tooltip.show { display: block; }
 
     /* QnA FAQ 아코디언 */
