@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513o';
+    const APP_VERSION = '20260513p';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -265,8 +265,7 @@
       return today < WEEKS[0].start ? 'w1' : 'w6';
     }
 
-    /* ── 테스트 모드: dev URL에서만 자동 활성 ── */
-    const TEST_MODE  = IS_DEV_ENV;
+    /* ── DEV 개발자 계정 전용 테스트 권한 ── */
 
     /* ── DEV 전용: 내 카드/뽑기권 초기화 ── */
     async function devResetMyCards() {
@@ -958,12 +957,16 @@
       return Math.max(0, Number(status?.pendingSpecialPacks) || 0);
     }
 
+    function isCurrentDeveloperAccount() {
+      return IS_DEV_ENV && localStorage.getItem('beyondus_is_dev') === 'true';
+    }
+
     function getNextDrawPackType(status) {
       const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
       const specialPending = specialPackOpen && status && !status.error ? getSpecialPackCount(status) : 0;
       if (pending > 0) return 'normal';
       if (specialPending > 0) return 'special';
-      if (TEST_MODE || IS_DEV_ENV) return 'normal';
+      if (isCurrentDeveloperAccount()) return 'normal';
       return '';
     }
 
@@ -988,8 +991,9 @@
     /* ════ 뽑기 섹션 렌더 ════ */
     function renderDrawSection() {
       const el = document.getElementById('drawSectionBody');
-      const testBadge = TEST_MODE
-        ? `<div style="display:inline-block;margin-bottom:10px;padding:4px 10px;background:#fef08a;color:#854d0e;font-size:11px;font-weight:800;border-radius:999px;">🧪 테스트 모드</div><br>`
+      const canDevDrawUnlimited = isCurrentDeveloperAccount();
+      const testBadge = canDevDrawUnlimited
+        ? `<div style="display:inline-block;margin-bottom:10px;padding:4px 10px;background:#fef08a;color:#854d0e;font-size:11px;font-weight:800;border-radius:999px;">🧪 개발자 계정</div><br>`
         : '';
       updateTicketBadge(userStatus);
 
@@ -1012,7 +1016,7 @@
 
       if (specialPackOpen) {
         const nextPackType = getNextDrawPackType(userStatus);
-        const devOnlyNormal = nextPackType === 'normal' && pending <= 0 && specialPending <= 0 && (TEST_MODE || IS_DEV_ENV);
+        const devOnlyNormal = nextPackType === 'normal' && pending <= 0 && specialPending <= 0 && canDevDrawUnlimited;
         const emptyMsg = !nextPackType
           ? `<p class="draw-pack-empty-msg">사용 가능한 카드팩이 없어요.</p>`
           : '';
@@ -1024,8 +1028,8 @@
         return;
       }
 
-      // 테스트 모드: 제출/중복 제한 무시하고 항상 뽑기 가능
-      if (TEST_MODE) {
+      // DEV 개발자 계정은 서버에서 티켓을 자동 발급한 뒤 일반 카드팩을 뽑는다.
+      if (canDevDrawUnlimited) {
         el.innerHTML = `
           ${testBadge}
           <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">횟수 제한 없이 뽑을 수 있어요 ✨</p>
@@ -1035,8 +1039,8 @@
       }
 
       // 서비스 모드: 정책 적용
-      if (pending > 0 || IS_DEV_ENV) {
-        el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기${IS_DEV_ENV && pending === 0 ? ' (DEV)' : ''}</button>`;
+      if (pending > 0) {
+        el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
         document.getElementById('openDrawBtn').onclick = () => openDrawOverlay('normal');
         return;
       }
@@ -2266,7 +2270,7 @@
         var cardPromise = fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE, requestId: drawRequestId, packType: drawPackType }))
+          body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(), requestId: drawRequestId, packType: drawPackType }))
         })
         .then(function(r) { return r.json(); })
         .catch(function() { return null; });

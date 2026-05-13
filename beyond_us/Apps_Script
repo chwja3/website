@@ -3614,6 +3614,25 @@ function getRegularDrawableCards_() {
   });
 }
 
+function isDeveloperUser_(userId) {
+  const cleanUserId = String(userId || '').trim();
+  if (!cleanUserId) return false;
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.nickname] || '').trim() === cleanUserId) {
+      return isTruthyEventValue_(rows[i][col.isDev]);
+    }
+  }
+  return false;
+}
+
+function isDevAutoDrawAllowed_(userId, testMode) {
+  const requested = testMode === true || String(testMode || '').toLowerCase() === 'true';
+  return requested && isTestDrawAllowed_() && isDeveloperUser_(userId);
+}
+
 function drawCard(userId, weekKey, testMode, requestId) {
   if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
   const cleanRequestId = String(requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
@@ -3631,9 +3650,8 @@ function drawCard(userId, weekKey, testMode, requestId) {
     }
     weekKey = String(weekKey || ('w' + getCurrentWeek_())).trim();
 
-    const bypassTicketCheck =
-      (testMode === true && isTestDrawAllowed_())
-      || isUserDev_(userId);
+    const shouldAutoGrantDevTicket = isDevAutoDrawAllowed_(userId, testMode);
+    const bypassTicketCheck = shouldAutoGrantDevTicket;
     if (!bypassTicketCheck) {
       const pendingDraws = getCollectionTickets(userId).remaining;
       if (pendingDraws <= 0) {
@@ -3654,16 +3672,33 @@ function drawCard(userId, weekKey, testMode, requestId) {
     } catch(e) {}
 
     const drawnAt = new Date().toISOString();
+    const eventItems = [];
+    let timestampOffsetMs = 0;
+    if (shouldAutoGrantDevTicket) {
+      eventItems.push({
+        type: EVENT_TYPES.TICKET_GRANTED,
+        userId: userId,
+        options: {
+          timestamp: drawnAt,
+          timestampOffsetMs: timestampOffsetMs++,
+          amount: 1,
+          weekKey: weekKey,
+          payload: { reason: 'dev_auto_draw', testMode: true },
+          source: EVENT_SOURCES.SERVER,
+        },
+      });
+    }
     // ticket.consumed + card.drawn 두 이벤트를 setValues 1회로 묶음 (RPC 2 → 1)
-    Events_appendBatch_([
+    eventItems.push(
       {
         type: EVENT_TYPES.TICKET_CONSUMED,
         userId: userId,
         options: {
           timestamp: drawnAt,
+          timestampOffsetMs: timestampOffsetMs++,
           amount: 1,
           weekKey: weekKey,
-          payload: { reason: 'card_draw', testMode: bypassTicketCheck },
+          payload: { reason: 'card_draw', testMode: shouldAutoGrantDevTicket },
           source: EVENT_SOURCES.WEB,
         },
       },
@@ -3672,7 +3707,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
         userId: userId,
         options: {
           timestamp: drawnAt,
-          timestampOffsetMs: 1,
+          timestampOffsetMs: timestampOffsetMs++,
           amount: 1,
           weekKey: weekKey,
           refId: card.id,
@@ -3680,7 +3715,8 @@ function drawCard(userId, weekKey, testMode, requestId) {
           source: EVENT_SOURCES.WEB,
         },
       },
-    ]);
+    );
+    Events_appendBatch_(eventItems);
     // rebuild 결과의 projection snapshot을 그대로 응답에 사용 — Collection 시트 재조회 2회 제거
     const rebuildResult = rebuildCollectionRow_(userId);
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
