@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513c';
+    const APP_VERSION = '20260513d';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -3180,6 +3180,17 @@
       if (error === 'approved_photo_locked') return '이미 승인된 사진은 삭제할 수 없어요.';
       return error || '업로드 실패';
     }
+    function _bbbApprovalStatusText(status, rewarded) {
+      if (rewarded || status === 'approved') return '✓ 뽑기권 획득 완료';
+      if (status === 'rejected') return '승인 거절됨. 사진을 삭제하거나 다시 올려주세요.';
+      return '운영진 확인 대기 중';
+    }
+    function _bbbApplyApprovalStatus(el, status, rewarded) {
+      if (!el) return;
+      el.textContent = _bbbApprovalStatusText(status, rewarded);
+      el.style.color = rewarded || status === 'approved' ? 'var(--sub)' : (status === 'rejected' ? 'var(--danger)' : 'var(--primary)');
+      el.style.fontWeight = rewarded || status === 'approved' ? '500' : '600';
+    }
     function openBbbPhotoModal() {
       const modal = document.getElementById('bbbPhotoModal');
       if (modal) modal.style.display = 'flex';
@@ -3318,11 +3329,7 @@
         if (bbbRes.myPhoto) {
           _bbbShowPhoto(bbbRes.myPhoto);
           const st = document.getElementById('bbbPhotoStatus');
-          if (st) {
-            st.textContent = bbbRes.m1Rewarded ? '✓ 뽑기권 획득 완료' : '운영진 확인 대기 중';
-            st.style.color = bbbRes.m1Rewarded ? 'var(--sub)' : 'var(--primary)';
-            st.style.fontWeight = bbbRes.m1Rewarded ? '500' : '600';
-          }
+          _bbbApplyApprovalStatus(st, bbbRes.m1ApprovalStatus, bbbRes.m1Rewarded);
         }
 
         document.getElementById('bbbPhotoInput').onchange = async function() {
@@ -3442,11 +3449,7 @@
       const statusEl = document.getElementById('bbbM2Status');
       if (bbbRes.myPhotoM2) {
         _bbbShowM2Photo(bbbRes.myPhotoM2);
-        if (statusEl) {
-          statusEl.textContent = bbbRes.m2Rewarded ? '✓ 뽑기권 획득 완료' : '운영진 확인 대기 중';
-          statusEl.style.color = bbbRes.m2Rewarded ? 'var(--sub)' : 'var(--primary)';
-          statusEl.style.fontWeight = bbbRes.m2Rewarded ? '500' : '600';
-        }
+        _bbbApplyApprovalStatus(statusEl, bbbRes.m2ApprovalStatus, bbbRes.m2Rewarded);
       }
       document.getElementById('bbbM2Input').onchange = async function() {
         const file = this.files[0];
