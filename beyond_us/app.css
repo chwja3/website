@@ -1552,19 +1552,19 @@
       left: var(--x);
       top: var(--y);
       border-radius: 7px;
-      background: linear-gradient(135deg, #fff7b8, #ffd34e 52%, #ef9f18);
-      border: 1px solid rgba(130, 86, 0, 0.3);
+      background: linear-gradient(135deg, #ffd6ea, #f472b6 52%, #db2777);
+      border: 1px solid rgba(157, 23, 77, 0.32);
       box-shadow:
-        0 0 12px rgba(255, 237, 120, 0.9),
-        0 0 24px rgba(255, 193, 7, 0.72),
-        0 4px 10px rgba(99, 62, 0, 0.18);
+        0 0 12px rgba(244, 114, 182, 0.9),
+        0 0 24px rgba(219, 39, 119, 0.72),
+        0 4px 10px rgba(112, 17, 65, 0.18);
       transform: translateX(-50%) rotate(var(--r));
       animation: raffleTicketGlow 1.8s ease-in-out infinite;
     }
     .raffle-my-ticket:nth-child(2n) { animation-delay: .28s; }
     .raffle-my-ticket:nth-child(3n) { animation-delay: .56s; }
     .raffle-my-ticket::after {
-      background: rgba(111, 75, 18, 0.18);
+      background: rgba(157, 23, 77, 0.22);
     }
     .raffle-my-ticket::before {
       content: 'MY';
@@ -1574,7 +1574,7 @@
       transform: translateY(-50%);
       font-size: 8px;
       font-weight: 900;
-      color: rgba(86, 53, 0, 0.62);
+      color: rgba(112, 17, 65, 0.7);
     }
     .raffle-my-ticket-layer::before {
       content: '';
@@ -1585,11 +1585,11 @@
       height: 68px;
       background:
         radial-gradient(circle at 20% 35%, rgba(255,255,255,0.95) 0 2px, transparent 3px),
-        radial-gradient(circle at 72% 18%, rgba(255,244,170,0.9) 0 2px, transparent 3px),
-        radial-gradient(circle at 86% 62%, rgba(255,255,255,0.82) 0 1px, transparent 3px),
-        radial-gradient(circle at 44% 72%, rgba(255,213,80,0.86) 0 2px, transparent 4px);
-      filter: drop-shadow(0 0 8px rgba(255,218,76,0.58));
-      opacity: 0.72;
+        radial-gradient(circle at 72% 18%, rgba(255,214,234,0.95) 0 2px, transparent 3px),
+        radial-gradient(circle at 86% 62%, rgba(255,255,255,0.85) 0 1px, transparent 3px),
+        radial-gradient(circle at 44% 72%, rgba(244,114,182,0.88) 0 2px, transparent 4px);
+      filter: drop-shadow(0 0 8px rgba(244,114,182,0.62));
+      opacity: 0.78;
       pointer-events: none;
       animation: raffleSparkle 1.6s ease-in-out infinite;
     }
@@ -1738,16 +1738,16 @@
       0%, 100% {
         filter: brightness(1);
         box-shadow:
-          0 0 12px rgba(255, 237, 120, 0.86),
-          0 0 24px rgba(255, 193, 7, 0.68),
-          0 4px 10px rgba(99, 62, 0, 0.18);
+          0 0 12px rgba(244, 114, 182, 0.86),
+          0 0 24px rgba(219, 39, 119, 0.68),
+          0 4px 10px rgba(112, 17, 65, 0.18);
       }
       50% {
         filter: brightness(1.18);
         box-shadow:
-          0 0 18px rgba(255, 255, 205, 0.98),
-          0 0 34px rgba(255, 183, 28, 0.92),
-          0 4px 12px rgba(99, 62, 0, 0.22);
+          0 0 18px rgba(255, 220, 235, 0.98),
+          0 0 34px rgba(232, 60, 140, 0.92),
+          0 4px 12px rgba(112, 17, 65, 0.22);
       }
     }
     @keyframes raffleSparkle {
