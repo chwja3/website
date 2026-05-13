@@ -255,12 +255,7 @@
     .draw-notice-sub { font-size: 12px; color: var(--sub); }
     .draw-title-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .draw-ticket-badge { font-size: 12px; font-weight: 700; color: #b8860b; background: rgba(200,160,60,0.15); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-    .special-pack-badge { color: #7e22ce; background: rgba(168,85,247,0.16); }
     .draw-collection-link { padding: 2px 10px; font-size: 12px; font-weight: 700; background: rgba(200,160,60,0.25); color: #b8860b; border: none; border-radius: 999px; cursor: pointer; white-space: nowrap; }
-    .draw-pack-actions { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px; width: 100%; }
-    .draw-pack-actions .btn { min-width: 0; width: 100%; padding-left: 8px; padding-right: 8px; white-space: nowrap; }
-    .draw-pack-special-btn { background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: #fff7ff; box-shadow: 0 10px 24px rgba(109,40,217,0.22); }
-    .draw-pack-special-btn:disabled { background: rgba(168,85,247,0.16); color: rgba(88,28,135,0.46); box-shadow: none; }
     .draw-pack-empty-msg { font-size: 12px; color: var(--sub); margin: 10px 0 0; text-align: center; }
 
     /* ════════════════════════════
