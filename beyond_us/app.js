@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513q';
+    const APP_VERSION = '20260513r';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -705,12 +705,15 @@
         const data = await res.json();
         if (data.ok) {
           stopAnimDots(dotsTimerReg, statusEl, '');
-          saveAuth(nickname, data.sessionToken || '', parish);
-          localStorage.setItem('beyondus_is_staff', 'false');
-          localStorage.setItem('beyondus_is_dev',   'false');
-          const aod = localStorage.getItem('beyondus_app_open_date') || '';
+          const registeredParish = data.parish || parish;
+          const isStaff = data.isStaff === true;
+          const appOpenDate = data.appOpenDate || '';
+          saveAuth(nickname, data.sessionToken || '', registeredParish);
+          localStorage.setItem('beyondus_is_staff', String(isStaff));
+          localStorage.setItem('beyondus_is_dev',   String(data.isDev === true));
+          localStorage.setItem('beyondus_app_open_date', appOpenDate);
           updateUserBadge();
-          if (shouldEnterApp(false, aod)) {
+          if (shouldEnterApp(isStaff, appOpenDate)) {
             showApp(); syncInitialData().catch(() => {});
           } else {
             showComingSoon();
