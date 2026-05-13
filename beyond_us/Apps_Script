@@ -1041,6 +1041,10 @@ function doPost(e) {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminApproveBBBPhoto(body));
     }
+    if (action === 'adminRejectBBBPhoto') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminRejectBBBPhoto(body));
+    }
     if (action === 'adminSetupBBBMatching') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(setupBBBMatching());
@@ -6314,7 +6318,9 @@ function setBBBPhotoApproval_(sheet, rowIndex, col, status, approvedAt, approved
 function getBBBPhotoApprovalStatus_(row, col, rewardEvent) {
   if (rewardEvent) return 'approved';
   const status = String(getBBBPhotoApprovalValue_(row, col, 'approvalStatus') || '').trim();
-  return status === 'approved' ? 'approved' : 'pending';
+  if (status === 'approved') return 'approved';
+  if (status === 'rejected') return 'rejected';
+  return 'pending';
 }
 
 function hasActiveBBBPhotoReward_(userId, legacySource) {
@@ -6356,15 +6362,19 @@ function adminGetBBBPhotoApprovals() {
   });
 
   photos.sort(function(a, b) {
-    if (a.approvalStatus !== b.approvalStatus) return a.approvalStatus === 'pending' ? -1 : 1;
+    const order = { pending: 0, rejected: 1, approved: 2 };
+    if (a.approvalStatus !== b.approvalStatus) {
+      return (order[a.approvalStatus] || 9) - (order[b.approvalStatus] || 9);
+    }
     return String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || ''));
   });
 
   return {
     ok: true,
     photos: photos,
-    pendingCount: photos.filter(function(item) { return item.approvalStatus !== 'approved'; }).length,
+    pendingCount: photos.filter(function(item) { return item.approvalStatus === 'pending'; }).length,
     approvedCount: photos.filter(function(item) { return item.approvalStatus === 'approved'; }).length,
+    rejectedCount: photos.filter(function(item) { return item.approvalStatus === 'rejected'; }).length,
   };
 }
 
@@ -6430,6 +6440,39 @@ function adminApproveBBBPhoto(body) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function adminRejectBBBPhoto(body) {
+  if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  const userId = String(body.userId || '').trim();
+  const missionType = String(body.missionType || '').trim();
+  if (!userId || !missionType) return { error: 'missing_fields' };
+  if (!isBBBPhotoApprovalRequired_(missionType)) return { error: 'approval_not_required' };
+
+  const normalized = normalizeBBBPhotoMissionType_(missionType);
+  if (!normalized.ok) return normalized;
+  if (hasActiveBBBPhotoReward_(userId, normalized.bonusSource)) return { error: 'already_approved' };
+
+  const photoSheet = getOrCreateBBBPhotosSheet();
+  const photoCol = getBbbPhotoColumns_(photoSheet);
+  const rows = getBbbPhotoRows_(photoSheet);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[photoCol.userId] || '').trim() !== userId) continue;
+    if (String(row[photoCol.missionType] || 'm1').trim() !== missionType) continue;
+    if (!String(row[photoCol.photoBase64] || '').trim()) return { error: 'photo_not_found' };
+    setBBBPhotoApproval_(
+      photoSheet,
+      i + SCHEMA.BBB_PHOTOS.dataStartRow,
+      photoCol,
+      'rejected',
+      new Date().toISOString(),
+      String(body.adminId || 'admin'),
+      ''
+    );
+    return { ok: true, rejected: true };
+  }
+  return { error: 'photo_not_found' };
 }
 
 // ─ BBB 사진 업로드 (m1/m2는 운영진 승인 후 지급, m3는 7개 스팟 완료 시 지급)
@@ -6668,6 +6711,7 @@ function getBBB(userId) {
 
   // 내 사진 (M1 / M2 / M3 스팟 5개)
   let myPhoto = null, myPhotoM2 = null;
+  let myPhotoStatusM1 = '', myPhotoStatusM2 = '';
   const myPhotoM3 = [null, null, null, null, null, null, null];
   try {
     const photoSheet = getOrCreateBBBPhotosSheet();
@@ -6679,8 +6723,14 @@ function getBBB(userId) {
         if (String(r[photoCol.userId]) !== userId) return;
         const mt = String(r[photoCol.missionType] || 'm1');
         const src = String(r[photoCol.photoBase64]);
-        if (mt === 'm1') myPhoto = src;
-        else if (mt === 'm2') myPhotoM2 = src;
+        if (mt === 'm1') {
+          myPhoto = src;
+          myPhotoStatusM1 = getBBBPhotoApprovalStatus_(r, photoCol, null);
+        }
+        else if (mt === 'm2') {
+          myPhotoM2 = src;
+          myPhotoStatusM2 = getBBBPhotoApprovalStatus_(r, photoCol, null);
+        }
         else if (mt.startsWith('m3_')) {
           const idx = Number(mt.split('_')[1]);
           if (idx >= 0 && idx < 7) myPhotoM3[idx] = src;
@@ -6707,8 +6757,8 @@ function getBBB(userId) {
     m1Rewarded,
     m2Rewarded,
     m3Rewarded,
-    m1ApprovalStatus: myPhoto ? (m1Rewarded ? 'approved' : 'pending') : '',
-    m2ApprovalStatus: myPhotoM2 ? (m2Rewarded ? 'approved' : 'pending') : '',
+    m1ApprovalStatus: myPhoto ? (m1Rewarded ? 'approved' : (myPhotoStatusM1 || 'pending')) : '',
+    m2ApprovalStatus: myPhotoM2 ? (m2Rewarded ? 'approved' : (myPhotoStatusM2 || 'pending')) : '',
     careBuddy: {
       nickname: careBuddyId,
       name:     String(myRow[bbbCol.careBuddyName])

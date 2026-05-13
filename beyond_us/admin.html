@@ -307,6 +307,7 @@
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">승인 대기</div><div class="stat-value" id="bbbPhotoPendingCount">-</div></div>
           <div class="stat-card"><div class="stat-label">승인 완료</div><div class="stat-value" id="bbbPhotoApprovedCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">승인 거절</div><div class="stat-value" id="bbbPhotoRejectedCount">-</div></div>
         </div>
 
         <div class="card">
@@ -317,6 +318,7 @@
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshBBBPhotoApprovalsBtn" onclick="loadBBBPhotoApprovals()">새로고침</button>
           </div>
+          <input type="search" id="bbbPhotoApprovalSearch" placeholder="🔍 닉네임 또는 이름 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterBBBPhotoApprovals(this.value)" />
           <div id="bbbPhotoApprovalList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
           </div>
@@ -1445,6 +1447,9 @@
       return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
 
+    let _bbbPhotoApprovals = [];
+    let _bbbPhotoApprovalFilter = '';
+
     async function loadBBBPhotoApprovals() {
       const listEl = document.getElementById('bbbPhotoApprovalList');
       const refreshBtn = document.getElementById('refreshBBBPhotoApprovalsBtn');
@@ -1459,7 +1464,9 @@
         }
         document.getElementById('bbbPhotoPendingCount').textContent = res.pendingCount || 0;
         document.getElementById('bbbPhotoApprovedCount').textContent = res.approvedCount || 0;
-        renderBBBPhotoApprovals(res.photos || []);
+        document.getElementById('bbbPhotoRejectedCount').textContent = res.rejectedCount || 0;
+        _bbbPhotoApprovals = res.photos || [];
+        renderBBBPhotoApprovals(_bbbPhotoApprovals);
       } catch(e) {
         listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
       } finally {
@@ -1467,55 +1474,118 @@
       }
     }
 
+    function filterBBBPhotoApprovals(value) {
+      _bbbPhotoApprovalFilter = String(value || '').trim().toLowerCase();
+      renderBBBPhotoApprovals(_bbbPhotoApprovals);
+    }
+
+    function groupBBBPhotoApprovalsByUser(photos) {
+      const groups = {};
+      photos.forEach(item => {
+        const key = item.userId || '';
+        if (!key) return;
+        if (!groups[key]) {
+          groups[key] = { userId: item.userId, name: item.name || '', m1: null, m2: null, latest: '' };
+        }
+        if (item.missionType === 'm1') groups[key].m1 = item;
+        if (item.missionType === 'm2') groups[key].m2 = item;
+        if (String(item.uploadedAt || '') > String(groups[key].latest || '')) groups[key].latest = item.uploadedAt || '';
+      });
+      return Object.values(groups).sort((a, b) => {
+        const pendingA = [a.m1, a.m2].some(item => item && item.approvalStatus === 'pending');
+        const pendingB = [b.m1, b.m2].some(item => item && item.approvalStatus === 'pending');
+        if (pendingA !== pendingB) return pendingA ? -1 : 1;
+        return String(b.latest || '').localeCompare(String(a.latest || ''));
+      });
+    }
+
     function renderBBBPhotoApprovals(photos) {
       const listEl = document.getElementById('bbbPhotoApprovalList');
-      if (!photos.length) {
+      const query = _bbbPhotoApprovalFilter;
+      const filtered = query
+        ? photos.filter(item => String(item.userId || '').toLowerCase().includes(query) || String(item.name || '').toLowerCase().includes(query))
+        : photos;
+      const groups = groupBBBPhotoApprovalsByUser(filtered);
+      if (!groups.length) {
         listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">제출된 MISSION 1, 2 사진이 없어요.</p>';
         return;
       }
-      listEl.innerHTML = photos.map(item => {
-        const approved = item.approvalStatus === 'approved';
-        const statusText = approved ? '승인 완료' : '승인 대기';
-        const statusColor = approved ? 'var(--success)' : 'var(--danger)';
+      listEl.innerHTML = groups.map(group => {
         return `
-          <div style="display:grid;grid-template-columns:minmax(120px,180px) 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--line);align-items:start;">
-            <button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;text-align:left;">
-              <img src="${item.photoBase64}" alt="${esc(item.missionLabel)} 사진" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--bg);" />
-            </button>
-            <div>
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
-                <div>
-                  <div style="font-size:15px;font-weight:800;">${esc(item.userId)}${item.name ? ` · ${esc(item.name)}` : ''}</div>
-                  <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(item.missionLabel)} · ${formatDateTime(item.uploadedAt)}</div>
-                </div>
-                <span style="font-size:11px;font-weight:800;color:${statusColor};background:var(--primary-soft);border-radius:999px;padding:4px 9px;white-space:nowrap;">${statusText}</span>
+          <div style="padding:14px 0;border-bottom:1px solid var(--line);">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+              <div>
+                <div style="font-size:15px;font-weight:800;">${esc(group.userId)}${group.name ? ` · ${esc(group.name)}` : ''}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:2px;">최근 제출 ${formatDateTime(group.latest)}</div>
               </div>
-              ${approved ? `<p style="font-size:12px;color:var(--sub);margin:0 0 10px;">승인: ${formatDateTime(item.approvedAt)}${item.rewardEventId ? ` · ${esc(item.rewardEventId).slice(0,8)}` : ''}</p>` : ''}
-              <div class="status" data-approval-status="${esc(item.userId)}_${esc(item.missionType)}" style="min-height:18px;margin-bottom:8px;"></div>
-              <button class="btn ${approved ? 'btn-ghost' : 'btn-primary'} btn-sm"
-                data-user-id="${esc(item.userId)}"
-                data-mission-type="${esc(item.missionType)}"
-                onclick="approveBBBPhotoFromButton(this)"
-                ${approved ? 'disabled' : ''}>${approved ? '승인됨' : '확인 후 승인'}</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
+              ${renderBBBPhotoApprovalSlot(group.m1, 'MISSION 1')}
+              ${renderBBBPhotoApprovalSlot(group.m2, 'MISSION 2')}
             </div>
           </div>`;
       }).join('');
     }
 
-    async function approveBBBPhotoFromButton(btn) {
+    function renderBBBPhotoApprovalSlot(item, label) {
+      if (!item) {
+        return `<div style="border:1px dashed var(--line);border-radius:8px;padding:10px;min-height:138px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;">${label}<br>미제출</div>`;
+      }
+      const statusMeta = {
+        pending:  { text: '승인 대기', color: 'var(--danger)' },
+        rejected: { text: '거절됨', color: '#f59e0b' },
+        approved: { text: '승인 완료', color: 'var(--success)' },
+      }[item.approvalStatus] || { text: '승인 대기', color: 'var(--danger)' };
+      const approved = item.approvalStatus === 'approved';
+      const rejected = item.approvalStatus === 'rejected';
+      return `
+        <div style="border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:800;">${label}</div>
+            <span style="font-size:11px;font-weight:800;color:${statusMeta.color};background:var(--primary-soft);border-radius:999px;padding:3px 8px;white-space:nowrap;">${statusMeta.text}</span>
+          </div>
+          <button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;text-align:left;width:100%;margin-bottom:8px;">
+            <img src="${item.photoBase64}" alt="${esc(label)} 사진" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--card);" />
+          </button>
+          <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">${formatDateTime(item.uploadedAt)}${approved ? ` · ${esc(item.rewardEventId || '').slice(0,8)}` : ''}</div>
+          ${rejected ? '<div style="font-size:11px;color:#f59e0b;margin-bottom:6px;">사용자가 다시 올리면 대기로 돌아갑니다.</div>' : ''}
+          <div class="status" data-approval-status="${esc(item.userId)}_${esc(item.missionType)}" style="min-height:17px;margin-bottom:6px;font-size:12px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <button class="btn ${approved ? 'btn-ghost' : 'btn-primary'} btn-sm"
+              data-user-id="${esc(item.userId)}"
+              data-mission-type="${esc(item.missionType)}"
+              onclick="reviewBBBPhotoFromButton(this, 'approve')"
+              ${approved ? 'disabled' : ''}>${approved ? '승인됨' : '승인'}</button>
+            <button class="btn btn-danger btn-sm"
+              data-user-id="${esc(item.userId)}"
+              data-mission-type="${esc(item.missionType)}"
+              onclick="reviewBBBPhotoFromButton(this, 'reject')"
+              ${approved || rejected ? 'disabled' : ''}>${rejected ? '거절됨' : '거절'}</button>
+          </div>
+        </div>`;
+    }
+
+    async function reviewBBBPhotoFromButton(btn, mode) {
       const userId = btn.dataset.userId || '';
       const missionType = btn.dataset.missionType || '';
       if (!userId || !missionType) return;
-      if (!confirm(`${userId}의 ${missionType.toUpperCase()} 사진을 승인하고 뽑기권 1장을 지급할까요?`)) return;
-      const statusEl = btn.parentElement.querySelector('[data-approval-status]');
-      btn.disabled = true;
-      if (statusEl) statusEl.textContent = '승인 처리 중...';
+      const approving = mode === 'approve';
+      const message = approving
+        ? `${userId}의 ${missionType.toUpperCase()} 사진을 승인하고 뽑기권 1장을 지급할까요?`
+        : `${userId}의 ${missionType.toUpperCase()} 사진을 거절할까요?\n거절되면 사용자가 사진을 삭제하거나 다시 올릴 수 있어요.`;
+      if (!confirm(message)) return;
+      const slot = btn.closest('div[style*="border:1px solid var(--line)"]') || btn.parentElement;
+      const statusEl = slot.querySelector('[data-approval-status]');
+      slot.querySelectorAll('button').forEach(button => { button.disabled = true; });
+      if (statusEl) statusEl.textContent = approving ? '승인 처리 중...' : '거절 처리 중...';
       try {
-        const res = await post({ action: 'adminApproveBBBPhoto', adminPw, userId, missionType, adminId: 'admin' });
+        const res = await post({ action: approving ? 'adminApproveBBBPhoto' : 'adminRejectBBBPhoto', adminPw, userId, missionType, adminId: 'admin' });
         if (res.ok) {
           if (statusEl) {
-            statusEl.className = 'status ok';
-            statusEl.textContent = res.rewarded ? '승인 및 지급 완료' : '이미 지급된 사진으로 표시했습니다.';
+            statusEl.className = approving ? 'status ok' : 'status';
+            statusEl.textContent = approving
+              ? (res.rewarded ? '승인 및 지급 완료' : '이미 지급된 사진으로 표시했습니다.')
+              : '거절 완료';
           }
           await loadBBBPhotoApprovals();
         } else {
@@ -1523,11 +1593,11 @@
             statusEl.className = 'status';
             statusEl.textContent = '오류: ' + (res.error || '실패');
           }
-          btn.disabled = false;
+          slot.querySelectorAll('button').forEach(button => { button.disabled = false; });
         }
       } catch(e) {
         if (statusEl) statusEl.textContent = '연결 오류';
-        btn.disabled = false;
+        slot.querySelectorAll('button').forEach(button => { button.disabled = false; });
       }
     }
 
