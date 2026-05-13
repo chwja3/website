@@ -1307,24 +1307,23 @@
     }
     .raffle-badge-btn {
       flex: none;
-      min-height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      border: 1px solid rgba(212, 160, 38, 0.42);
+      gap: 4px;
+      border: none;
       border-radius: 999px;
-      background: linear-gradient(135deg, #fff8d9, #f3c04d 58%, #d9951f);
-      color: #4a3106;
-      padding: 5px 11px;
-      font-size: 13px;
-      font-weight: 900;
-      line-height: 1;
-      box-shadow: 0 5px 14px rgba(175, 119, 22, 0.18);
+      background: rgba(200, 160, 60, 0.15);
+      color: #b8860b;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
       cursor: pointer;
     }
     .raffle-badge-btn:active { transform: translateY(1px); }
-    .raffle-badge-icon { font-size: 15px; line-height: 1; }
+    .raffle-badge-icon { font-size: 13px; line-height: 1; }
     .collection-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -1826,7 +1825,8 @@
     .drawer-util-main {
       padding: 10px 12px;
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 700;
+      border-radius: 12px;
       margin-bottom: 8px !important;
     }
     .drawer-util-row {
@@ -1835,18 +1835,18 @@
       gap: 8px;
     }
     .drawer-util-link {
-      padding: 9px 8px;
-      font-size: 12px;
+      padding: 10px 12px;
+      font-size: 13px;
       font-weight: 700;
-      border-radius: 10px;
+      border-radius: 12px;
     }
     .drawer-logout {
       padding: 6px 16px 12px;
     }
     .drawer-logout-btn {
-      width: 100%; padding: 11px; border-radius: 12px;
-      border: 1.5px solid var(--line); background: none;
-      font-size: 14px; font-weight: 700; color: var(--sub);
+      width: 100%; padding: 10px 12px; border-radius: 12px;
+      border: 1px solid var(--line); background: none;
+      font-size: 13px; font-weight: 700; color: var(--sub);
       cursor: pointer; text-align: center;
     }
     .drawer-logout-btn:active { background: var(--primary-soft); }
