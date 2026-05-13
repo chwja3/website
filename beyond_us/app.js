@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513d';
+    const APP_VERSION = '20260513e';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -256,6 +256,7 @@
     let userStatus = null;
     let pendingCard = null;   // API에서 받아온 카드 데이터
     let lastConfigData = null; // 항목별 점수 계산용 캐시
+    let specialPackOpen = false;
 
     /* ── DOM ── */
     const weekTitleEl       = document.getElementById('weekTitle');
@@ -895,11 +896,21 @@
         </div>`;
     }
 
+    function getSpecialPackCount(status) {
+      return Math.max(0, Number(status?.pendingSpecialPacks) || 0);
+    }
+
     function updateTicketBadge(status) {
       const ticketBadge = document.getElementById('ticketBadge');
+      const specialBadge = document.getElementById('specialPackBadge');
       if (!ticketBadge) return;
       const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
       ticketBadge.textContent = `🎫 ${pending}`;
+      if (specialBadge) {
+        const specialPending = status && !status.error ? getSpecialPackCount(status) : 0;
+        specialBadge.textContent = `💜 ${specialPending}`;
+        specialBadge.classList.toggle('hidden', !specialPackOpen);
+      }
     }
 
     function syncTicketBadgeFromServer() {
@@ -929,22 +940,41 @@
         return;
       }
 
+      const pending = userStatus.pendingDraws || 0;
+      const specialPending = getSpecialPackCount(userStatus);
+
+      if (specialPackOpen) {
+        const normalEnabled = pending > 0 || IS_DEV_ENV;
+        const specialEnabled = specialPending > 0;
+        const emptyMsg = (!normalEnabled && !specialEnabled)
+          ? `<p class="draw-pack-empty-msg">사용 가능한 카드팩이 없어요.</p>`
+          : '';
+        el.innerHTML = `
+          ${testBadge}
+          <div class="draw-pack-actions">
+            <button class="btn btn-primary" id="openDrawBtn" ${normalEnabled ? '' : 'disabled'}>일반 카드팩</button>
+            <button class="btn btn-primary draw-pack-special-btn" id="openSpecialDrawBtn" ${specialEnabled ? '' : 'disabled'}>특별 카드팩</button>
+          </div>
+          ${emptyMsg}`;
+        if (normalEnabled) document.getElementById('openDrawBtn').onclick = () => openDrawOverlay('normal');
+        if (specialEnabled) document.getElementById('openSpecialDrawBtn').onclick = () => openDrawOverlay('special');
+        return;
+      }
+
       // 테스트 모드: 제출/중복 제한 무시하고 항상 뽑기 가능
       if (TEST_MODE) {
         el.innerHTML = `
           ${testBadge}
           <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">횟수 제한 없이 뽑을 수 있어요 ✨</p>
           <button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
-        document.getElementById('openDrawBtn').onclick = openDrawOverlay;
+        document.getElementById('openDrawBtn').onclick = () => openDrawOverlay('normal');
         return;
       }
 
       // 서비스 모드: 정책 적용
-      const pending = userStatus.pendingDraws || 0;
-
       if (pending > 0 || IS_DEV_ENV) {
         el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기${IS_DEV_ENV && pending === 0 ? ' (DEV)' : ''}</button>`;
-        document.getElementById('openDrawBtn').onclick = openDrawOverlay;
+        document.getElementById('openDrawBtn').onclick = () => openDrawOverlay('normal');
         return;
       }
       el.innerHTML = `<button class="btn btn-primary" style="width:100%;" disabled>카드 뽑기</button>`;
@@ -1470,6 +1500,7 @@
       return [
         status.weekScore || 0,
         status.pendingDraws || 0,
+        getSpecialPackCount(status),
         status.earnedTicketThisWeek ? 1 : 0,
         status.drawnThisWeek ? 1 : 0,
         (status.todayIndices || []).join(','),
@@ -1616,6 +1647,8 @@
     let drawRequestId = '';
     let drawServerCollection = null;
     let drawServerTickets = null;
+    let drawServerSpecialPacks = null;
+    let drawPackType = 'normal';
 
     function scheduleDrawTimer(fn, delay) {
       var id = setTimeout(function() {
@@ -1765,8 +1798,9 @@
       });
     }
 
-    function openDrawOverlay() {
+    function openDrawOverlay(packType) {
       drawOverlayActive = true;
+      drawPackType = packType === 'special' ? 'special' : 'normal';
       drawState = 'carousel';
       drawResult = null;
       drawIsNew = true;
@@ -1777,6 +1811,7 @@
       drawRequestId = 'draw_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
       drawServerCollection = null;
       drawServerTickets = null;
+      drawServerSpecialPacks = null;
       carouselCenter = 1;
 
       preloadSfx();
@@ -1848,6 +1883,9 @@
       document.getElementById('flipHint').textContent = '';
       document.getElementById('cardTrigger').classList.remove('clickable');
 
+      const overlayEl = document.getElementById('drawOverlay');
+      overlayEl.classList.toggle('special-pack-mode', drawPackType === 'special');
+      document.getElementById('carouselHint').textContent = drawPackType === 'special' ? 'Choose your special pack ↓' : 'Choose your pack ↓';
       document.getElementById('drawOverlay').classList.remove('hidden');
 
       gsap.timeline()
@@ -1870,6 +1908,7 @@
       stopAllSfx();
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
       document.getElementById('drawOverlay').classList.add('hidden');
+      document.getElementById('drawOverlay').classList.remove('special-pack-mode');
       // glow 클래스 초기화 (다음 뽑기를 위해)
       document.getElementById('cardGlow').classList.remove('glow-new', 'glow-dup');
       document.getElementById('sceneGlow').classList.remove('glow-new', 'glow-dup');
@@ -1887,9 +1926,15 @@
           if (!applyCollectionCountsToStatus(drawServerCollection)) {
             setLocalCollectionCount(pendingCard, (drawPreCollectionCounts[pendingCard.id] || 0) + 1);
           }
-          userStatus.pendingDraws = drawServerTickets
-            ? Number(drawServerTickets.remaining) || 0
-            : Math.max(0, (userStatus.pendingDraws || 1) - 1);
+          if (drawPackType === 'special') {
+            userStatus.pendingSpecialPacks = drawServerSpecialPacks
+              ? Number(drawServerSpecialPacks.remaining) || 0
+              : Math.max(0, getSpecialPackCount(userStatus) - 1);
+          } else {
+            userStatus.pendingDraws = drawServerTickets
+              ? Number(drawServerTickets.remaining) || 0
+              : Math.max(0, (userStatus.pendingDraws || 1) - 1);
+          }
         }
         renderDrawSection();
         renderCollection();
@@ -1900,6 +1945,7 @@
           renderDrawSection();
         }).catch(function() {});
       }
+      drawPackType = 'normal';
     }
 
     document.getElementById('drawCloseBtn').onclick = closeDrawOverlay;
@@ -1992,24 +2038,27 @@
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
         // GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
+        var drawAction = drawPackType === 'special' ? 'drawSpecialCard' : 'drawCard';
         var cardPromise = fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'drawCard', userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE, requestId: drawRequestId }))
+          body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: TEST_MODE, requestId: drawRequestId, packType: drawPackType }))
         })
         .then(function(r) { return r.json(); })
         .catch(function() { return null; });
         cardPromise.then(function(result) {
           if (result && !result.error && result.card) {
-            pendingCard = SPIRIT_CARDS.find(function(c) { return c.id === result.card.id; }) || result.card;
+            pendingCard = SPIRIT_CARDS.find(function(c) { return Number(c.id) === Number(result.card.id); }) || result.card;
             drawIsNew = (result.isNew !== false); // false 명시 시만 중복, undefined/true → 신규
             drawServerCollection = result.collection || null;
             drawServerTickets = result.tickets || null;
+            drawServerSpecialPacks = result.specialPacks || (result.specialPacksRemaining !== undefined ? { remaining: result.specialPacksRemaining } : null);
           } else {
             pendingCard = null;
             drawResult = null;
             drawState = 'draw_failed';
-            alert((result && (result.error || result.message)) || '카드 뽑기 저장에 실패했어요. 뽑기권은 사용되지 않았으니 다시 시도해주세요.');
+            const specialNoMissing = drawPackType === 'special' && result && result.error === 'no_missing_cards';
+            alert((result && result.message) || (specialNoMissing ? '미보유 카드가 없습니다. 운영진에게 문의하세요.' : '') || (result && result.error) || '카드 뽑기 저장에 실패했어요. 뽑기권은 사용되지 않았으니 다시 시도해주세요.');
             closeDrawOverlay();
             loadUserStatus().catch(() => {});
             return;
@@ -2359,10 +2408,17 @@
       const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
       const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
       const qtItem = document.querySelector('.drawer-item[data-section="qt"]');
+      const nextSpecialPackOpen = data.tabSettings.specialPack === true;
+      const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
+      specialPackOpen = nextSpecialPackOpen;
       if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
       if (qtItem) qtItem.style.display = (qt === false) ? 'none' : '';
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
       if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
+      if (specialPackChanged) {
+        updateTicketBadge(userStatus);
+        renderDrawSection();
+      }
     }
 
     function updateScoreProgress() {
