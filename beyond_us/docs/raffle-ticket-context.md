@@ -30,3 +30,9 @@
 - `getUserStatus()`가 현재 유저의 `raffle` 통계를 내려준다.
 - 프론트는 기존 `userStatus` 캐시와 렌더 흐름을 그대로 사용한다.
 - 참석 여부 저장을 위해 `RetreatAttendance` 시트를 사용한다.
+
+## DEV 프리뷰 메모
+
+- DEV 환경에서 `?rafflePreview=1`을 붙이면 실제 GAS 데이터 대신 내 추첨권 5장, 누적 추첨권 1000장, 통 채움 90% 상태로 추첨권 모달을 확인한다.
+- 이 프리뷰는 화면 확인용 임시 코드이며 PROD 호스트에서는 동작하지 않는다.
+- 확인이 끝나면 `RAFFLE_PREVIEW_MODE`와 `getRaffleStatsFromStatus()`의 프리뷰 분기를 제거한다.
