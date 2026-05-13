@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260514e';
+    const APP_VERSION = '20260514f';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1177,15 +1177,11 @@
       const stats = getRaffleStatsFromStatus(userStatus);
       const totalEl = document.getElementById('raffleTotalCount');
       const myEl = document.getElementById('raffleMyCount');
-      const noteEl = document.getElementById('raffleNote');
       const conditionEl = document.getElementById('raffleConditionList');
       const binEl = document.getElementById('raffleBin');
       const stackEl = document.getElementById('raffleTicketStack');
       if (totalEl) totalEl.textContent = formatRaffleNumber(stats.totalTickets);
       if (myEl) myEl.textContent = formatRaffleNumber(stats.myTickets);
-      if (noteEl) {
-        noteEl.textContent = '조건을 채울 때마다 추첨권이 추가돼요.';
-      }
       renderRaffleConditions(conditionEl, stats);
       if (binEl) binEl.style.setProperty('--raffle-fill', `${stats.fillPercent}%`);
       if (!stackEl) return;
@@ -1226,20 +1222,22 @@
       if (!container) return;
       const uniqueCards = Number(stats.uniqueCards) || 0;
       const breakdown = stats.breakdown || {};
+      const signupDone = Number(breakdown.signupTicket) > 0 || !!currentNickname;
       const conditions = [
-        { label: '앱 가입', detail: '가입하면 추첨권 1장', done: Number(breakdown.signupTicket) > 0 || !!currentNickname },
-        { label: '카드 3종 보유', detail: `현재 ${Math.min(uniqueCards, 3)}/3종`, done: uniqueCards >= 3 },
-        { label: '카드 5종 보유', detail: `현재 ${Math.min(uniqueCards, 5)}/5종`, done: uniqueCards >= 5 },
-        { label: '카드 10종 보유', detail: `현재 ${Math.min(uniqueCards, 10)}/10종`, done: uniqueCards >= 10 },
+        { label: '앱 가입',         detail: signupDone ? '가입 완료'                                     : '회원가입 시 자동 지급',                          done: signupDone,            reward: '+1장' },
+        { label: '카드 3종 보유',   detail: uniqueCards >= 3  ? '3종 보유 완료'                          : `${Math.min(uniqueCards, 3)}/3종 보유`,           done: uniqueCards >= 3,      reward: '+1장' },
+        { label: '카드 5종 보유',   detail: uniqueCards >= 5  ? '5종 보유 완료'                          : `${Math.min(uniqueCards, 5)}/5종 보유`,           done: uniqueCards >= 5,      reward: '+1장' },
+        { label: '카드 10종 보유',  detail: uniqueCards >= 10 ? '10종 모두 보유 완료'                    : `${Math.min(uniqueCards, 10)}/10종 보유`,         done: uniqueCards >= 10,     reward: '+1장' },
       ];
       container.innerHTML = conditions.map(item => `
-        <div class="raffle-condition ${item.done ? 'done' : ''}">
+        <li class="raffle-condition ${item.done ? 'done' : ''}">
+          <span class="raffle-condition-check" aria-hidden="true">${item.done ? '✓' : ''}</span>
           <div class="raffle-condition-text">
             <strong>${item.label}</strong>
             <span>${item.detail}</span>
           </div>
-          <span class="raffle-condition-stamp">${item.done ? '✓' : ''}</span>
-        </div>
+          <span class="raffle-condition-reward">${item.reward}</span>
+        </li>
       `).join('');
     }
 
