@@ -702,27 +702,6 @@ function isTestDrawAllowed_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS).toLowerCase() === 'true';
 }
 
-function isUserDev_(userId) {
-  const nickname = String(userId || '').trim();
-  if (!nickname) return false;
-  const sheet = getUsersSheet_();
-  const last = sheet.getLastRow();
-  if (last < SCHEMA.USERS.dataStartRow) return false;
-  const col = getUserColumns_(sheet);
-  const data = sheet.getRange(
-    SCHEMA.USERS.dataStartRow, 1,
-    last - SCHEMA.USERS.dataStartRow + 1,
-    sheet.getLastColumn()
-  ).getValues();
-  const target = nickname.toLowerCase();
-  for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname] || '').trim().toLowerCase() === target) {
-      return data[i][col.isDev] === true;
-    }
-  }
-  return false;
-}
-
 function isTestAdminToolsEnabled_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS).toLowerCase() === 'true';
 }
@@ -955,11 +934,6 @@ function doPost(e) {
       const auth = requireSessionForUser_(body, body.userId || '');
       if (auth) return jsonOutput(auth);
       return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false, body.requestId || ''));
-    }
-    if (action === 'devResetCards') {
-      const auth = requireSessionForUser_(body, body.userId || '');
-      if (auth) return jsonOutput(auth);
-      return jsonOutput(devResetCards(body.userId || ''));
     }
     if (action === 'adminLogin') {
       const ok = isAdminAuthorized_(body.password);
@@ -3488,9 +3462,7 @@ function drawCard(userId, weekKey, testMode, requestId) {
     }
     weekKey = String(weekKey || ('w' + getCurrentWeek_())).trim();
 
-    const bypassTicketCheck =
-      (testMode === true && isTestDrawAllowed_())
-      || isUserDev_(userId);
+    const bypassTicketCheck = testMode === true && isTestDrawAllowed_();
     if (!bypassTicketCheck) {
       const pendingDraws = getCollectionTickets(userId).remaining;
       if (pendingDraws <= 0) {
@@ -3550,49 +3522,6 @@ function drawCard(userId, weekKey, testMode, requestId) {
     };
     if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(result), 600);
     return result;
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-// ── DEV 전용: isDev 사용자의 카드/뽑기권 초기화 ──
-function devResetCards(userId) {
-  if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
-  if (!isUserDev_(userId)) return { ok: false, error: '권한이 없습니다.' };
-
-  const lock = LockService.getScriptLock();
-  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
-
-  try {
-    const sheet = getOrCreateEventsSheet();
-    const col = getEventsColumns_(sheet);
-    const rows = getEventsRows_(sheet);
-    const target = String(userId).trim().toLowerCase();
-    const RESET_TYPES = {};
-    RESET_TYPES[EVENT_TYPES.CARD_DRAWN]      = true;
-    RESET_TYPES[EVENT_TYPES.CARD_GRANTED]    = true;
-    RESET_TYPES[EVENT_TYPES.CARD_REMOVED]    = true;
-    RESET_TYPES[EVENT_TYPES.TICKET_GRANTED]  = true;
-    RESET_TYPES[EVENT_TYPES.TICKET_CONSUMED] = true;
-
-    let removed = 0;
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const rowUserId = String(rows[i][col.userId] || '').trim().toLowerCase();
-      const rowType = String(rows[i][col.type] || '');
-      if (rowUserId === target && RESET_TYPES[rowType]) {
-        sheet.deleteRow(i + SCHEMA.EVENTS.dataStartRow);
-        removed++;
-      }
-    }
-
-    const rebuildResult = rebuildCollectionRow_(userId);
-    const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
-    return {
-      ok: true,
-      removed: removed,
-      collection: response.collection,
-      tickets: response.tickets,
-    };
   } finally {
     lock.releaseLock();
   }
