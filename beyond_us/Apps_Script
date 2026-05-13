@@ -730,6 +730,54 @@ function isTestDrawAllowed_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ALLOW_TEST_DRAWS).toLowerCase() === 'true';
 }
 
+// 진단용: GAS 에디터에서 직접 실행 (배포 불필요)
+// 함수 드롭다운 → debugDev 선택 → ▶ → 하단 실행 로그 확인
+function debugDev() {
+  Logger.log('=== 1. 함수 존재 여부 ===');
+  Logger.log('isUserDev_ 타입: ' + (typeof isUserDev_));
+  Logger.log('devResetCards 타입: ' + (typeof devResetCards));
+
+  if (typeof isUserDev_ !== 'function') {
+    Logger.log('❌ isUserDev_ 함수 없음 → 코드가 안 들어옴');
+    return;
+  }
+
+  Logger.log('=== 2. 닉네임 조회 결과 ===');
+  Logger.log('isUserDev_("카니보어시즌2"): ' + isUserDev_('카니보어시즌2'));
+
+  Logger.log('=== 3. Users 시트 isDev=TRUE 행 ===');
+  const sheet = getUsersSheet_();
+  const data = sheet.getDataRange().getValues();
+  data.forEach(function(row, i) {
+    if (i === 0) return;
+    if (!row[0]) return;
+    if (row[6] === true || String(row[6]).toUpperCase() === 'TRUE') {
+      Logger.log('Row ' + (i + 1) + ': nick="' + row[0] + '" isDev=' + JSON.stringify(row[6]) + ' (' + typeof row[6] + ')');
+    }
+  });
+}
+
+function isUserDev_(userId) {
+  const nickname = String(userId || '').trim();
+  if (!nickname) return false;
+  const sheet = getUsersSheet_();
+  const last = sheet.getLastRow();
+  if (last < SCHEMA.USERS.dataStartRow) return false;
+  const col = getUserColumns_(sheet);
+  const data = sheet.getRange(
+    SCHEMA.USERS.dataStartRow, 1,
+    last - SCHEMA.USERS.dataStartRow + 1,
+    sheet.getLastColumn()
+  ).getValues();
+  const target = nickname.toLowerCase();
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][col.nickname] || '').trim().toLowerCase() === target) {
+      return data[i][col.isDev] === true;
+    }
+  }
+  return false;
+}
+
 function isTestAdminToolsEnabled_() {
   return getOptionalScriptProperty_(SCRIPT_PROPERTY_KEYS.ENABLE_TEST_ADMIN_TOOLS).toLowerCase() === 'true';
 }
@@ -966,6 +1014,11 @@ function doPost(e) {
       const auth = requireSessionForUser_(body, body.userId || '');
       if (auth) return jsonOutput(auth);
       return jsonOutput(drawCard(body.userId || '', body.weekKey || '', body.testMode || false, body.requestId || ''));
+    }
+    if (action === 'devResetCards') {
+      const auth = requireSessionForUser_(body, body.userId || '');
+      if (auth) return jsonOutput(auth);
+      return jsonOutput(devResetCards(body.userId || ''));
     }
     if (action === 'drawSpecialCard') {
       const auth = requireSessionForUser_(body, body.userId || '');
@@ -3760,6 +3813,49 @@ function drawSpecialCard(userId, weekKey, requestId) {
     };
     if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(result), 600);
     return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ── DEV 전용: isDev 사용자의 카드/뽑기권 초기화 ──
+function devResetCards(userId) {
+  if (!userId) return { ok: false, error: '닉네임이 없습니다.' };
+  if (!isUserDev_(userId)) return { ok: false, error: '권한이 없습니다.' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
+
+  try {
+    const sheet = getOrCreateEventsSheet();
+    const col = getEventsColumns_(sheet);
+    const rows = getEventsRows_(sheet);
+    const target = String(userId).trim().toLowerCase();
+    const RESET_TYPES = {};
+    RESET_TYPES[EVENT_TYPES.CARD_DRAWN]      = true;
+    RESET_TYPES[EVENT_TYPES.CARD_GRANTED]    = true;
+    RESET_TYPES[EVENT_TYPES.CARD_REMOVED]    = true;
+    RESET_TYPES[EVENT_TYPES.TICKET_GRANTED]  = true;
+    RESET_TYPES[EVENT_TYPES.TICKET_CONSUMED] = true;
+
+    let removed = 0;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const rowUserId = String(rows[i][col.userId] || '').trim().toLowerCase();
+      const rowType = String(rows[i][col.type] || '');
+      if (rowUserId === target && RESET_TYPES[rowType]) {
+        sheet.deleteRow(i + SCHEMA.EVENTS.dataStartRow);
+        removed++;
+      }
+    }
+
+    const rebuildResult = rebuildCollectionRow_(userId);
+    const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
+    return {
+      ok: true,
+      removed: removed,
+      collection: response.collection,
+      tickets: response.tickets,
+    };
   } finally {
     lock.releaseLock();
   }
