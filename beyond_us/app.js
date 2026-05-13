@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513c';
+    const APP_VERSION = '20260513d';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -245,9 +245,44 @@
     /* ── 테스트 모드: dev URL에서만 자동 활성 ── */
     const TEST_MODE  = IS_DEV_ENV;
 
-    /* ── DEV PWA 매니페스트 교체 ── */
+    /* ── DEV 전용: 내 카드/뽑기권 초기화 ── */
+    async function devResetMyCards() {
+      if (!currentNickname) {
+        alert('로그인이 필요해요.');
+        return;
+      }
+      if (!confirm('카드와 뽑기권을 모두 초기화할까요?\n(되돌릴 수 없습니다)')) return;
+      const btn = document.getElementById('devResetCardBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '초기화 중...'; }
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(withSession({ action: 'devResetCards', userId: currentNickname })),
+        }).then(r => r.json());
+        if (!res.ok) {
+          alert('초기화 실패: ' + (res.error || '알 수 없는 오류'));
+          return;
+        }
+        Object.keys(localStorage).filter(k => k.startsWith('beyondus_new_card_')).forEach(k => localStorage.removeItem(k));
+        await loadUserStatus({ silent: false });
+        alert(`초기화 완료 (이벤트 ${res.removed}개 삭제)`);
+      } catch (e) {
+        alert('초기화 중 오류: ' + e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🗑️ 초기화'; }
+      }
+    }
+
+    /* ── DEV PWA 매니페스트 교체 + 초기화 버튼 활성화 ── */
     if (IS_DEV_ENV) {
       document.getElementById('pwaManifest').href = 'manifest-dev.json';
+      const devResetBlock = document.getElementById('devResetCardBlock');
+      const devResetBtn = document.getElementById('devResetCardBtn');
+      if (devResetBlock && devResetBtn) {
+        devResetBlock.classList.remove('hidden');
+        devResetBtn.onclick = devResetMyCards;
+      }
     }
 
     /* ── 상태 ── */
