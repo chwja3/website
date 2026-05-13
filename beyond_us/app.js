@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513n';
+    const APP_VERSION = '20260513o';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1076,7 +1076,7 @@
     function getRaffleStatsFromStatus(status) {
       if (RAFFLE_PREVIEW_MODE) {
         return {
-          myTickets: 5,
+          myTickets: 4,
           totalTickets: 1000,
           participantCount: 0,
           uniqueCards: 10,
@@ -1087,7 +1087,7 @@
             card3Ticket: 1,
             card5Ticket: 1,
             card10Ticket: 1,
-            attendanceTicket: 1,
+            attendanceTicket: 0,
           },
         };
       }
@@ -1189,7 +1189,6 @@
         { label: '카드 3종 보유', detail: `현재 ${Math.min(uniqueCards, 3)}/3종`, done: uniqueCards >= 3 },
         { label: '카드 5종 보유', detail: `현재 ${Math.min(uniqueCards, 5)}/5종`, done: uniqueCards >= 5 },
         { label: '카드 10종 보유', detail: `현재 ${Math.min(uniqueCards, 10)}/10종`, done: uniqueCards >= 10 },
-        { label: '수련회 참석', detail: '운영진 참석 체크 후 반영', done: Number(breakdown.attendanceTicket) > 0 },
       ];
       container.innerHTML = conditions.map(item => `
         <div class="raffle-condition ${item.done ? 'done' : ''}">

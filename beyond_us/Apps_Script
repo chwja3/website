@@ -4346,23 +4346,17 @@ function adminGetRaffleAttendance() {
   const attendanceSheet = getOrCreateRetreatAttendanceSheet();
   const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
   const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
-  const collectionSheet = getOrCreateCollectionSheet();
-  const collectionCol = getCollectionColumns_(collectionSheet);
-  const collectionMap = getCollectionSnapshotMap_(getCollectionRows_(collectionSheet), collectionCol);
 
   const users = usersRows
     .filter(function(row) { return String(row[userCol.nickname] || '').trim(); })
     .map(function(row) {
       const nickname = String(row[userCol.nickname] || '').trim();
       const attended = attendanceMap[nickname] === true;
-      const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
-      const raffle = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attended, true);
       return {
         parish: String(row[userCol.parish] || '').trim(),
         name: String(row[userCol.name] || '').trim(),
         nickname: nickname,
         attended: attended,
-        raffleTickets: raffle.tickets,
       };
     })
     .sort(function(a, b) {
@@ -4376,7 +4370,6 @@ function adminGetRaffleAttendance() {
     users: users,
     totalUsers: users.length,
     attendedCount: users.filter(function(user) { return user.attended === true; }).length,
-    totalRaffleTickets: users.reduce(function(sum, user) { return sum + (Number(user.raffleTickets) || 0); }, 0),
   };
 }
 
@@ -5188,7 +5181,7 @@ function getRaffleTicketInfoFromCardCounts_(cardCounts, attended, includeSignup)
   const card3Ticket = uniqueCards >= 3 ? 1 : 0;
   const card5Ticket = uniqueCards >= 5 ? 1 : 0;
   const card10Ticket = uniqueCards >= 10 ? 1 : 0;
-  const attendanceTicket = attended === true ? 1 : 0;
+  const attendanceTicket = 0;
   const tickets = signupTicket + card3Ticket + card5Ticket + card10Ticket + attendanceTicket;
   return {
     tickets: tickets,
