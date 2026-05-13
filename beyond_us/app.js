@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513m';
+    const APP_VERSION = '20260513n';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -115,12 +115,34 @@
     ];
     const HIDDEN_CARD = { id:10, name:'히든', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
 
-    /* ── 카드 이미지 프리로드 ── */
+    /* ── 카드/뽑기 이미지 프리로드 ── */
+    const DRAW_ASSET_URLS = [
+      'images/앤카드팩디자인배경제거.png',
+      'images/앤카드뒷면최최종.png',
+    ];
+    const _preloadedImages = {};
+
+    function preloadImage(src, priority) {
+      if (!src || _preloadedImages[src]) return _preloadedImages[src] || null;
+      var i = new Image();
+      i.decoding = 'async';
+      if ('fetchPriority' in i) i.fetchPriority = priority || 'low';
+      i.src = src;
+      if (i.decode) i.decode().catch(function() {});
+      _preloadedImages[src] = i;
+      return i;
+    }
+
+    function preloadDrawAssets() {
+      DRAW_ASSET_URLS.forEach(function(src) { preloadImage(src, 'high'); });
+    }
+
     function preloadCardImages() {
       SPIRIT_CARDS.concat([HIDDEN_CARD]).forEach(function(c) {
-        if (c.img) { var i = new Image(); i.src = c.img; }
+        if (c.img) preloadImage(c.img, 'low');
       });
     }
+    preloadDrawAssets();
     (window.requestIdleCallback || function(cb) { setTimeout(cb, 1200); })(preloadCardImages);
 
     /* ── 카드 뽑기 사운드 ── */
@@ -1752,7 +1774,9 @@
     }
 
     function resetRevealSparks() {
-      ensureRevealSparks().forEach(function(el) {
+      var layer = document.getElementById('effectsLayer');
+      if (!layer) return;
+      layer.querySelectorAll('.spark').forEach(function(el) {
         gsap.set(el, { opacity: 0, x: 0, y: 0, scale: 0.2 });
       });
     }
@@ -1888,7 +1912,6 @@
     function resetDrawParticles() {
       var layer = document.getElementById('particleLayer');
       if (!layer) return;
-      ensureDrawParticles();
       var particles = layer.querySelectorAll('.star-ptcl, .ember-ptcl');
       if (!particles.length) return;
       gsap.set(particles, { opacity: 0, x: 0, y: 0, scale: 0.3 });
@@ -1977,11 +2000,9 @@
       drawServerSpecialPacks = null;
       carouselCenter = 1;
 
-      preloadSfx();
-      startBgm();
+      preloadDrawAssets();
 
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
-      resetRevealSparks();
 
       applyCarouselPositions();
 
@@ -2040,7 +2061,6 @@
       document.getElementById('cardGlow').classList.remove('glow-new', 'glow-dup');
       document.getElementById('sceneGlow').classList.remove('glow-new', 'glow-dup');
       clearDrawTimers();
-      resetDrawParticles();
 
       document.getElementById('cardFace').innerHTML = '';
       document.getElementById('flipHint').textContent = '';
@@ -2051,16 +2071,22 @@
       document.getElementById('carouselHint').textContent = 'Choose your pack ↓';
       document.getElementById('drawOverlay').classList.remove('hidden');
 
+      requestAnimationFrame(function() {
+        if (!drawOverlayActive) return;
+        preloadSfx();
+        startBgm();
+      });
+
       gsap.timeline()
-        .to('#starBg', { opacity: 1, duration: 0.55, ease: 'power2.out' }, 0)
+        .to('#starBg', { opacity: 1, duration: 0.32, ease: 'power2.out' }, 0)
         .to('#carouselLayer', {
           opacity: 1,
-          duration: 0.46,
-          delay: 0.08,
+          duration: 0.24,
+          delay: 0.02,
           onStart: function() {
             gsap.set('#carouselLayer', { pointerEvents: 'auto' });
           }
-        }, 0.08);
+        }, 0.02);
     }
 
     function closeDrawOverlay() {
@@ -2081,6 +2107,7 @@
       gsap.set('#cardBeamCore', { opacity: 0 });
       gsap.set('#cardBeamV',    { opacity: 0 });
       gsap.set('#ringEl3',   { opacity: 0 });
+      resetRevealSparks();
       resetDrawParticles();
       if (pendingCard) {
         if (userStatus) {
@@ -2166,9 +2193,9 @@
           gsap.set('#packLayer', { pointerEvents: 'auto' });
           gsap.to('#packHint', { opacity: 1, duration: 0.4 });
         }})
-        .to('#carouselLayer', { opacity: 0, duration: 0.28 })
+        .to('#carouselLayer', { opacity: 0, duration: 0.18 })
         .set('#packLayer',    { opacity: 1 })
-        .to('#drawPack',      { scale: 1.82, duration: 0.52, ease: 'power2.out' }, '<0.05');
+        .to('#drawPack',      { scale: 1.82, duration: 0.38, ease: 'power2.out' }, '<0.03');
       }
     })();
 
