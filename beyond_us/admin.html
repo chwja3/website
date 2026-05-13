@@ -557,6 +557,13 @@
               <span style="font-size:15px; font-weight:700;">Q.T. 말씀 묵상</span>
               <input type="checkbox" id="toggleQt" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
+            <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
+              <span style="min-width:0;">
+                <span style="display:block;font-size:15px;font-weight:700;">특별 카드팩</span>
+                <span style="display:block;font-size:11px;color:var(--sub);margin-top:3px;">사전미션 카드팩 영역에 보라색 특별팩 버튼 표시</span>
+              </span>
+              <input type="checkbox" id="toggleSpecialPack" style="width:20px; height:20px; accent-color:#8b5cf6; cursor:pointer; flex-shrink:0;" />
+            </label>
           </div>
 
           <div class="status" id="settingsStatus"></div>
@@ -1132,6 +1139,7 @@
           document.getElementById('togglePrayer').checked = res.prayer !== false;
           document.getElementById('toggleSecret').checked = res.secret !== false;
           document.getElementById('toggleQt').checked = res.qt !== false;
+          document.getElementById('toggleSpecialPack').checked = res.specialPack === true;
         }
       } catch(e) {}
     }
@@ -1148,7 +1156,8 @@
           adminPw,
           prayer: document.getElementById('togglePrayer').checked,
           secret: document.getElementById('toggleSecret').checked,
-          qt: document.getElementById('toggleQt').checked
+          qt: document.getElementById('toggleQt').checked,
+          specialPack: document.getElementById('toggleSpecialPack').checked
         });
         if (res.ok) {
           statusEl.className = 'status ok';
@@ -1738,6 +1747,8 @@
         const res = await post({ action: 'setTabSettings', adminPw,
           prayer: document.getElementById('togglePrayer')?.checked !== false,
           secret: document.getElementById('toggleSecret')?.checked !== false,
+          qt: document.getElementById('toggleQt')?.checked !== false,
+          specialPack: document.getElementById('toggleSpecialPack')?.checked === true,
           bbbSections: sections,
         });
         if (!res.ok) { statusEl.textContent = '오류: ' + (res.error || ''); return; }
