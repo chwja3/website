@@ -13,6 +13,7 @@ const RAFFLE_VISUAL_CAP = 1000;
 const RAFFLE_VISUAL_MAX_FILL_PERCENT = 90;
 const SHEET_NAMES = Object.freeze({
   USERS: 'Users',
+  RETREAT_ATTENDANCE: 'RetreatAttendance',
   CONFIG: 'config',
   RAW_CHECKINS: 'raw_checkins',
   CARD_DRAWS: 'CardDraws',
@@ -50,6 +51,16 @@ const SCHEMA = Object.freeze({
       isDev: 'isDev',
       sessionToken: 'sessionToken',
       sessionUpdatedAt: 'sessionUpdatedAt',
+    }),
+  }),
+  RETREAT_ATTENDANCE: Object.freeze({
+    sheetName: SHEET_NAMES.RETREAT_ATTENDANCE,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      nickname: 'nickname',
+      attended: 'attended',
+      updatedAt: 'updatedAt',
     }),
   }),
   RAW_CHECKINS: Object.freeze({
@@ -348,6 +359,11 @@ const USER_COLUMN_FALLBACK = Object.freeze({
   sessionToken: 7,
   sessionUpdatedAt: 8,
 });
+const RETREAT_ATTENDANCE_COLUMN_FALLBACK = Object.freeze({
+  nickname: 0,
+  attended: 1,
+  updatedAt: 2,
+});
 const RAW_CHECKINS_COLUMN_FALLBACK = Object.freeze({
   timestamp: 0,
   weekTitle: 1,
@@ -608,6 +624,7 @@ const FINAL_VISIBLE_SHEET_NAMES = Object.freeze([
   SHEET_NAMES.EVENTS,
   SHEET_NAMES.USER_DASHBOARD,
   SHEET_NAMES.USERS,
+  SHEET_NAMES.RETREAT_ATTENDANCE,
   SHEET_NAMES.COLLECTION,
   SHEET_NAMES.CARD_RECEIVED,
   SHEET_NAMES.TRADES,
@@ -633,6 +650,7 @@ const FINAL_SHEET_TABS = Object.freeze([
   Object.freeze({ name: SHEET_NAMES.EVENTS, color: '#9333EA' }),
   Object.freeze({ name: SHEET_NAMES.USER_DASHBOARD, color: USER_DASHBOARD_TAB_COLOR }),
   Object.freeze({ name: SHEET_NAMES.USERS, color: '#22C55E' }),
+  Object.freeze({ name: SHEET_NAMES.RETREAT_ATTENDANCE, color: '#EAB308' }),
   Object.freeze({ name: SHEET_NAMES.COLLECTION, color: '#22C55E' }),
   Object.freeze({ name: SHEET_NAMES.RAW_CHECKINS, color: '#F59E0B' }),
   Object.freeze({ name: SHEET_NAMES.CARD_DRAWS, color: '#F59E0B' }),
@@ -855,6 +873,10 @@ function doGet(e) {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getUsers());
   }
+  if (action === 'adminGetRaffleAttendance') {
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(adminGetRaffleAttendance());
+  }
   if (action === 'getTabSettings') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getTabSettings());
@@ -957,6 +979,10 @@ function doPost(e) {
     if (action === 'adminResetPassword') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminResetPassword(body));
+    }
+    if (action === 'adminSetRaffleAttendance') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminSetRaffleAttendance(body));
     }
     if (action === 'register') {
       return jsonOutput(registerUser(body));
@@ -1331,6 +1357,14 @@ function getUserColumns_(sheet) {
 
 function getUserRows_(sheet) {
   return getSheetRows(sheet, SCHEMA.USERS);
+}
+
+function getRetreatAttendanceColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.RETREAT_ATTENDANCE, RETREAT_ATTENDANCE_COLUMN_FALLBACK);
+}
+
+function getRetreatAttendanceRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.RETREAT_ATTENDANCE, maxColumns || 3);
 }
 
 function getRawColumns_(sheet) {
@@ -2755,7 +2789,10 @@ function applyFinalSheetVisibility() {
   const missing = [];
 
   FINAL_VISIBLE_SHEET_NAMES.forEach(function(sheetName) {
-    const sheet = ss.getSheetByName(sheetName);
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet && sheetName === SHEET_NAMES.RETREAT_ATTENDANCE) {
+      sheet = getOrCreateRetreatAttendanceSheet();
+    }
     if (!sheet) {
       missing.push(sheetName);
       return;
@@ -2794,7 +2831,10 @@ function migrate_step7_orderAndColor() {
   const orderIssues = [];
 
   FINAL_SHEET_TABS.forEach(function(tab) {
-    const sheet = ss.getSheetByName(tab.name);
+    let sheet = ss.getSheetByName(tab.name);
+    if (!sheet && tab.name === SHEET_NAMES.RETREAT_ATTENDANCE) {
+      sheet = getOrCreateRetreatAttendanceSheet();
+    }
     if (!sheet) {
       missing.push(tab.name);
       return;
@@ -3044,12 +3084,16 @@ function clearNoticesCache_() {
 function clearUserCache_(userId) {
   const cleanUserId = String(userId || '').trim();
   if (!cleanUserId) return;
-  // user_status_v1 캐시: 닉네임 단독 + 현재 주차 키만 invalidate.
+  // user_status 캐시: 닉네임 단독 + 현재 주차 키만 invalidate.
   // (이전 12주 루프는 매 mutation마다 13회 cacheRemove 호출했음)
   cacheRemove_(cacheKey_('user_status_v1', cleanUserId));
+  cacheRemove_(cacheKey_('user_status_v2', cleanUserId));
+  cacheRemove_(cacheKey_('user_status_v3', cleanUserId));
   try {
     const currentWeek = getCurrentWeek_();
     cacheRemove_(cacheKey_('user_status_v1', cleanUserId + ':w' + currentWeek));
+    cacheRemove_(cacheKey_('user_status_v2', cleanUserId + ':w' + currentWeek));
+    cacheRemove_(cacheKey_('user_status_v3', cleanUserId + ':w' + currentWeek));
   } catch(e) {}
   cacheRemove_(cacheKey_('collection_v1', cleanUserId));
 }
@@ -3367,7 +3411,7 @@ function getUserStatusCached_(userId, weekKey) {
   const config = getConfig();
   const cleanWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
   if (!cleanUserId) return getUserStatus(cleanUserId, cleanWeekKey, config);
-  const key = cacheKey_('user_status_v2', cleanUserId + ':' + cleanWeekKey);
+  const key = cacheKey_('user_status_v3', cleanUserId + ':' + cleanWeekKey);
   const cached = cacheGetJson_(key);
   if (cached) return cached;
   const data = getUserStatus(cleanUserId, cleanWeekKey, config);
@@ -3447,13 +3491,27 @@ function getUserStatus(userId, weekKey, configOverride) {
     const collectionSheet = getOrCreateCollectionSheet();
     const collectionCol = getCollectionColumns_(collectionSheet);
     const collectionRows = getCollectionRows_(collectionSheet);
+    const usersSheet = getUsersSheet_();
+    const userCol = getUserColumns_(usersSheet);
+    const usersRows = getUserRows_(usersSheet);
+    const attendanceSheet = getOrCreateRetreatAttendanceSheet();
+    const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
+    const attendanceRows = getRetreatAttendanceRows_(attendanceSheet);
     const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUserId, collectionRows, collectionCol);
     pendingDraws = Number(snapshot.remaining) || 0;
     SPIRIT_CARDS.forEach(card => {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;
       for (let j = 0; j < cnt; j++) collection.push({...card});
     });
-    raffle = getRaffleStatsFromCollectionRows_(cleanUserId, collectionRows, collectionCol, snapshot);
+    raffle = getRaffleStatsFromRows_(cleanUserId, {
+      collectionRows: collectionRows,
+      collectionCol: collectionCol,
+      usersRows: usersRows,
+      userCol: userCol,
+      attendanceRows: attendanceRows,
+      attendanceCol: attendanceCol,
+      currentSnapshot: snapshot,
+    });
   } catch(e) {}
 
   return {
@@ -4270,6 +4328,81 @@ function getUsers() {
   return { ok: true, users };
 }
 
+function getOrCreateRetreatAttendanceSheet() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.RETREAT_ATTENDANCE);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAMES.RETREAT_ATTENDANCE);
+    sheet.appendRow(getSchemaHeaders_(SCHEMA.RETREAT_ATTENDANCE));
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function adminGetRaffleAttendance() {
+  const userSheet = getUsersSheet_();
+  const userCol = getUserColumns_(userSheet);
+  const usersRows = getUserRows_(userSheet);
+  const attendanceSheet = getOrCreateRetreatAttendanceSheet();
+  const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
+  const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
+  const collectionSheet = getOrCreateCollectionSheet();
+  const collectionCol = getCollectionColumns_(collectionSheet);
+  const collectionMap = getCollectionSnapshotMap_(getCollectionRows_(collectionSheet), collectionCol);
+
+  const users = usersRows
+    .filter(function(row) { return String(row[userCol.nickname] || '').trim(); })
+    .map(function(row) {
+      const nickname = String(row[userCol.nickname] || '').trim();
+      const attended = attendanceMap[nickname] === true;
+      const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
+      const raffle = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attended, true);
+      return {
+        parish: String(row[userCol.parish] || '').trim(),
+        name: String(row[userCol.name] || '').trim(),
+        nickname: nickname,
+        attended: attended,
+        raffleTickets: raffle.tickets,
+      };
+    })
+    .sort(function(a, b) {
+      return String(a.parish).localeCompare(String(b.parish), 'ko') ||
+        String(a.name).localeCompare(String(b.name), 'ko') ||
+        String(a.nickname).localeCompare(String(b.nickname), 'ko');
+    });
+
+  return {
+    ok: true,
+    users: users,
+    totalUsers: users.length,
+    attendedCount: users.filter(function(user) { return user.attended === true; }).length,
+    totalRaffleTickets: users.reduce(function(sum, user) { return sum + (Number(user.raffleTickets) || 0); }, 0),
+  };
+}
+
+function adminSetRaffleAttendance(body) {
+  const nickname = String(body.nickname || '').trim();
+  const attended = body.attended === true;
+  if (!nickname) return { error: 'missing_nickname' };
+
+  const sheet = getOrCreateRetreatAttendanceSheet();
+  const col = getRetreatAttendanceColumns_(sheet);
+  const rows = getRetreatAttendanceRows_(sheet);
+  const now = new Date().toISOString();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.nickname] || '').trim() !== nickname) continue;
+    const rowIndex = i + SCHEMA.RETREAT_ATTENDANCE.dataStartRow;
+    sheet.getRange(rowIndex, col.attended + 1).setValue(attended);
+    sheet.getRange(rowIndex, col.updatedAt + 1).setValue(now);
+    clearUserDerivedCaches_(nickname);
+    return { ok: true, nickname: nickname, attended: attended };
+  }
+
+  sheet.appendRow([nickname, attended, now]);
+  clearUserDerivedCaches_(nickname);
+  return { ok: true, nickname: nickname, attended: attended };
+}
+
 function findNickname(name, parish) {
   const sheet = getUsersSheet_();
   const col   = getUserColumns_(sheet);
@@ -5046,18 +5179,25 @@ function getEmptyRaffleStats_() {
   };
 }
 
-function getRaffleTicketInfoFromCardCounts_(cardCounts) {
+function getRaffleTicketInfoFromCardCounts_(cardCounts, attended, includeSignup) {
   let uniqueCards = 0;
   for (let cardId = 1; cardId <= 10; cardId++) {
     if (Number(cardCounts && cardCounts[cardId]) > 0) uniqueCards++;
   }
-  let tickets = 0;
-  if (uniqueCards >= 3) tickets += 1;
-  if (uniqueCards >= 5) tickets += 3;
-  if (uniqueCards >= 8) tickets += 4;
+  const signupTicket = includeSignup === false ? 0 : 1;
+  const card3Ticket = uniqueCards >= 3 ? 1 : 0;
+  const card5Ticket = uniqueCards >= 5 ? 1 : 0;
+  const card10Ticket = uniqueCards >= 10 ? 1 : 0;
+  const attendanceTicket = attended === true ? 1 : 0;
+  const tickets = signupTicket + card3Ticket + card5Ticket + card10Ticket + attendanceTicket;
   return {
     tickets: tickets,
     uniqueCards: uniqueCards,
+    signupTicket: signupTicket,
+    card3Ticket: card3Ticket,
+    card5Ticket: card5Ticket,
+    card10Ticket: card10Ticket,
+    attendanceTicket: attendanceTicket,
   };
 }
 
@@ -5070,28 +5210,55 @@ function getRaffleFillPercent_(totalTickets) {
   );
 }
 
-function getRaffleStatsFromCollectionRows_(userId, rows, col, currentSnapshot) {
-  const cleanUserId = String(userId || '').trim();
-  const stats = getEmptyRaffleStats_();
-  let foundCurrentUser = false;
+function getCollectionSnapshotMap_(rows, col) {
+  const map = {};
   (rows || []).forEach(function(row) {
     const rowUserId = String(row[col.userId] || '').trim();
     if (!rowUserId) return;
-    const snapshot = collectionRowToSnapshot_(row, col, true);
-    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts);
+    map[rowUserId] = collectionRowToSnapshot_(row, col, true);
+  });
+  return map;
+}
+
+function getRetreatAttendanceMapFromRows_(rows, col) {
+  const map = {};
+  (rows || []).forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname) return;
+    map[nickname] = row[col.attended] === true;
+  });
+  return map;
+}
+
+function getRaffleStatsFromRows_(userId, options) {
+  const opts = options || {};
+  const cleanUserId = String(userId || '').trim();
+  const stats = getEmptyRaffleStats_();
+  const collectionMap = getCollectionSnapshotMap_(opts.collectionRows || [], opts.collectionCol);
+  const attendanceMap = getRetreatAttendanceMapFromRows_(opts.attendanceRows || [], opts.attendanceCol);
+  let foundCurrentUser = false;
+
+  (opts.usersRows || []).forEach(function(row) {
+    const nickname = String(row[opts.userCol.nickname] || '').trim();
+    if (!nickname) return;
+    const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
+    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attendanceMap[nickname] === true, true);
     stats.totalTickets += info.tickets;
     if (info.tickets > 0) stats.participantCount++;
-    if (rowUserId === cleanUserId) {
+    if (nickname === cleanUserId) {
       stats.myTickets = info.tickets;
       stats.uniqueCards = info.uniqueCards;
+      stats.breakdown = info;
       foundCurrentUser = true;
     }
   });
 
-  if (!foundCurrentUser && currentSnapshot) {
-    const info = getRaffleTicketInfoFromCardCounts_(currentSnapshot.cardCounts);
+  if (!foundCurrentUser && cleanUserId) {
+    const snapshot = opts.currentSnapshot || collectionMap[cleanUserId] || emptyCollectionSnapshot_(cleanUserId, false);
+    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attendanceMap[cleanUserId] === true, true);
     stats.myTickets = info.tickets;
     stats.uniqueCards = info.uniqueCards;
+    stats.breakdown = info;
   }
 
   stats.fillPercent = getRaffleFillPercent_(stats.totalTickets);
@@ -5767,7 +5934,10 @@ function getCutoverSheetStatus_() {
   const visibleLegacySheets = [];
 
   FINAL_VISIBLE_SHEET_NAMES.forEach(function(name) {
-    const sheet = ss.getSheetByName(name);
+    let sheet = ss.getSheetByName(name);
+    if (!sheet && name === SHEET_NAMES.RETREAT_ATTENDANCE) {
+      sheet = getOrCreateRetreatAttendanceSheet();
+    }
     if (!sheet) {
       missingVisible.push(name);
     } else {
