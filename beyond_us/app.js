@@ -7,6 +7,7 @@
         DEV_HOSTS.has(host);
     }
     const IS_DEV_ENV = isDevEnvironment();
+    const RAFFLE_PREVIEW_MODE = IS_DEV_ENV && new URLSearchParams(location.search).get('rafflePreview') === '1';
 
     const API_BASE = IS_DEV_ENV
       ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
@@ -39,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513l';
+    const APP_VERSION = '20260513m';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1051,6 +1052,23 @@
     }
 
     function getRaffleStatsFromStatus(status) {
+      if (RAFFLE_PREVIEW_MODE) {
+        return {
+          myTickets: 5,
+          totalTickets: 1000,
+          participantCount: 0,
+          uniqueCards: 10,
+          visualCap: 1000,
+          fillPercent: 90,
+          breakdown: {
+            signupTicket: 1,
+            card3Ticket: 1,
+            card5Ticket: 1,
+            card10Ticket: 1,
+            attendanceTicket: 1,
+          },
+        };
+      }
       const raw = (status && status.raffle) || {};
       const totalTickets = Math.max(0, Number(raw.totalTickets) || 0);
       const myTickets = Math.max(0, Number(raw.myTickets) || 0);
