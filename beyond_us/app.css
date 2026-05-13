@@ -1522,20 +1522,25 @@
       bottom: var(--y);
       border-radius: 7px;
       background: linear-gradient(135deg, #f5f5f4, #d6d3d1 52%, #a8a29e);
-      border: 1px solid rgba(87, 83, 78, 0.32);
-      box-shadow: 0 2px 6px rgba(41, 37, 36, 0.16);
       opacity: 0.92;
       transform: translateX(-50%) rotate(var(--r));
+      filter: drop-shadow(0 2px 4px rgba(41, 37, 36, 0.18));
+      -webkit-mask:
+        radial-gradient(circle 5px at left  center, transparent 98%, #000 100%) left  center/51% 100% no-repeat,
+        radial-gradient(circle 5px at right center, transparent 98%, #000 100%) right center/51% 100% no-repeat;
+              mask:
+        radial-gradient(circle 5px at left  center, transparent 98%, #000 100%) left  center/51% 100% no-repeat,
+        radial-gradient(circle 5px at right center, transparent 98%, #000 100%) right center/51% 100% no-repeat;
     }
     .raffle-paper::after,
     .raffle-my-ticket::after {
       content: '';
       position: absolute;
-      left: 12px;
-      right: 12px;
-      top: 50%;
-      height: 1px;
-      background: rgba(72, 80, 94, 0.2);
+      left: 50%;
+      top: 4px;
+      bottom: 4px;
+      width: 0;
+      border-left: 1px dashed rgba(72, 80, 94, 0.32);
     }
     .raffle-my-ticket-layer {
       position: absolute;
@@ -1553,28 +1558,30 @@
       top: var(--y);
       border-radius: 7px;
       background: linear-gradient(135deg, #ffd6ea, #f472b6 52%, #db2777);
-      border: 1px solid rgba(157, 23, 77, 0.32);
-      box-shadow:
-        0 0 12px rgba(244, 114, 182, 0.9),
-        0 0 24px rgba(219, 39, 119, 0.72),
-        0 4px 10px rgba(112, 17, 65, 0.18);
       transform: translateX(-50%) rotate(var(--r));
       animation: raffleTicketGlow 1.8s ease-in-out infinite;
+      -webkit-mask:
+        radial-gradient(circle 5px at left  center, transparent 98%, #000 100%) left  center/51% 100% no-repeat,
+        radial-gradient(circle 5px at right center, transparent 98%, #000 100%) right center/51% 100% no-repeat;
+              mask:
+        radial-gradient(circle 5px at left  center, transparent 98%, #000 100%) left  center/51% 100% no-repeat,
+        radial-gradient(circle 5px at right center, transparent 98%, #000 100%) right center/51% 100% no-repeat;
     }
     .raffle-my-ticket:nth-child(2n) { animation-delay: .28s; }
     .raffle-my-ticket:nth-child(3n) { animation-delay: .56s; }
     .raffle-my-ticket::after {
-      background: rgba(157, 23, 77, 0.22);
+      border-left-color: rgba(157, 23, 77, 0.42);
     }
     .raffle-my-ticket::before {
       content: 'MY';
       position: absolute;
-      left: 8px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
       font-size: 8px;
       font-weight: 900;
-      color: rgba(112, 17, 65, 0.7);
+      letter-spacing: 0.05em;
+      color: rgba(112, 17, 65, 0.78);
     }
     .raffle-my-ticket-layer::before {
       content: '';
@@ -1736,18 +1743,18 @@
     }
     @keyframes raffleTicketGlow {
       0%, 100% {
-        filter: brightness(1);
-        box-shadow:
-          0 0 12px rgba(244, 114, 182, 0.86),
-          0 0 24px rgba(219, 39, 119, 0.68),
-          0 4px 10px rgba(112, 17, 65, 0.18);
+        filter:
+          brightness(1)
+          drop-shadow(0 0 6px rgba(244, 114, 182, 0.85))
+          drop-shadow(0 0 12px rgba(219, 39, 119, 0.55))
+          drop-shadow(0 3px 6px rgba(112, 17, 65, 0.22));
       }
       50% {
-        filter: brightness(1.18);
-        box-shadow:
-          0 0 18px rgba(255, 220, 235, 0.98),
-          0 0 34px rgba(232, 60, 140, 0.92),
-          0 4px 12px rgba(112, 17, 65, 0.22);
+        filter:
+          brightness(1.18)
+          drop-shadow(0 0 9px rgba(255, 220, 235, 0.95))
+          drop-shadow(0 0 18px rgba(232, 60, 140, 0.8))
+          drop-shadow(0 3px 8px rgba(112, 17, 65, 0.28));
       }
     }
     @keyframes raffleSparkle {
