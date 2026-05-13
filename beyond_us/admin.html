@@ -124,6 +124,8 @@
     .btn-ghost, .btn-secondary { background: var(--primary-soft); color: var(--text); border: 1px solid var(--line); }
     .btn-danger  { background: var(--danger); color: white; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .attendance-toggle { width: 22px; height: 22px; accent-color: var(--success); cursor: pointer; }
+    .attendance-toggle:disabled { cursor: wait; opacity: .6; }
     .input {
       width: 100%; padding: 12px 14px; font-size: 15px;
       border: 1.5px solid var(--line); border-radius: 12px;
@@ -189,6 +191,7 @@
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
       <button class="drawer-item" data-panel="bbbphotos">BBB 사진 승인</button>
+      <button class="drawer-item" data-panel="attendance">수련회 참석</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <div class="drawer-section-divider"></div>
@@ -322,6 +325,42 @@
           <div id="bbbPhotoApprovalList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
           </div>
+        </div>
+      </div>
+
+      <!-- 수련회 참석자 관리 -->
+      <div id="tab-attendance" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="attendanceTotalUsers">-</div></div>
+          <div class="stat-card"><div class="stat-label">참석 체크</div><div class="stat-value" id="attendanceCheckedUsers">-</div></div>
+          <div class="stat-card"><div class="stat-label">전체 추첨권</div><div class="stat-value" id="attendanceTotalRaffle">-</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">수련회 참석자 명단</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">체크하면 해당 유저에게 참석 추첨권 1장이 반영됩니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshAttendanceBtn">새로고침</button>
+          </div>
+          <input type="search" id="attendanceSearch" placeholder="🔍 교구, 이름, 닉네임 검색" class="input" style="margin-bottom:12px;" />
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>교구</th>
+                  <th>이름</th>
+                  <th>닉네임</th>
+                  <th>수련회 참석</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody">
+                <tr><td colspan="4" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="status" id="attendanceStatus"></div>
         </div>
       </div>
 
@@ -668,6 +707,7 @@
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'bbbphotos') loadBBBPhotoApprovals();
+      if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
       if (panelId === 'system')  loadSystemStatus();
@@ -730,6 +770,91 @@
       } catch(e) {}
     }
     document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
+
+    /* ── 수련회 참석자 관리 ── */
+    let _raffleAttendanceUsers = [];
+
+    async function loadRaffleAttendance() {
+      const tbody = document.getElementById('attendanceTableBody');
+      const statusEl = document.getElementById('attendanceStatus');
+      statusEl.textContent = '';
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      try {
+        const res = await get({ action: 'adminGetRaffleAttendance', adminPw });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        _raffleAttendanceUsers = res.users || [];
+        document.getElementById('attendanceTotalUsers').textContent = res.totalUsers || 0;
+        document.getElementById('attendanceCheckedUsers').textContent = res.attendedCount || 0;
+        document.getElementById('attendanceTotalRaffle').textContent = res.totalRaffleTickets || 0;
+        renderRaffleAttendanceRows(_raffleAttendanceUsers);
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+      }
+    }
+
+    function renderRaffleAttendanceRows(users) {
+      const tbody = document.getElementById('attendanceTableBody');
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
+          <td>${esc(u.name)}</td>
+          <td><strong>${esc(u.nickname)}</strong></td>
+          <td>
+            <input type="checkbox" class="attendance-toggle" data-nickname="${esc(u.nickname)}" ${u.attended ? 'checked' : ''} aria-label="${esc(u.nickname)} 수련회 참석 체크" />
+          </td>
+        </tr>
+      `).join('');
+      tbody.querySelectorAll('.attendance-toggle').forEach(input => {
+        input.addEventListener('change', () => setRaffleAttendance(input.dataset.nickname, input.checked, input));
+      });
+    }
+
+    function filterRaffleAttendance(query) {
+      const q = String(query || '').trim().toLowerCase();
+      const filtered = !q ? _raffleAttendanceUsers : _raffleAttendanceUsers.filter(u =>
+        String(u.parish || '').toLowerCase().includes(q) ||
+        String(u.name || '').toLowerCase().includes(q) ||
+        String(u.nickname || '').toLowerCase().includes(q)
+      );
+      renderRaffleAttendanceRows(filtered);
+    }
+
+    async function setRaffleAttendance(nickname, attended, checkbox) {
+      const statusEl = document.getElementById('attendanceStatus');
+      checkbox.disabled = true;
+      statusEl.textContent = '저장 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminSetRaffleAttendance', adminPw, nickname, attended });
+        if (!res.ok) throw new Error(res.error || 'save_failed');
+        const user = _raffleAttendanceUsers.find(u => u.nickname === nickname);
+        if (user) {
+          const before = user.attended === true;
+          user.attended = attended;
+          user.raffleTickets = Math.max(0, (Number(user.raffleTickets) || 0) + (attended === before ? 0 : (attended ? 1 : -1)));
+        }
+        document.getElementById('attendanceCheckedUsers').textContent = _raffleAttendanceUsers.filter(u => u.attended).length;
+        document.getElementById('attendanceTotalRaffle').textContent = _raffleAttendanceUsers.reduce((sum, u) => sum + (Number(u.raffleTickets) || 0), 0);
+        statusEl.textContent = '저장됐어요.';
+        statusEl.className = 'status ok';
+        setTimeout(() => {
+          if (statusEl.textContent === '저장됐어요.') statusEl.textContent = '';
+        }, 1400);
+      } catch(e) {
+        checkbox.checked = !attended;
+        statusEl.textContent = '저장 실패. 잠시 후 다시 시도해주세요.';
+        statusEl.className = 'status';
+      } finally {
+        checkbox.disabled = false;
+      }
+    }
+
+    document.getElementById('refreshAttendanceBtn').addEventListener('click', loadRaffleAttendance);
+    document.getElementById('attendanceSearch').addEventListener('input', e => filterRaffleAttendance(e.target.value));
 
     /* ── 카드 현황 ── */
     let _cardUserStats = [];

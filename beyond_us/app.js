@@ -39,7 +39,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260513j';
+    const APP_VERSION = '20260513k';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1100,7 +1100,7 @@
       if (totalEl) totalEl.textContent = formatRaffleNumber(stats.totalTickets);
       if (myEl) myEl.textContent = formatRaffleNumber(stats.myTickets);
       if (noteEl) {
-        noteEl.textContent = `${stats.uniqueCards}/10종 기준 추첨권이에요. 전체 ${stats.visualCap}장 이상이면 추첨통은 90%로 고정돼요.`;
+        noteEl.textContent = `가입 + ${stats.uniqueCards}/10종 보유 + 참석 체크 기준이에요. 전체 ${stats.visualCap}장 이상이면 추첨통은 90%로 고정돼요.`;
       }
       if (binEl) binEl.style.setProperty('--raffle-fill', `${stats.fillPercent}%`);
       if (!stackEl) return;
