@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260514p';
+    const APP_VERSION = '20260515a';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1256,6 +1256,7 @@
       container.innerHTML = conditions.map(item => {
         const issuedNo = numbersByCondition[item.key];
         const reward = issuedNo ? `#${escHtml(issuedNo)}` : item.reward;
+        const rewardClass = issuedNo ? 'raffle-condition-reward issued' : 'raffle-condition-reward';
         return `
         <li class="raffle-condition ${item.done ? 'done' : ''}">
           <span class="raffle-condition-check" aria-hidden="true">${item.done ? '✓' : ''}</span>
@@ -1263,7 +1264,7 @@
             <strong>${item.label}</strong>
             <span>${item.detail}</span>
           </div>
-          <span class="raffle-condition-reward">${reward}</span>
+          <span class="${rewardClass}">${reward}</span>
         </li>`;
       }).join('');
     }
