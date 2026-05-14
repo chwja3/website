@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515d';
+    const APP_VERSION = '20260515e';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2390,8 +2390,8 @@
           ease: 'power1.out'
         }, 0.03)
         .fromTo('#packCardPreview',
-          { opacity: 0, scale: 0.88, y: 56 },
-          { opacity: 0.95, scale: 1.04, y: -32, duration: 0.42, ease: 'power2.out' },
+          { opacity: 0, scale: 0.96, y: 12 },
+          { opacity: 0.95, scale: 1.04, y: -42, duration: 0.42, ease: 'power2.out' },
           0.06
         )
         .to('#packTopPiece', {
@@ -2515,7 +2515,6 @@
               if (!drawOverlayActive) return;
               drawState = 'card_front_settle';
               isFlipping = false;
-              playSfx(drawIsNew ? 'revealHidden' : 'revealNormal');
 
               gsap.set('#settleActions', { display: 'flex' });
               gsap.to('#settleActions', { opacity: 1, duration: 0.44, ease: 'power2.out' });
@@ -2533,13 +2532,6 @@
                 duration: drawIsNew ? 2.2 : 3.2,
                 ease: 'sine.inOut', yoyo: true, repeat: -1
               });
-              // 신규 카드 — 임팩트 진동
-              if (drawIsNew) {
-                gsap.to('#cardTrigger', {
-                  x: 3, duration: 0.04, repeat: 5, yoyo: true, ease: 'none',
-                  onComplete: function() { gsap.set('#cardTrigger', { x: 0 }); }
-                });
-              }
 
               // 앞면 반짝임 sweep 루프
               var shimmerTl = gsap.timeline({ repeat: -1, repeatDelay: 2.2 });
@@ -2578,8 +2570,21 @@
             .to('#cardFlipShine', { opacity: 0.98, x: '155%', duration: 0.34, ease: 'power2.out' }, 0.26)
             .to('#cardInner', { rotateY: 194, rotateX: -3, rotateZ: 1.6, duration: 0.34, ease: 'power2.out' }, 0.31)
             .to('#cardInner', { rotateY: 180, rotateX: 0, rotateZ: 0, duration: 0.26, ease: 'back.out(1.3)' }, 0.62)
+            // 카드 플립 착지에 맞춰 "따란~" 사운드 + 진동을 함께 트리거 (잔광 끝나는 onComplete까지 기다리지 않음)
+            .call(function() {
+              playSfx(drawIsNew ? 'revealHidden' : 'revealNormal');
+            }, [], 0.55)
             .to('#cardTrigger', { scale: 1.94, duration: 0.09, ease: 'power3.out' }, 0.62)
             .to('#cardTrigger', { scale: 1.78, duration: 0.38, ease: 'elastic.out(1, 0.45)' }, 0.71)
+            // 임팩트 진동 — 신규 카드 + 사운드 피크 시점에
+            .call(function() {
+              if (drawIsNew) {
+                gsap.to('#cardTrigger', {
+                  x: 3, duration: 0.04, repeat: 5, yoyo: true, ease: 'none',
+                  onComplete: function() { gsap.set('#cardTrigger', { x: 0 }); }
+                });
+              }
+            }, [], 0.66)
             .to('#sceneGlow', { opacity: 0.78, scale: 1.04, duration: 0.48, ease: 'power2.out' }, 0.76)
             .to('#cardGlow',  { opacity: 0.86, scale: 1.02, duration: 0.48, ease: 'power2.out' }, 0.82);
 
