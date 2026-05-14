@@ -34,6 +34,7 @@ const SHEET_NAMES = Object.freeze({
   MISSION_DEFINITIONS: 'MissionDefinitions',
   EVENTS: 'Events',
   USER_DASHBOARD: 'UserDashboard',
+  RAFFLE_TICKETS: 'RaffleTickets',
 });
 const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
 const SCHEMA = Object.freeze({
@@ -3565,6 +3566,9 @@ function getUserStatus(userId, weekKey, configOverride) {
       attendanceCol: attendanceCol,
       currentSnapshot: snapshot,
     });
+    // 자동 backfill: 사용자가 조건을 만족하는데 아직 번호가 없으면 발급
+    try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
+    raffle.myTicketNumbers = getUserRaffleTicketNumbers_(cleanUserId);
   } catch(e) {}
 
   return {
@@ -3719,6 +3723,8 @@ function drawCard(userId, weekKey, testMode, requestId) {
     Events_appendBatch_(eventItems);
     // rebuild 결과의 projection snapshot을 그대로 응답에 사용 — Collection 시트 재조회 2회 제거
     const rebuildResult = rebuildCollectionRow_(userId);
+    // 카드 추가로 임계값(3/5/10종) 달성 시 추첨권 자동 발급
+    try { ensureUserRaffleTickets_(userId); } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const result = {
       ok: true,
@@ -3796,6 +3802,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
       },
     ]);
     const rebuildResult = rebuildCollectionRow_(cleanUserId);
+    try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const nextSpecialPackStats = {
       totalEarned: specialPackStats.totalEarned,
@@ -4361,6 +4368,8 @@ function registerUser(body) {
   const rowIndex = sheet.getLastRow();
   setUserPassword_(sheet, rowIndex, password);
   const sessionToken = issueSessionToken_(sheet, rowIndex);
+  // 가입 추첨권 자동 발급
+  try { issueRaffleTicket_(nickname, 'signup'); } catch(e) {}
   return {
     ok: true,
     parish: parish,
@@ -5342,6 +5351,140 @@ function getRaffleFillPercent_(totalTickets) {
     RAFFLE_VISUAL_MAX_FILL_PERCENT,
     Math.max(4, Math.round((total / RAFFLE_VISUAL_CAP) * RAFFLE_VISUAL_MAX_FILL_PERCENT))
   );
+}
+
+// ── 추첨권 번호 발급 시스템 ──────────────────────────
+const RAFFLE_TICKET_COLUMNS = Object.freeze([
+  'ticket_no', 'userId', 'parish', 'issued_at', 'week_key', 'condition',
+  'deposit_status', 'deposited_at', 'winner_rank', 'winner_marked_at',
+]);
+
+function getOrCreateRaffleTicketsSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.RAFFLE_TICKETS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAMES.RAFFLE_TICKETS);
+    sheet.getRange(1, 1, 1, RAFFLE_TICKET_COLUMNS.length).setValues([RAFFLE_TICKET_COLUMNS]);
+    sheet.getRange('A:A').setNumberFormat('@');
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getRaffleTicketRows_() {
+  const sheet = getOrCreateRaffleTicketsSheet_();
+  const last = sheet.getLastRow();
+  if (last < 2) return [];
+  return sheet.getRange(2, 1, last - 1, RAFFLE_TICKET_COLUMNS.length).getValues();
+}
+
+function padTicketNo_(n) {
+  return String(Math.max(0, Math.floor(Number(n) || 0))).padStart(4, '0');
+}
+
+function getLastTicketNumber_() {
+  const rows = getRaffleTicketRows_();
+  let max = 0;
+  rows.forEach(function(r) {
+    const n = Number(String(r[0] || '').replace(/^0+/, '') || '0');
+    if (n > max) max = n;
+  });
+  return max;
+}
+
+function findUserRaffleTicket_(rows, userId, condition) {
+  const cleanUser = String(userId || '').trim();
+  const cleanCond = String(condition || '').trim();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][1]).trim() === cleanUser && String(rows[i][5]).trim() === cleanCond) {
+      return { row: rows[i], index: i };
+    }
+  }
+  return null;
+}
+
+function getUserParishFromUsers_(userId) {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const target = String(userId || '').trim();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][col.nickname] || '').trim() === target) {
+      return String(rows[i][col.parish] || '').trim();
+    }
+  }
+  return '';
+}
+
+// 핵심: 한 번에 한 condition 발급. 중복 발급 차단. LockService로 동시성 보장.
+function issueRaffleTicket_(userId, condition, weekKey) {
+  const cleanUser = String(userId || '').trim();
+  const cleanCond = String(condition || '').trim();
+  if (!cleanUser || !cleanCond) return { ok: false, error: 'missing_fields' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: 'lock_timeout' }; }
+
+  try {
+    const sheet = getOrCreateRaffleTicketsSheet_();
+    const rows = getRaffleTicketRows_();
+    const existing = findUserRaffleTicket_(rows, cleanUser, cleanCond);
+    if (existing) {
+      return { ok: true, ticket_no: String(existing.row[0]), dup: true };
+    }
+    const nextNo = padTicketNo_(getLastTicketNumber_() + 1);
+    const parish = getUserParishFromUsers_(cleanUser);
+    const now = new Date().toISOString();
+    const week = String(weekKey || ('w' + getCurrentWeek_())).trim();
+    sheet.appendRow([nextNo, cleanUser, parish, now, week, cleanCond, 'pending', '', '', '']);
+    return { ok: true, ticket_no: nextNo, dup: false, week_key: week };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 사용자의 현재 상태(보유 카드/가입 여부) 기준으로 필요한 모든 티켓을 backfill 발급
+function ensureUserRaffleTickets_(userId) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return { ok: false, issued: [] };
+
+  const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
+  const rows = getCollectionRows_(sheet);
+  const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUser, rows, col);
+  let uniqueCount = 0;
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    if (Number(snapshot.cardCounts && snapshot.cardCounts[cardId]) > 0) uniqueCount++;
+  }
+
+  const triggers = [
+    { cond: 'signup', met: true },
+    { cond: 'card_3',  met: uniqueCount >= 3 },
+    { cond: 'card_5',  met: uniqueCount >= 5 },
+    { cond: 'card_10', met: uniqueCount >= 10 },
+  ];
+
+  const issued = [];
+  triggers.forEach(function(t) {
+    if (!t.met) return;
+    const res = issueRaffleTicket_(cleanUser, t.cond);
+    if (res.ok && !res.dup) issued.push(res.ticket_no);
+  });
+  return { ok: true, issued: issued };
+}
+
+function getUserRaffleTicketNumbers_(userId) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return [];
+  const rows = getRaffleTicketRows_();
+  const map = {};
+  rows.forEach(function(r) {
+    if (String(r[1]).trim() !== cleanUser) return;
+    map[String(r[5]).trim()] = String(r[0]);
+  });
+  return ['signup', 'card_3', 'card_5', 'card_10']
+    .filter(function(c) { return map[c]; })
+    .map(function(c) { return { condition: c, ticket_no: map[c] }; });
 }
 
 function getCollectionSnapshotMap_(rows, col) {
@@ -7111,6 +7254,7 @@ function uploadBBBPhoto(body) {
             source: EVENT_SOURCES.WEB,
           });
           rebuildCollectionRow_(userId);
+          try { ensureUserRaffleTickets_(userId); } catch(e) {}
           rewarded = true;
         }
       } else {

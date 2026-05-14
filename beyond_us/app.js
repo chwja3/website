@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260514l';
+    const APP_VERSION = '20260514m';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1131,6 +1131,12 @@
             card10Ticket: 1,
             attendanceTicket: 0,
           },
+          myTicketNumbers: [
+            { condition: 'signup',  ticket_no: '0042' },
+            { condition: 'card_3',  ticket_no: '0078' },
+            { condition: 'card_5',  ticket_no: '0156' },
+            { condition: 'card_10', ticket_no: '0203' },
+          ],
         };
       }
       const raw = (status && status.raffle) || {};
@@ -1149,6 +1155,7 @@
         visualCap,
         fillPercent: Math.max(0, Math.min(90, fillPercent)),
         breakdown: raw.breakdown || {},
+        myTicketNumbers: Array.isArray(raw.myTicketNumbers) ? raw.myTicketNumbers : [],
       };
     }
 
@@ -1182,6 +1189,7 @@
       const stackEl = document.getElementById('raffleTicketStack');
       if (totalEl) totalEl.textContent = formatRaffleNumber(stats.totalTickets);
       if (myEl) myEl.textContent = formatRaffleNumber(stats.myTickets);
+      renderRaffleMyNumbers(stats.myTicketNumbers);
       renderRaffleConditions(conditionEl, stats);
       if (binEl) binEl.style.setProperty('--raffle-fill', `${stats.fillPercent}%`);
       if (!stackEl) return;
@@ -1218,27 +1226,46 @@
       stackEl.appendChild(myLayer);
     }
 
+    function renderRaffleMyNumbers(numbers) {
+      const box = document.getElementById('raffleMyNumbersBox');
+      const chips = document.getElementById('raffleNumberChips');
+      if (!box || !chips) return;
+      const list = Array.isArray(numbers) ? numbers : [];
+      if (list.length === 0) {
+        box.classList.add('hidden');
+        chips.innerHTML = '';
+        return;
+      }
+      box.classList.remove('hidden');
+      chips.innerHTML = list.map(n => `<span class="raffle-number-chip">#${escHtml(n.ticket_no)}</span>`).join('');
+    }
+
     function renderRaffleConditions(container, stats) {
       if (!container) return;
       const uniqueCards = Number(stats.uniqueCards) || 0;
       const breakdown = stats.breakdown || {};
       const signupDone = Number(breakdown.signupTicket) > 0 || !!currentNickname;
+      const numbersByCondition = {};
+      (stats.myTicketNumbers || []).forEach(n => { numbersByCondition[n.condition] = n.ticket_no; });
       const conditions = [
-        { label: '앱 가입',         detail: signupDone ? '가입 완료'                                     : '회원가입 시 자동 지급',                          done: signupDone,            reward: '+1장' },
-        { label: '카드 3종 보유',   detail: uniqueCards >= 3  ? '3종 보유 완료'                          : `${Math.min(uniqueCards, 3)}/3종 보유`,           done: uniqueCards >= 3,      reward: '+1장' },
-        { label: '카드 5종 보유',   detail: uniqueCards >= 5  ? '5종 보유 완료'                          : `${Math.min(uniqueCards, 5)}/5종 보유`,           done: uniqueCards >= 5,      reward: '+1장' },
-        { label: '카드 10종 보유',  detail: uniqueCards >= 10 ? '10종 모두 보유 완료'                    : `${Math.min(uniqueCards, 10)}/10종 보유`,         done: uniqueCards >= 10,     reward: '+1장' },
+        { key: 'signup',  label: '앱 가입',         detail: signupDone ? '가입 완료'                                     : '회원가입 시 자동 지급',                          done: signupDone,            reward: '+1장' },
+        { key: 'card_3',  label: '카드 3종 보유',   detail: uniqueCards >= 3  ? '3종 보유 완료'                          : `${Math.min(uniqueCards, 3)}/3종 보유`,           done: uniqueCards >= 3,      reward: '+1장' },
+        { key: 'card_5',  label: '카드 5종 보유',   detail: uniqueCards >= 5  ? '5종 보유 완료'                          : `${Math.min(uniqueCards, 5)}/5종 보유`,           done: uniqueCards >= 5,      reward: '+1장' },
+        { key: 'card_10', label: '카드 10종 보유',  detail: uniqueCards >= 10 ? '10종 모두 보유 완료'                    : `${Math.min(uniqueCards, 10)}/10종 보유`,         done: uniqueCards >= 10,     reward: '+1장' },
       ];
-      container.innerHTML = conditions.map(item => `
+      container.innerHTML = conditions.map(item => {
+        const issuedNo = numbersByCondition[item.key];
+        const reward = issuedNo ? `#${escHtml(issuedNo)}` : item.reward;
+        return `
         <li class="raffle-condition ${item.done ? 'done' : ''}">
           <span class="raffle-condition-check" aria-hidden="true">${item.done ? '✓' : ''}</span>
           <div class="raffle-condition-text">
             <strong>${item.label}</strong>
             <span>${item.detail}</span>
           </div>
-          <span class="raffle-condition-reward">${item.reward}</span>
-        </li>
-      `).join('');
+          <span class="raffle-condition-reward">${reward}</span>
+        </li>`;
+      }).join('');
     }
 
     function initRaffleOverlay() {
