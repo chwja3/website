@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515c';
+    const APP_VERSION = '20260515d';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2359,14 +2359,15 @@
 
             tlB
               .set('#cardLayer', { pointerEvents: 'none' })
-              .to('#cardLayer', { opacity: 1, duration: 0.22, ease: 'power2.out' }, 0)
-              .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.28, ease: 'power2.out' }, 0)
+              .to('#cardLayer', { opacity: 1, duration: 0.28, ease: 'power2.out' }, 0)
+              .to('#cardGlow', { opacity: 0.92, scale: 1, duration: 0.32, ease: 'power2.out' }, 0)
+              // packCardPreview가 y:-32에서 끝나므로 cardTrigger도 비슷한 위치에서 시작 → 자연스러운 연결
               .fromTo('#cardTrigger',
-                { y: 128, rotateZ: -4, rotateX: 5, scale: 1.56 },
-                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.78, duration: 0.42, ease: 'power3.out' },
-                0.04
+                { y: -22, rotateZ: 0, rotateX: 0, scale: 1.68, opacity: 0 },
+                { y: 0, rotateZ: 0, rotateX: 0, scale: 1.78, opacity: 1, duration: 0.38, ease: 'power2.out' },
+                0.02
               )
-              .to('#sceneGlow', { opacity: 0.72, scale: 1.02, duration: 0.28, ease: 'power2.out' }, 0)
+              .to('#sceneGlow', { opacity: 0.72, scale: 1.02, duration: 0.32, ease: 'power2.out' }, 0)
               // 카드가 자리 잡히자마자 바로 클릭 가능
               .call(function() {
                 drawState = 'card_back_wait';

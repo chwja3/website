@@ -792,31 +792,31 @@
         rgba(120,80,255,0.12) 70%,
         transparent 88%);
     }
-    /* 수평 광선 — 넓은 황금 잔광 */
+    /* 수평 광선 — 얇은 황금 잔광 */
     #cardBeam {
       position: absolute;
-      width: min(180vmax, 1600px); height: min(20vmax, 160px);
+      width: min(180vmax, 1600px); height: min(11vmax, 90px);
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(90deg,
         transparent 0%,
         rgba(255,180,40,0) 3%,
-        rgba(255,210,80,0.36) 16%,
-        rgba(255,235,130,0.70) 32%,
-        rgba(255,250,190,0.88) 50%,
-        rgba(255,235,130,0.70) 68%,
-        rgba(255,210,80,0.36) 84%,
+        rgba(255,210,80,0.32) 16%,
+        rgba(255,235,130,0.62) 32%,
+        rgba(255,250,190,0.80) 50%,
+        rgba(255,235,130,0.62) 68%,
+        rgba(255,210,80,0.32) 84%,
         rgba(255,180,40,0) 97%,
         transparent 100%);
-      filter: blur(14px);
+      filter: blur(10px);
       opacity: 0;
       pointer-events: none;
       z-index: 5;
     }
-    /* 수평 광선 — 날카로운 코어 라인 */
+    /* 수평 광선 — 얇은 코어 라인 */
     #cardBeamCore {
       position: absolute;
-      width: min(180vmax, 1600px); height: 5px;
+      width: min(180vmax, 1600px); height: 2.5px;
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(90deg,
@@ -826,28 +826,28 @@
         rgba(255,255,255,1) 78%,
         rgba(255,255,255,0) 94%,
         transparent 100%);
-      filter: blur(1px);
+      filter: blur(0.6px);
       opacity: 0;
       pointer-events: none;
       z-index: 7;
     }
-    /* 세로 광선 */
+    /* 세로 광선 — 얇게 */
     #cardBeamV {
       position: absolute;
-      width: min(34vmax, 260px); height: min(180vmax, 1600px);
+      width: min(20vmax, 150px); height: min(180vmax, 1600px);
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
       background: linear-gradient(180deg,
         transparent 0%,
         rgba(255,180,40,0) 2%,
-        rgba(255,210,80,0.68) 15%,
-        rgba(255,235,130,0.94) 32%,
-        rgba(255,250,190,1) 50%,
-        rgba(255,235,130,0.94) 68%,
-        rgba(255,210,80,0.68) 85%,
+        rgba(255,210,80,0.60) 15%,
+        rgba(255,235,130,0.86) 32%,
+        rgba(255,250,190,0.96) 50%,
+        rgba(255,235,130,0.86) 68%,
+        rgba(255,210,80,0.60) 85%,
         rgba(255,180,40,0) 98%,
         transparent 100%);
-      filter: blur(12px);
+      filter: blur(9px);
       opacity: 0;
       pointer-events: none;
       z-index: 6;
@@ -857,7 +857,7 @@
       position: absolute;
       left: 50%;
       top: 0;
-      width: 5px;
+      width: 2.5px;
       height: 100%;
       transform: translateX(-50%);
       background: linear-gradient(180deg,
@@ -867,7 +867,7 @@
         rgba(255,255,255,1) 78%,
         rgba(255,255,255,0) 94%,
         transparent 100%);
-      filter: blur(1px);
+      filter: blur(0.6px);
     }
     /* 세번째 충격파 링 */
     #ringEl3 {
