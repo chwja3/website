@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260514k';
+    const APP_VERSION = '20260514l';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -113,7 +113,7 @@
       { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/앤카드온유최최종.png' },
       { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/앤카드절제최최종.png' },
     ];
-    const HIDDEN_CARD = { id:10, name:'히든', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
+    const HIDDEN_CARD = { id:10, name:'레어', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
 
     /* ── 카드/뽑기 이미지 프리로드 ── */
     const DRAW_ASSET_URLS = [
@@ -3926,11 +3926,17 @@
         const res = await post({ action: 'guessBBBSecret', userId: nickname, guess });
         if (res.error) { stopAnimDots(dotsTimer, msgEl, res.error); msgEl.style.color = '#f87171'; return; }
         if (res.correct) {
-          stopAnimDots(dotsTimer, msgEl, '정답이에요! 🎉');
+          const successMsg = res.rewarded
+            ? '정답이에요! 🎉 미보유 엔 카드 1장이 컬렉션에 추가됐어요!'
+            : (res.alreadyRevealed ? '정답이에요! 🎉' : '정답이에요! 🎉');
+          stopAnimDots(dotsTimer, msgEl, successMsg);
           msgEl.style.color = '#4ade80';
           document.getElementById('bbbSecretName').textContent = res.secretName || res.secretNickname;
           document.getElementById('bbbSecretRevealed').style.display = '';
           document.getElementById('bbbSecretGuess').style.display = 'none';
+          if (res.rewarded) {
+            loadUserStatus({ silent: true }).then(() => renderCollection()).catch(() => {});
+          }
         } else {
           stopAnimDots(dotsTimer, msgEl, '아니에요. 다시 생각해봐요!');
           msgEl.style.color = '#f87171';
