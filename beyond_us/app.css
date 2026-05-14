@@ -1635,6 +1635,43 @@
       font-weight: 800;
       font-feature-settings: 'tnum';
     }
+    .raffle-my-numbers {
+      margin-top: 22px;
+    }
+    .raffle-my-numbers.hidden { display: none; }
+    .raffle-my-numbers h3 {
+      margin: 0 0 10px;
+      padding: 0 2px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--sub);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .raffle-number-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .raffle-number-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(200, 160, 60, 0.16);
+      color: #8a6406;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      font-feature-settings: 'tnum';
+    }
+    .raffle-number-note {
+      margin: 8px 0 0;
+      padding: 0 2px;
+      font-size: 11px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
     .raffle-conditions {
       margin-top: 22px;
     }
