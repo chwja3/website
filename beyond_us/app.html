@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260514k" />
+  <link rel="stylesheet" href="app.css?v=20260514l" />
 </head>
 <body>
 
@@ -402,7 +402,7 @@
 
           <section class="card">
             <div class="week-badge" id="weekTitle">불러오는 중...</div>
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>주간 목표 점수를 달성하면 앤 카드 뽑기권이 생겨요.</span></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">오늘 실천한 항목을 체크해주세요<span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매일 실천한 항목에 체크하고 제출하면 돼요. 제출한 항목은 매일 자정(서울 기준, UTC+9)에 초기화되어 다음 날 다시 제출할 수 있어요.<br><br>미션은 주차별로 바뀌며 매주 월요일 자정에 새 주차로 초기화돼요. 단, 첫째 주(사전미션)는 5/10(일)에 시작해요.<br><br>주간 목표 점수를 달성하면 엔 카드 뽑기권이 생겨요.</span></span></h2>
             <div id="scoreProgressWrap" style="display:none; margin-bottom:16px;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span style="font-size:13px; font-weight:700; color:var(--text);">이번 주 누적 점수</span>
@@ -431,7 +431,7 @@
 
           <!-- 카드 뽑기 섹션 -->
           <section class="card" id="drawSection">
-            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">앤 카드 뽑기 (10종)<span class="draw-title-actions"><span id="ticketBadge" class="draw-ticket-badge">🎫 0</span><span id="specialPackBadge" class="draw-ticket-badge special-pack-badge hidden">💜 0</span><button onclick="switchSection('collection')" class="draw-collection-link">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!<br><br>뽑은 카드는 5/17(일)부터 1층 로비 부스에서 실물 카드를 수령할 수 있어요. (TF 팀에게 뽑은 카드를 보여주세요.)</span></span></span></h2>
+            <h2 class="card-title" style="display:flex;align-items:center;justify-content:space-between;">엔 카드 뽑기 (10종)<span class="draw-title-actions"><span id="ticketBadge" class="draw-ticket-badge">🎫 0</span><span id="specialPackBadge" class="draw-ticket-badge special-pack-badge hidden">💜 0</span><button onclick="switchSection('collection')" class="draw-collection-link">내 컬렉션</button><span class="help-wrap"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요.<br><br>뽑기권은 다음 주로 이월되니 놓쳐도 괜찮아요. 총 10종을 모아보세요!<br><br>더 많은 뽑기권을 원한다면 Hold &amp; Pray 중보기도에도 참여해 보세요!<br><br>수련회 전 최대 8번까지 뽑을 수 있고, 수련회 당일에도 다양한 미션에 참여하면 뽑기권을 얻을 수 있어요!<br><br>뽑은 카드는 5/17(일)부터 1층 로비 부스에서 실물 카드를 수령할 수 있어요. (TF 팀에게 뽑은 카드를 보여주세요.)</span></span></span></h2>
             <div id="drawSectionBody">
               <p class="card-sub" style="margin:0;">로딩 중...</p>
             </div>
@@ -485,7 +485,7 @@
           <div class="coll-tabs" style="display:flex;align-items:center;">
             <button id="collTabGrid" class="coll-tab active" onclick="switchCollTab('grid')">컬렉션 <span id="collNewCardBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;vertical-align:middle;display:none;"></span></button>
             <button id="collTabTrades" class="coll-tab" onclick="switchCollTab('trades')">교환현황 <span id="collTradeBadge" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;margin-left:4px;flex-shrink:0;display:none;"></span></button>
-            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 엔카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 당일 특별 미션에서 획득할 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟️ 수련회 추첨권 혜택<br>앱 가입 시 추첨권 1장<br>엔카드 3종 보유 → 추가 추첨권 1장<br>엔카드 5종 보유 → 추가 추첨권 1장<br>엔카드 10종 보유 → 추가 추첨권 1장<br>수련회 참석 시 추가 추첨권 1장<br><br>※ 보유 <b>종류</b> 기준이에요.<br>같은 카드 여러 장을 가져도 1종으로 계산돼요.</span></span>
+            <span class="help-wrap" style="margin-left:auto;margin-right:4px;"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">사전미션 점수로 뽑은 엔 카드를 모아볼 수 있어요.<br><br>총 10종 (일반 9종 + 레어 1종)이 있고, 레어 카드는 수련회 천로역정 7스팟 인증으로 받을 수 있어요.<br><br>다른 유저와 카드 교환도 할 수 있어요!<br><br>🎟️ 수련회 추첨권 혜택<br>앱 가입 시 추첨권 1장<br>엔 카드 3종 보유 → 추가 추첨권 1장<br>엔 카드 5종 보유 → 추가 추첨권 1장<br>엔 카드 10종 보유 → 추가 추첨권 1장<br><br>※ 보유 <b>종류</b> 기준이에요.<br>같은 카드 여러 장을 가져도 1종으로 계산돼요.</span></span>
           </div>
           <section class="card coll-card">
             <!-- 내 컬렉션 패널 -->
@@ -609,7 +609,7 @@
           <div class="hp-header-area">
             <div style="position:relative;display:inline-block;width:100%;">
               <p class="hp-header-title" style="margin-bottom:6px;">🕊️ Hold &amp; Pray 🕊️</p>
-              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>누구인지 궁금하다면 1층 로비 Hold &amp; Pray 현수막에서 이름을 확인할 수 있어요.<br><br>3주차·6주차에는 1명이라도 맞히면 앤 카드 뽑기권 1장을 드려요!</span></span>
+              <span class="help-wrap" style="position:absolute;top:50%;right:0;transform:translateY(-50%);"><button class="help-btn" onclick="toggleHelpTip(this)" aria-label="도움말">?</button><span class="help-tooltip tip-right">매주 청년교구 안에서 3명의 기도제목이 카드로 주어져요.<br><br>누구인지 궁금하다면 1층 로비 Hold &amp; Pray 현수막에서 이름을 확인할 수 있어요.<br><br>3주차·6주차에는 1명이라도 맞히면 엔 카드 뽑기권 1장을 드려요!</span></span>
             </div>
             <p class="hp-header-sub">우리 청년교구 공동체 중 3분의 간절한 기도제목이에요.<br>이번 한 주는 이 지체들을 위해 중보기도해 주세요.</p>
           </div>
@@ -711,17 +711,17 @@
 
             <div class="faq-item">
               <button class="faq-q" onclick="toggleFaq(this)">
-                <span>엔카드 뽑기권은 어떻게 얻나요?</span>
+                <span>엔 카드 뽑기권은 어떻게 얻나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
               <div class="faq-a">이번 주 미션 목표 점수를 달성하면 뽑기권 1장이 지급돼요. 이번 주에 뽑지 않아도 다음 주로 자동 이월돼요.</div>
             </div>
 
-            <div class="faq-category">엔카드 &amp; 컬렉션</div>
+            <div class="faq-category">엔 카드 &amp; 컬렉션</div>
 
             <div class="faq-item">
               <button class="faq-q" onclick="toggleFaq(this)">
-                <span>엔카드는 어떻게 뽑나요?</span>
+                <span>엔 카드는 어떻게 뽑나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
               <div class="faq-a">미션을 제출하면 뽑기권 1장이 지급돼요. 카드 뽑기 섹션으로 이동 후 팩 열기 버튼을 클릭하고, 뒷면 카드를 탭해서 앞면을 공개해보세요! 컬렉션 메뉴에서 내가 모은 카드를 확인할 수 있어요.</div>
@@ -732,7 +732,7 @@
                 <span>카드 종류가 어떻게 되나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
-              <div class="faq-a">온라인 뽑기 카드 9종(성령의 열매), 수련회 현장 지급 레어 카드 1종이 있어요. 총 10종을 모을 수 있어요!</div>
+              <div class="faq-a">일반 엔 카드 9종(성령의 열매: 사랑·희락·화평·오래참음·자비·양선·충성·온유·절제)과 레어 엔 카드 1종이 있어요. 총 10종이에요.<br><br>일반 9종은 사전미션 뽑기로 모을 수 있고, 레어 카드는 수련회 현장 천로역정 미션(7스팟 모두 인증)으로 받을 수 있어요.</div>
             </div>
 
             <div class="faq-item">
@@ -741,6 +741,14 @@
                 <span class="faq-q-icon">▾</span>
               </button>
               <div class="faq-a">중복 카드가 나올 수도 있어요. 중복 보유 장수는 컬렉션에서 확인할 수 있고, 카드 교환 기능을 통해 다른 분과 교환할 수 있어요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>실물 카드는 언제 받을 수 있나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">5/17(일)부터 1층 로비 부스에서 받을 수 있어요. TF 팀에게 본인 앱 화면의 카드 컬렉션을 보여주시면 돼요.</div>
             </div>
 
             <div class="faq-category">Hold &amp; Pray</div>
@@ -758,7 +766,7 @@
                 <span>이름 정답을 맞추면 어떻게 되나요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
-              <div class="faq-a">정답을 맞추면 해당 분의 이름이 카드에 고정돼요. 앞으로도 그분의 이름을 기억하며 기도해주세요!</div>
+              <div class="faq-a">정답을 맞추면 해당 분의 이름이 카드에 고정돼요. 앞으로도 그분의 이름을 기억하며 기도해주세요!<br><br>3주차·6주차에는 1명이라도 맞히면 엔 카드 뽑기권 1장이 추가로 지급돼요.</div>
             </div>
 
             <div class="faq-category">B.B.B. (현장미션)</div>
@@ -768,7 +776,7 @@
                 <span>B.B.B.가 뭔가요?</span>
                 <span class="faq-q-icon">▾</span>
               </button>
-              <div class="faq-a">Buddy Beyond Buddy의 약자예요. 수련회 현장에서 진행되는 미션으로, 배정된 케어버디를 몰래 챙겨주는 게임이에요. 누가 나의 버디인지는 맞춰봐야 알 수 있어요!</div>
+              <div class="faq-a">Buddy Beyond Buddy의 약자예요. 수련회 현장에서 진행되는 미션으로, 배정된 케어버디(내가 몰래 챙길 사람)와 시크릿버디(나를 몰래 챙겨주는 사람)가 있어요. 익명 메시지·사진 미션과 함께 진행돼요.</div>
             </div>
 
             <div class="faq-item">
@@ -777,6 +785,58 @@
                 <span class="faq-q-icon">▾</span>
               </button>
               <div class="faq-a">B.B.B. 배정은 수련회 당일 공개될 예정이에요. 조금만 기다려주세요!</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>시크릿버디 정답을 맞히면 보상이 있나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">네! 시크릿버디(나를 몰래 챙겨주는 사람)를 맞히면 <strong>아직 보유하지 않은 엔 카드 1장이 확정 지급</strong>돼요. 컬렉션에 자동으로 추가됩니다.<br><br>혹시 9종을 모두 보유 중이라면 9종 중 한 장이 랜덤으로 추가돼요.</div>
+            </div>
+
+            <div class="faq-category">천로역정</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>천로역정은 어떻게 하는 건가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">수련회 일요일(6/21) 필그림하우스 현장에서 진행돼요. 지도에 표시된 7개 스팟을 모두 찾아 인증 사진을 업로드하면 미션 완료예요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>천로역정 보상이 뭔가요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">7개 스팟을 모두 인증하면 <strong>레어 엔 카드 1장</strong>이 컬렉션에 바로 추가돼요. 레어 카드는 천로역정에서만 받을 수 있는 한정판이에요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>천로역정은 아무 때나 할 수 있나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">아니요, <strong>6/21(일)에만</strong> 필그림하우스 입장이 가능해요. 그날 현장에서 진행해주세요.</div>
+            </div>
+
+            <div class="faq-category">추첨권</div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>추첨권은 어떻게 받나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">4가지 조건을 채우면 각각 1장씩 받을 수 있어요:<br>① 앱 가입 +1장<br>② 엔 카드 3종 보유 +1장<br>③ 엔 카드 5종 보유 +1장<br>④ 엔 카드 10종 보유 +1장<br><br>※ 보유 종류 기준이에요. 같은 카드 여러 장은 1종으로 계산돼요.</div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-q" onclick="toggleFaq(this)">
+                <span>추첨은 언제 어떻게 하나요?</span>
+                <span class="faq-q-icon">▾</span>
+              </button>
+              <div class="faq-a">수련회 당일 현장에서 오프라인 추첨으로 진행돼요. 1등은 <strong>MacBook Neo</strong>예요! 컬렉션 우측 상단의 🎟️ 배지를 누르면 본인의 추첨권 상황을 확인할 수 있어요.</div>
             </div>
 
           </section>
@@ -872,7 +932,8 @@
                     <p style="font-size:12px;color:var(--sub);margin:0;">이 분이 나를 몰래 챙겨주고 있었어요.</p>
                   </div>
                   <div id="bbbSecretGuess" style="margin-top:10px;">
-                    <p style="font-size:13px;color:var(--sub);margin:0 0 12px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
+                    <p style="font-size:13px;color:var(--sub);margin:0 0 6px;line-height:1.5;" id="bbbSecretHint">나를 몰래 챙겨주는 사람이 있어요.<br>누구일까요?</p>
+                    <p style="font-size:12px;font-weight:700;color:var(--primary);margin:0 0 10px;">🎁 정답 시 <span style="color:#b8860b;">미보유 엔 카드 1장 확정 지급</span></p>
                     <div style="display:flex;gap:8px;">
                       <input id="bbbGuessInput" type="text" placeholder="닉네임 또는 이름" style="flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;color:var(--text);font-size:14px;outline:none;font-family:inherit;" />
                       <button onclick="submitBBBGuess()" style="padding:10px 18px;border-radius:10px;border:none;background:var(--primary);color:#faf6ef;font-weight:700;font-size:13px;cursor:pointer;">확인</button>
@@ -893,7 +954,7 @@
                   <div style="display:flex;align-items:flex-start;gap:14px;margin-top:8px;">
                     <div style="flex:1;min-width:0;">
                       <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">케어버디와 사진 찍기</p>
-                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 카드팩 +1 (최초 1회)</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 카드 1장 지급 (최초 1회)</p>
                       <p id="bbbPhotoStatus" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                     </div>
                     <label id="bbbPhotoLabel" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
@@ -927,7 +988,7 @@
                     <div style="flex:1;min-width:0;">
                       <p style="font-size:14px;font-weight:700;color:var(--text);margin:0 0 3px;">H&amp;P 카드에 손 얹고 기도 인증</p>
                       <p style="font-size:12px;color:var(--sub);margin:0 0 2px;">케어버디 카드에 손을 얹고 기도하는 사진을 업로드해요</p>
-                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 카드팩 +1 (최초 1회)</p>
+                      <p style="font-size:12px;color:var(--sub);margin:0 0 6px;">승인되면 카드 1장 지급 (최초 1회)</p>
                       <p id="bbbM2Status" style="font-size:12px;color:var(--primary);margin:0;min-height:16px;font-weight:600;"></p>
                     </div>
                     <label id="bbbM2Label" style="flex-shrink:0;width:80px;height:80px;border-radius:12px;border:1.5px dashed var(--line);background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;gap:3px;transition:border-color .15s;">
@@ -995,7 +1056,7 @@
               </div>
               <div id="bbbM3Live">
                 <p style="font-size:14px;font-weight:700;color:var(--text);margin:8px 0 3px;">천로역정 7스팟 인증</p>
-                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 카드팩 +1</p>
+                <p style="font-size:12px;color:var(--sub);margin:0 0 4px;">7곳 모두 채우면 <strong style="color:var(--primary);">레어 엔 카드</strong> 지급</p>
                 <p style="font-size:12px;font-weight:700;color:#e25;margin:0 0 1px;">⚠️ 일요일(6/21)에만 입장 가능해요!</p>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 3px;min-height:12px;">
                   <p id="bbbM3Status" style="font-size:12px;color:var(--primary);margin:0;font-weight:600;"></p>
@@ -1039,7 +1100,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260514k" defer></script>
+  <script src="app.js?v=20260514l" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

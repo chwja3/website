@@ -581,7 +581,7 @@ const EVENT_SOURCES = Object.freeze({
   SERVER: 'server',
   MIGRATION: 'migration',
 });
-const BBB_PHOTO_REWARD_SOURCES = Object.freeze(['bbb_photo', 'bbb_m2', 'bbb_m3']);
+const BBB_PHOTO_REWARD_SOURCES = Object.freeze(['bbb_photo', 'bbb_m2', 'bbb_m3', 'bbb_secret_guess']);
 const USER_DASHBOARD_LABELS = Object.freeze([
   '닉네임',
   '이름',
@@ -902,7 +902,7 @@ const SPIRIT_CARDS = [
   {id:7, name:'충성'},
   {id:8, name:'온유'},
   {id:9, name:'절제'},
-  {id:10, name:'히든'},
+  {id:10, name:'레어'},
 ];
 
 // ── GET ──────────────────────────────────────────
@@ -1223,8 +1223,8 @@ function adminGrantHiddenCard(body) {
     refId: 10,
     source: EVENT_SOURCES.ADMIN,
     payload: {
-      cardName: '히든',
-      reason: 'admin_hidden_grant',
+      cardName: '레어',
+      reason: 'admin_rare_grant',
     },
   });
   rebuildCollectionRow_(userId);
@@ -3755,7 +3755,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
     const events = Events_readAll_();
     const specialPackStats = getSpecialPackStatsFromEvents_(events, cleanUserId);
     if (specialPackStats.remaining <= 0) {
-      const noPackResult = { ok: false, error: '사용 가능한 특별 카드팩이 없습니다.', specialPacks: specialPackStats, specialPacksRemaining: specialPackStats.remaining };
+      const noPackResult = { ok: false, error: '사용 가능한 미보유 카드 지급권이 없습니다.', specialPacks: specialPackStats, specialPacksRemaining: specialPackStats.remaining };
       if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(noPackResult), 600);
       return noPackResult;
     }
@@ -6680,7 +6680,9 @@ function validateBBBPhotoUpload_(userId, missionType) {
 }
 
 function isBBBMissionRewardEventType_(type) {
-  return type === EVENT_TYPES.TICKET_GRANTED || type === EVENT_TYPES.SPECIAL_PACK_GRANTED;
+  return type === EVENT_TYPES.TICKET_GRANTED
+      || type === EVENT_TYPES.SPECIAL_PACK_GRANTED
+      || type === EVENT_TYPES.CARD_GRANTED;
 }
 
 function isBBBPhotoRewardEvent_(event) {
@@ -6865,6 +6867,25 @@ function grantBBBSpecialPack_(userId, legacySource, missionType, options) {
     amount: 1,
     weekKey: '',
     payload: payload,
+    source: opts.source || EVENT_SOURCES.WEB,
+  });
+}
+
+// 천로역정 7스팟 완성 시 레어 카드(id=10) 직접 지급
+function grantBBBRareCard_(userId, missionType, options) {
+  const opts = options || {};
+  const RARE_CARD_ID = 10;
+  return Events_append_(EVENT_TYPES.CARD_GRANTED, userId, {
+    timestamp: opts.timestamp || new Date().toISOString(),
+    amount: 1,
+    refId: RARE_CARD_ID,
+    weekKey: '',
+    payload: {
+      reason: opts.reason || 'bbb_m3_complete',
+      cardName: '레어',
+      legacySource: 'bbb_m3',
+      missionType: missionType,
+    },
     source: opts.source || EVENT_SOURCES.WEB,
   });
 }
@@ -7084,9 +7105,9 @@ function uploadBBBPhoto(body) {
           }
         }
         if (filledSpots >= 7) {
-          grantBBBSpecialPack_(userId, bonusSource, missionType, {
+          grantBBBRareCard_(userId, missionType, {
             timestamp: now,
-            reason: 'bbb_mission',
+            reason: 'bbb_m3_complete',
             source: EVENT_SOURCES.WEB,
           });
           rebuildCollectionRow_(userId);
@@ -7337,7 +7358,19 @@ function guessBBBSecret(body) {
   if (correct) {
     // secretRevealed = TRUE 기록
     bbbSheet.getRange(myRowIdx + SCHEMA.BBB.dataStartRow, bbbCol.secretRevealed + 1).setValue(true);
-    return { ok: true, correct: true, secretName, secretNickname };
+
+    // 첫 정답에 한해 미보유 카드 지급권(특별 카드팩 메커니즘) 1장 발급
+    let rewarded = false;
+    if (!hasActiveBBBPhotoReward_(userId, 'bbb_secret_guess')) {
+      grantBBBSpecialPack_(userId, 'bbb_secret_guess', 'secret_guess', {
+        timestamp: new Date().toISOString(),
+        reason: 'bbb_secret_guess_correct',
+        source: EVENT_SOURCES.WEB,
+      });
+      rebuildCollectionRow_(userId);
+      rewarded = true;
+    }
+    return { ok: true, correct: true, secretName, secretNickname, rewarded };
   }
   return { ok: true, correct: false };
 }

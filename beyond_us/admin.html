@@ -317,7 +317,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
             <div>
               <h2 class="card-title" style="margin:0;">BBB 사진 승인</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">MISSION 1, 2 사진을 확인하고 승인하면 특별 카드팩이 지급됩니다.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">MISSION 1, 2 사진을 확인하고 승인하면 미보유 카드 지급권 1장이 발급됩니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshBBBPhotoApprovalsBtn" onclick="loadBBBPhotoApprovals()">새로고침</button>
           </div>
@@ -464,7 +464,7 @@
               <option value="7">7 · 충성</option>
               <option value="8">8 · 온유</option>
               <option value="9">9 · 절제</option>
-              <option value="10">10 · 히든</option>
+              <option value="10">10 · 레어</option>
             </select>
             <input type="number" id="eventCardAmount" class="input" min="1" max="20" value="1" placeholder="수량" />
           </div>
@@ -597,8 +597,8 @@
             </label>
             <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
               <span style="min-width:0;">
-                <span style="display:block;font-size:15px;font-weight:700;">특별 카드팩</span>
-                <span style="display:block;font-size:11px;color:var(--sub);margin-top:3px;">사전미션 카드팩 영역에 보라색 특별팩 버튼 표시</span>
+                <span style="display:block;font-size:15px;font-weight:700;">미보유 카드 지급권</span>
+                <span style="display:block;font-size:11px;color:var(--sub);margin-top:3px;">사전미션 카드팩 영역에 보라색 미보유 카드 지급 버튼 표시</span>
               </span>
               <input type="checkbox" id="toggleSpecialPack" style="width:20px; height:20px; accent-color:#8b5cf6; cursor:pointer; flex-shrink:0;" />
             </label>
@@ -1700,7 +1700,7 @@
       if (!userId || !missionType) return;
       const approving = mode === 'approve';
       const message = approving
-        ? `${userId}의 ${missionType.toUpperCase()} 사진을 승인하고 특별 카드팩 1장을 지급할까요?`
+        ? `${userId}의 ${missionType.toUpperCase()} 사진을 승인하고 미보유 카드 지급권 1장을 발급할까요?`
         : `${userId}의 ${missionType.toUpperCase()} 사진을 거절할까요?\n거절되면 사용자가 사진을 삭제하거나 다시 올릴 수 있어요.`;
       if (!confirm(message)) return;
       const slot = btn.closest('div[style*="border:1px solid var(--line)"]') || btn.parentElement;
@@ -1713,7 +1713,7 @@
           if (statusEl) {
             statusEl.className = approving ? 'status ok' : 'status';
             statusEl.textContent = approving
-              ? (res.rewarded ? '승인 및 특별 카드팩 지급 완료' : '이미 지급된 사진으로 표시했습니다.')
+              ? (res.rewarded ? '승인 및 미보유 카드 지급권 발급 완료' : '이미 지급된 사진으로 표시했습니다.')
               : '거절 완료';
           }
           await loadBBBPhotoApprovals();
