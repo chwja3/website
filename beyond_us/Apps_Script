@@ -996,6 +996,10 @@ function doGet(e) {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(adminGetBBBPhotoApprovals());
   }
+  if (action === 'adminFindRaffleTicket') {
+    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(adminFindRaffleTicket(e.parameter.ticket_no || ''));
+  }
 
   return jsonOutput({ ok: false, message: 'Unknown action' });
 }
@@ -5485,6 +5489,31 @@ function getUserRaffleTicketNumbers_(userId) {
   return ['signup', 'card_3', 'card_5', 'card_10']
     .filter(function(c) { return map[c]; })
     .map(function(c) { return { condition: c, ticket_no: map[c] }; });
+}
+
+// 어드민: 번호로 추첨권 발급자 검색
+function adminFindRaffleTicket(rawTicketNo) {
+  const raw = String(rawTicketNo || '').trim().replace(/[^0-9]/g, '');
+  if (!raw) return { ok: false, error: 'missing_ticket_no' };
+  const ticketNo = padTicketNo_(raw);
+  const rows = getRaffleTicketRows_();
+  const userNameMap = getUserNameMap_();
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]) === ticketNo) {
+      const userId = String(rows[i][1] || '').trim();
+      return {
+        ok: true,
+        ticket_no: ticketNo,
+        userId: userId,
+        name: userNameMap[userId] || '',
+        parish: String(rows[i][2] || '').trim(),
+        issued_at: String(rows[i][3] || ''),
+        week_key: String(rows[i][4] || ''),
+        condition: String(rows[i][5] || ''),
+      };
+    }
+  }
+  return { ok: false, error: 'not_found', ticket_no: ticketNo };
 }
 
 function getCollectionSnapshotMap_(rows, col) {

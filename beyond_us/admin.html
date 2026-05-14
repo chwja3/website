@@ -191,6 +191,7 @@
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
       <button class="drawer-item" data-panel="bbbphotos">BBB 사진 승인</button>
+      <button class="drawer-item" data-panel="raffle">추첨권 번호 검색</button>
       <button class="drawer-item" data-panel="attendance">수련회 참석</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
@@ -325,6 +326,20 @@
           <div id="bbbPhotoApprovalList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
           </div>
+        </div>
+      </div>
+
+      <!-- 추첨권 번호 검색 -->
+      <div id="tab-raffle" class="tab-panel">
+        <div class="card">
+          <h2 class="card-title" style="margin:0 0 4px;">🎟️ 추첨권 번호 검색</h2>
+          <p style="font-size:12px;color:var(--sub);margin:0 0 14px;">실물 추첨권에 적힌 번호를 입력하면 발급된 유저 정보가 표시돼요.</p>
+          <div style="display:flex;gap:8px;margin-bottom:14px;">
+            <input type="text" id="raffleSearchInput" placeholder="번호 입력 (예: 42 또는 0042)" inputmode="numeric"
+              style="flex:1;padding:10px 14px;font-size:16px;font-weight:700;letter-spacing:0.04em;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;" />
+            <button class="btn btn-primary" id="raffleSearchBtn" style="flex:none;padding:0 18px;font-weight:700;">검색</button>
+          </div>
+          <div id="raffleSearchResult" style="font-size:14px;color:var(--sub);text-align:center;padding:18px;">번호를 입력하고 검색해주세요.</div>
         </div>
       </div>
 
@@ -1607,6 +1622,69 @@
       _bbbPhotoApprovalFilter = String(value || '').trim().toLowerCase();
       renderBBBPhotoApprovals(_bbbPhotoApprovals);
     }
+
+    /* ── 추첨권 번호 검색 ── */
+    const RAFFLE_CONDITION_LABEL = {
+      signup:  '앱 가입',
+      card_3:  '카드 3종 보유',
+      card_5:  '카드 5종 보유',
+      card_10: '카드 10종 보유',
+    };
+    async function adminSearchRaffleTicket() {
+      const input = document.getElementById('raffleSearchInput');
+      const resultEl = document.getElementById('raffleSearchResult');
+      const btn = document.getElementById('raffleSearchBtn');
+      if (!input || !resultEl) return;
+      const raw = input.value.trim().replace(/[^0-9]/g, '');
+      if (!raw) {
+        resultEl.style.color = 'var(--danger)';
+        resultEl.innerHTML = '번호를 입력해주세요.';
+        return;
+      }
+      btn.disabled = true;
+      resultEl.style.color = 'var(--sub)';
+      resultEl.innerHTML = '검색 중...';
+      try {
+        const res = await get({ action: 'adminFindRaffleTicket', adminPw, ticket_no: raw });
+        if (!res.ok) {
+          resultEl.style.color = 'var(--danger)';
+          if (res.error === 'not_found') {
+            resultEl.innerHTML = `<div style="font-size:14px;font-weight:700;">#${esc(res.ticket_no || raw)} 발급되지 않은 번호예요.</div>`;
+          } else {
+            resultEl.innerHTML = '조회 실패: ' + esc(res.error || 'unknown');
+          }
+          return;
+        }
+        const cond = RAFFLE_CONDITION_LABEL[res.condition] || res.condition;
+        resultEl.style.color = 'var(--text)';
+        resultEl.style.textAlign = 'left';
+        resultEl.style.padding = '0';
+        resultEl.innerHTML = `
+          <div style="background:rgba(200,160,60,0.10);border:1px solid rgba(200,160,60,0.32);border-radius:14px;padding:18px 20px;">
+            <div style="font-size:11px;font-weight:800;color:#8a6406;letter-spacing:0.16em;margin-bottom:6px;">추첨권 번호</div>
+            <div style="font-size:34px;font-weight:900;color:#6c4e04;letter-spacing:-0.02em;line-height:1;margin-bottom:14px;">#${esc(res.ticket_no)}</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;line-height:1.5;">
+              <span style="color:var(--sub);">닉네임</span><strong>${esc(res.userId)}</strong>
+              <span style="color:var(--sub);">이름</span><strong>${esc(res.name || '-')}</strong>
+              <span style="color:var(--sub);">교구</span><strong>${esc(res.parish || '-')}</strong>
+              <span style="color:var(--sub);">발급 조건</span><strong>${esc(cond)}</strong>
+              <span style="color:var(--sub);">발급 주차</span><strong>${esc(res.week_key || '-')}</strong>
+              <span style="color:var(--sub);">발급 시각</span><strong>${esc(formatDate(res.issued_at))}</strong>
+            </div>
+          </div>`;
+      } catch(e) {
+        resultEl.style.color = 'var(--danger)';
+        resultEl.innerHTML = '연결 오류';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      const btn = document.getElementById('raffleSearchBtn');
+      const input = document.getElementById('raffleSearchInput');
+      if (btn) btn.addEventListener('click', adminSearchRaffleTicket);
+      if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') adminSearchRaffleTicket(); });
+    });
 
     function groupBBBPhotoApprovalsByUser(photos) {
       const groups = {};
