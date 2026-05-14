@@ -5491,6 +5491,44 @@ function getUserRaffleTicketNumbers_(userId) {
     .map(function(c) { return { condition: c, ticket_no: map[c] }; });
 }
 
+// 진단용: GAS 에디터에서 직접 실행
+// 함수 드롭다운 → debugRaffleSelf 선택 → ▶ → 하단 실행 로그 확인
+function debugRaffleSelf() {
+  Logger.log('=== 1. 함수 존재 여부 ===');
+  Logger.log('issueRaffleTicket_: ' + (typeof issueRaffleTicket_));
+  Logger.log('ensureUserRaffleTickets_: ' + (typeof ensureUserRaffleTickets_));
+  Logger.log('getUserRaffleTicketNumbers_: ' + (typeof getUserRaffleTicketNumbers_));
+  Logger.log('adminFindRaffleTicket: ' + (typeof adminFindRaffleTicket));
+
+  Logger.log('=== 2. 시트 자동 생성 테스트 ===');
+  try {
+    const sheet = getOrCreateRaffleTicketsSheet_();
+    Logger.log('RaffleTickets 시트: OK, 행 수=' + sheet.getLastRow());
+  } catch(e) {
+    Logger.log('❌ 시트 생성 실패: ' + e.message);
+    return;
+  }
+
+  Logger.log('=== 3. 테스트 유저 발급 시뮬레이션 ===');
+  const sheet = getUsersSheet_();
+  const data = sheet.getDataRange().getValues();
+  let testUser = '';
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0]) { testUser = String(data[i][0]); break; }
+  }
+  if (!testUser) { Logger.log('❌ 테스트 가능한 유저 없음'); return; }
+  Logger.log('테스트 유저: ' + testUser);
+  const result = ensureUserRaffleTickets_(testUser);
+  Logger.log('ensureUserRaffleTickets_ 결과: ' + JSON.stringify(result));
+
+  Logger.log('=== 4. 발급된 번호 조회 ===');
+  const numbers = getUserRaffleTicketNumbers_(testUser);
+  Logger.log(testUser + '의 번호: ' + JSON.stringify(numbers));
+
+  Logger.log('=== 5. 마지막 번호 ===');
+  Logger.log('현재 마지막 발급 번호: ' + padTicketNo_(getLastTicketNumber_()));
+}
+
 // 어드민: 번호로 추첨권 발급자 검색
 function adminFindRaffleTicket(rawTicketNo) {
   const raw = String(rawTicketNo || '').trim().replace(/[^0-9]/g, '');
