@@ -1557,7 +1557,7 @@
       left: var(--x);
       top: var(--y);
       border-radius: 7px;
-      background: linear-gradient(135deg, #ffd6ea, #f472b6 52%, #db2777);
+      background: linear-gradient(135deg, #fff7b8, #ffd34e 52%, #ef9f18);
       transform: translateX(-50%) rotate(var(--r));
       animation: raffleTicketGlow 1.8s ease-in-out infinite;
       -webkit-mask:
@@ -1570,7 +1570,7 @@
     .raffle-my-ticket:nth-child(2n) { animation-delay: .28s; }
     .raffle-my-ticket:nth-child(3n) { animation-delay: .56s; }
     .raffle-my-ticket::after {
-      border-left-color: rgba(157, 23, 77, 0.42);
+      border-left-color: rgba(111, 75, 18, 0.42);
     }
     .raffle-my-ticket::before {
       content: 'MY';
@@ -1581,7 +1581,7 @@
       font-size: 8px;
       font-weight: 900;
       letter-spacing: 0.05em;
-      color: rgba(112, 17, 65, 0.78);
+      color: rgba(86, 53, 0, 0.78);
     }
     .raffle-my-ticket-layer::before {
       content: '';
