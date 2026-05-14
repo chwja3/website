@@ -12,6 +12,8 @@
 - [x] GAS `userStatus.pendingSpecialPacks` 응답 추가.
 - [x] GAS `drawSpecialCard` 액션 추가.
 - [x] UserDashboard에 특별팩 획득·사용·잔여 수 컬럼 추가.
-- [x] BBB MISSION 1, 2, 3 성공 시 각각 `special_pack.granted` 자동 지급 연결.
+- [x] BBB MISSION 1, 2 성공 시 각각 `special_pack.granted` 자동 지급 연결.
+- [x] 시크릿버디 정답 성공 시 `special_pack.granted` 자동 지급 연결.
+- [x] BBB MISSION 3 / 천로역정 7스팟 완료 시 레어 엔 카드(id=10) 직접 지급 연결.
 - [x] BBB 사용자 앱 문구에서는 “특별 카드팩” 표현을 제거하고 “카드팩”으로 통일.
 - [x] 일반 카드 9종을 모두 보유한 상태에서 특별 카드팩을 열면 일반 카드팩처럼 1-9번 랜덤 지급.
