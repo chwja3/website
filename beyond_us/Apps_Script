@@ -138,6 +138,9 @@ const SCHEMA = Object.freeze({
       card9: '절제',
       totalCards: '총카드수',
       hidden: '히든',
+      specialPackEarned: 'specialPackEarned',
+      specialPackConsumed: 'specialPackConsumed',
+      specialPackRemaining: 'specialPackRemaining',
     }),
   }),
   TRADES: Object.freeze({
@@ -418,6 +421,9 @@ const COLLECTION_COLUMN_FALLBACK = Object.freeze({
   card9: 12,
   totalCards: 13,
   hidden: 14,
+  specialPackEarned: 15,
+  specialPackConsumed: 16,
+  specialPackRemaining: 17,
 });
 // SCHEMA.COLLECTION.columns 키 수에서 자동 도출 — 하드코딩 15 대신 이 상수 사용
 const COLLECTION_COL_COUNT = Object.keys(SCHEMA.COLLECTION.columns).length;
@@ -3971,7 +3977,7 @@ function getUserStatus(userId, weekKey, configOverride) {
       earnedTicketThisWeek = true;
     }
   });
-  const specialPackStats = getSpecialPackStatsFromEvents_(userEvents, userId);
+  let specialPackStats = getSpecialPackStatsFromEvents_(userEvents, userId);
   let raffle = getEmptyRaffleStats_();
 
   // 카드 뽑기 이력 (drawnThisWeek, weekCard)
@@ -4001,6 +4007,8 @@ function getUserStatus(userId, weekKey, configOverride) {
     const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
     const attendanceRows = getRetreatAttendanceRows_(attendanceSheet);
     const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUserId, collectionRows, collectionCol);
+    const specialPackProjection = getSpecialPackStatsFromSnapshot_(snapshot);
+    if (specialPackProjection.projected) specialPackStats = specialPackProjection;
     pendingDraws = Number(snapshot.remaining) || 0;
     SPIRIT_CARDS.forEach(card => {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;
@@ -4051,6 +4059,28 @@ function getSpecialPackStatsFromEvents_(events, userId) {
   });
   stats.remaining = Math.max(0, stats.totalEarned - stats.totalConsumed);
   return stats;
+}
+
+function getSpecialPackStatsFromSnapshot_(snapshot) {
+  const totalEarned = Math.max(0, Number(snapshot && snapshot.specialPackEarned) || 0);
+  const totalConsumed = Math.max(0, Number(snapshot && snapshot.specialPackConsumed) || 0);
+  const hasProjection = !!(snapshot && snapshot.hasSpecialPackProjection);
+  const remaining = hasProjection
+    ? Math.max(0, Number(snapshot && snapshot.specialPackRemaining) || 0)
+    : Math.max(0, totalEarned - totalConsumed);
+  return {
+    totalEarned: totalEarned,
+    totalConsumed: totalConsumed,
+    remaining: remaining,
+    projected: hasProjection,
+  };
+}
+
+function getSpecialPackBaseStatsForDelta_(userId) {
+  const snapshot = getCurrentCollectionSnapshot_(userId);
+  const projectedStats = getSpecialPackStatsFromSnapshot_(snapshot);
+  if (projectedStats.projected) return projectedStats;
+  return getSpecialPackStatsFromEvents_(Events_readByUser(userId), userId);
 }
 
 function getMissingRegularCardsFromSnapshot_(snapshot) {
@@ -4207,15 +4237,17 @@ function drawSpecialCard(userId, weekKey, requestId) {
     }
     weekKey = String(weekKey || ('w' + getCurrentWeek_())).trim();
 
-    const events = Events_readByUser(cleanUserId);
-    const specialPackStats = getSpecialPackStatsFromEvents_(events, cleanUserId);
+    const snapshot = getCurrentCollectionSnapshot_(cleanUserId);
+    let specialPackStats = getSpecialPackStatsFromSnapshot_(snapshot);
+    if (!specialPackStats.projected) {
+      specialPackStats = getSpecialPackStatsFromEvents_(Events_readByUser(cleanUserId), cleanUserId);
+    }
     if (specialPackStats.remaining <= 0) {
       const noPackResult = { ok: false, error: '사용 가능한 미보유 카드 지급권이 없습니다.', specialPacks: specialPackStats, specialPacksRemaining: specialPackStats.remaining };
       if (requestCacheKey) CacheService.getScriptCache().put(requestCacheKey, JSON.stringify(noPackResult), 600);
       return noPackResult;
     }
 
-    const snapshot = getCurrentCollectionSnapshot_(cleanUserId);
     const missingRegularCards = getMissingRegularCardsFromSnapshot_(snapshot);
     const guaranteesMissingCard = missingRegularCards.length > 0;
     const drawableCards = guaranteesMissingCard ? missingRegularCards : getRegularDrawableCards_();
@@ -4251,8 +4283,9 @@ function drawSpecialCard(userId, weekKey, requestId) {
       },
     ]);
     const rebuildResult = updateCollectionRowWithDeltas_(cleanUserId, [
+      { type: EVENT_TYPES.SPECIAL_PACK_CONSUMED, amount: 1 },
       { type: EVENT_TYPES.CARD_DRAWN, cardId: card.id, amount: 1 },
-    ]);
+    ], { baseSpecialPackStats: specialPackStats });
     try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const nextSpecialPackStats = {
@@ -6069,12 +6102,19 @@ function getOrCreateCollectionSheet() {
     sheet.appendRow(getSchemaHeaders_(SCHEMA.COLLECTION));
     sheet.setFrozenRows(1);
   } else {
-    const col = getCollectionColumns_(sheet);
-    if (sheet.getLastColumn() <= col.hidden) {
-      sheet.getRange(SCHEMA.COLLECTION.headerRow, col.hidden + 1).setValue(SCHEMA.COLLECTION.columns.hidden);
-    }
+    ensureCollectionSheetHeaders_(sheet);
   }
   return sheet;
+}
+
+function ensureCollectionSheetHeaders_(sheet) {
+  const expected = getSchemaHeaders_(SCHEMA.COLLECTION);
+  const width = Math.max(sheet.getLastColumn(), expected.length);
+  const headers = sheet.getRange(SCHEMA.COLLECTION.headerRow, 1, 1, width).getValues()[0];
+  expected.forEach(function(header, index) {
+    if (headers.indexOf(header) !== -1) return;
+    sheet.getRange(SCHEMA.COLLECTION.headerRow, index + 1).setValue(header);
+  });
 }
 
 // { cardId: count } 형태로 반환 (카드 1~9: col 5~13 = idx 4~12, 히든(10): col 15 = idx 14)
@@ -7300,6 +7340,12 @@ function collectionRowToSnapshot_(row, col, rowExists) {
     cardCounts[cardId] = Number(row[col['card' + cardId]]) || 0;
   }
   cardCounts[10] = Number(row[col.hidden]) || 0;
+  const specialPackEarned = Number(row[col.specialPackEarned]) || 0;
+  const specialPackConsumed = Number(row[col.specialPackConsumed]) || 0;
+  const specialPackRemaining = Number(row[col.specialPackRemaining]) || 0;
+  const hasSpecialPackProjection = [col.specialPackEarned, col.specialPackConsumed, col.specialPackRemaining].some(function(index) {
+    return index !== undefined && row[index] !== '' && row[index] !== null && row[index] !== undefined;
+  });
   return {
     rowExists: rowExists,
     userId: String(row[col.userId] || ''),
@@ -7308,6 +7354,10 @@ function collectionRowToSnapshot_(row, col, rowExists) {
     remaining: Number(row[col.remaining]) || 0,
     cardCounts: cardCounts,
     totalCards: Number(row[col.totalCards]) || 0,
+    specialPackEarned: specialPackEarned,
+    specialPackConsumed: specialPackConsumed,
+    specialPackRemaining: specialPackRemaining,
+    hasSpecialPackProjection: hasSpecialPackProjection,
   };
 }
 
@@ -7317,6 +7367,10 @@ function cloneCollectionSnapshot_(snapshot) {
   clone.totalDrawn = Number(snapshot.totalDrawn) || 0;
   clone.remaining = Number(snapshot.remaining) || 0;
   clone.totalCards = Number(snapshot.totalCards) || 0;
+  clone.specialPackEarned = Number(snapshot.specialPackEarned) || 0;
+  clone.specialPackConsumed = Number(snapshot.specialPackConsumed) || 0;
+  clone.specialPackRemaining = Number(snapshot.specialPackRemaining) || 0;
+  clone.hasSpecialPackProjection = snapshot.hasSpecialPackProjection === true;
   for (let cardId = 1; cardId <= 10; cardId++) {
     clone.cardCounts[cardId] = Number(snapshot.cardCounts && snapshot.cardCounts[cardId]) || 0;
   }
@@ -7334,6 +7388,10 @@ function emptyCollectionSnapshot_(userId, rowExists) {
     remaining: 0,
     cardCounts: cardCounts,
     totalCards: 0,
+    specialPackEarned: 0,
+    specialPackConsumed: 0,
+    specialPackRemaining: 0,
+    hasSpecialPackProjection: false,
   };
 }
 
@@ -7382,6 +7440,10 @@ function buildCollectionProjectionFromEvents_(userId, events, lookup) {
       const cardId = Number(event.refId);
       const amount = eventAmount_(event, 1);
       adjustProjectedCardCount_(snapshot, cardId, -amount);
+    } else if (event.type === EVENT_TYPES.SPECIAL_PACK_GRANTED) {
+      snapshot.specialPackEarned += eventAmount_(event, 1);
+    } else if (event.type === EVENT_TYPES.SPECIAL_PACK_CONSUMED) {
+      snapshot.specialPackConsumed += eventAmount_(event, 1);
     }
   });
 
@@ -7396,6 +7458,10 @@ function buildCollectionProjectionFromEvents_(userId, events, lookup) {
   });
 
   snapshot.remaining = Math.max(0, snapshot.totalEarned + snapshot.remaining);
+  snapshot.specialPackEarned = Math.max(0, Number(snapshot.specialPackEarned) || 0);
+  snapshot.specialPackConsumed = Math.max(0, Number(snapshot.specialPackConsumed) || 0);
+  snapshot.specialPackRemaining = Math.max(0, snapshot.specialPackEarned - snapshot.specialPackConsumed);
+  snapshot.hasSpecialPackProjection = true;
   snapshot.totalCards = 0;
   for (let cardId = 1; cardId <= 10; cardId++) {
     snapshot.cardCounts[cardId] = Math.max(0, Number(snapshot.cardCounts[cardId]) || 0);
@@ -7447,6 +7513,9 @@ function normalizeCollectionSnapshot_(snapshot) {
   snapshot.totalEarned = Math.max(0, Number(snapshot.totalEarned) || 0);
   snapshot.totalDrawn = Math.max(0, Number(snapshot.totalDrawn) || 0);
   snapshot.remaining = Math.max(0, Number(snapshot.remaining) || 0);
+  snapshot.specialPackEarned = Math.max(0, Number(snapshot.specialPackEarned) || 0);
+  snapshot.specialPackConsumed = Math.max(0, Number(snapshot.specialPackConsumed) || 0);
+  snapshot.specialPackRemaining = Math.max(0, Number(snapshot.specialPackRemaining) || 0);
   snapshot.totalCards = 0;
   for (let cardId = 1; cardId <= 10; cardId++) {
     snapshot.cardCounts[cardId] = Math.max(0, Number(snapshot.cardCounts[cardId]) || 0);
@@ -7471,10 +7540,19 @@ function applyCollectionDeltaToSnapshot_(snapshot, delta) {
     adjustProjectedCardCount_(snapshot, Number(delta.cardId), amount);
   } else if (type === EVENT_TYPES.CARD_REMOVED) {
     adjustProjectedCardCount_(snapshot, Number(delta.cardId), -amount);
+  } else if (type === EVENT_TYPES.SPECIAL_PACK_GRANTED) {
+    snapshot.specialPackEarned += amount;
+    snapshot.specialPackRemaining += amount;
+    snapshot.hasSpecialPackProjection = true;
+  } else if (type === EVENT_TYPES.SPECIAL_PACK_CONSUMED) {
+    snapshot.specialPackConsumed += amount;
+    snapshot.specialPackRemaining -= amount;
+    snapshot.hasSpecialPackProjection = true;
   }
 }
 
-function updateCollectionRowWithDeltas_(userId, deltas) {
+function updateCollectionRowWithDeltas_(userId, deltas, options) {
+  const opts = options || {};
   const cleanUserId = getCanonicalUserId_(userId);
   if (!cleanUserId) return { ok: false, error: 'inactive_or_unknown_user' };
   const sheet = getOrCreateCollectionSheet();
@@ -7487,6 +7565,12 @@ function updateCollectionRowWithDeltas_(userId, deltas) {
   const projected = cloneCollectionSnapshot_(current);
   projected.userId = cleanUserId;
   projected.rowExists = true;
+  if (!projected.hasSpecialPackProjection && opts.baseSpecialPackStats) {
+    projected.specialPackEarned = Math.max(0, Number(opts.baseSpecialPackStats.totalEarned) || 0);
+    projected.specialPackConsumed = Math.max(0, Number(opts.baseSpecialPackStats.totalConsumed) || 0);
+    projected.specialPackRemaining = Math.max(0, Number(opts.baseSpecialPackStats.remaining) || 0);
+    projected.hasSpecialPackProjection = true;
+  }
   (deltas || []).forEach(function(delta) {
     applyCollectionDeltaToSnapshot_(projected, delta || {});
   });
@@ -7517,6 +7601,9 @@ function diffCollectionSnapshots_(current, projected) {
     'totalDrawn',
     'remaining',
     'totalCards',
+    'specialPackEarned',
+    'specialPackConsumed',
+    'specialPackRemaining',
   ].forEach(function(key) {
     if (Number(current[key]) !== Number(projected[key])) {
       diffs.push({ field: key, current: current[key], projected: projected[key] });
@@ -7984,6 +8071,15 @@ function collectionSnapshotToRow_(snapshot, col) {
   }
   row[col.totalCards] = Number(snapshot.totalCards) || 0;
   row[col.hidden] = Number(snapshot.cardCounts[10]) || 0;
+  if (snapshot.hasSpecialPackProjection === true) {
+    row[col.specialPackEarned] = Number(snapshot.specialPackEarned) || 0;
+    row[col.specialPackConsumed] = Number(snapshot.specialPackConsumed) || 0;
+    row[col.specialPackRemaining] = Number(snapshot.specialPackRemaining) || 0;
+  } else {
+    row[col.specialPackEarned] = '';
+    row[col.specialPackConsumed] = '';
+    row[col.specialPackRemaining] = '';
+  }
   return row;
 }
 
@@ -8846,6 +8942,7 @@ function hasActiveBBBPhotoReward_(userId, legacySource) {
 
 function grantBBBSpecialPack_(userId, legacySource, missionType, options) {
   const opts = options || {};
+  const baseSpecialPackStats = getSpecialPackBaseStatsForDelta_(userId);
   const payload = {
     reason: opts.reason || 'bbb_mission',
     legacySource: legacySource,
@@ -8854,13 +8951,17 @@ function grantBBBSpecialPack_(userId, legacySource, missionType, options) {
     packType: 'special',
   };
   if (opts.approvedBy) payload.approvedBy = opts.approvedBy;
-  return Events_append_(EVENT_TYPES.SPECIAL_PACK_GRANTED, userId, {
+  const appended = Events_append_(EVENT_TYPES.SPECIAL_PACK_GRANTED, userId, {
     timestamp: opts.timestamp || new Date().toISOString(),
     amount: 1,
     weekKey: '',
     payload: payload,
     source: opts.source || EVENT_SOURCES.WEB,
   });
+  updateCollectionRowWithDeltas_(userId, [
+    { type: EVENT_TYPES.SPECIAL_PACK_GRANTED, amount: 1 },
+  ], { baseSpecialPackStats: baseSpecialPackStats });
+  return appended;
 }
 
 // 천로역정 7스팟 완성 시 레어 카드(id=10) 직접 지급
@@ -8986,7 +9087,6 @@ function adminApproveBBBPhoto(body) {
     });
     const rewardEventId = appended && appended.event ? appended.event.eventId : '';
     setBBBPhotoApproval_(photoSheet, target.rowIndex, photoCol, 'approved', now, String(body.adminId || 'admin'), rewardEventId);
-    clearUserDerivedCaches_(userId);
     return { ok: true, rewarded: true, rewardEventId: rewardEventId };
   } finally {
     lock.releaseLock();
@@ -9116,7 +9216,6 @@ function uploadBBBPhoto(body) {
           reason: bonusSource === 'bbb_photo' ? 'bbb_photo' : 'bbb_mission',
           source: EVENT_SOURCES.WEB,
         });
-        clearUserDerivedCaches_(userId);
         rewarded = true;
       }
     }
@@ -9365,7 +9464,6 @@ function guessBBBSecret(body) {
         reason: 'bbb_secret_guess_correct',
         source: EVENT_SOURCES.WEB,
       });
-      clearUserDerivedCaches_(userId);
       rewarded = true;
     }
     return { ok: true, correct: true, secretName, secretNickname, rewarded };
