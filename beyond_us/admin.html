@@ -243,7 +243,7 @@
       <!-- ② 체크인 현황 -->
       <div id="tab-checkin" class="tab-panel active">
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">이번 주 제출 수</div><div class="stat-value" id="ciSubmission">-</div></div>
+          <div class="stat-card"><div class="stat-label">이번 주 참여자 수</div><div class="stat-value" id="ciSubmission">-</div></div>
           <div class="stat-card"><div class="stat-label">누적 실천 수</div><div class="stat-value" id="ciTotal">-</div></div>
         </div>
 
@@ -378,6 +378,7 @@
           <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="attendanceTotalUsers">-</div></div>
           <div class="stat-card"><div class="stat-label">참석 체크</div><div class="stat-value" id="attendanceCheckedUsers">-</div></div>
           <div class="stat-card"><div class="stat-label">추첨권 제외</div><div class="stat-value" id="attendanceExcludedUsers">-</div></div>
+          <div class="stat-card"><div class="stat-label">삭제 유저</div><div class="stat-value" id="attendanceDeletedUsers">-</div></div>
         </div>
 
         <div class="card">
@@ -399,14 +400,40 @@
                   <th>현재 추첨권</th>
                   <th>수련회 참석</th>
                   <th>추첨권 발급 제외</th>
+                  <th>관리</th>
                 </tr>
               </thead>
               <tbody id="attendanceTableBody">
-                <tr><td colspan="6" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+                <tr><td colspan="7" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
               </tbody>
             </table>
           </div>
           <div class="status" id="attendanceStatus"></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">삭제 유저</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">로그인과 통계에서 제외된 유저입니다. 필요하면 복구할 수 있어요.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>교구</th>
+                  <th>이름</th>
+                  <th>닉네임</th>
+                  <th>삭제일</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody id="deletedAttendanceTableBody">
+                <tr><td colspan="5" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -824,29 +851,36 @@
 
     /* ── 앱 가입자 관리 ── */
     let _raffleAttendanceUsers = [];
+    let _deletedAttendanceUsers = [];
 
     async function loadRaffleAttendance() {
       const tbody = document.getElementById('attendanceTableBody');
+      const deletedTbody = document.getElementById('deletedAttendanceTableBody');
       const statusEl = document.getElementById('attendanceStatus');
       statusEl.textContent = '';
-      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      deletedTbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
         const res = await get({ action: 'adminGetRaffleAttendance', adminPw });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         _raffleAttendanceUsers = res.users || [];
+        _deletedAttendanceUsers = res.deletedUsers || [];
         document.getElementById('attendanceTotalUsers').textContent = res.totalUsers || 0;
         document.getElementById('attendanceCheckedUsers').textContent = res.attendedCount || 0;
         document.getElementById('attendanceExcludedUsers').textContent = res.raffleExcludedCount || 0;
+        document.getElementById('attendanceDeletedUsers').textContent = res.deletedCount || 0;
         renderRaffleAttendanceRows(_raffleAttendanceUsers);
+        renderDeletedAttendanceRows(_deletedAttendanceUsers);
       } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+        deletedTbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
       }
     }
 
     function renderRaffleAttendanceRows(users) {
       const tbody = document.getElementById('attendanceTableBody');
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
         return;
       }
       tbody.innerHTML = users.map(u => `
@@ -861,6 +895,9 @@
           <td>
             <input type="checkbox" class="raffle-excluded-toggle" data-nickname="${esc(u.nickname)}" ${u.raffleExcluded ? 'checked' : ''} aria-label="${esc(u.nickname)} 추첨권 발급 제외" style="width:22px;height:22px;accent-color:var(--danger);cursor:pointer;" />
           </td>
+          <td>
+            <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
+          </td>
         </tr>
       `).join('');
       tbody.querySelectorAll('.attendance-toggle').forEach(input => {
@@ -868,6 +905,29 @@
       });
       tbody.querySelectorAll('.raffle-excluded-toggle').forEach(input => {
         input.addEventListener('change', () => setRaffleExcluded(input.dataset.nickname, input.checked, input));
+      });
+      tbody.querySelectorAll('.user-delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deactivateAttendanceUser(btn.dataset.nickname, btn));
+      });
+    }
+
+    function renderDeletedAttendanceRows(users) {
+      const tbody = document.getElementById('deletedAttendanceTableBody');
+      if (!users.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">삭제된 유저가 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
+          <td>${esc(u.name)}</td>
+          <td><strong>${esc(u.nickname)}</strong></td>
+          <td>${esc(String(u.inactiveAt || '').slice(0, 10))}</td>
+          <td><button class="btn btn-ghost btn-sm user-restore-btn" data-nickname="${esc(u.nickname)}">복구</button></td>
+        </tr>
+      `).join('');
+      tbody.querySelectorAll('.user-restore-btn').forEach(btn => {
+        btn.addEventListener('click', () => restoreAttendanceUser(btn.dataset.nickname, btn));
       });
     }
 
@@ -879,6 +939,45 @@
         String(u.nickname || '').toLowerCase().includes(q)
       );
       renderRaffleAttendanceRows(filtered);
+    }
+
+    async function deactivateAttendanceUser(nickname, btn) {
+      if (!confirm(`${nickname} 유저를 삭제 처리할까요? 로그인, 통계, 파생 데이터에서 제외됩니다.`)) return;
+      const statusEl = document.getElementById('attendanceStatus');
+      btn.disabled = true;
+      statusEl.textContent = '삭제 처리 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminDeactivateUser', adminPw, nickname });
+        if (!res.ok) throw new Error(res.error || 'delete_failed');
+        statusEl.textContent = `${res.nickname || nickname} 유저를 삭제 처리했어요. 회수된 추첨권 ${res.raffleReleased || 0}장.`;
+        statusEl.className = 'status ok';
+        await loadRaffleAttendance();
+      } catch(e) {
+        btn.disabled = false;
+        statusEl.textContent = '삭제 처리에 실패했어요. 잠시 후 다시 시도해주세요.';
+        statusEl.className = 'status';
+      }
+    }
+
+    async function restoreAttendanceUser(nickname, btn) {
+      if (!confirm(`${nickname} 유저를 복구할까요? Events 기준으로 컬렉션과 추첨권을 다시 계산합니다.`)) return;
+      const statusEl = document.getElementById('attendanceStatus');
+      btn.disabled = true;
+      statusEl.textContent = '복구 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminRestoreUser', adminPw, nickname });
+        if (!res.ok) throw new Error(res.error || 'restore_failed');
+        const issued = Array.isArray(res.raffleIssued) ? res.raffleIssued.length : 0;
+        statusEl.textContent = `${res.nickname || nickname} 유저를 복구했어요. 재발급된 추첨권 ${issued}장.`;
+        statusEl.className = 'status ok';
+        await loadRaffleAttendance();
+      } catch(e) {
+        btn.disabled = false;
+        statusEl.textContent = '복구에 실패했어요. 잠시 후 다시 시도해주세요.';
+        statusEl.className = 'status';
+      }
     }
 
     async function setRaffleAttendance(nickname, attended, checkbox) {

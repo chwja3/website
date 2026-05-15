@@ -53,6 +53,8 @@ const SCHEMA = Object.freeze({
       sessionToken: 'sessionToken',
       sessionUpdatedAt: 'sessionUpdatedAt',
       raffleExcluded: 'raffleExcluded',
+      inactive: 'inactive',
+      inactiveAt: 'inactiveAt',
     }),
   }),
   RETREAT_ATTENDANCE: Object.freeze({
@@ -361,6 +363,8 @@ const USER_COLUMN_FALLBACK = Object.freeze({
   sessionToken: 7,
   sessionUpdatedAt: 8,
   raffleExcluded: 9,
+  inactive: 10,
+  inactiveAt: 11,
 });
 const RETREAT_ATTENDANCE_COLUMN_FALLBACK = Object.freeze({
   nickname: 0,
@@ -766,21 +770,9 @@ function isUserDev_(userId) {
   const nickname = String(userId || '').trim();
   if (!nickname) return false;
   const sheet = getUsersSheet_();
-  const last = sheet.getLastRow();
-  if (last < SCHEMA.USERS.dataStartRow) return false;
-  const col = getUserColumns_(sheet);
-  const data = sheet.getRange(
-    SCHEMA.USERS.dataStartRow, 1,
-    last - SCHEMA.USERS.dataStartRow + 1,
-    sheet.getLastColumn()
-  ).getValues();
-  const target = nickname.toLowerCase();
-  for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname] || '').trim().toLowerCase() === target) {
-      return data[i][col.isDev] === true;
-    }
-  }
-  return false;
+  const info = findUserInfoByNickname_(sheet, nickname);
+  if (!info || info.inactive) return false;
+  return info.row[info.col.isDev] === true;
 }
 
 function isTestAdminToolsEnabled_() {
@@ -961,6 +953,7 @@ function doGet(e) {
   if (action === 'getPublicCollection') {
     const uid = e.parameter.userId || '';
     if (!uid) return jsonOutput({ error: 'missing_userId' });
+    if (isUserInactive_(uid)) return jsonOutput({ error: 'inactive_user' });
     return jsonOutput({ ok: true, collection: getUserCollection(uid) });
   }
   if (action === 'getTrades') {
@@ -1053,6 +1046,14 @@ function doPost(e) {
     if (action === 'adminSetRaffleExcluded') {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminSetRaffleExcluded(body));
+    }
+    if (action === 'adminDeactivateUser') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminDeactivateUser(body));
+    }
+    if (action === 'adminRestoreUser') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminRestoreUser(body));
     }
     if (action === 'register') {
       return jsonOutput(registerUser(body));
@@ -1421,6 +1422,86 @@ function getSchemaHeaders_(schema) {
   });
 }
 
+function userIdKey_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isSameUserId_(a, b) {
+  const left = userIdKey_(a);
+  const right = userIdKey_(b);
+  return !!left && left === right;
+}
+
+function isTruthyCell_(value) {
+  if (value === true) return true;
+  const text = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
+  return text === 'true' || text === '1' || text === 'yes' || text === 'y';
+}
+
+function isUserInactiveFromRow_(row, col) {
+  return isTruthyCell_(row && row[col.inactive]);
+}
+
+function findUserInfoByNickname_(sheet, nickname) {
+  const clean = String(nickname || '').trim();
+  if (!clean) return null;
+  const schema = SCHEMA.USERS;
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const target = userIdKey_(clean);
+  for (let i = 0; i < rows.length; i++) {
+    const rowNickname = String(rows[i][col.nickname] || '').trim();
+    if (rowNickname && userIdKey_(rowNickname) === target) {
+      return {
+        row: rows[i],
+        rowIndex: i + schema.dataStartRow,
+        col: col,
+        nickname: rowNickname,
+        inactive: isUserInactiveFromRow_(rows[i], col),
+      };
+    }
+  }
+  return null;
+}
+
+function getCanonicalUserId_(userId, options) {
+  const opts = options || {};
+  const clean = String(userId || '').trim();
+  if (!clean) return '';
+  try {
+    const info = findUserInfoByNickname_(getUsersSheet_(), clean);
+    if (!info) return clean;
+    if (info.inactive && opts.includeInactive !== true) return '';
+    return info.nickname;
+  } catch(e) {
+    return clean;
+  }
+}
+
+function isUserInactive_(userId) {
+  const clean = String(userId || '').trim();
+  if (!clean) return false;
+  try {
+    const info = findUserInfoByNickname_(getUsersSheet_(), clean);
+    return !!(info && info.inactive);
+  } catch(e) {
+    return false;
+  }
+}
+
+function getUserActiveMap_() {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const map = {};
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname || isUserInactiveFromRow_(row, col)) return;
+    map[userIdKey_(nickname)] = nickname;
+  });
+  return map;
+}
+
 function getUserColumns_(sheet) {
   return getResolvedColumns_(sheet, SCHEMA.USERS, USER_COLUMN_FALLBACK);
 }
@@ -1596,7 +1677,9 @@ function getUserNameMap_() {
   const map = {};
   rows.forEach(function(row) {
     const nickname = String(row[col.nickname] || '').trim();
-    if (nickname) map[nickname] = String(row[col.name] || '');
+    if (!nickname || isUserInactiveFromRow_(row, col)) return;
+    map[nickname] = String(row[col.name] || '');
+    map[userIdKey_(nickname)] = map[nickname];
   });
   return map;
 }
@@ -1835,10 +1918,11 @@ function Events_appendBatch_(items) {
 function Events_buildRow_(type, userId, options) {
   const opts = options || {};
   const amount = Object.prototype.hasOwnProperty.call(opts, 'amount') ? opts.amount : '';
+  const canonicalUserId = getCanonicalUserId_(userId) || String(userId || '').trim();
   return [
     opts.eventId || Utilities.getUuid(),
     eventTimestampIso_(opts.timestamp, opts.timestampOffsetMs || 0),
-    String(userId || '').trim(),
+    canonicalUserId,
     String(type || '').trim(),
     opts.refId === null || opts.refId === undefined ? '' : String(opts.refId),
     amount === null || amount === undefined ? '' : amount,
@@ -1869,7 +1953,7 @@ function Events_readByUser(userId) {
   const sheet = getOrCreateEventsSheet();
   const col = getEventsColumns_(sheet);
   return getEventsRows_(sheet)
-    .filter(function(row) { return String(row[col.userId] || '').trim() === clean; })
+    .filter(function(row) { return isSameUserId_(row[col.userId], clean); })
     .map(function(row) { return Events_rowToObject_(row, col); });
 }
 
@@ -2785,6 +2869,7 @@ function buildUserDashboardFormulas_(rowLimit) {
 
 function buildUserDashboardFormulaRow_(sheetRow, userRow) {
   const userCell = 'A' + sheetRow;
+  const usersInactiveCell = 'Users!' + a1Column_(USER_COLUMN_FALLBACK.inactive + 1) + userRow;
   const eventsUserRange = 'Events!C$3:C$' + USER_DASHBOARD_EVENT_MAX_ROW;
   const eventsTypeRange = 'Events!D$3:D$' + USER_DASHBOARD_EVENT_MAX_ROW;
   const eventsRefRange = 'Events!E$3:E$' + USER_DASHBOARD_EVENT_MAX_ROW;
@@ -2795,7 +2880,7 @@ function buildUserDashboardFormulaRow_(sheetRow, userRow) {
   const tradesStatusRange = 'Trades!H$2:H$' + USER_DASHBOARD_DOMAIN_MAX_ROW;
 
   const row = [
-    '=IF(Users!A' + userRow + '="","",Users!A' + userRow + ')',
+    '=IF(OR(Users!A' + userRow + '="",' + usersInactiveCell + '=TRUE),"",Users!A' + userRow + ')',
     '=IFERROR(VLOOKUP(' + userCell + ',Users!A:C,3,0),"")',
     '=IFERROR(VLOOKUP(' + userCell + ',Users!A:D,4,0),"")',
     '=IF(' + userCell + '="","",COUNTIFS(' + eventsUserRange + ',' + userCell + ',' + eventsTypeRange + ',"' + EVENT_TYPES.MISSION_SUBMITTED + '"))',
@@ -2984,7 +3069,7 @@ function migrateParishJangnyeon() {
 
 function ensureUserSessionColumns_(sheet) {
   const col = getUserColumns_(sheet);
-  const maxCol = Math.max(sheet.getLastColumn(), col.sessionUpdatedAt + 1, col.raffleExcluded + 1);
+  const maxCol = Math.max(sheet.getLastColumn(), col.sessionUpdatedAt + 1, col.raffleExcluded + 1, col.inactive + 1, col.inactiveAt + 1);
   const headers = sheet.getRange(1, 1, 1, maxCol).getValues()[0];
   if (String(headers[col.sessionToken] || '') !== SCHEMA.USERS.columns.sessionToken) {
     sheet.getRange(SCHEMA.USERS.headerRow, col.sessionToken + 1).setValue(SCHEMA.USERS.columns.sessionToken);
@@ -2995,20 +3080,17 @@ function ensureUserSessionColumns_(sheet) {
   if (String(headers[col.raffleExcluded] || '') !== SCHEMA.USERS.columns.raffleExcluded) {
     sheet.getRange(SCHEMA.USERS.headerRow, col.raffleExcluded + 1).setValue(SCHEMA.USERS.columns.raffleExcluded);
   }
+  if (String(headers[col.inactive] || '') !== SCHEMA.USERS.columns.inactive) {
+    sheet.getRange(SCHEMA.USERS.headerRow, col.inactive + 1).setValue(SCHEMA.USERS.columns.inactive);
+  }
+  if (String(headers[col.inactiveAt] || '') !== SCHEMA.USERS.columns.inactiveAt) {
+    sheet.getRange(SCHEMA.USERS.headerRow, col.inactiveAt + 1).setValue(SCHEMA.USERS.columns.inactiveAt);
+  }
 }
 
 function findUserRow_(sheet, nickname) {
-  const clean = String(nickname || '').trim();
-  if (!clean) return -1;
-  const last = sheet.getLastRow();
-  const schema = SCHEMA.USERS;
-  if (last < schema.dataStartRow) return -1;
-  const col = getUserColumns_(sheet);
-  const ids = sheet.getRange(schema.dataStartRow, col.nickname + 1, last - schema.dataStartRow + 1, 1).getValues();
-  for (let i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]).trim() === clean) return i + schema.dataStartRow;
-  }
-  return -1;
+  const info = findUserInfoByNickname_(sheet, nickname);
+  return info ? info.rowIndex : -1;
 }
 
 function makeSessionToken_() {
@@ -3073,9 +3155,10 @@ function verifySession(nickname, sessionToken) {
   if (!String(nickname || '').trim() || !cleanToken) return false;
   try {
     const sheet = getUsersSheet_();
-    const rowIndex = findUserRow_(sheet, nickname);
-    if (rowIndex < 2) return false;
-    const col = getUserColumns_(sheet);
+    const info = findUserInfoByNickname_(sheet, nickname);
+    if (!info || info.inactive || info.rowIndex < 2) return false;
+    const rowIndex = info.rowIndex;
+    const col = info.col;
     const rawTokens = sheet.getRange(rowIndex, col.sessionToken + 1).getValue();
     const updatedAt = sheet.getRange(rowIndex, col.sessionUpdatedAt + 1).getValue();
     const tokens = parseTokenArray_(rawTokens);
@@ -3092,6 +3175,7 @@ function verifySession(nickname, sessionToken) {
 function requireSessionForUser_(source, userId) {
   const uid = String(userId || '').trim();
   if (!uid) return { error: 'missing_userId' };
+  if (isUserInactive_(uid)) return { error: 'inactive_user', authRequired: true };
   if (!verifySession(uid, source && source.sessionToken)) {
     return { error: 'unauthorized', authRequired: true };
   }
@@ -3386,9 +3470,13 @@ function getDashboardData() {
   const config   = getConfig();
   const counts = {};
   config.items.forEach(item => counts[item] = 0);
-  const currentWeekEvents = getMissionSubmittedEventsForConfig_(Events_readAll_(), config, 'w' + config.currentWeek);
+  const activeMap = getUserActiveMap_();
+  const currentWeekEvents = getMissionSubmittedEventsForConfig_(Events_readAll_(), config, 'w' + config.currentWeek)
+    .filter(function(event) { return !!activeMap[userIdKey_(event.userId)]; });
+  const submittedUsers = {};
 
   currentWeekEvents.forEach(event => {
+    submittedUsers[userIdKey_(event.userId)] = true;
     const counted = new Set();
     // 텍스트 기반 카운트
     getMissionEventItems_(event).forEach(item => {
@@ -3410,7 +3498,8 @@ function getDashboardData() {
     drawThreshold:   config.drawThreshold,
     counts,
     totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
-    submissionCount: currentWeekEvents.length,
+    submissionCount: Object.keys(submittedUsers).length,
+    submissionEventCount: currentWeekEvents.length,
     tabSettings:     getTabSettings()
   };
 }
@@ -3493,6 +3582,7 @@ function getUserStatusCached_(userId, weekKey) {
 }
 
 function getUserStatus(userId, weekKey, configOverride) {
+  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const config = configOverride || getConfig();
   weekKey = String(weekKey || ('w' + config.currentWeek)).trim();
   let weekScore = 0, drawnThisWeek = false, weekCard = null;
@@ -3612,7 +3702,7 @@ function getSpecialPackStatsFromEvents_(events, userId) {
   const cleanUserId = String(userId || '').trim();
   const stats = { totalEarned: 0, totalConsumed: 0, remaining: 0 };
   (events || []).forEach(function(event) {
-    if (String(event.userId || '').trim() !== cleanUserId) return;
+    if (!isSameUserId_(event.userId, cleanUserId)) return;
     if (event.type === EVENT_TYPES.SPECIAL_PACK_GRANTED) {
       stats.totalEarned += eventAmount_(event, 1);
     } else if (event.type === EVENT_TYPES.SPECIAL_PACK_CONSUMED) {
@@ -3640,15 +3730,8 @@ function getRegularDrawableCards_() {
 function isDeveloperUser_(userId) {
   const cleanUserId = String(userId || '').trim();
   if (!cleanUserId) return false;
-  const sheet = getUsersSheet_();
-  const col = getUserColumns_(sheet);
-  const rows = getUserRows_(sheet);
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.nickname] || '').trim() === cleanUserId) {
-      return isTruthyEventValue_(rows[i][col.isDev]);
-    }
-  }
-  return false;
+  const info = findUserInfoByNickname_(getUsersSheet_(), cleanUserId);
+  return !!(info && !info.inactive && isTruthyEventValue_(info.row[info.col.isDev]));
 }
 
 function isDevAutoDrawAllowed_(userId, testMode) {
@@ -3965,6 +4048,7 @@ function fixHoldPrayBlankNames() {
 
 function getHoldPray(weekKey, nickname) {
   if (!weekKey) weekKey = 'w' + getCurrentWeek_();
+  nickname = getCanonicalUserId_(nickname) || String(nickname || '').trim();
   const entries = getYouthHpEntries();
   const hpRevision = String(hashStr(JSON.stringify(entries.map(function(e) {
     return [e.n, e.p, e.c, e.a === true, e.nick || ''];
@@ -4010,7 +4094,7 @@ function getHoldPray(weekKey, nickname) {
       const guessCol = getHpGuessColumns_(guessSheet);
       const rows = getHpGuessRows_(guessSheet);
       rows.forEach(function(r) {
-        if (String(r[guessCol.nickname]) !== nickname || String(r[guessCol.weekKey]) !== weekKey) return;
+        if (!isSameUserId_(r[guessCol.nickname], nickname) || String(r[guessCol.weekKey]) !== weekKey) return;
         const cardIdx = Number(r[guessCol.cardIndex]);
         const storedGuess = String(r[guessCol.guessedName]);
         const currentEntry = pickedEntries[cardIdx];
@@ -4034,7 +4118,7 @@ function getHoldPray(weekKey, nickname) {
         const guessCol = getHpGuessColumns_(guessSheet);
         const gRows = getHpGuessRows_(guessSheet);
         const myRows = gRows.filter(function(r) {
-          return String(r[guessCol.nickname]) === nickname && String(r[guessCol.weekKey]) === weekKey;
+          return isSameUserId_(r[guessCol.nickname], nickname) && String(r[guessCol.weekKey]) === weekKey;
         });
         if (myRows.length > 0) {
           myRows.sort(function(a, b) { return new Date(a[guessCol.answeredAt]) - new Date(b[guessCol.answeredAt]); });
@@ -4053,7 +4137,7 @@ function getHoldPray(weekKey, nickname) {
       const inqCol = getInquiryColumns_(inqSheet);
       const inqRows = getInquiryRows_(inqSheet);
       inqRows.forEach(function(r) {
-        if (String(r[inqCol.nickname]) !== nickname) return;
+        if (!isSameUserId_(r[inqCol.nickname], nickname)) return;
         const reply = String(r[inqCol.reply] || '').trim();
         if (!reply) return;
         const match = String(r[inqCol.content]).match(/주차: ([^,]+), 카드: (\d+)번/);
@@ -4068,6 +4152,7 @@ function getHoldPray(weekKey, nickname) {
 }
 
 function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
+  nickname = getCanonicalUserId_(nickname) || String(nickname || '').trim();
   if (!weekKey || !guess) return { ok: false, error: 'missing params' };
 
   const lock = LockService.getScriptLock();
@@ -4118,7 +4203,7 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
       const guessCol = getHpGuessColumns_(guessSheet);
       const rows = getHpGuessRows_(guessSheet);
       alreadyRecorded = rows.some(function(r) {
-        return String(r[guessCol.nickname]) === nickname && String(r[guessCol.weekKey]) === weekKey && Number(r[guessCol.cardIndex]) === ci;
+        return isSameUserId_(r[guessCol.nickname], nickname) && String(r[guessCol.weekKey]) === weekKey && Number(r[guessCol.cardIndex]) === ci;
       });
     }
     if (!alreadyRecorded) {
@@ -4393,10 +4478,13 @@ function registerUser(body) {
 
   const data = getUserRows_(sheet);
   for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname]).trim() === nickname) return { error: 'duplicate' };
+    if (!data[i][col.nickname]) continue;
+    if (isSameUserId_(data[i][col.nickname], nickname)) {
+      return isUserInactiveFromRow_(data[i], col) ? { error: 'inactive_user' } : { error: 'duplicate' };
+    }
   }
 
-  sheet.appendRow([nickname, '', name, parish, new Date(), '', '', '', '', getDefaultRaffleExcludedByParish_(parish)]);
+  sheet.appendRow([nickname, '', name, parish, new Date(), '', '', '', '', getDefaultRaffleExcludedByParish_(parish), false, '']);
   const rowIndex = sheet.getLastRow();
   setUserPassword_(sheet, rowIndex, password);
   const sessionToken = issueSessionToken_(sheet, rowIndex);
@@ -4420,11 +4508,11 @@ function loginUser(body) {
   const password = String(body.password || '').trim();
   const sessionToken = String(body.sessionToken || '').trim();
 
-  const data = getUserRows_(sheet);
-  for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname]).trim() === nickname) {
-      const rowIndex = i + schema.dataStartRow;
-      const storedPassword = String(data[i][col.password] || '').trim();
+  const info = findUserInfoByNickname_(sheet, nickname);
+  if (info) {
+      if (info.inactive) return { error: 'inactive_user' };
+      const rowIndex = info.rowIndex;
+      const storedPassword = String(info.row[col.password] || '').trim();
       const passwordOk = password && verifyStoredPassword_(storedPassword, password);
       const sessionOk = !password && sessionToken && verifySession(nickname, sessionToken);
       if (passwordOk || sessionOk) {
@@ -4435,15 +4523,14 @@ function loginUser(body) {
         if (sessionOk) touchSessionToken_(sheet, rowIndex);
         return {
           ok:          true,
-          parish:      data[i][col.parish],
-          isStaff:     data[i][col.isStaff] === true,
-          isDev:       data[i][col.isDev] === true,
+          parish:      info.row[col.parish],
+          isStaff:     info.row[col.isStaff] === true,
+          isDev:       info.row[col.isDev] === true,
           appOpenDate: getAppOpenDate(),
           sessionToken: token
         };
       }
       return { error: 'wrong_password' };
-    }
   }
   return { error: 'not_found' };
 }
@@ -4465,7 +4552,8 @@ function resetPassword(body) {
   if (nickname) {
     for (let i = 0; i < data.length; i++) {
       const rowIndex = i + schema.dataStartRow;
-      if (String(data[i][col.nickname]).trim() === nickname &&
+      if (!isUserInactiveFromRow_(data[i], col) &&
+          isSameUserId_(data[i][col.nickname], nickname) &&
           String(data[i][col.name]).trim() === name &&
           String(data[i][col.parish]).trim() === parish) {
         setUserPassword_(sheet, rowIndex, newPassword);
@@ -4479,7 +4567,8 @@ function resetPassword(body) {
   // 닉네임 없이 이름+교구로 검색
   const matches = [];
   for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.name]).trim() === name &&
+    if (!isUserInactiveFromRow_(data[i], col) &&
+        String(data[i][col.name]).trim() === name &&
         String(data[i][col.parish]).trim() === parish) {
       matches.push({ row: i + schema.dataStartRow, nickname: String(data[i][col.nickname]).trim() });
     }
@@ -4504,7 +4593,7 @@ function getUsers() {
   const data  = getUserRows_(sheet);
   const users = [];
   for (let i = 0; i < data.length; i++) {
-    if (!data[i][col.nickname]) continue;
+    if (!data[i][col.nickname] || isUserInactiveFromRow_(data[i], col)) continue;
     users.push({ nickname: data[i][col.nickname], name: data[i][col.name], parish: data[i][col.parish], createdAt: data[i][col.createdAt] });
   }
   return { ok: true, users };
@@ -4531,11 +4620,11 @@ function adminGetRaffleAttendance() {
   const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
   const raffleSummary = getActiveRaffleTicketSummary_(getRaffleTicketRows_());
 
-  const users = usersRows
+  const allUsers = usersRows
     .filter(function(row) { return String(row[userCol.nickname] || '').trim(); })
     .map(function(row) {
       const nickname = String(row[userCol.nickname] || '').trim();
-      const attended = attendanceMap[nickname] === true;
+      const attended = attendanceMap[userIdKey_(nickname)] === true;
       const raffleExcluded = getUserRaffleExcludedFromRow_(row, userCol);
       return {
         parish: String(row[userCol.parish] || '').trim(),
@@ -4543,7 +4632,9 @@ function adminGetRaffleAttendance() {
         nickname: nickname,
         attended: attended,
         raffleExcluded: raffleExcluded,
-        raffleTickets: raffleSummary.byUser[nickname] || 0,
+        inactive: isUserInactiveFromRow_(row, userCol),
+        inactiveAt: String(row[userCol.inactiveAt] || '').trim(),
+        raffleTickets: raffleSummary.byUser[userIdKey_(nickname)] || 0,
       };
     })
     .sort(function(a, b) {
@@ -4551,11 +4642,15 @@ function adminGetRaffleAttendance() {
         String(a.name).localeCompare(String(b.name), 'ko') ||
         String(a.nickname).localeCompare(String(b.nickname), 'ko');
     });
+  const users = allUsers.filter(function(user) { return user.inactive !== true; });
+  const deletedUsers = allUsers.filter(function(user) { return user.inactive === true; });
 
   return {
     ok: true,
     users: users,
+    deletedUsers: deletedUsers,
     totalUsers: users.length,
+    deletedCount: deletedUsers.length,
     attendedCount: users.filter(function(user) { return user.attended === true; }).length,
     raffleExcludedCount: users.filter(function(user) { return user.raffleExcluded === true; }).length,
   };
@@ -4571,7 +4666,7 @@ function adminSetRaffleAttendance(body) {
   const rows = getRetreatAttendanceRows_(sheet);
   const now = new Date().toISOString();
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.nickname] || '').trim() !== nickname) continue;
+    if (!isSameUserId_(rows[i][col.nickname], nickname)) continue;
     const rowIndex = i + SCHEMA.RETREAT_ATTENDANCE.dataStartRow;
     sheet.getRange(rowIndex, col.attended + 1).setValue(attended);
     sheet.getRange(rowIndex, col.updatedAt + 1).setValue(now);
@@ -4593,7 +4688,7 @@ function adminSetRaffleExcluded(body) {
   const col = getUserColumns_(sheet);
   const rows = getUserRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.nickname] || '').trim() !== nickname) continue;
+    if (!isSameUserId_(rows[i][col.nickname], nickname)) continue;
     const rowIndex = i + SCHEMA.USERS.dataStartRow;
     sheet.getRange(rowIndex, col.raffleExcluded + 1).setValue(excluded);
     let released = { revoked: 0, rows: [] };
@@ -4604,7 +4699,7 @@ function adminSetRaffleExcluded(body) {
       issued = ensureUserRaffleTickets_(nickname, { includeSignup: true });
     }
     clearUserDerivedCaches_(nickname);
-    const activeCount = getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[nickname] || 0;
+    const activeCount = getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[userIdKey_(nickname)] || 0;
     return {
       ok: true,
       nickname: nickname,
@@ -4617,6 +4712,224 @@ function adminSetRaffleExcluded(body) {
   return { error: 'not_found' };
 }
 
+function deleteRowsMatching_(sheetName, schema, getColumnsFn, getRowsFn, predicate) {
+  const sheet = getSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) return 0;
+  const col = getColumnsFn(sheet);
+  const rows = getRowsFn(sheet);
+  let removed = 0;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (!predicate(rows[i], col)) continue;
+    sheet.deleteRow(i + schema.dataStartRow);
+    removed++;
+  }
+  return removed;
+}
+
+function deleteUserConnectedRows_(userId) {
+  const cleanUser = String(userId || '').trim();
+  const deleted = {};
+  deleted.collection = deleteRowsMatching_(SHEET_NAMES.COLLECTION, SCHEMA.COLLECTION, getCollectionColumns_, getCollectionRows_, function(row, col) {
+    return isSameUserId_(row[col.userId], cleanUser);
+  });
+  deleted.retreatAttendance = deleteRowsMatching_(SHEET_NAMES.RETREAT_ATTENDANCE, SCHEMA.RETREAT_ATTENDANCE, getRetreatAttendanceColumns_, getRetreatAttendanceRows_, function(row, col) {
+    return isSameUserId_(row[col.nickname], cleanUser);
+  });
+  deleted.cardReceived = deleteRowsMatching_(SHEET_NAMES.CARD_RECEIVED, SCHEMA.CARD_RECEIVED, getCardReceivedColumns_, getCardReceivedRows_, function(row, col) {
+    return isSameUserId_(row[col.nickname], cleanUser);
+  });
+  deleted.hpGuesses = deleteRowsMatching_(SHEET_NAMES.HP_GUESSES, SCHEMA.HP_GUESSES, getHpGuessColumns_, getHpGuessRows_, function(row, col) {
+    return isSameUserId_(row[col.nickname], cleanUser);
+  });
+  deleted.holdPray = deleteRowsMatching_(SHEET_NAMES.HOLD_PRAY, SCHEMA.HOLD_PRAY, getHoldPrayColumns_, getHoldPrayRows_, function(row, col) {
+    return isSameUserId_(row[col.nickname], cleanUser);
+  });
+  deleted.trades = deleteRowsMatching_(SHEET_NAMES.TRADES, SCHEMA.TRADES, getTradesColumns_, getTradesRows_, function(row, col) {
+    return isSameUserId_(row[col.requester], cleanUser) || isSameUserId_(row[col.target], cleanUser);
+  });
+  deleted.inquiries = deleteRowsMatching_(SHEET_NAMES.INQUIRIES, SCHEMA.INQUIRIES, getInquiryColumns_, getInquiryRows_, function(row, col) {
+    return isSameUserId_(row[col.nickname], cleanUser);
+  });
+  deleted.bbb = deleteRowsMatching_(SHEET_NAMES.BBB, SCHEMA.BBB, getBbbColumns_, getBbbRows_, function(row, col) {
+    return isSameUserId_(row[col.userId], cleanUser) ||
+      isSameUserId_(row[col.careBuddyId], cleanUser) ||
+      isSameUserId_(row[col.secretBuddyId], cleanUser);
+  });
+  deleted.bbbMessages = deleteRowsMatching_(SHEET_NAMES.BBB_MESSAGES, SCHEMA.BBB_MESSAGES, getBbbMessageColumns_, getBbbMessageRows_, function(row, col) {
+    return isSameUserId_(row[col.fromUserId], cleanUser) || isSameUserId_(row[col.toUserId], cleanUser);
+  });
+  deleted.bbbPhotos = deleteRowsMatching_(SHEET_NAMES.BBB_PHOTOS, SCHEMA.BBB_PHOTOS, getBbbPhotoColumns_, getBbbPhotoRows_, function(row, col) {
+    return isSameUserId_(row[col.userId], cleanUser);
+  });
+  return deleted;
+}
+
+function adminDeactivateUser(body) {
+  const nickname = String(body.nickname || '').trim();
+  if (!nickname) return { error: 'missing_nickname' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return { ok: false, error: 'lock_timeout' };
+  }
+
+  try {
+    const sheet = getUsersSheet_();
+    const info = findUserInfoByNickname_(sheet, nickname);
+    if (!info) return { error: 'not_found' };
+
+    const canonical = info.nickname;
+    const now = new Date().toISOString();
+    sheet.getRange(info.rowIndex, info.col.inactive + 1).setValue(true);
+    sheet.getRange(info.rowIndex, info.col.inactiveAt + 1).setValue(now);
+    clearSessionToken_(sheet, info.rowIndex);
+
+    const raffleRelease = revokeUserRaffleTickets_(canonical, 'available', 'user_deactivated');
+    const deletedRows = deleteUserConnectedRows_(canonical);
+    clearUserDerivedCaches_(canonical);
+    return {
+      ok: true,
+      nickname: canonical,
+      inactive: true,
+      inactiveAt: now,
+      raffleReleased: Number(raffleRelease.revoked) || 0,
+      deletedRows: deletedRows,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminRestoreUser(body) {
+  const nickname = String(body.nickname || '').trim();
+  if (!nickname) return { error: 'missing_nickname' };
+
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return { ok: false, error: 'lock_timeout' };
+  }
+
+  try {
+    const sheet = getUsersSheet_();
+    const info = findUserInfoByNickname_(sheet, nickname);
+    if (!info) return { error: 'not_found' };
+
+    const canonical = info.nickname;
+    sheet.getRange(info.rowIndex, info.col.inactive + 1).setValue(false);
+    sheet.getRange(info.rowIndex, info.col.inactiveAt + 1).clearContent();
+    clearSessionToken_(sheet, info.rowIndex);
+
+    const rebuild = rebuildCollectionRow_(canonical);
+    const raffleExcluded = getUserRaffleExcludedFromRow_(info.row, info.col);
+    const raffleEnsure = raffleExcluded
+      ? { issued: [] }
+      : ensureUserRaffleTickets_(canonical, { includeSignup: true, skipIssueLock: true });
+    clearUserDerivedCaches_(canonical);
+    return {
+      ok: true,
+      nickname: canonical,
+      inactive: false,
+      collectionRebuilt: !!(rebuild && rebuild.ok),
+      raffleIssued: (raffleEnsure && raffleEnsure.issued) || [],
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function auditUserIdCaseConsistency() {
+  return logJsonResult_('auditUserIdCaseConsistency result', auditUserIdCaseConsistency_());
+}
+
+function auditUserIdCaseConsistency_() {
+  const userSheet = getUsersSheet_();
+  const userCol = getUserColumns_(userSheet);
+  const userRows = getUserRows_(userSheet);
+  const knownUsers = {};
+  userRows.forEach(function(row, idx) {
+    const nickname = String(row[userCol.nickname] || '').trim();
+    if (!nickname) return;
+    const key = userIdKey_(nickname);
+    if (!knownUsers[key]) knownUsers[key] = [];
+    knownUsers[key].push({
+      rowNumber: idx + SCHEMA.USERS.dataStartRow,
+      nickname: nickname,
+      inactive: isUserInactiveFromRow_(row, userCol),
+    });
+  });
+
+  const duplicateUsers = Object.keys(knownUsers)
+    .filter(function(key) { return knownUsers[key].length > 1; })
+    .map(function(key) { return { key: key, users: knownUsers[key] }; });
+  const canonicalByKey = {};
+  Object.keys(knownUsers).forEach(function(key) {
+    const active = knownUsers[key].filter(function(item) { return item.inactive !== true; });
+    canonicalByKey[key] = (active[0] || knownUsers[key][0]).nickname;
+  });
+
+  const sheetIssues = [];
+  function checkUserRef(sheetName, schema, getColumnsFn, getRowsFn, refs) {
+    const sheet = getSpreadsheet().getSheetByName(sheetName);
+    if (!sheet) return;
+    const col = getColumnsFn(sheet);
+    const rows = getRowsFn(sheet);
+    rows.forEach(function(row, idx) {
+      refs.forEach(function(ref) {
+        const value = String(row[col[ref.key]] || '').trim();
+        if (!value) return;
+        const key = userIdKey_(value);
+        const canonical = canonicalByKey[key];
+        if (!canonical) {
+          sheetIssues.push({ sheet: sheetName, rowNumber: idx + schema.dataStartRow, column: ref.key, value: value, issue: 'unknown_user' });
+          return;
+        }
+        if (value !== canonical) {
+          sheetIssues.push({ sheet: sheetName, rowNumber: idx + schema.dataStartRow, column: ref.key, value: value, canonical: canonical, issue: 'case_mismatch' });
+        }
+      });
+    });
+  }
+
+  checkUserRef(SHEET_NAMES.COLLECTION, SCHEMA.COLLECTION, getCollectionColumns_, getCollectionRows_, [{ key: 'userId' }]);
+  checkUserRef(SHEET_NAMES.CARD_RECEIVED, SCHEMA.CARD_RECEIVED, getCardReceivedColumns_, getCardReceivedRows_, [{ key: 'nickname' }]);
+  checkUserRef(SHEET_NAMES.RETREAT_ATTENDANCE, SCHEMA.RETREAT_ATTENDANCE, getRetreatAttendanceColumns_, getRetreatAttendanceRows_, [{ key: 'nickname' }]);
+  checkUserRef(SHEET_NAMES.HP_GUESSES, SCHEMA.HP_GUESSES, getHpGuessColumns_, getHpGuessRows_, [{ key: 'nickname' }]);
+  checkUserRef(SHEET_NAMES.HOLD_PRAY, SCHEMA.HOLD_PRAY, getHoldPrayColumns_, getHoldPrayRows_, [{ key: 'nickname' }]);
+  checkUserRef(SHEET_NAMES.INQUIRIES, SCHEMA.INQUIRIES, getInquiryColumns_, getInquiryRows_, [{ key: 'nickname' }]);
+  checkUserRef(SHEET_NAMES.TRADES, SCHEMA.TRADES, getTradesColumns_, getTradesRows_, [{ key: 'requester' }, { key: 'target' }]);
+  checkUserRef(SHEET_NAMES.BBB, SCHEMA.BBB, getBbbColumns_, getBbbRows_, [{ key: 'userId' }, { key: 'careBuddyId' }, { key: 'secretBuddyId' }]);
+  checkUserRef(SHEET_NAMES.BBB_MESSAGES, SCHEMA.BBB_MESSAGES, getBbbMessageColumns_, getBbbMessageRows_, [{ key: 'fromUserId' }, { key: 'toUserId' }]);
+  checkUserRef(SHEET_NAMES.BBB_PHOTOS, SCHEMA.BBB_PHOTOS, getBbbPhotoColumns_, getBbbPhotoRows_, [{ key: 'userId' }]);
+  checkUserRef(SHEET_NAMES.EVENTS, SCHEMA.EVENTS, getEventsColumns_, getEventsRows_, [{ key: 'userId' }]);
+
+  const raffleRows = getRaffleTicketRows_();
+  raffleRows.forEach(function(row, idx) {
+    const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
+    if (!userId) return;
+    const key = userIdKey_(userId);
+    const canonical = canonicalByKey[key];
+    if (!canonical) {
+      sheetIssues.push({ sheet: SHEET_NAMES.RAFFLE_TICKETS, rowNumber: idx + 2, column: 'userId', value: userId, issue: 'unknown_user' });
+      return;
+    }
+    if (userId !== canonical) {
+      sheetIssues.push({ sheet: SHEET_NAMES.RAFFLE_TICKETS, rowNumber: idx + 2, column: 'userId', value: userId, canonical: canonical, issue: 'case_mismatch' });
+    }
+  });
+
+  const mismatchCount = sheetIssues.filter(function(issue) { return issue.issue === 'case_mismatch'; }).length;
+  const unknownCount = sheetIssues.filter(function(issue) { return issue.issue === 'unknown_user'; }).length;
+  return {
+    ok: duplicateUsers.length === 0 && sheetIssues.length === 0,
+    duplicateUserCount: duplicateUsers.length,
+    caseMismatchCount: mismatchCount,
+    unknownUserRefCount: unknownCount,
+    duplicateUsers: duplicateUsers.slice(0, 30),
+    issues: sheetIssues.slice(0, 100),
+    issueCount: sheetIssues.length,
+  };
+}
+
 function syncDefaultRaffleExcludedUsers_() {
   const sheet = getUsersSheet_();
   const col = getUserColumns_(sheet);
@@ -4624,6 +4937,7 @@ function syncDefaultRaffleExcludedUsers_() {
   if (!rows.length) return { ok: true, changed: 0, released: 0 };
 
   const values = rows.map(function(row) {
+    if (isUserInactiveFromRow_(row, col)) return [row[col.raffleExcluded]];
     const current = row[col.raffleExcluded];
     const text = String(current === null || current === undefined ? '' : current).trim();
     if (text) return [current];
@@ -4637,6 +4951,7 @@ function syncDefaultRaffleExcludedUsers_() {
   rows.forEach(function(row, index) {
     const nickname = String(row[col.nickname] || '').trim();
     if (!nickname) return;
+    if (isUserInactiveFromRow_(row, col)) return;
     const excluded = parseRaffleExcludedValue_(values[index][0], false);
     if (!excluded) return;
     const result = revokeUserRaffleTickets_(nickname, 'available', 'raffle_excluded');
@@ -4654,7 +4969,12 @@ function getRaffleExcludedUserMap_() {
   rows.forEach(function(row) {
     const nickname = String(row[col.nickname] || '').trim();
     if (!nickname) return;
+    if (isUserInactiveFromRow_(row, col)) {
+      map[userIdKey_(nickname)] = true;
+      return;
+    }
     map[nickname] = getUserRaffleExcludedFromRow_(row, col);
+    map[userIdKey_(nickname)] = map[nickname];
   });
   return map;
 }
@@ -4666,7 +4986,7 @@ function findNickname(name, parish) {
   const data  = getUserRows_(sheet);
   const nicknames = [];
   for (let i = 0; i < data.length; i++) {
-    if (!data[i][col.nickname]) continue;
+    if (!data[i][col.nickname] || isUserInactiveFromRow_(data[i], col)) continue;
     if (String(data[i][col.name]).trim() === name && String(data[i][col.parish]).trim() === parish) {
       nicknames.push(String(data[i][col.nickname]).trim());
     }
@@ -4685,7 +5005,7 @@ function adminResetPassword(body) {
 
   const data = getUserRows_(sheet);
   for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname]).trim() === nickname) {
+    if (!isUserInactiveFromRow_(data[i], col) && isSameUserId_(data[i][col.nickname], nickname)) {
       const rowIndex = i + schema.dataStartRow;
       setUserPassword_(sheet, rowIndex, newPassword);
       clearSessionToken_(sheet, rowIndex);
@@ -4874,7 +5194,8 @@ function getOrCreateCardReceivedSheet() {
 
 // 수령 수량 upsert (nickname + cardId 기준)
 function setCardReceivedQty(body) {
-  var nickname = String(body.nickname || '');
+  if (isUserInactive_(body.nickname)) return { error: 'inactive_user' };
+  var nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '');
   var cardId   = Number(body.cardId);
   var qty      = Number(body.qty);
   if (!nickname || !cardId || isNaN(qty) || qty < 0) return { error: 'invalid_params' };
@@ -4882,7 +5203,7 @@ function setCardReceivedQty(body) {
   var col = getCardReceivedColumns_(sheet);
   var rows = getCardReceivedRows_(sheet);
   for (var i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.nickname]) === nickname && Number(rows[i][col.cardId]) === cardId) {
+    if (isSameUserId_(rows[i][col.nickname], nickname) && Number(rows[i][col.cardId]) === cardId) {
       sheet.getRange(i + SCHEMA.CARD_RECEIVED.dataStartRow, col.receivedQty + 1, 1, 2).setValues([[qty, new Date()]]);
       return { ok: true };
     }
@@ -4896,6 +5217,7 @@ function setDrawReceived(body) {
 }
 
 function getCardStats() {
+  var activeMap = getUserActiveMap_();
   var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
 
   // 1. Events.card.drawn → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
@@ -4910,6 +5232,8 @@ function getCardStats() {
       var cid = Number(event.refId);
       var amount = eventAmount_(event, 1);
       if (!nick || !cid || amount <= 0) return;
+      if (!activeMap[userIdKey_(nick)]) return;
+      nick = activeMap[userIdKey_(nick)];
       cardCounts[cid] = (cardCounts[cid] || 0) + amount;
       totalDraws += amount;
       if (!userDrawMap[nick]) userDrawMap[nick] = {};
@@ -4931,6 +5255,8 @@ function getCardStats() {
         var cid  = Number(row[rcvCol.cardId]);
         var qty  = Number(row[rcvCol.receivedQty]) || 0;
         if (!nick || !cid) return;
+        if (!activeMap[userIdKey_(nick)]) return;
+        nick = activeMap[userIdKey_(nick)];
         receivedCounts[cid] = (receivedCounts[cid] || 0) + qty;
         if (!userReceivedMap[nick]) userReceivedMap[nick] = {};
         userReceivedMap[nick][cid] = qty;
@@ -4952,6 +5278,9 @@ function getCardStats() {
         var reqCard  = Number(row[tradeCol.requesterCardId]);
         var tgt      = String(row[tradeCol.target]);
         var tgtCard  = Number(row[tradeCol.targetCardId]);
+        if (!activeMap[userIdKey_(req)] || !activeMap[userIdKey_(tgt)]) return;
+        req = activeMap[userIdKey_(req)];
+        tgt = activeMap[userIdKey_(tgt)];
         // requester: 양도 reqCard → tgt, 취득 tgtCard ← tgt
         if (!tradeOutMap[req]) tradeOutMap[req] = {};
         if (!tradeOutMap[req][reqCard]) tradeOutMap[req][reqCard] = [];
@@ -5134,14 +5463,9 @@ function getOrCreateInquirySheet() {
 
 function verifyUserPassword(nickname, password) {
   const sheet = getUsersSheet_();
-  const col   = getUserColumns_(sheet);
-  const data  = getUserRows_(sheet);
-  for (let i = 0; i < data.length; i++) {
-    if (String(data[i][col.nickname]).trim() === nickname) {
-      return verifyStoredPassword_(String(data[i][col.password] || '').trim(), password);
-    }
-  }
-  return false;
+  const info = findUserInfoByNickname_(sheet, nickname);
+  if (!info || info.inactive) return false;
+  return verifyStoredPassword_(String(info.row[info.col.password] || '').trim(), password);
 }
 
 function auditUserPasswordStorage_() {
@@ -5224,7 +5548,7 @@ function migrateUserPasswordsToHashApply() {
 }
 
 function postHpHint(body) {
-  const nickname  = String(body.nickname  || '').trim();
+  const nickname  = getCanonicalUserId_(body.nickname) || String(body.nickname  || '').trim();
   const weekKey   = String(body.weekKey   || '').trim();
   const cardIndex = Number(body.cardIndex) || 0;
   if (!nickname || !weekKey) return { error: 'missing_fields' };
@@ -5274,10 +5598,12 @@ function getInquiries(source) {
   if (last < SCHEMA.INQUIRIES.dataStartRow) return { ok: true, inquiries: [] };
   const col = getInquiryColumns_(sheet);
   const rows = getInquiryRows_(sheet);
+  const activeMap = adminAuthorized ? getUserActiveMap_() : null;
   const inquiries = rows
     .map((r, i) => ({ row: r, rowIndex: i + SCHEMA.INQUIRIES.dataStartRow }))
     .filter(item => item.row[col.id])
-    .filter(item => adminAuthorized || String(item.row[col.nickname]).trim() === requester)
+    .filter(item => !adminAuthorized || activeMap[userIdKey_(item.row[col.nickname])])
+    .filter(item => adminAuthorized || isSameUserId_(item.row[col.nickname], requester))
     .map(item => ({
       rowIndex:  item.rowIndex,
       id:        String(item.row[col.id]),
@@ -5292,7 +5618,7 @@ function getInquiries(source) {
 }
 
 function postInquiry(body) {
-  const nickname = String(body.nickname || '').trim();
+  const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
   const content  = String(body.content  || '').trim();
   if (!nickname || !content) return { error: 'missing_fields' };
   if (!hasValidUserAuth_(body, nickname)) return { error: 'unauthorized', authRequired: true };
@@ -5302,7 +5628,7 @@ function postInquiry(body) {
 }
 
 function editInquiry(body) {
-  const nickname = String(body.nickname || '').trim();
+  const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
   const id       = String(body.id       || '');
   const content  = String(body.content  || '').trim();
   if (!nickname || !id || !content) return { error: 'missing_fields' };
@@ -5313,7 +5639,7 @@ function editInquiry(body) {
   const col = getInquiryColumns_(sheet);
   const rows = getInquiryRows_(sheet);
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.id]) === id && String(rows[i][col.nickname]).trim() === nickname) {
+    if (String(rows[i][col.id]) === id && isSameUserId_(rows[i][col.nickname], nickname)) {
       sheet.getRange(i + SCHEMA.INQUIRIES.dataStartRow, col.content + 1).setValue(content);
       return { ok: true };
     }
@@ -5336,8 +5662,8 @@ function deleteInquiry(body) {
       sheet.deleteRow(rowIndex);
       return { ok: true };
     }
-    const nickname = String(body.nickname || '').trim();
-    if (String(rows[i][col.nickname]).trim() === nickname && hasValidUserAuth_(body, nickname)) {
+    const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
+    if (isSameUserId_(rows[i][col.nickname], nickname) && hasValidUserAuth_(body, nickname)) {
       sheet.deleteRow(rowIndex);
       return { ok: true };
     }
@@ -5394,7 +5720,7 @@ function getUserCollection(userId) {
   const rows = getCollectionRows_(sheet);
   if (!rows.length) return {};
   for (const row of rows) {
-    if (String(row[col.userId]) !== userId) continue;
+    if (!isSameUserId_(row[col.userId], userId)) continue;
     const counts = {};
     for (let i = 1; i <= 9; i++) {
       const cnt = Number(row[col['card' + i]]) || 0;
@@ -5414,7 +5740,7 @@ function getCollectionTickets(userId) {
   const rows = getCollectionRows_(sheet);
   if (!rows.length) return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
   for (const row of rows) {
-    if (String(row[col.userId]) === userId) {
+    if (isSameUserId_(row[col.userId], userId)) {
       return {
         totalEarned: Number(row[col.totalEarned]) || 0,
         totalDrawn:  Number(row[col.totalDrawn]) || 0,
@@ -5604,7 +5930,7 @@ function findUserRaffleTicket_(rows, userId, condition) {
   const cleanCond = String(condition || '').trim();
   for (let i = 0; i < rows.length; i++) {
     if (!isActiveRaffleTicketRow_(rows[i])) continue;
-    if (String(rows[i][RAFFLE_TICKET_COL.userId]).trim() === cleanUser &&
+    if (isSameUserId_(rows[i][RAFFLE_TICKET_COL.userId], cleanUser) &&
         String(rows[i][RAFFLE_TICKET_COL.condition]).trim() === cleanCond) {
       return { row: rows[i], index: i };
     }
@@ -5650,12 +5976,10 @@ function isUserRaffleExcluded_(userId) {
   const target = String(userId || '').trim();
   if (!target) return true;
   const sheet = getUsersSheet_();
-  const col = getUserColumns_(sheet);
-  const rows = getUserRows_(sheet);
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.nickname] || '').trim() === target) {
-      return getUserRaffleExcludedFromRow_(rows[i], col);
-    }
+  const info = findUserInfoByNickname_(sheet, target);
+  if (info) {
+    if (info.inactive) return true;
+    return getUserRaffleExcludedFromRow_(info.row, info.col);
   }
   return true;
 }
@@ -5674,9 +5998,10 @@ function getActiveRaffleTicketSummary_(rows) {
     const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
     const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
     if (!userId || !condition) return;
-    byUser[userId] = (byUser[userId] || 0) + 1;
-    if (!byUserCondition[userId]) byUserCondition[userId] = {};
-    byUserCondition[userId][condition] = padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]);
+    const key = userIdKey_(userId);
+    byUser[key] = (byUser[key] || 0) + 1;
+    if (!byUserCondition[key]) byUserCondition[key] = {};
+    byUserCondition[key][condition] = padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]);
   });
   return { byUser: byUser, byUserCondition: byUserCondition };
 }
@@ -5688,7 +6013,9 @@ function getUserParishMap_() {
   const map = {};
   rows.forEach(function(row) {
     const nickname = String(row[col.nickname] || '').trim();
-    if (nickname) map[nickname] = String(row[col.parish] || '').trim();
+    if (!nickname || isUserInactiveFromRow_(row, col)) return;
+    map[nickname] = String(row[col.parish] || '').trim();
+    map[userIdKey_(nickname)] = map[nickname];
   });
   return map;
 }
@@ -5699,7 +6026,7 @@ function getUserParishFromUsers_(userId) {
   const rows = getUserRows_(sheet);
   const target = String(userId || '').trim();
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][col.nickname] || '').trim() === target) {
+    if (!isUserInactiveFromRow_(rows[i], col) && isSameUserId_(rows[i][col.nickname], target)) {
       return String(rows[i][col.parish] || '').trim();
     }
   }
@@ -5709,7 +6036,7 @@ function getUserParishFromUsers_(userId) {
 // 핵심: 한 번에 한 condition 발급. 중복 발급 차단. LockService로 동시성 보장.
 function issueRaffleTicket_(userId, condition, weekKey, options) {
   const opts = options || {};
-  const cleanUser = String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId) || String(userId || '').trim();
   const cleanCond = String(condition || '').trim();
   if (!cleanUser || !cleanCond) return { ok: false, error: 'missing_fields' };
   if (isUserRaffleExcluded_(cleanUser)) {
@@ -5772,7 +6099,7 @@ function issueRaffleTicket_(userId, condition, weekKey, options) {
 // 사용자의 현재 상태(보유 카드/가입 여부) 기준으로 필요한 모든 티켓을 backfill 발급
 function ensureUserRaffleTickets_(userId, options) {
   const opts = options || {};
-  const cleanUser = String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId) || String(userId || '').trim();
   if (!cleanUser) return { ok: false, issued: [] };
   if (isUserRaffleExcluded_(cleanUser)) return { ok: true, eligible: false, issued: [], excluded: true };
 
@@ -5802,14 +6129,14 @@ function ensureUserRaffleTickets_(userId, options) {
 }
 
 function getUserRaffleTicketNumbers_(userId) {
-  const cleanUser = String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId) || String(userId || '').trim();
   if (!cleanUser) return [];
   if (isUserRaffleExcluded_(cleanUser)) return [];
   const rows = getRaffleTicketRows_();
   const map = {};
   rows.forEach(function(r) {
     if (!isActiveRaffleTicketRow_(r)) return;
-    if (String(r[RAFFLE_TICKET_COL.userId]).trim() !== cleanUser) return;
+    if (!isSameUserId_(r[RAFFLE_TICKET_COL.userId], cleanUser)) return;
     map[String(r[RAFFLE_TICKET_COL.condition]).trim()] = padTicketNo_(r[RAFFLE_TICKET_COL.ticketNo]);
   });
   return ['signup', 'card_3', 'card_5', 'card_10']
@@ -5844,6 +6171,7 @@ function backfillSignupRaffleTickets_(dryRun) {
   userRows.forEach(function(row) {
     const nickname = String(row[col.nickname] || '').trim();
     if (!nickname) return;
+    if (isUserInactiveFromRow_(row, col)) return;
     if (getUserRaffleExcludedFromRow_(row, col)) {
       excludedUsers.push(nickname);
       return;
@@ -6030,7 +6358,7 @@ function revokeIneligibleRaffleTickets_(dryRun) {
     if (!isActiveRaffleTicketRow_(row)) return;
     const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
     if (!userId) return;
-    if (excludedMap[userId] !== true) return;
+    if (excludedMap[userId] !== true && excludedMap[userIdKey_(userId)] !== true) return;
 
     planned.push({
       rowNumber: idx + 2,
@@ -6079,7 +6407,7 @@ function releaseRaffleTicketRow_(row, now) {
 }
 
 function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
-  const cleanUser = String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId, { includeInactive: true }) || String(userId || '').trim();
   if (!cleanUser) return { error: 'missing_userId' };
   const sheet = getOrCreateRaffleTicketsSheet_();
   const last = sheet.getLastRow();
@@ -6100,7 +6428,7 @@ function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
 
   values.forEach(function(row, idx) {
     if (!isActiveRaffleTicketRow_(row)) return;
-    if (String(row[RAFFLE_TICKET_COL.userId] || '').trim() !== cleanUser) return;
+    if (!isSameUserId_(row[RAFFLE_TICKET_COL.userId], cleanUser)) return;
     const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
     if (hasConditionFilter && !conditionMap[condition]) return;
     revokedRows.push({
@@ -6129,7 +6457,9 @@ function getCollectionSnapshotMap_(rows, col) {
   (rows || []).forEach(function(row) {
     const rowUserId = String(row[col.userId] || '').trim();
     if (!rowUserId) return;
-    map[rowUserId] = collectionRowToSnapshot_(row, col, true);
+    const snapshot = collectionRowToSnapshot_(row, col, true);
+    map[rowUserId] = snapshot;
+    map[userIdKey_(rowUserId)] = snapshot;
   });
   return map;
 }
@@ -6139,7 +6469,7 @@ function getRetreatAttendanceMapFromRows_(rows, col) {
   (rows || []).forEach(function(row) {
     const nickname = String(row[col.nickname] || '').trim();
     if (!nickname) return;
-    map[nickname] = row[col.attended] === true;
+    map[userIdKey_(nickname)] = row[col.attended] === true;
   });
   return map;
 }
@@ -6155,9 +6485,11 @@ function getRaffleStatsFromRows_(userId, options) {
   (opts.usersRows || []).forEach(function(row) {
     const nickname = String(row[opts.userCol.nickname] || '').trim();
     if (!nickname) return;
+    if (isUserInactiveFromRow_(row, opts.userCol)) return;
     const raffleExcluded = getUserRaffleExcludedFromRow_(row, opts.userCol);
+    const nicknameKey = userIdKey_(nickname);
     if (raffleExcluded) {
-      if (nickname === cleanUserId) {
+      if (isSameUserId_(nickname, cleanUserId)) {
         const currentSnapshot = opts.currentSnapshot || collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
         stats.eligible = false;
         stats.ineligibleReason = 'raffle_excluded';
@@ -6168,11 +6500,11 @@ function getRaffleStatsFromRows_(userId, options) {
     }
     const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
     const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, true);
-    const activeTickets = ticketSummary.byUser[nickname] || 0;
+    const activeTickets = ticketSummary.byUser[nicknameKey] || 0;
     stats.totalTickets += activeTickets;
     if (activeTickets > 0) stats.participantCount++;
-    if (nickname === cleanUserId) {
-      const byCondition = ticketSummary.byUserCondition[nickname] || {};
+    if (isSameUserId_(nickname, cleanUserId)) {
+      const byCondition = ticketSummary.byUserCondition[nicknameKey] || {};
       stats.myTickets = activeTickets;
       stats.uniqueCards = info.uniqueCards;
       stats.breakdown = {
@@ -6197,8 +6529,9 @@ function getRaffleStatsFromRows_(userId, options) {
     }
     const snapshot = opts.currentSnapshot || collectionMap[cleanUserId] || emptyCollectionSnapshot_(cleanUserId, false);
     const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, true);
-    const byCondition = ticketSummary.byUserCondition[cleanUserId] || {};
-    const activeTickets = ticketSummary.byUser[cleanUserId] || 0;
+    const cleanUserKey = userIdKey_(cleanUserId);
+    const byCondition = ticketSummary.byUserCondition[cleanUserKey] || {};
+    const activeTickets = ticketSummary.byUser[cleanUserKey] || 0;
     stats.myTickets = activeTickets;
     stats.uniqueCards = info.uniqueCards;
     stats.breakdown = {
@@ -6223,8 +6556,12 @@ function getTicketStats() {
   const col = getCollectionColumns_(sheet);
   const rows = getCollectionRows_(sheet);
   if (!rows.length) return { ok: true, users: [], totalRemaining: 0 };
+  const activeMap = getUserActiveMap_();
   const users = rows
-    .filter(function(r) { return String(r[col.userId]).trim(); })
+    .filter(function(r) {
+      const userId = String(r[col.userId]).trim();
+      return userId && activeMap[userIdKey_(userId)];
+    })
     .map(function(r) {
       return {
         nickname:     String(r[col.userId]),
@@ -6289,11 +6626,16 @@ function getCollectionProjectionInputs_() {
 
 function getCollectionProjectionCandidateUserIds_(events, inputs) {
   const ids = {};
+  const activeMap = getUserActiveMap_();
+  function addIfActive(userId) {
+    const canonical = activeMap[userIdKey_(userId)];
+    if (canonical) ids[canonical] = true;
+  }
   if (inputs && inputs.userCol) {
     const userCol = inputs.userCol;
     (inputs.usersRows || []).forEach(function(row) {
       const userId = String(row[userCol.nickname] || '').trim();
-      if (userId) ids[userId] = true;
+      if (userId && !isUserInactiveFromRow_(row, userCol)) addIfActive(userId);
     });
   } else {
     const usersSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
@@ -6301,7 +6643,7 @@ function getCollectionProjectionCandidateUserIds_(events, inputs) {
       const userCol = getUserColumns_(usersSheet);
       getUserRows_(usersSheet).forEach(function(row) {
         const userId = String(row[userCol.nickname] || '').trim();
-        if (userId) ids[userId] = true;
+        if (userId && !isUserInactiveFromRow_(row, userCol)) addIfActive(userId);
       });
     }
   }
@@ -6310,7 +6652,7 @@ function getCollectionProjectionCandidateUserIds_(events, inputs) {
     const collectionCol = inputs.collectionCol;
     (inputs.collectionRows || []).forEach(function(row) {
       const userId = String(row[collectionCol.userId] || '').trim();
-      if (userId) ids[userId] = true;
+      if (userId) addIfActive(userId);
     });
   } else {
     const collectionSheet = getSpreadsheet().getSheetByName(SHEET_NAMES.COLLECTION);
@@ -6318,17 +6660,17 @@ function getCollectionProjectionCandidateUserIds_(events, inputs) {
       const collectionCol = getCollectionColumns_(collectionSheet);
       getCollectionRows_(collectionSheet).forEach(function(row) {
         const userId = String(row[collectionCol.userId] || '').trim();
-        if (userId) ids[userId] = true;
+        if (userId) addIfActive(userId);
       });
     }
   }
 
   events.forEach(function(event) {
     const userId = String(event.userId || '').trim();
-    if (userId) ids[userId] = true;
+    if (userId) addIfActive(userId);
     if (event.type === EVENT_TYPES.TRADE_REQUESTED) {
       const target = String((event.payload && event.payload.target) || '').trim();
-      if (target) ids[target] = true;
+      if (target) addIfActive(target);
     }
   });
 
@@ -6365,7 +6707,7 @@ function getCurrentCollectionSnapshot_(userId, inputs) {
 function getCurrentCollectionSnapshotFromRows_(userId, rows, col) {
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[col.userId] || '').trim() !== userId) continue;
+    if (!isSameUserId_(row[col.userId], userId)) continue;
     return collectionRowToSnapshot_(row, col, true);
   }
   return emptyCollectionSnapshot_(userId, false);
@@ -6428,7 +6770,7 @@ function buildCollectionProjectionFromEvents_(userId, events) {
   const acceptedTradeIds = {};
 
   events.forEach(function(event) {
-    if (String(event.userId || '').trim() !== userId) return;
+    if (!isSameUserId_(event.userId, userId)) return;
     if (event.type === EVENT_TYPES.TICKET_GRANTED) {
       snapshot.totalEarned += eventAmount_(event, 1);
     } else if (event.type === EVENT_TYPES.TICKET_CONSUMED) {
@@ -6493,10 +6835,10 @@ function buildTradeRequestMapFromEvents_(events) {
 }
 
 function applyAcceptedTradeProjection_(snapshot, trade, userId) {
-  if (trade.requester === userId) {
+  if (isSameUserId_(trade.requester, userId)) {
     adjustProjectedCardCount_(snapshot, trade.requesterCardId, -1);
     adjustProjectedCardCount_(snapshot, trade.targetCardId, 1);
-  } else if (trade.target === userId) {
+  } else if (isSameUserId_(trade.target, userId)) {
     adjustProjectedCardCount_(snapshot, trade.targetCardId, -1);
     adjustProjectedCardCount_(snapshot, trade.requesterCardId, 1);
   }
@@ -6560,6 +6902,7 @@ function rebuildCollectionRow(userId) {
 }
 
 function rebuildCollectionRow_(userId, eventsOverride) {
+  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const events = eventsOverride || Events_readAll_();
   const projected = buildCollectionProjectionFromEvents_(userId, events);
   const sheet = getOrCreateCollectionSheet();
@@ -6958,7 +7301,7 @@ function findCollectionRowIndex_(sheet, col, userId) {
   if (last < SCHEMA.COLLECTION.dataStartRow) return -1;
   const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
   for (let i = 0; i < ids.length; i++) {
-    if (String(ids[i][0] || '').trim() === userId) return i + SCHEMA.COLLECTION.dataStartRow;
+    if (isSameUserId_(ids[i][0], userId)) return i + SCHEMA.COLLECTION.dataStartRow;
   }
   return -1;
 }
@@ -7014,14 +7357,14 @@ function getOrCreateTradesSheet() {
 }
 
 function requestTrade(body) {
-  const requester       = String(body.nickname       || '').trim();
+  const requester       = getCanonicalUserId_(body.nickname) || String(body.nickname       || '').trim();
   const requesterCardId = Number(body.requesterCardId);
-  const target          = String(body.targetNickname  || '').trim();
+  const target          = getCanonicalUserId_(body.targetNickname) || String(body.targetNickname  || '').trim();
   const targetCardId    = Number(body.targetCardId);
 
   if (!requester || !target || !requesterCardId || !targetCardId)
     return { error: '필수 항목이 누락됐어요.' };
-  if (requester === target)
+  if (isSameUserId_(requester, target))
     return { error: '자기 자신과 교환할 수 없어요.' };
   if (requesterCardId === 10 || targetCardId === 10)
     return { error: '히든 카드는 교환할 수 없어요.' };
@@ -7067,7 +7410,7 @@ function requestTrade(body) {
 
 function acceptTrade(body) {
   const tradeId  = String(body.tradeId   || '');
-  const nickname = String(body.nickname  || '').trim();
+  const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname  || '').trim();
   if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
 
   const lock = LockService.getScriptLock();
@@ -7084,7 +7427,7 @@ function acceptTrade(body) {
   for (let i = 0; i < rows.length; i++) {
     const rowIndex = i + SCHEMA.TRADES.dataStartRow;
     if (String(rows[i][col.id]) !== tradeId) continue;
-    if (String(rows[i][col.target]) !== nickname) return { error: 'unauthorized' };
+    if (!isSameUserId_(rows[i][col.target], nickname)) return { error: 'unauthorized' };
     if (String(rows[i][col.status]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
 
     const requester       = String(rows[i][col.requester]);
@@ -7134,7 +7477,7 @@ function acceptTrade(body) {
 
 function rejectTrade(body) {
   const tradeId  = String(body.tradeId  || '');
-  const nickname = String(body.nickname || '').trim();
+  const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
   if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
 
   const lock = LockService.getScriptLock();
@@ -7151,7 +7494,7 @@ function rejectTrade(body) {
   for (let i = 0; i < rows.length; i++) {
     const rowIndex = i + SCHEMA.TRADES.dataStartRow;
     if (String(rows[i][col.id]) !== tradeId) continue;
-    if (String(rows[i][col.target]) !== nickname) return { error: 'unauthorized' };
+    if (!isSameUserId_(rows[i][col.target], nickname)) return { error: 'unauthorized' };
     if (String(rows[i][col.status]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
     sheet.getRange(rowIndex, col.status + 1).setValue('실패 (거절됨)');
     sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
@@ -7165,7 +7508,7 @@ function rejectTrade(body) {
 
 function cancelTrade(body) {
   const tradeId  = String(body.tradeId  || '');
-  const nickname = String(body.nickname || '').trim();
+  const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
   if (!tradeId || !nickname) return { error: '필수 항목이 누락됐어요.' };
 
   const lock = LockService.getScriptLock();
@@ -7182,7 +7525,7 @@ function cancelTrade(body) {
   for (let i = 0; i < rows.length; i++) {
     const rowIndex = i + SCHEMA.TRADES.dataStartRow;
     if (String(rows[i][col.id]) !== tradeId) continue;
-    if (String(rows[i][col.requester]) !== nickname) return { error: 'unauthorized' };
+    if (!isSameUserId_(rows[i][col.requester], nickname)) return { error: 'unauthorized' };
     if (String(rows[i][col.status]) !== 'pending') return { error: '이미 처리된 요청이에요.' };
     sheet.getRange(rowIndex, col.status + 1).setValue('실패 (취소됨)');
     sheet.getRange(rowIndex, col.resolvedAt + 1).setValue(new Date().toISOString());
@@ -7219,6 +7562,7 @@ function _expireOldTrades(sheet) {
 }
 
 function getTrades(userId) {
+  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
 
@@ -7241,8 +7585,8 @@ function getTrades(userId) {
       status: String(row[col.status]), createdAt: String(row[col.createdAt]), resolvedAt: String(row[col.resolvedAt]),
       requesterPrayed: !!row[col.requesterPrayed], targetPrayed: !!row[col.targetPrayed]
     };
-    if (t.target   === userId) incoming.push(t);
-    if (t.requester === userId) outgoing.push(t);
+    if (isSameUserId_(t.target, userId)) incoming.push(t);
+    if (isSameUserId_(t.requester, userId)) outgoing.push(t);
   });
   incoming.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   outgoing.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -7255,7 +7599,7 @@ function getTrades(userId) {
     const nickToName = getUserNameMap_();
     [...incoming, ...outgoing].forEach(function(t) {
       if (t.status === 'accepted') {
-        const otherNick = (t.target === userId) ? t.requester : t.target;
+        const otherNick = isSameUserId_(t.target, userId) ? t.requester : t.target;
         const realName = nickToName[otherNick] || '';
         const entry = realName ? hpEntries.find(function(e) { return e.n === realName; }) : null;
         t.otherPrayer = entry ? entry.c : '';
@@ -7271,7 +7615,7 @@ function getTrades(userId) {
 
 function prayForTrade(body) {
   const tradeId  = String(body.tradeId  || '');
-  const nickname = String(body.nickname || '').trim();
+  const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
   if (!tradeId || !nickname) return { error: 'missing params' };
 
   const sheet = getOrCreateTradesSheet();
@@ -7285,11 +7629,11 @@ function prayForTrade(body) {
     if (String(rows[i][col.id]) !== tradeId) continue;
     const requester = String(rows[i][col.requester]);
     const target    = String(rows[i][col.target]);
-    if (nickname === requester) {
+    if (isSameUserId_(nickname, requester)) {
       sheet.getRange(rowIndex, col.requesterPrayed + 1).setValue(new Date().toISOString());
       return { ok: true };
     }
-    if (nickname === target) {
+    if (isSameUserId_(nickname, target)) {
       sheet.getRange(rowIndex, col.targetPrayed + 1).setValue(new Date().toISOString());
       return { ok: true };
     }
@@ -7310,8 +7654,10 @@ function getAdminTrades() {
 
   _expireOldTrades(sheet);
   const rows = getTradesRows_(sheet);
+  const activeMap = getUserActiveMap_();
   const trades = rows
     .filter(r => r[col.id])
+    .filter(r => activeMap[userIdKey_(r[col.requester])] && activeMap[userIdKey_(r[col.target])])
     .map(row => ({
       id: String(row[col.id]), requester: String(row[col.requester]),
       requesterCardId: Number(row[col.requesterCardId]), requesterCardName: String(row[col.requesterCardName]),
@@ -7443,7 +7789,7 @@ function normalizeBBBPhotoMissionType_(missionType) {
 }
 
 function getBBBMatchForUser_(userId) {
-  const cleanUserId = String(userId || '').trim();
+  const cleanUserId = getCanonicalUserId_(userId) || String(userId || '').trim();
   if (!cleanUserId) return { ok: false, error: 'missing_userId' };
 
   const bbbSheet = getOrCreateBBBSheet();
@@ -7454,7 +7800,7 @@ function getBBBMatchForUser_(userId) {
   const rows = getBbbRows_(bbbSheet);
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[bbbCol.userId]).trim() !== cleanUserId) continue;
+    if (!isSameUserId_(row[bbbCol.userId], cleanUserId)) continue;
     const careBuddyId = String(row[bbbCol.careBuddyId] || '').trim();
     if (!careBuddyId) return { ok: false, error: 'no_match' };
     return {
@@ -7720,16 +8066,18 @@ function adminGetBBBPhotoApprovals() {
     const userId = String(row[photoCol.userId] || '').trim();
     const missionType = String(row[photoCol.missionType] || 'm1').trim();
     if (!userId || !isBBBPhotoApprovalRequired_(missionType)) return;
+    const canonicalUserId = getCanonicalUserId_(userId);
+    if (!canonicalUserId) return;
     const photoBase64 = String(row[photoCol.photoBase64] || '').trim();
     if (!photoBase64) return;
     const normalized = normalizeBBBPhotoMissionType_(missionType);
     if (!normalized.ok) return;
-    const rewardEvent = rewardMap[getBBBPhotoRewardEventKey_(userId, normalized.bonusSource)];
+    const rewardEvent = rewardMap[getBBBPhotoRewardEventKey_(canonicalUserId, normalized.bonusSource)];
     const status = getBBBPhotoApprovalStatus_(row, photoCol, rewardEvent);
     photos.push({
       rowIndex: index + SCHEMA.BBB_PHOTOS.dataStartRow,
-      userId: userId,
-      name: userNameMap[userId] || '',
+      userId: canonicalUserId,
+      name: userNameMap[canonicalUserId] || '',
       missionType: missionType,
       missionLabel: missionLabels[missionType] || missionType,
       photoBase64: photoBase64,
@@ -7760,7 +8108,7 @@ function adminGetBBBPhotoApprovals() {
 
 function adminApproveBBBPhoto(body) {
   if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
-  const userId = String(body.userId || '').trim();
+  const userId = getCanonicalUserId_(body.userId) || String(body.userId || '').trim();
   const missionType = String(body.missionType || '').trim();
   if (!userId || !missionType) return { error: 'missing_fields' };
   if (!isBBBPhotoApprovalRequired_(missionType)) return { error: 'approval_not_required' };
@@ -7778,7 +8126,7 @@ function adminApproveBBBPhoto(body) {
     let target = null;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      if (String(row[photoCol.userId] || '').trim() !== userId) continue;
+      if (!isSameUserId_(row[photoCol.userId], userId)) continue;
       if (String(row[photoCol.missionType] || 'm1').trim() !== missionType) continue;
       target = { row: row, rowIndex: i + SCHEMA.BBB_PHOTOS.dataStartRow };
       break;
@@ -7818,7 +8166,7 @@ function adminApproveBBBPhoto(body) {
 
 function adminRejectBBBPhoto(body) {
   if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
-  const userId = String(body.userId || '').trim();
+  const userId = getCanonicalUserId_(body.userId) || String(body.userId || '').trim();
   const missionType = String(body.missionType || '').trim();
   if (!userId || !missionType) return { error: 'missing_fields' };
   if (!isBBBPhotoApprovalRequired_(missionType)) return { error: 'approval_not_required' };
@@ -7832,7 +8180,7 @@ function adminRejectBBBPhoto(body) {
   const rows = getBbbPhotoRows_(photoSheet);
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (String(row[photoCol.userId] || '').trim() !== userId) continue;
+    if (!isSameUserId_(row[photoCol.userId], userId)) continue;
     if (String(row[photoCol.missionType] || 'm1').trim() !== missionType) continue;
     if (!String(row[photoCol.photoBase64] || '').trim()) return { error: 'photo_not_found' };
     setBBBPhotoApproval_(
@@ -7851,7 +8199,7 @@ function adminRejectBBBPhoto(body) {
 
 // ─ BBB 사진 업로드 (m1/m2는 운영진 승인 후 지급, m3는 7개 스팟 완료 시 지급)
 function uploadBBBPhoto(body) {
-  const userId      = String(body.userId      || '').trim();
+  const userId      = getCanonicalUserId_(body.userId) || String(body.userId      || '').trim();
   const photo       = String(body.photo       || '').trim();
   const missionType = String(body.missionType || 'm1').trim();
   if (!userId || !photo) return { error: '필수 항목 누락.' };
@@ -7871,7 +8219,7 @@ function uploadBBBPhoto(body) {
       const rows = getBbbPhotoRows_(photoSheet);
       for (let i = 0; i < rows.length; i++) {
         const mt = String(rows[i][photoCol.missionType] || 'm1');
-        if (String(rows[i][photoCol.userId]) === userId && mt === missionType) { existingRow = i + SCHEMA.BBB_PHOTOS.dataStartRow; break; }
+        if (isSameUserId_(rows[i][photoCol.userId], userId) && mt === missionType) { existingRow = i + SCHEMA.BBB_PHOTOS.dataStartRow; break; }
       }
     }
 
@@ -7916,7 +8264,7 @@ function uploadBBBPhoto(body) {
           const pRows = getBbbPhotoRows_(pSheet);
           for (let s = 0; s < 7; s++) {
             const found = pRows.some(function(r) {
-              return String(r[pCol.userId]) === userId && String(r[pCol.missionType]) === 'm3_' + s && String(r[pCol.photoBase64]);
+              return isSameUserId_(r[pCol.userId], userId) && String(r[pCol.missionType]) === 'm3_' + s && String(r[pCol.photoBase64]);
             });
             if (found) filledSpots++;
           }
@@ -7949,7 +8297,7 @@ function uploadBBBPhoto(body) {
 }
 
 function deleteBBBPhoto(body) {
-  const userId      = String(body.userId      || '').trim();
+  const userId      = getCanonicalUserId_(body.userId) || String(body.userId      || '').trim();
   const missionType = String(body.missionType || 'm1').trim();
   if (!userId) return { error: '필수 항목 누락.' };
   const photoSheet = getOrCreateBBBPhotosSheet();
@@ -7959,7 +8307,7 @@ function deleteBBBPhoto(body) {
   const rows = getBbbPhotoRows_(photoSheet);
   for (let i = 0; i < rows.length; i++) {
     const mt = String(rows[i][photoCol.missionType] || 'm1');
-    if (String(rows[i][photoCol.userId]) === userId && mt === missionType) {
+    if (isSameUserId_(rows[i][photoCol.userId], userId) && mt === missionType) {
       if (isBBBPhotoApprovalRequired_(missionType)) {
         const normalized = normalizeBBBPhotoMissionType_(missionType);
         if (normalized.ok && hasActiveBBBPhotoReward_(userId, normalized.bonusSource)) {
@@ -8038,6 +8386,7 @@ function setupBBBMatching() {
 
 // ─ 내 BBB 정보 조회
 function getBBB(userId) {
+  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const bbbSheet = getOrCreateBBBSheet();
   const bbbCol = getBbbColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
@@ -8048,7 +8397,7 @@ function getBBB(userId) {
   // 내 row 찾기 (E=secretBuddyId, F=secretBuddyName 포함)
   let myRow = null, myRowIdx = -1;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][bbbCol.userId]) === userId) { myRow = rows[i]; myRowIdx = i; break; }
+    if (isSameUserId_(rows[i][bbbCol.userId], userId)) { myRow = rows[i]; myRowIdx = i; break; }
   }
   if (!myRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
@@ -8061,7 +8410,7 @@ function getBBB(userId) {
   const careBuddyId = String(myRow[bbbCol.careBuddyId]);
   let caughtByBuddy = false;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][bbbCol.userId]) === careBuddyId) {
+    if (isSameUserId_(rows[i][bbbCol.userId], careBuddyId)) {
       caughtByBuddy = rows[i][bbbCol.secretRevealed] === true;
       break;
     }
@@ -8081,7 +8430,7 @@ function getBBB(userId) {
       const photoCol = getBbbPhotoColumns_(photoSheet);
       const pRows = getBbbPhotoRows_(photoSheet);
       pRows.forEach(function(r) {
-        if (String(r[photoCol.userId]) !== userId) return;
+        if (!isSameUserId_(r[photoCol.userId], userId)) return;
         const mt = String(r[photoCol.missionType] || 'm1');
         const src = String(r[photoCol.photoBase64]);
         if (mt === 'm1') {
@@ -8135,7 +8484,7 @@ function getBBB(userId) {
 
 // ─ 시크릿버디 이름 맞추기
 function guessBBBSecret(body) {
-  const userId = String(body.userId || '').trim();
+  const userId = getCanonicalUserId_(body.userId) || String(body.userId || '').trim();
   const guess  = String(body.guess  || '').trim();
   if (!userId || !guess) return { error: '필수 항목이 누락됐어요.' };
 
@@ -8149,7 +8498,7 @@ function guessBBBSecret(body) {
   // 내 row 찾기
   let myRowIdx = -1;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][bbbCol.userId]) === userId) { myRowIdx = i; break; }
+    if (isSameUserId_(rows[i][bbbCol.userId], userId)) { myRowIdx = i; break; }
   }
   if (myRowIdx < 0) return { error: '매칭 정보가 없어요.' };
   if (rows[myRowIdx][bbbCol.secretRevealed] === true) return { ok: true, correct: true, alreadyRevealed: true };
@@ -8157,7 +8506,7 @@ function guessBBBSecret(body) {
   // 나를 케어버디로 갖는 사람 = 내 시크릿버디
   let secretBuddy = null;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][bbbCol.careBuddyId]) === userId) { secretBuddy = rows[i]; break; }
+    if (isSameUserId_(rows[i][bbbCol.careBuddyId], userId)) { secretBuddy = rows[i]; break; }
   }
   if (!secretBuddy) return { error: '시크릿버디 정보가 없어요.' };
 
@@ -8195,7 +8544,7 @@ function guessBBBSecret(body) {
 
 // ─ 케어버디에게 익명 메시지 전송
 function sendBBBMessage(body) {
-  const userId  = String(body.userId  || '').trim();
+  const userId  = getCanonicalUserId_(body.userId) || String(body.userId  || '').trim();
   const message = String(body.message || '').trim();
   if (!userId || !message) return { error: '필수 항목이 누락됐어요.' };
   if (message.length > 300) return { error: '메시지는 300자 이하로 작성해주세요.' };
@@ -8212,7 +8561,7 @@ function sendBBBMessage(body) {
   const rows = getBbbRows_(bbbSheet);
   let careBuddyId = null;
   for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][bbbCol.userId]) === userId) { careBuddyId = String(rows[i][bbbCol.careBuddyId]); break; }
+    if (isSameUserId_(rows[i][bbbCol.userId], userId)) { careBuddyId = String(rows[i][bbbCol.careBuddyId]); break; }
   }
   if (!careBuddyId) return { error: '매칭 정보가 없어요.' };
 
@@ -8223,7 +8572,7 @@ function sendBBBMessage(body) {
     const recent = getBbbMessageRows_(msgSheet).slice(-10);
     const now = Date.now();
     for (const r of recent) {
-      if (String(r[msgCol.fromUserId]) === userId && String(r[msgCol.message]) === message) {
+      if (isSameUserId_(r[msgCol.fromUserId], userId) && String(r[msgCol.message]) === message) {
         const sent = new Date(String(r[msgCol.createdAt])).getTime();
         if (!isNaN(sent) && now - sent < 15000) return { ok: true };
       }
@@ -8236,6 +8585,7 @@ function sendBBBMessage(body) {
 
 // ─ 내가 받은 익명 메시지 조회 (발신자 숨김)
 function getBBBMessages(userId) {
+  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const msgSheet = getOrCreateBBBMessagesSheet();
   const msgCol = getBbbMessageColumns_(msgSheet);
   const last = msgSheet.getLastRow();
@@ -8243,12 +8593,12 @@ function getBBBMessages(userId) {
   const rows = getBbbMessageRows_(msgSheet);
   // 받은 메시지: to === userId (오래된 순)
   const messages = rows
-    .filter(r => r[msgCol.msgId] && String(r[msgCol.toUserId]) === userId)
+    .filter(r => r[msgCol.msgId] && isSameUserId_(r[msgCol.toUserId], userId))
     .map(r => ({ id: String(r[msgCol.msgId]), message: String(r[msgCol.message]), createdAt: String(r[msgCol.createdAt]) }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   // 보낸 메시지: from === userId (오래된 순)
   const sent = rows
-    .filter(r => r[msgCol.msgId] && String(r[msgCol.fromUserId]) === userId)
+    .filter(r => r[msgCol.msgId] && isSameUserId_(r[msgCol.fromUserId], userId))
     .map(r => ({ id: String(r[msgCol.msgId]), message: String(r[msgCol.message]), createdAt: String(r[msgCol.createdAt]) }))
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   return { ok: true, messages, sent };
@@ -8260,11 +8610,12 @@ function adminGetBBB() {
   const msgSheet = getOrCreateBBBMessagesSheet();
   const bbbCol = getBbbColumns_(bbbSheet);
   const msgCol = getBbbMessageColumns_(msgSheet);
+  const activeMap = getUserActiveMap_();
 
   const lastB = bbbSheet.getLastRow();
   const matches = lastB < SCHEMA.BBB.dataStartRow ? [] :
     getBbbRows_(bbbSheet)
-      .filter(r => r[bbbCol.userId])
+      .filter(r => r[bbbCol.userId] && activeMap[userIdKey_(r[bbbCol.userId])])
       .map(r => ({
         userId: String(r[bbbCol.userId]),
         careBuddyId: String(r[bbbCol.careBuddyId]), careBuddyName: String(r[bbbCol.careBuddyName]),
@@ -8275,7 +8626,7 @@ function adminGetBBB() {
   const lastM = msgSheet.getLastRow();
   const messages = lastM < SCHEMA.BBB_MESSAGES.dataStartRow ? [] :
     getBbbMessageRows_(msgSheet)
-      .filter(r => r[msgCol.msgId])
+      .filter(r => r[msgCol.msgId] && activeMap[userIdKey_(r[msgCol.fromUserId])] && activeMap[userIdKey_(r[msgCol.toUserId])])
       .map(r => ({
         id: String(r[msgCol.msgId]),
         from: String(r[msgCol.fromUserId]),
