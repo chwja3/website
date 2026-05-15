@@ -20,3 +20,5 @@ Follow-up context.
 2026-05-15. 사용자 앱에서 여전히 느린 경로는 userStatus와 saveCheckin의 Events_readByUser 호출이다. MissionProgress가 dashboard 용도만 갖고 있으면 오늘 제출한 항목을 빠르게 알 수 없으므로, 날짜별 제출 인덱스 projection을 추가해서 사용자 상태와 제출 전 중복 검증도 projection을 우선 보도록 확장한다. 기존 Events 경로는 projection이 준비되지 않은 DEV/PROD 전환 직후의 fallback으로만 남긴다.
 
 2026-05-15. MissionProgress에 dateSlotIndicesJson 컬럼을 추가했다. rebuildMissionProgressFromEvents 또는 admin Events 기준 재계산을 실행하면 기존 mission.submitted 이벤트에서 날짜별 제출 인덱스가 다시 채워진다. 이후 getUserStatus와 saveCheckin은 MissionProgress를 우선 읽고, projection이 준비되지 않았거나 오늘 제출 기록의 날짜별 인덱스가 비어 있는 경우에만 Events_readByUser로 fallback한다.
+
+2026-05-15. 카드 뽑기 직후 추첨권 조건 확인은 updateCollectionRowWithDeltas 결과 snapshot을 재사용하도록 바꿨다. 기존 ensureUserRaffleTickets는 Collection을 다시 읽은 뒤 조건마다 issueRaffleTicket을 호출했지만, 이제 snapshot 기반 helper가 3종/5종/10종 조건을 계산하고 RaffleTickets를 한 번 읽어서 필요한 번호만 발급한다.

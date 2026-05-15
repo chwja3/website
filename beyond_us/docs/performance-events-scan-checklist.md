@@ -12,6 +12,8 @@
 - [x] Events 기준 dashboard 재계산 함수는 admin 수동 복구 도구로 유지.
 Follow-up checklist.
 
+- [x] 카드 뽑기 후 추첨권 발급이 Collection을 다시 읽지 않도록 snapshot 기반 helper 적용.
+- [x] 여러 추첨권 조건을 한 번의 RaffleTickets read로 처리.
 - [x] MissionProgress에 날짜별 제출 인덱스 projection 추가.
 - [x] getUserStatus의 미션 상태 계산을 MissionProgress 우선으로 전환.
 - [x] saveCheckin의 제출 전 중복 검증을 MissionProgress 우선으로 전환.

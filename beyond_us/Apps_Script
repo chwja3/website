@@ -4671,7 +4671,9 @@ function drawCard(userId, weekKey, testMode, requestId) {
     );
     const rebuildResult = updateCollectionRowWithDeltas_(userId, collectionDeltas);
     // 카드 추가로 임계값(3/5/10종) 달성 시 추첨권 자동 발급
-    try { ensureUserRaffleTickets_(userId); } catch(e) {}
+    try {
+      ensureUserRaffleTicketsFromSnapshot_(userId, rebuildResult && rebuildResult.projected, { skipIssueLock: true });
+    } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const result = {
       ok: true,
@@ -4754,7 +4756,9 @@ function drawSpecialCard(userId, weekKey, requestId) {
       { type: EVENT_TYPES.SPECIAL_PACK_CONSUMED, amount: 1 },
       { type: EVENT_TYPES.CARD_DRAWN, cardId: card.id, amount: 1 },
     ], { baseSpecialPackStats: specialPackStats });
-    try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
+    try {
+      ensureUserRaffleTicketsFromSnapshot_(cleanUserId, rebuildResult && rebuildResult.projected, { skipIssueLock: true });
+    } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const nextSpecialPackStats = {
       totalEarned: specialPackStats.totalEarned,
@@ -6976,6 +6980,125 @@ function issueRaffleTicket_(userId, condition, weekKey, options) {
 }
 
 // 사용자의 현재 상태(보유 카드/가입 여부) 기준으로 필요한 모든 티켓을 backfill 발급
+function getUniqueCardCountFromSnapshot_(snapshot) {
+  let uniqueCount = 0;
+  const counts = (snapshot && snapshot.cardCounts) || {};
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    if (Number(counts[cardId]) > 0) uniqueCount++;
+  }
+  return uniqueCount;
+}
+
+function getRaffleConditionsForSnapshot_(snapshot, options) {
+  const opts = options || {};
+  const uniqueCount = getUniqueCardCountFromSnapshot_(snapshot);
+  const conditions = [];
+  if (opts.includeSignup === true) conditions.push('signup');
+  if (uniqueCount >= 3) conditions.push('card_3');
+  if (uniqueCount >= 5) conditions.push('card_5');
+  if (uniqueCount >= 10) conditions.push('card_10');
+  return conditions;
+}
+
+function issueRaffleTicketsBatch_(userId, conditions, weekKey, options) {
+  const opts = options || {};
+  const cleanUser = getCanonicalUserId_(userId);
+  const cleanConditions = Array.from(new Set((conditions || []).map(function(condition) {
+    return String(condition || '').trim();
+  }).filter(Boolean)));
+  if (!cleanUser || !cleanConditions.length) return { ok: true, issued: [] };
+  if (isUserRaffleExcluded_(cleanUser)) {
+    return { ok: true, eligible: false, issued: [], excluded: true };
+  }
+
+  let lock = null;
+  if (opts.skipLock !== true) {
+    lock = LockService.getScriptLock();
+    try { lock.waitLock(10000); } catch(e) { return { ok: false, error: 'lock_timeout', issued: [] }; }
+  }
+
+  try {
+    const sheet = getOrCreateRaffleTicketsSheet_();
+    const rows = getRaffleTicketRows_();
+    const lookup = getUserCanonicalLookup_();
+    const parish = getUserParishFromUsers_(cleanUser);
+    const name = getUserNameMap_()[cleanUser] || '';
+    const now = new Date().toISOString();
+    const week = String(weekKey || ('w' + getCurrentWeek_())).trim();
+    let maxNo = 0;
+    rows.forEach(function(row) {
+      const n = Number(String(row[RAFFLE_TICKET_COL.ticketNo] || '').replace(/^0+/, '') || '0');
+      if (n > maxNo) maxNo = n;
+    });
+    const issued = [];
+    const results = [];
+
+    function findExisting(condition) {
+      for (let i = 0; i < rows.length; i++) {
+        if (!isActiveRaffleTicketRow_(rows[i])) continue;
+        if (!isSameOwnedUserId_(rows[i][RAFFLE_TICKET_COL.userId], cleanUser, lookup)) continue;
+        if (String(rows[i][RAFFLE_TICKET_COL.condition]).trim() !== condition) continue;
+        return { row: rows[i], index: i };
+      }
+      return null;
+    }
+
+    cleanConditions.forEach(function(condition) {
+      const existing = findExisting(condition);
+      if (existing) {
+        results.push({
+          condition: condition,
+          ticket_no: padTicketNo_(existing.row[RAFFLE_TICKET_COL.ticketNo]),
+          dup: true,
+        });
+        return;
+      }
+      const available = findAvailableRaffleTicket_(rows);
+      const nextNo = available ? available.ticketNo : padTicketNo_(maxNo + 1);
+      maxNo = Math.max(maxNo, Number(nextNo));
+      const nextRow = [
+        nextNo,
+        1,
+        cleanUser,
+        name,
+        parish,
+        now,
+        week,
+        condition,
+        getRaffleConditionLabel_(condition),
+        'issued',
+        '',
+        '',
+        '',
+        now,
+      ];
+      if (available) {
+        sheet.getRange(available.index + 2, 1, 1, RAFFLE_TICKET_COLUMNS.length).setValues([nextRow]);
+        rows[available.index] = nextRow;
+      } else {
+        const newRow = sheet.getLastRow() + 1;
+        sheet.getRange(newRow, 1).setNumberFormat('@').setValue(nextNo);
+        sheet.getRange(newRow, 2, 1, RAFFLE_TICKET_COLUMNS.length - 1).setValues([nextRow.slice(1)]);
+        rows.push(nextRow);
+      }
+      issued.push(nextNo);
+      results.push({ condition: condition, ticket_no: nextNo, dup: false });
+    });
+
+    if (issued.length) clearUserDerivedCaches_(cleanUser);
+    return { ok: true, issued: issued, results: results };
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+function ensureUserRaffleTicketsFromSnapshot_(userId, snapshot, options) {
+  const conditions = getRaffleConditionsForSnapshot_(snapshot, options || {});
+  return issueRaffleTicketsBatch_(userId, conditions, null, {
+    skipLock: (options || {}).skipIssueLock === true,
+  });
+}
+
 function ensureUserRaffleTickets_(userId, options) {
   const opts = options || {};
   const cleanUser = getCanonicalUserId_(userId);
@@ -6986,25 +7109,7 @@ function ensureUserRaffleTickets_(userId, options) {
   const col = getCollectionColumns_(sheet);
   const rows = getCollectionRows_(sheet);
   const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUser, rows, col);
-  let uniqueCount = 0;
-  for (let cardId = 1; cardId <= 10; cardId++) {
-    if (Number(snapshot.cardCounts && snapshot.cardCounts[cardId]) > 0) uniqueCount++;
-  }
-
-  const triggers = [
-    { cond: 'signup', met: opts.includeSignup === true },
-    { cond: 'card_3',  met: uniqueCount >= 3 },
-    { cond: 'card_5',  met: uniqueCount >= 5 },
-    { cond: 'card_10', met: uniqueCount >= 10 },
-  ];
-
-  const issued = [];
-  triggers.forEach(function(t) {
-    if (!t.met) return;
-    const res = issueRaffleTicket_(cleanUser, t.cond, null, { skipLock: opts.skipIssueLock === true });
-    if (res.ok && !res.dup) issued.push(res.ticket_no);
-  });
-  return { ok: true, issued: issued };
+  return ensureUserRaffleTicketsFromSnapshot_(cleanUser, snapshot, opts);
 }
 
 function getUserRaffleTicketNumbers_(userId, raffleRows) {
