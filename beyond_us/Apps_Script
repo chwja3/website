@@ -850,6 +850,8 @@ function setUserPassword_(sheet, rowIndex, password) {
   cell.setValue(makePasswordHash_(password));
 }
 
+/*
+ * Manual-only public helper, disabled 2026-05-15.
 function setRequiredScriptProperties(properties) {
   const keys = REQUIRED_SCRIPT_PROPERTY_KEYS.slice();
   const clean = {};
@@ -878,6 +880,7 @@ function setRequiredScriptProperties(properties) {
   PropertiesService.getScriptProperties().setProperties(clean, false);
   return { ok: true, keys: keys };
 }
+ */
 
 function getScriptPropertiesStatus() {
   const props = PropertiesService.getScriptProperties();
@@ -1934,6 +1937,8 @@ function ensureEventsSheet_(sheet) {
   sheet.setFrozenRows(2);
 }
 
+/*
+ * Manual-only public helper, disabled 2026-05-15.
 function Events_append(type, userId, options) {
   const lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: '잠시 후 다시 시도해주세요.' }; }
@@ -1944,6 +1949,7 @@ function Events_append(type, userId, options) {
     lock.releaseLock();
   }
 }
+ */
 
 function Events_append_(type, userId, options) {
   const sheet = getOrCreateEventsSheet();
@@ -2168,9 +2174,12 @@ function migrate_step4_splitConfig(options) {
   });
 }
 
+/*
+ * Manual-only migration wrapper, disabled 2026-05-15.
 function migrate_step4_splitConfig_dryRun() {
   return migrate_step4_splitConfig({ dryRun: true });
 }
+ */
 
 function buildConfigSplitPlan_(configSheet) {
   return {
@@ -2528,9 +2537,12 @@ function migrate_step5_absorbToEvents(options) {
   }
 }
 
+/*
+ * Manual-only migration wrapper, disabled 2026-05-15.
 function migrate_step5_absorbToEvents_dryRun() {
   return migrate_step5_absorbToEvents({ dryRun: true });
 }
+ */
 
 function migrate_verify() {
   const expectedMigration = buildEventsMigrationRows_();
@@ -3032,9 +3044,12 @@ function applyFinalSheetVisibility() {
   });
 }
 
+/*
+ * Manual-only migration wrapper, disabled 2026-05-15.
 function hideLegacyDevSheets() {
   return applyFinalSheetVisibility();
 }
+ */
 
 function migrate_step7_orderAndColor() {
   const ss = getSpreadsheet();
@@ -3837,6 +3852,8 @@ function getOrCreateHoldPraySheet() {
 }
 
 // GAS 에디터에서 1회 실행 — 하드코딩 배열을 HoldPray 시트로 이전
+/*
+ * Manual-only migration helper, disabled 2026-05-15.
 function migrateHoldPrayToSheet() {
   const sheet = getOrCreateHoldPraySheet();
   if (sheet.getLastRow() >= SCHEMA.HOLD_PRAY.dataStartRow) {
@@ -3849,13 +3866,17 @@ function migrateHoldPrayToSheet() {
   Logger.log('마이그레이션 완료: ' + rows.length + '개 항목');
   return { ok: true, migrated: rows.length };
 }
+ */
 
+/*
+ * Manual-only inspection helper, disabled 2026-05-15.
 function getBonusDrawCount(userId) {
   return Events_readByUser(userId).filter(function(event) {
     return event.type === EVENT_TYPES.TICKET_GRANTED &&
       !!String((event.payload && event.payload.legacySource) || '').trim();
   }).length;
 }
+ */
 
 function hasBonusTicketGrant_(userId, legacySource, weekKey, userEvents) {
   const cleanUserId = String(userId || '').trim();
@@ -4331,6 +4352,8 @@ function getYouthHpEntries() {
 }
 
 // 시트의 빈 이름 셀을 "무기명"으로 일괄 수정 (1회 실행용)
+/*
+ * Manual-only data repair helper, disabled 2026-05-15.
 function fixHoldPrayBlankNames() {
   const sheet = getOrCreateHoldPraySheet();
   const last = sheet.getLastRow();
@@ -4354,6 +4377,7 @@ function fixHoldPrayBlankNames() {
   });
   return '완료: ' + fixed + '개 행 수정됨';
 }
+ */
 
 function getHoldPray(weekKey, nickname) {
   if (!weekKey) weekKey = 'w' + getCurrentWeek_();
@@ -5356,10 +5380,13 @@ function getNoticeFolder() {
 }
 
 // DriveApp 권한 승인 확인용 (GAS 에디터에서 직접 실행)
+/*
+ * Manual-only diagnostic helper, disabled 2026-05-15.
 function testDriveAuth() {
   const folder = getNoticeFolder();
   Logger.log('Drive OK — 폴더: ' + folder.getName() + ' / ID: ' + folder.getId());
 }
+ */
 
 // 이미지 base64 → BeyondUs_Notices 폴더에 업로드 후 공개 URL 반환
 function uploadNoticeToDrive(imageBase64, imageMime) {
@@ -5849,13 +5876,19 @@ function auditUserPasswordStorage() {
   return logJsonResult_('auditUserPasswordStorage result', auditUserPasswordStorage_());
 }
 
+/*
+ * Manual-only security migration helper, disabled 2026-05-15.
 function migrateUserPasswordsToHashDryRun() {
   return logJsonResult_('migrateUserPasswordsToHash dryRun', migrateUserPasswordsToHash_(true));
 }
+ */
 
+/*
+ * Manual-only security migration helper, disabled 2026-05-15.
 function migrateUserPasswordsToHashApply() {
   return logJsonResult_('migrateUserPasswordsToHash apply', migrateUserPasswordsToHash_(false));
 }
+ */
 
 function postHpHint(body) {
   const nickname  = getCanonicalUserId_(body.nickname) || String(body.nickname  || '').trim();
@@ -6534,6 +6567,8 @@ function backfillSignupRaffleTickets_(dryRun) {
 
 // 기존 RaffleTickets 시트의 ticket_no 컬럼을 4자리 zero-pad 텍스트로 일괄 정규화
 // (Google Sheets 자동 숫자 변환으로 '1', '2' 등으로 저장된 옛 데이터 복구용)
+/*
+ * Manual-only admin repair helper, disabled 2026-05-15.
 function adminNormalizeRaffleTicketColumn() {
   const sheet = getOrCreateRaffleTicketsSheet_();
   const last = sheet.getLastRow();
@@ -6545,6 +6580,7 @@ function adminNormalizeRaffleTicketColumn() {
   range.setValues(padded);
   Logger.log('정규화 완료: ' + padded.length + '행');
 }
+ */
 
 // 진단용: GAS 에디터에서 직접 실행
 // 함수 드롭다운 → debugRaffleSelf 선택 → ▶ → 하단 실행 로그 확인
@@ -7852,9 +7888,12 @@ function collectionSnapshotToRow_(snapshot, col) {
 }
 
 // 전체 Collection 캐시를 Events 기준으로 재계산하는 하위 호환 wrapper
+/*
+ * Manual-only migration wrapper, disabled 2026-05-15.
 function rebuildCollectionSheet() {
   return rebuildCollectionRowsFromEvents_();
 }
+ */
 
 // 어드민 래퍼 (adminPw 체크)
 function adminRebuildCollection(body) {
@@ -9349,6 +9388,8 @@ function adminSetBBBMessageOpen(body) {
 }
 
 // ── 일회성: HoldPray 신규 기도제목 추가 (2026-05-09) ────────────────
+/*
+ * Manual-only one-time data patch, disabled 2026-05-15.
 function addHoldPrayRows() {
   var sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.HOLD_PRAY);
 
@@ -9378,8 +9419,11 @@ function addHoldPrayRows() {
 
   Logger.log('완료: ' + newRows.length + '행 추가됨');
 }
+ */
 
 // ── 일회성: HoldPray 오타 수정 (2026-05-09) ──────────────────────────
+/*
+ * Manual-only one-time data patch, disabled 2026-05-15.
 function fixHoldPrayTypos() {
   var sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.HOLD_PRAY);
   var col   = getHoldPrayColumns_(sheet);
@@ -9416,6 +9460,7 @@ function fixHoldPrayTypos() {
 
   Logger.log('총 ' + fixed + '건 수정 완료');
 }
+ */
 
 // ── 공통 ─────────────────────────────────────────
 function jsonOutput(data) {

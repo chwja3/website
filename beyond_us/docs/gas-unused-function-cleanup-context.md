@@ -15,15 +15,11 @@ GAS에서는 코드 안에서 직접 호출되지 않아도 함수 드롭다운,
 - `clearHotCaches_`
 - `getRaffleEligibilityFromParish_`
 
-## 보류 대상
+## public manual-only 비활성화 대상
 
-코드 내부 참조가 없어도 `doGet`, `doPost`, `migrate*`, `prodCutover*`, `backupSpreadsheet`, `admin*`, `test*`, `debug*`, password migration 함수는 수동 실행 가능성이 있어서 보류한다.
-
-정적 분석에서 선언 외 참조가 없는 public 함수 후보는 다음과 같다. 이 목록은 GAS 함수 드롭다운 정리 후보지만, 운영자가 수동 실행할 수 있어 이번 커밋에서는 보류했다.
+다음 함수들은 admin/app 호출이 없고 GAS 내부 참조도 없어 주석처리했다.
 
 - `setRequiredScriptProperties`
-- `doGet`
-- `doPost`
 - `Events_append`
 - `migrate_step4_splitConfig_dryRun`
 - `migrate_step5_absorbToEvents_dryRun`
@@ -38,3 +34,7 @@ GAS에서는 코드 안에서 직접 호출되지 않아도 함수 드롭다운,
 - `rebuildCollectionSheet`
 - `addHoldPrayRows`
 - `fixHoldPrayTypos`
+
+## 유지 대상
+
+`doGet`, `doPost`, 라우터 action으로 연결된 함수, admin UI에서 호출하는 함수, app UI에서 호출하는 함수는 유지한다.
