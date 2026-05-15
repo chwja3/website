@@ -3744,11 +3744,18 @@ function getDashboardData() {
   const userInfoMap = getActiveUserInfoMap_();
   const weekConfigMap = getDashboardConfigsForWeeks_();
   const weeklySummaries = [];
+  const weeklyParishSummaries = [];
 
   for (let week = 1; week <= 6; week++) {
     const weekConfig = weekConfigMap[week];
     if (!weekConfig) continue;
     weeklySummaries.push(buildMissionDashboardWeekSummary_(week, weekConfig, events, userInfoMap));
+    weeklyParishSummaries.push({
+      week: week,
+      weekKey: 'w' + week,
+      weekTitle: weekConfig.weekTitle,
+      parishSummaries: buildDashboardParishSummaries_(events, weekConfig, week, userInfoMap),
+    });
   }
 
   let currentSummary = weeklySummaries.find(function(summary) {
@@ -3785,6 +3792,7 @@ function getDashboardData() {
     submissionEventCount: currentSummary.submissionEventCount,
     currentWeekSummary: currentSummary,
     weeklySummaries: weeklySummaries,
+    weeklyParishSummaries: weeklyParishSummaries,
     parishSummaries: buildDashboardParishSummaries_(events, currentConfig, currentWeek, userInfoMap),
     tabSettings:     getTabSettings()
   };

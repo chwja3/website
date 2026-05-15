@@ -303,6 +303,15 @@
             </table>
           </div>
         </div>
+
+        <div class="card">
+          <h2 class="card-title">주차별 교구 참여 기록</h2>
+          <div class="dashboard-pill-row" id="weeklyParishTabs"></div>
+          <div class="parish-summary-grid" id="weeklyParishSummaryGrid">
+            <div style="color:var(--sub); padding:12px;">불러오는 중...</div>
+          </div>
+          <div id="weeklyParishDetailList"></div>
+        </div>
       </div>
 
       <!-- ③ 카드 현황 -->
@@ -877,6 +886,8 @@
     /* ── 체크인 현황 ── */
     let _weeklyCheckinSummaries = [];
     let _selectedWeeklyCheckinKey = '';
+    let _weeklyParishSummaries = [];
+    let _selectedWeeklyParishKey = '';
 
     function fmtCount(n) {
       return Number(n || 0).toLocaleString('ko-KR');
@@ -924,10 +935,13 @@
           <td>${esc(item)}</td>
           <td><strong>${fmtCount((summary.counts || {})[item])}</strong></td>
         </tr>`).join('');
+      if (_weeklyParishSummaries.some(s => s.weekKey === weekKey) && _selectedWeeklyParishKey !== weekKey) {
+        selectWeeklyParish(weekKey);
+      }
     }
 
-    function focusParishDetail(key) {
-      const el = document.getElementById('parishDetail-' + key);
+    function focusParishDetail(key, prefix) {
+      const el = document.getElementById((prefix || 'parishDetail-') + key);
       if (!el) return;
       el.open = true;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -941,17 +955,17 @@
       return 'parish-etc';
     }
 
-    function renderParishDashboard(parishSummaries) {
+    function renderParishSummarySection(parishSummaries, gridId, detailListId, detailPrefix, emptyMessage, noParticipantMessage) {
       const summaries = Array.isArray(parishSummaries) ? parishSummaries : [];
-      const grid = document.getElementById('parishSummaryGrid');
-      const detailList = document.getElementById('parishDetailList');
+      const grid = document.getElementById(gridId);
+      const detailList = document.getElementById(detailListId);
       if (!summaries.length) {
-        grid.innerHTML = '<div style="color:var(--sub); padding:12px;">교구별 참여 기록이 없어요.</div>';
+        grid.innerHTML = `<div style="color:var(--sub); padding:12px;">${esc(emptyMessage || '교구별 참여 기록이 없어요.')}</div>`;
         detailList.innerHTML = '';
         return;
       }
       grid.innerHTML = summaries.map(summary => `
-        <button class="parish-summary-card ${parishSummaryClass(summary)}" onclick="focusParishDetail('${summary.key}')">
+        <button class="parish-summary-card ${parishSummaryClass(summary)}" onclick="focusParishDetail('${summary.key}', '${detailPrefix}')">
           <div class="parish-summary-title">${esc(summary.label)}</div>
           <div class="parish-summary-meta">
             <span>참여자<strong>${fmtCount(summary.participantCount)}</strong></span>
@@ -968,9 +982,9 @@
             <td>${esc(user.parish || '-')}</td>
             <td>${fmtCount(user.activeDays)}</td>
             <td><strong>${fmtCount(user.score)}</strong></td>
-          </tr>`).join('') || '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:16px;">이번 주 참여자가 없어요.</td></tr>';
+          </tr>`).join('') || `<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:16px;">${esc(noParticipantMessage || '참여자가 없어요.')}</td></tr>`;
         return `
-          <details class="parish-detail" id="parishDetail-${summary.key}">
+          <details class="parish-detail" id="${detailPrefix}${summary.key}">
             <summary>${esc(summary.label)} · ${fmtCount(summary.participantCount)}명 · ${fmtCount(summary.totalScore)}점</summary>
             <div class="table-wrap">
               <table>
@@ -980,6 +994,51 @@
             </div>
           </details>`;
       }).join('');
+    }
+
+    function renderParishDashboard(parishSummaries) {
+      renderParishSummarySection(parishSummaries, 'parishSummaryGrid', 'parishDetailList', 'parishDetail-', '교구별 참여 기록이 없어요.', '이번 주 참여자가 없어요.');
+    }
+
+    function renderWeeklyParishDashboard(weeklyParishSummaries, currentWeek) {
+      _weeklyParishSummaries = Array.isArray(weeklyParishSummaries)
+        ? weeklyParishSummaries.slice().sort((a, b) => Number(a.week) - Number(b.week))
+        : [];
+      const tabs = document.getElementById('weeklyParishTabs');
+      if (!_weeklyParishSummaries.length) {
+        tabs.innerHTML = '';
+        renderParishSummarySection([], 'weeklyParishSummaryGrid', 'weeklyParishDetailList', 'weeklyParishDetail-', '주차별 교구 참여 기록이 없어요.', '해당 주차 참여자가 없어요.');
+        return;
+      }
+      const currentKey = 'w' + (Number(currentWeek) || 1);
+      _selectedWeeklyParishKey = _weeklyParishSummaries.some(s => s.weekKey === currentKey)
+        ? currentKey
+        : _weeklyParishSummaries[0].weekKey;
+      renderWeeklyParishTabs();
+      selectWeeklyParish(_selectedWeeklyParishKey);
+    }
+
+    function renderWeeklyParishTabs() {
+      const tabs = document.getElementById('weeklyParishTabs');
+      tabs.innerHTML = _weeklyParishSummaries.map(summary => `
+        <button class="btn btn-ghost btn-sm ${summary.weekKey === _selectedWeeklyParishKey ? 'active' : ''}"
+                onclick="selectWeeklyParish('${summary.weekKey}')">
+          ${esc(summary.weekTitle || (summary.week + '주차'))}
+        </button>`).join('');
+    }
+
+    function selectWeeklyParish(weekKey) {
+      _selectedWeeklyParishKey = weekKey;
+      renderWeeklyParishTabs();
+      const summary = _weeklyParishSummaries.find(s => s.weekKey === weekKey);
+      renderParishSummarySection(
+        summary ? summary.parishSummaries : [],
+        'weeklyParishSummaryGrid',
+        'weeklyParishDetailList',
+        'weeklyParishDetail-',
+        '선택한 주차의 교구 참여 기록이 없어요.',
+        '해당 주차 참여자가 없어요.'
+      );
     }
 
     async function loadCheckin() {
@@ -997,6 +1056,7 @@
           </tr>`).join('');
         renderWeeklyCheckin(res.weeklySummaries || [], res.currentWeek);
         renderParishDashboard(res.parishSummaries || []);
+        renderWeeklyParishDashboard(res.weeklyParishSummaries || [], res.currentWeek);
       } catch(e) {
         document.getElementById('checkinTableBody').innerHTML =
           '<tr><td colspan="2" style="color:var(--danger);">서버 연결 오류</td></tr>';
@@ -1005,6 +1065,9 @@
         document.getElementById('parishSummaryGrid').innerHTML =
           '<div style="color:var(--danger); padding:12px;">서버 연결 오류</div>';
         document.getElementById('parishDetailList').innerHTML = '';
+        document.getElementById('weeklyParishSummaryGrid').innerHTML =
+          '<div style="color:var(--danger); padding:12px;">서버 연결 오류</div>';
+        document.getElementById('weeklyParishDetailList').innerHTML = '';
       }
     }
     document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
