@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515l';
+    const APP_VERSION = '20260515m';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -121,9 +121,16 @@
       'images/앤카드뒷면최최종.png',
     ];
     const _preloadedImages = {};
+    let _cardImagePreloadStarted = false;
 
     function preloadImage(src, priority) {
-      if (!src || _preloadedImages[src]) return _preloadedImages[src] || null;
+      if (!src) return null;
+      if (_preloadedImages[src]) {
+        if (priority === 'high' && 'fetchPriority' in _preloadedImages[src]) {
+          _preloadedImages[src].fetchPriority = 'high';
+        }
+        return _preloadedImages[src];
+      }
       var i = new Image();
       i.decoding = 'async';
       if ('fetchPriority' in i) i.fetchPriority = priority || 'low';
@@ -137,13 +144,39 @@
       DRAW_ASSET_URLS.forEach(function(src) { preloadImage(src, 'high'); });
     }
 
-    function preloadCardImages() {
+    function preloadCardImages(priority) {
       SPIRIT_CARDS.concat([HIDDEN_CARD]).forEach(function(c) {
-        if (c.img) preloadImage(c.img, 'low');
+        if (c.img) preloadImage(c.img, priority || 'low');
       });
     }
+
+    function runCardImagePreload(priority) {
+      if (_cardImagePreloadStarted) return;
+      _cardImagePreloadStarted = true;
+      preloadCardImages(priority || 'low');
+    }
+
+    function scheduleCardImagePreload(priority, delay) {
+      const run = function() { runCardImagePreload(priority || 'low'); };
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(run, { timeout: delay || 1200 });
+      } else {
+        setTimeout(run, delay || 1200);
+      }
+    }
+
+    function warmDrawExperience() {
+      preloadDrawAssets();
+      _cardImagePreloadStarted = true;
+      preloadCardImages('high');
+    }
+
+    function warmDrawResultCard(card) {
+      if (card && card.img) preloadImage(card.img, 'high');
+    }
+
     preloadDrawAssets();
-    (window.requestIdleCallback || function(cb) { setTimeout(cb, 1200); })(preloadCardImages);
+    scheduleCardImagePreload('low', 1200);
 
     /* ── 카드 뽑기 사운드 ── */
     const SFX_FILES = {
@@ -951,7 +984,7 @@
       return `
         <div class="spirit-card" style="background:transparent; border:none; box-shadow:none;">
           <div class="draw-card-clip">
-            <img src="${card.img}" alt="">
+            <img src="${card.img}" alt="" decoding="async" fetchpriority="high">
           </div>
         </div>`;
     }
@@ -1023,6 +1056,7 @@
         const emptyMsg = !nextPackType
           ? `<p class="draw-pack-empty-msg">사용 가능한 카드팩이 없어요.</p>`
           : '';
+        if (nextPackType) warmDrawExperience();
         el.innerHTML = `
           ${testBadge}
           <button class="btn btn-primary" style="width:100%;" id="openDrawBtn" ${nextPackType ? '' : 'disabled'}>카드 뽑기${devOnlyNormal ? ' (DEV)' : ''}</button>
@@ -1033,6 +1067,7 @@
 
       // DEV 개발자 계정은 서버에서 티켓을 자동 발급한 뒤 일반 카드팩을 뽑는다.
       if (canDevDrawUnlimited) {
+        warmDrawExperience();
         el.innerHTML = `
           ${testBadge}
           <p style="font-size:13px;color:var(--sub);margin-bottom:12px;">횟수 제한 없이 뽑을 수 있어요 ✨</p>
@@ -1043,6 +1078,7 @@
 
       // 서비스 모드: 정책 적용
       if (pending > 0) {
+        warmDrawExperience();
         el.innerHTML = `<button class="btn btn-primary" style="width:100%;" id="openDrawBtn">카드 뽑기</button>`;
         document.getElementById('openDrawBtn').onclick = () => openDrawOverlay('normal');
         return;
@@ -2078,7 +2114,7 @@
       drawCardPromise = null;
       carouselCenter = 1;
 
-      preloadDrawAssets();
+      warmDrawExperience();
 
       gsap.killTweensOf(document.querySelectorAll('#drawOverlay *'));
 
@@ -2325,6 +2361,7 @@
           if (!drawOverlayActive) return;
           if (result && !result.error && result.card) {
             pendingCard = SPIRIT_CARDS.find(function(c) { return Number(c.id) === Number(result.card.id); }) || result.card;
+            warmDrawResultCard(pendingCard);
             drawIsNew = (result.isNew !== false); // false 명시 시만 중복, undefined/true → 신규
             drawServerCollection = result.collection || null;
             drawServerTickets = result.tickets || null;

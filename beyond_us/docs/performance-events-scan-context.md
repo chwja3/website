@@ -30,3 +30,7 @@ Follow-up context.
 2026-05-15. getUserStatus가 Collection, Users, RetreatAttendance를 각각 SpreadsheetApp으로 읽던 구간을 getBatchSheetRows_로 묶었다. Sheets API Advanced Service가 켜져 있으면 한 번의 batchGet으로 읽고, 사용할 수 없으면 기존 SpreadsheetApp read로 fallback한다.
 
 2026-05-15. admin getCardStats는 Events.card.drawn 전체 스캔 대신 Collection projection의 현재 보유 수량을 기준으로 집계하도록 바꿨다. 실물 카드 수령 목표는 현재 보유 수량에서 이미 상대방 실물 수령으로 처리되는 교환 취득분만 제외해서 계산하며, admin UI는 서버가 내려준 tfTarget을 우선 사용한다. userStatus의 myTicketNumbers도 getRaffleStatsFromRows_가 이미 만든 RaffleTickets summary에서 함께 생성하므로 사용자 상태 조회 중 같은 RaffleTickets rows를 다시 사용자별로 훑지 않는다.
+
+2026-05-15. 카드팩 체감 로딩은 서버 응답 자체를 없앨 수는 없지만, 이미지와 사운드 준비가 늦게 시작되면서 사용자가 카드 클릭 가능 상태까지 더 기다리는 부분을 줄일 수 있다. 이번 작업은 카드팩 버튼이 실제로 보이는 순간 draw asset과 카드 이미지 preload를 앞당기고, 서버가 뽑힌 카드 id를 반환하는 즉시 해당 카드 이미지를 high priority로 예열하는 방향으로 진행한다.
+
+2026-05-15. 카드팩 버튼이 렌더되는 시점과 뽑기 오버레이 진입 시점에 `warmDrawExperience()`를 호출하도록 바꿨다. 기본 draw asset은 기존처럼 즉시 preload하고, 카드 이미지들은 idle preload를 유지하되 실제 뽑기 가능 상태가 되면 high priority로 앞당긴다. 서버 결과 카드도 `warmDrawResultCard()`로 즉시 high priority preload하고, 카드 이미지 태그에는 `decoding="async"`와 `fetchpriority="high"`를 붙였다. 프론트 캐시 버전은 `20260515m`이다.
