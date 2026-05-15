@@ -3874,13 +3874,21 @@ function devResetCards(userId) {
       }
     }
 
-    const raffleRelease = revokeUserRaffleTickets_(userId, 'available', 'dev_reset');
+    const raffleExcluded = isUserRaffleExcluded_(userId);
+    const raffleRelease = raffleExcluded
+      ? revokeUserRaffleTickets_(userId, 'available', 'dev_reset_excluded')
+      : revokeUserRaffleTickets_(userId, 'available', 'dev_reset', ['card_3', 'card_5', 'card_10']);
     const rebuildResult = rebuildCollectionRow_(userId);
+    const raffleEnsure = raffleExcluded
+      ? { issued: [] }
+      : ensureUserRaffleTickets_(userId, { includeSignup: true, skipIssueLock: true });
+    clearUserDerivedCaches_(userId);
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     return {
       ok: true,
       removed: removed,
       raffleReleased: Number(raffleRelease && raffleRelease.revoked) || 0,
+      raffleIssued: (raffleEnsure && raffleEnsure.issued) || [],
       collection: response.collection,
       tickets: response.tickets,
     };
@@ -5699,7 +5707,8 @@ function getUserParishFromUsers_(userId) {
 }
 
 // 핵심: 한 번에 한 condition 발급. 중복 발급 차단. LockService로 동시성 보장.
-function issueRaffleTicket_(userId, condition, weekKey) {
+function issueRaffleTicket_(userId, condition, weekKey, options) {
+  const opts = options || {};
   const cleanUser = String(userId || '').trim();
   const cleanCond = String(condition || '').trim();
   if (!cleanUser || !cleanCond) return { ok: false, error: 'missing_fields' };
@@ -5708,8 +5717,11 @@ function issueRaffleTicket_(userId, condition, weekKey) {
   }
   const parish = getUserParishFromUsers_(cleanUser);
 
-  const lock = LockService.getScriptLock();
-  try { lock.waitLock(10000); } catch(e) { return { ok: false, error: 'lock_timeout' }; }
+  let lock = null;
+  if (opts.skipLock !== true) {
+    lock = LockService.getScriptLock();
+    try { lock.waitLock(10000); } catch(e) { return { ok: false, error: 'lock_timeout' }; }
+  }
 
   try {
     const sheet = getOrCreateRaffleTicketsSheet_();
@@ -5752,7 +5764,7 @@ function issueRaffleTicket_(userId, condition, weekKey) {
     }
     return { ok: true, ticket_no: nextNo, dup: false, week_key: week };
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
 }
 
@@ -5782,7 +5794,7 @@ function ensureUserRaffleTickets_(userId, options) {
   const issued = [];
   triggers.forEach(function(t) {
     if (!t.met) return;
-    const res = issueRaffleTicket_(cleanUser, t.cond);
+    const res = issueRaffleTicket_(cleanUser, t.cond, null, { skipLock: opts.skipIssueLock === true });
     if (res.ok && !res.dup) issued.push(res.ticket_no);
   });
   return { ok: true, issued: issued };
@@ -5996,7 +6008,7 @@ function releaseRaffleTicketRow_(row, now) {
   row[RAFFLE_TICKET_COL.updatedAt] = now || new Date().toISOString();
 }
 
-function revokeUserRaffleTickets_(userId, status, reason) {
+function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
   const cleanUser = String(userId || '').trim();
   if (!cleanUser) return { error: 'missing_userId' };
   const sheet = getOrCreateRaffleTicketsSheet_();
@@ -6009,14 +6021,22 @@ function revokeUserRaffleTickets_(userId, status, reason) {
   const values = range.getValues();
   const now = new Date().toISOString();
   const revokedRows = [];
+  const conditionMap = {};
+  (conditionsToRelease || []).forEach(function(condition) {
+    const key = String(condition || '').trim();
+    if (key) conditionMap[key] = true;
+  });
+  const hasConditionFilter = Object.keys(conditionMap).length > 0;
 
   values.forEach(function(row, idx) {
     if (!isActiveRaffleTicketRow_(row)) return;
     if (String(row[RAFFLE_TICKET_COL.userId] || '').trim() !== cleanUser) return;
+    const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
+    if (hasConditionFilter && !conditionMap[condition]) return;
     revokedRows.push({
       rowNumber: idx + 2,
       ticket_no: padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]),
-      condition: String(row[RAFFLE_TICKET_COL.condition] || '').trim(),
+      condition: condition,
     });
     releaseRaffleTicketRow_(row, now);
   });
