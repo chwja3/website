@@ -4138,8 +4138,8 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
 
 // ── 탭 설정 ──────────────────────────────────────
 // TabSettings 시트 구조:
-// A열: tab_key (holdpray / secret / chat / qt / specialPack)
-// B열: label   (Hold & Pray / B.B.B 미션 / 채팅방 / Q.T. 말씀 묵상 / 특별 카드팩)
+// A열: tab_key (holdpray / secret / chat / qt / pilgrim / specialPack)
+// B열: label   (Hold & Pray / B.B.B 미션 / 채팅방 / Q.T. 말씀 묵상 / 천로역정 / 특별 카드팩)
 // C열: enabled (TRUE/FALSE)
 //
 // BBBSettings 시트 구조:
@@ -4165,6 +4165,7 @@ function getTabSettingsDefaultRows_() {
     ['secret',   'B.B.B 미션',   secretVal],
     ['chat',     '채팅방',        chatVal],
     ['qt',       'Q.T. 말씀 묵상', true],
+    ['pilgrim',  '천로역정',      false],
     ['specialPack', '특별 카드팩', false],
   ];
 }
@@ -4272,9 +4273,9 @@ function getBBBSectionSettingsMap_() {
 }
 
 function getTabSettings() {
-  // TabSettings 시트에서 holdpray/secret/chat/qt/specialPack 읽기
+  // TabSettings 시트에서 holdpray/secret/chat/qt/pilgrim/specialPack 읽기
   const tabSheet = getOrCreateTabSettingsSheet();
-  const tabMap = { holdpray: true, secret: true, chat: false, qt: true, specialPack: false };
+  const tabMap = { holdpray: true, secret: true, chat: false, qt: true, pilgrim: false, specialPack: false };
   if (tabSheet && tabSheet.getLastRow() >= SCHEMA.TAB_SETTINGS.dataStartRow) {
     const tabCol = getTabSettingsColumns_(tabSheet);
     getTabSettingsRows_(tabSheet).forEach(function(r) {
@@ -4299,6 +4300,7 @@ function getTabSettings() {
     secret:      tabMap.secret,
     chat:        tabMap.chat,
     qt:          tabMap.qt,
+    pilgrim:     tabMap.pilgrim,
     specialPack: tabMap.specialPack,
     bbbSections: bbbSections
   };
@@ -4320,6 +4322,7 @@ function setTabSettings(body) {
       if (key === 'secret'   && body.secret !== undefined) r[tabCol.enabled] = body.secret  !== false;
       if (key === 'chat'     && body.chat   !== undefined) r[tabCol.enabled] = body.chat    !== false;
       if (key === 'qt'       && body.qt     !== undefined) r[tabCol.enabled] = body.qt      !== false;
+      if (key === 'pilgrim'  && body.pilgrim !== undefined) r[tabCol.enabled] = body.pilgrim === true;
       if (key === 'specialPack' && body.specialPack !== undefined) r[tabCol.enabled] = body.specialPack === true;
     });
     tabRange.setValues(tabRows);

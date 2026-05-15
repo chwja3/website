@@ -610,6 +610,10 @@
               <span style="font-size:15px; font-weight:700;">Q.T. 말씀 묵상</span>
               <input type="checkbox" id="toggleQt" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
             </label>
+            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
+              <span style="font-size:15px; font-weight:700;">천로역정</span>
+              <input type="checkbox" id="togglePilgrim" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
+            </label>
             <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
               <span style="min-width:0;">
                 <span style="display:block;font-size:15px;font-weight:700;">미보유 카드 지급권</span>
@@ -1274,6 +1278,7 @@
           document.getElementById('togglePrayer').checked = res.prayer !== false;
           document.getElementById('toggleSecret').checked = res.secret !== false;
           document.getElementById('toggleQt').checked = res.qt !== false;
+          document.getElementById('togglePilgrim').checked = res.pilgrim === true;
           document.getElementById('toggleSpecialPack').checked = res.specialPack === true;
         }
       } catch(e) {}
@@ -1292,6 +1297,7 @@
           prayer: document.getElementById('togglePrayer').checked,
           secret: document.getElementById('toggleSecret').checked,
           qt: document.getElementById('toggleQt').checked,
+          pilgrim: document.getElementById('togglePilgrim').checked,
           specialPack: document.getElementById('toggleSpecialPack').checked
         });
         if (res.ok) {
@@ -1946,6 +1952,7 @@
           prayer: document.getElementById('togglePrayer')?.checked !== false,
           secret: document.getElementById('toggleSecret')?.checked !== false,
           qt: document.getElementById('toggleQt')?.checked !== false,
+          pilgrim: document.getElementById('togglePilgrim')?.checked === true,
           specialPack: document.getElementById('toggleSpecialPack')?.checked === true,
           bbbSections: sections,
         });

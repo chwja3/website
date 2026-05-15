@@ -2667,10 +2667,11 @@
 
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
-      const { prayer, secret, qt } = data.tabSettings;
+      const { prayer, secret, qt, pilgrim } = data.tabSettings;
       const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
       const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
       const qtItem = document.querySelector('.drawer-item[data-section="qt"]');
+      const pilgrimItem = document.querySelector('.drawer-item[data-section="pilgrim"]');
       const nextSpecialPackOpen = data.tabSettings.specialPack === true;
       const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
       specialPackOpen = nextSpecialPackOpen;
@@ -2678,6 +2679,13 @@
       if (qtItem) qtItem.style.display = (qt === false) ? 'none' : '';
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
       if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
+      if (pilgrimItem) pilgrimItem.style.display = (pilgrim === true) ? '' : 'none';
+      const hiddenCurrent =
+        (_currentSection === 'prayer'  && prayer === false) ||
+        (_currentSection === 'qt'      && qt === false) ||
+        (_currentSection === 'secret'  && secret === false) ||
+        (_currentSection === 'pilgrim' && pilgrim !== true);
+      if (hiddenCurrent) switchSection('mission');
       if (specialPackChanged) {
         updateTicketBadge(userStatus);
         renderDrawSection();
@@ -2875,7 +2883,7 @@
         loadAll({ silent: true }).catch(() => {}),
         loadNotices().catch(() => {}),
         loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {}),
-        _currentSection === 'secret' ? loadBBB(true).catch(() => {}) : Promise.resolve(),
+        (_currentSection === 'secret' || _currentSection === 'pilgrim') ? loadBBB(true).catch(() => {}) : Promise.resolve(),
         _currentSection === 'prayer' ? loadHoldPray(true).then(markHoldPraySeen).catch(() => {}) : Promise.resolve()
       ]).finally(() => { _serverSyncPromise = null; });
       return _serverSyncPromise;
