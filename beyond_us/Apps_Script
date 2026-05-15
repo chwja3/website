@@ -3874,11 +3874,13 @@ function devResetCards(userId) {
       }
     }
 
+    const raffleRelease = revokeUserRaffleTickets_(userId, 'available', 'dev_reset');
     const rebuildResult = rebuildCollectionRow_(userId);
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     return {
       ok: true,
       removed: removed,
+      raffleReleased: Number(raffleRelease && raffleRelease.revoked) || 0,
       collection: response.collection,
       tickets: response.tickets,
     };
@@ -4591,7 +4593,7 @@ function adminSetRaffleExcluded(body) {
     if (excluded) {
       released = revokeUserRaffleTickets_(nickname, 'available', 'raffle_excluded');
     } else {
-      issued = ensureUserRaffleTickets_(nickname);
+      issued = ensureUserRaffleTickets_(nickname, { includeSignup: true });
     }
     clearUserDerivedCaches_(nickname);
     const activeCount = getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[nickname] || 0;
@@ -5755,7 +5757,8 @@ function issueRaffleTicket_(userId, condition, weekKey) {
 }
 
 // 사용자의 현재 상태(보유 카드/가입 여부) 기준으로 필요한 모든 티켓을 backfill 발급
-function ensureUserRaffleTickets_(userId) {
+function ensureUserRaffleTickets_(userId, options) {
+  const opts = options || {};
   const cleanUser = String(userId || '').trim();
   if (!cleanUser) return { ok: false, issued: [] };
   if (isUserRaffleExcluded_(cleanUser)) return { ok: true, eligible: false, issued: [], excluded: true };
@@ -5770,7 +5773,7 @@ function ensureUserRaffleTickets_(userId) {
   }
 
   const triggers = [
-    { cond: 'signup', met: true },
+    { cond: 'signup', met: opts.includeSignup === true },
     { cond: 'card_3',  met: uniqueCount >= 3 },
     { cond: 'card_5',  met: uniqueCount >= 5 },
     { cond: 'card_10', met: uniqueCount >= 10 },

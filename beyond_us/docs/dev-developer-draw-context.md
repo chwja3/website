@@ -16,3 +16,7 @@
 - 프론트는 `localStorage.beyondus_is_dev`가 `true`이고 현재 호스트가 DEV일 때만 무제한 뽑기 버튼을 보여준다.
 - 요청 본문의 `testMode`도 일반 카드팩에서 현재 개발자 계정일 때만 true로 보낸다.
 - 검증은 `node --check beyond_us/app.js`, `node --check beyond_us/Apps_Script`, `git diff --check`로 수행했다.
+
+## 2026-05-15 버그 리포트
+
+DEV 초기화는 카드와 뽑기권 Events를 삭제하고 Collection을 다시 계산하지만, RaffleTickets의 활성 번호를 회수하지 않아 추첨권 개수와 번호 풀 상태가 남는 문제가 있었다. DEV 초기화 시 활성 추첨권도 함께 회수하고, 이후 카드 조건을 다시 달성하면 새 번호가 재발급되게 한다.

@@ -333,16 +333,16 @@
       <div id="tab-raffle" class="tab-panel">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">현재 발급</div><div class="stat-value" id="raffleActiveCount">-</div></div>
-          <div class="stat-card"><div class="stat-label">사용 가능 번호</div><div class="stat-value" id="raffleAvailableCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div></div>
         </div>
 
         <div class="card">
           <h2 class="card-title" style="margin:0 0 4px;">🎟️ 추첨권 번호 검색</h2>
           <p style="font-size:12px;color:var(--sub);margin:0 0 14px;">실물 추첨권에 적힌 번호를 입력하면 발급된 유저 정보가 표시돼요.</p>
-          <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:8px;margin-bottom:14px;">
             <input type="text" id="raffleSearchInput" placeholder="번호 입력 (예: 42 또는 0042)" inputmode="numeric"
-              style="flex:1;padding:10px 14px;font-size:16px;font-weight:700;letter-spacing:0.04em;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;" />
-            <button class="btn btn-primary" id="raffleSearchBtn" style="flex:none;padding:0 18px;font-weight:700;">검색</button>
+              style="min-width:0;width:100%;box-sizing:border-box;padding:10px 14px;font-size:16px;font-weight:700;letter-spacing:0.04em;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;" />
+            <button class="btn btn-primary" id="raffleSearchBtn" style="width:100%;padding:0;font-weight:700;">검색</button>
           </div>
           <div id="raffleSearchResult" style="font-size:14px;color:var(--sub);text-align:center;padding:18px;">번호를 입력하고 검색해주세요.</div>
         </div>
