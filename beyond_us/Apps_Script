@@ -4462,13 +4462,18 @@ function getUserStatus(userId, weekKey, configOverride) {
     const cleanUserId = String(userId || '').trim();
     const collectionSheet = getOrCreateCollectionSheet();
     const collectionCol = getCollectionColumns_(collectionSheet);
-    const collectionRows = getCollectionRows_(collectionSheet);
     const usersSheet = getUsersSheet_();
     const userCol = getUserColumns_(usersSheet);
-    const usersRows = getUserRows_(usersSheet);
     const attendanceSheet = getOrCreateRetreatAttendanceSheet();
     const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
-    const attendanceRows = getRetreatAttendanceRows_(attendanceSheet);
+    const batchRows = getBatchSheetRows_([
+      { key: 'collection', sheet: collectionSheet, schema: SCHEMA.COLLECTION, maxColumns: COLLECTION_COL_COUNT },
+      { key: 'users', sheet: usersSheet, schema: SCHEMA.USERS },
+      { key: 'attendance', sheet: attendanceSheet, schema: SCHEMA.RETREAT_ATTENDANCE, maxColumns: 3 },
+    ]);
+    const collectionRows = batchRows.collection || [];
+    const usersRows = batchRows.users || [];
+    const attendanceRows = batchRows.attendance || [];
     const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUserId, collectionRows, collectionCol);
     const specialPackProjection = getSpecialPackStatsFromSnapshot_(snapshot);
     if (specialPackProjection.projected) {
