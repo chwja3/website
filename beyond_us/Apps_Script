@@ -1042,6 +1042,10 @@ function doPost(e) {
       if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
       return jsonOutput(adminSetRaffleAttendance(body));
     }
+    if (action === 'adminResetUserRaffleTickets') {
+      if (!isAdminAuthorized_(body.adminPw)) return jsonOutput({ error: 'unauthorized' });
+      return jsonOutput(adminResetUserRaffleTickets(body));
+    }
     if (action === 'register') {
       return jsonOutput(registerUser(body));
     }
@@ -3561,6 +3565,8 @@ function getUserStatus(userId, weekKey, configOverride) {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;
       for (let j = 0; j < cnt; j++) collection.push({...card});
     });
+    // 추첨권 통계는 실제 RaffleTickets 행 기준이므로, 현재 조건을 먼저 backfill한다.
+    try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
     raffle = getRaffleStatsFromRows_(cleanUserId, {
       collectionRows: collectionRows,
       collectionCol: collectionCol,
@@ -3570,8 +3576,6 @@ function getUserStatus(userId, weekKey, configOverride) {
       attendanceCol: attendanceCol,
       currentSnapshot: snapshot,
     });
-    // 자동 backfill: 사용자가 조건을 만족하는데 아직 번호가 없으면 발급
-    try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
     raffle.myTicketNumbers = getUserRaffleTicketNumbers_(cleanUserId);
   } catch(e) {}
 
@@ -4503,6 +4507,7 @@ function adminGetRaffleAttendance() {
   const attendanceSheet = getOrCreateRetreatAttendanceSheet();
   const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
   const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
+  const raffleSummary = getActiveRaffleTicketSummary_(getRaffleTicketRows_());
 
   const users = usersRows
     .filter(function(row) { return String(row[userCol.nickname] || '').trim(); })
@@ -4514,6 +4519,7 @@ function adminGetRaffleAttendance() {
         name: String(row[userCol.name] || '').trim(),
         nickname: nickname,
         attended: attended,
+        raffleTickets: raffleSummary.byUser[nickname] || 0,
       };
     })
     .sort(function(a, b) {
@@ -4551,6 +4557,12 @@ function adminSetRaffleAttendance(body) {
   sheet.appendRow([nickname, attended, now]);
   clearUserDerivedCaches_(nickname);
   return { ok: true, nickname: nickname, attended: attended };
+}
+
+function adminResetUserRaffleTickets(body) {
+  const nickname = String(body.nickname || body.userId || '').trim();
+  if (!nickname) return { error: 'missing_nickname' };
+  return revokeUserRaffleTickets_(nickname, 'revoked_admin_reset', 'admin_reset');
 }
 
 function findNickname(name, parish) {
@@ -5405,13 +5417,18 @@ function getLastTicketNumber_() {
 function findUserRaffleTicket_(rows, userId, condition) {
   const cleanUser = String(userId || '').trim();
   const cleanCond = String(condition || '').trim();
+  let resetRevoked = null;
   for (let i = 0; i < rows.length; i++) {
-    if (!isActiveRaffleTicketRow_(rows[i])) continue;
     if (String(rows[i][1]).trim() === cleanUser && String(rows[i][5]).trim() === cleanCond) {
-      return { row: rows[i], index: i };
+      if (isActiveRaffleTicketRow_(rows[i])) {
+        return { row: rows[i], index: i };
+      }
+      if (!resetRevoked && isAdminResetRaffleTicketRow_(rows[i])) {
+        resetRevoked = { row: rows[i], index: i };
+      }
     }
   }
-  return null;
+  return resetRevoked;
 }
 
 function isRaffleEligibleParish_(parish) {
@@ -5434,6 +5451,26 @@ function getRaffleEligibilityFromParish_(parish) {
 function isActiveRaffleTicketRow_(row) {
   const status = String((row || [])[6] || '').trim().toLowerCase();
   return status.indexOf('revoked') !== 0;
+}
+
+function isAdminResetRaffleTicketRow_(row) {
+  const status = String((row || [])[6] || '').trim().toLowerCase();
+  return status === 'revoked_admin_reset';
+}
+
+function getActiveRaffleTicketSummary_(rows) {
+  const byUser = {};
+  const byUserCondition = {};
+  (rows || []).forEach(function(row) {
+    if (!isActiveRaffleTicketRow_(row)) return;
+    const userId = String(row[1] || '').trim();
+    const condition = String(row[5] || '').trim();
+    if (!userId || !condition) return;
+    byUser[userId] = (byUser[userId] || 0) + 1;
+    if (!byUserCondition[userId]) byUserCondition[userId] = {};
+    byUserCondition[userId][condition] = padTicketNo_(row[0]);
+  });
+  return { byUser: byUser, byUserCondition: byUserCondition };
 }
 
 function getUserParishMap_() {
@@ -5480,7 +5517,12 @@ function issueRaffleTicket_(userId, condition, weekKey) {
     const rows = getRaffleTicketRows_();
     const existing = findUserRaffleTicket_(rows, cleanUser, cleanCond);
     if (existing) {
-      return { ok: true, ticket_no: padTicketNo_(existing.row[0]), dup: true };
+      return {
+        ok: true,
+        ticket_no: padTicketNo_(existing.row[0]),
+        dup: true,
+        revoked: !isActiveRaffleTicketRow_(existing.row),
+      };
     }
     const nextNo = padTicketNo_(getLastTicketNumber_() + 1);
     const now = new Date().toISOString();
@@ -5701,6 +5743,47 @@ function revokeIneligibleRaffleTickets_(dryRun) {
   };
 }
 
+function revokeUserRaffleTickets_(userId, status, reason) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return { error: 'missing_userId' };
+  const sheet = getOrCreateRaffleTicketsSheet_();
+  const last = sheet.getLastRow();
+  if (last < 2) {
+    return { ok: true, nickname: cleanUser, revoked: 0, rows: [] };
+  }
+
+  const range = sheet.getRange(2, 1, last - 1, RAFFLE_TICKET_COLUMNS.length);
+  const values = range.getValues();
+  const now = new Date().toISOString();
+  const revokedRows = [];
+
+  values.forEach(function(row, idx) {
+    if (!isActiveRaffleTicketRow_(row)) return;
+    if (String(row[1] || '').trim() !== cleanUser) return;
+    row[6] = status || 'revoked_admin_reset';
+    row[7] = now;
+    row[8] = reason || 'admin_reset';
+    row[9] = now;
+    revokedRows.push({
+      rowNumber: idx + 2,
+      ticket_no: padTicketNo_(row[0]),
+      condition: String(row[5] || '').trim(),
+    });
+  });
+
+  if (revokedRows.length) {
+    range.setValues(values);
+    clearUserDerivedCaches_(cleanUser);
+  }
+
+  return {
+    ok: true,
+    nickname: cleanUser,
+    revoked: revokedRows.length,
+    rows: revokedRows,
+  };
+}
+
 function getCollectionSnapshotMap_(rows, col) {
   const map = {};
   (rows || []).forEach(function(row) {
@@ -5726,7 +5809,7 @@ function getRaffleStatsFromRows_(userId, options) {
   const cleanUserId = String(userId || '').trim();
   const stats = getEmptyRaffleStats_();
   const collectionMap = getCollectionSnapshotMap_(opts.collectionRows || [], opts.collectionCol);
-  const attendanceMap = getRetreatAttendanceMapFromRows_(opts.attendanceRows || [], opts.attendanceCol);
+  const ticketSummary = getActiveRaffleTicketSummary_(opts.raffleRows || getRaffleTicketRows_());
   let foundCurrentUser = false;
 
   (opts.usersRows || []).forEach(function(row) {
@@ -5745,13 +5828,23 @@ function getRaffleStatsFromRows_(userId, options) {
       return;
     }
     const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
-    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attendanceMap[nickname] === true, true);
-    stats.totalTickets += info.tickets;
-    if (info.tickets > 0) stats.participantCount++;
+    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, true);
+    const activeTickets = ticketSummary.byUser[nickname] || 0;
+    stats.totalTickets += activeTickets;
+    if (activeTickets > 0) stats.participantCount++;
     if (nickname === cleanUserId) {
-      stats.myTickets = info.tickets;
+      const byCondition = ticketSummary.byUserCondition[nickname] || {};
+      stats.myTickets = activeTickets;
       stats.uniqueCards = info.uniqueCards;
-      stats.breakdown = info;
+      stats.breakdown = {
+        tickets: activeTickets,
+        uniqueCards: info.uniqueCards,
+        signupTicket: byCondition.signup ? 1 : 0,
+        card3Ticket: byCondition.card_3 ? 1 : 0,
+        card5Ticket: byCondition.card_5 ? 1 : 0,
+        card10Ticket: byCondition.card_10 ? 1 : 0,
+        attendanceTicket: 0,
+      };
       foundCurrentUser = true;
     }
   });
@@ -5765,10 +5858,20 @@ function getRaffleStatsFromRows_(userId, options) {
       return stats;
     }
     const snapshot = opts.currentSnapshot || collectionMap[cleanUserId] || emptyCollectionSnapshot_(cleanUserId, false);
-    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attendanceMap[cleanUserId] === true, true);
-    stats.myTickets = info.tickets;
+    const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, true);
+    const byCondition = ticketSummary.byUserCondition[cleanUserId] || {};
+    const activeTickets = ticketSummary.byUser[cleanUserId] || 0;
+    stats.myTickets = activeTickets;
     stats.uniqueCards = info.uniqueCards;
-    stats.breakdown = info;
+    stats.breakdown = {
+      tickets: activeTickets,
+      uniqueCards: info.uniqueCards,
+      signupTicket: byCondition.signup ? 1 : 0,
+      card3Ticket: byCondition.card_3 ? 1 : 0,
+      card5Ticket: byCondition.card_5 ? 1 : 0,
+      card10Ticket: byCondition.card_10 ? 1 : 0,
+      attendanceTicket: 0,
+    };
   }
 
   stats.fillPercent = getRaffleFillPercent_(stats.totalTickets);

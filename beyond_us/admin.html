@@ -192,7 +192,7 @@
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
       <button class="drawer-item" data-panel="bbbphotos">BBB 사진 승인</button>
       <button class="drawer-item" data-panel="raffle">추첨권 번호 검색</button>
-      <button class="drawer-item" data-panel="attendance">수련회 참석</button>
+      <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <div class="drawer-section-divider"></div>
@@ -343,7 +343,7 @@
         </div>
       </div>
 
-      <!-- 수련회 참석자 관리 -->
+      <!-- 앱 가입자 관리 -->
       <div id="tab-attendance" class="tab-panel">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="attendanceTotalUsers">-</div></div>
@@ -353,8 +353,8 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
             <div>
-              <h2 class="card-title" style="margin:0;">수련회 참석자 명단</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">참석 여부 기록용입니다. 추첨권에는 반영되지 않습니다.</p>
+              <h2 class="card-title" style="margin:0;">앱 가입자 명단</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">참석 여부와 가입자별 추첨권 회수를 관리합니다. 참석 체크는 추첨권에 반영되지 않습니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshAttendanceBtn">새로고침</button>
           </div>
@@ -367,10 +367,11 @@
                   <th>이름</th>
                   <th>닉네임</th>
                   <th>수련회 참석</th>
+                  <th>추첨권 초기화</th>
                 </tr>
               </thead>
               <tbody id="attendanceTableBody">
-                <tr><td colspan="4" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+                <tr><td colspan="5" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
               </tbody>
             </table>
           </div>
@@ -789,14 +790,14 @@
     }
     document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
 
-    /* ── 수련회 참석자 관리 ── */
+    /* ── 앱 가입자 관리 ── */
     let _raffleAttendanceUsers = [];
 
     async function loadRaffleAttendance() {
       const tbody = document.getElementById('attendanceTableBody');
       const statusEl = document.getElementById('attendanceStatus');
       statusEl.textContent = '';
-      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
         const res = await get({ action: 'adminGetRaffleAttendance', adminPw });
         if (!res.ok) throw new Error(res.error || 'load_failed');
@@ -805,17 +806,21 @@
         document.getElementById('attendanceCheckedUsers').textContent = res.attendedCount || 0;
         renderRaffleAttendanceRows(_raffleAttendanceUsers);
       } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
       }
     }
 
     function renderRaffleAttendanceRows(users) {
       const tbody = document.getElementById('attendanceTableBody');
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
         return;
       }
       tbody.innerHTML = users.map(u => `
+        ${(() => {
+          const ticketCount = Number(u.raffleTickets) || 0;
+          const resetLabel = ticketCount > 0 ? `초기화 (${ticketCount})` : '초기화';
+          return `
         <tr>
           <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
           <td>${esc(u.name)}</td>
@@ -823,10 +828,18 @@
           <td>
             <input type="checkbox" class="attendance-toggle" data-nickname="${esc(u.nickname)}" ${u.attended ? 'checked' : ''} aria-label="${esc(u.nickname)} 수련회 참석 체크" />
           </td>
+          <td>
+            <button class="btn btn-ghost btn-sm raffle-reset-btn" data-nickname="${esc(u.nickname)}" ${ticketCount > 0 ? '' : 'disabled'} style="color:var(--danger);border-color:#fecaca;">${resetLabel}</button>
+          </td>
         </tr>
+          `;
+        })()}
       `).join('');
       tbody.querySelectorAll('.attendance-toggle').forEach(input => {
         input.addEventListener('change', () => setRaffleAttendance(input.dataset.nickname, input.checked, input));
+      });
+      tbody.querySelectorAll('.raffle-reset-btn').forEach(btn => {
+        btn.addEventListener('click', () => resetUserRaffleTickets(btn.dataset.nickname, btn));
       });
     }
 
@@ -864,6 +877,29 @@
         statusEl.className = 'status';
       } finally {
         checkbox.disabled = false;
+      }
+    }
+
+    async function resetUserRaffleTickets(nickname, btn) {
+      const statusEl = document.getElementById('attendanceStatus');
+      const user = _raffleAttendanceUsers.find(u => u.nickname === nickname);
+      const ticketCount = Number(user && user.raffleTickets) || 0;
+      if (ticketCount <= 0) return;
+      if (!confirm(`${nickname}님의 추첨권 ${ticketCount}장을 모두 회수할까요?`)) return;
+      btn.disabled = true;
+      statusEl.textContent = '추첨권 회수 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await post({ action: 'adminResetUserRaffleTickets', adminPw, nickname });
+        if (!res.ok) throw new Error(res.error || 'reset_failed');
+        if (user) user.raffleTickets = 0;
+        filterRaffleAttendance(document.getElementById('attendanceSearch').value);
+        statusEl.textContent = `${nickname}님의 추첨권 ${res.revoked || 0}장을 회수했어요.`;
+        statusEl.className = 'status ok';
+      } catch(e) {
+        btn.disabled = false;
+        statusEl.textContent = '추첨권 회수 실패. 잠시 후 다시 시도해주세요.';
+        statusEl.className = 'status';
       }
     }
 
