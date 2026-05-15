@@ -8202,8 +8202,14 @@ function backupSpreadsheet() {
     const fileName = BACKUP_FILE_PREFIX + dateStr;
 
     const backupFile = DriveApp.getFileById(getSpreadsheetId_()).makeCopy(fileName, folder);
-    const normalized = normalizeModernBackupSpreadsheet_(backupFile.getId());
-    _cleanOldBackups(folder, 'BeyondUs_');
+    let normalized = { ok: false, skipped: true };
+    try {
+      normalized = normalizeModernBackupSpreadsheet_(backupFile.getId());
+    } catch(normalizeError) {
+      normalized = { ok: false, error: String(normalizeError) };
+      Logger.log('백업 정규화 오류: ' + normalizeError);
+    }
+    const cleanup = _cleanOldBackups(folder, 'BeyondUs_');
 
     Logger.log('백업 완료: ' + dateStr);
     return {
@@ -8213,6 +8219,7 @@ function backupSpreadsheet() {
       fileName: fileName,
       fileId: backupFile.getId(),
       normalized: normalized,
+      cleanup: cleanup,
     };
   } catch(e) {
     Logger.log('백업 오류: ' + e);
@@ -8349,10 +8356,26 @@ function _cleanOldBackups(folder, prefix) {
     const f = iter.next();
     if (f.getName().startsWith(prefix)) files.push(f);
   }
-  files.sort((a, b) => a.getName() < b.getName() ? -1 : 1);
+  files.sort(function(a, b) {
+    return a.getDateCreated().getTime() - b.getDateCreated().getTime() ||
+      String(a.getName()).localeCompare(String(b.getName()));
+  });
+  const trashed = [];
   while (files.length > BACKUP_KEEP_COUNT) {
-    files.shift().setTrashed(true);
+    const oldest = files.shift();
+    trashed.push({
+      name: oldest.getName(),
+      id: oldest.getId(),
+      createdAt: oldest.getDateCreated().toISOString(),
+    });
+    oldest.setTrashed(true);
   }
+  return {
+    ok: true,
+    keepCount: BACKUP_KEEP_COUNT,
+    kept: files.length,
+    trashed: trashed,
+  };
 }
 
 // ── B.B.B. (케어버디 / 시크릿버디) ──────────────────
