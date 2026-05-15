@@ -1538,6 +1538,8 @@ function isUserInactive_(userId) {
   }
 }
 
+/*
+ * Unused internal helper, disabled 2026-05-15.
 function getUserActiveMap_() {
   const sheet = getUsersSheet_();
   const col = getUserColumns_(sheet);
@@ -1550,6 +1552,7 @@ function getUserActiveMap_() {
   });
   return map;
 }
+ */
 
 function getUserColumns_(sheet) {
   return getResolvedColumns_(sheet, SCHEMA.USERS, USER_COLUMN_FALLBACK);
@@ -1715,9 +1718,12 @@ function getConfigWeekStartRow_(week) {
   return (week - 1) * CONFIG_LAYOUT.weekBlockSize + CONFIG_LAYOUT.weekBlockFirstRow;
 }
 
+/*
+ * Unused internal helper, disabled 2026-05-15.
 function getCollectionCardIndex_(cardId, col) {
   return cardId <= 9 ? col['card' + cardId] : col.hidden;
 }
+ */
 
 function getUserNameMap_() {
   const sheet = getUsersSheet_();
@@ -2412,6 +2418,8 @@ function getAllWeekMeta_() {
   return weeks;
 }
 
+/*
+ * Unused internal helper, disabled 2026-05-15.
 function getMissionThresholdMap_() {
   const thresholdMap = {};
   getAllWeekMeta_().forEach(function(meta) {
@@ -2420,6 +2428,7 @@ function getMissionThresholdMap_() {
   });
   return thresholdMap;
 }
+ */
 
 function ensureMissionDefinitionWeekRows_(sheet, week) {
   const col = getMissionDefinitionsColumns_(sheet);
@@ -3137,10 +3146,13 @@ function ensureUserSessionColumns_(sheet) {
   }
 }
 
+/*
+ * Unused internal helper, disabled 2026-05-15.
 function findUserRow_(sheet, nickname) {
   const info = findUserInfoByNickname_(sheet, nickname);
   return info ? info.rowIndex : -1;
 }
+ */
 
 function makeSessionToken_() {
   return Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '');
@@ -3275,9 +3287,12 @@ function getDashboardDataCached_() {
   return data;
 }
 
+/*
+ * Unused internal helper, disabled 2026-05-15.
 function clearHotCaches_() {
   clearDashboardCache_();
 }
+ */
 
 function clearDashboardCache_() {
   cacheRemove_(cacheKey_('dashboard_v2'));
@@ -6247,6 +6262,8 @@ function isRaffleEligibleParish_(parish) {
   return /^([1-4]청)/.test(clean);
 }
 
+/*
+ * Unused internal helper, disabled 2026-05-15.
 function getRaffleEligibilityFromParish_(parish) {
   const clean = String(parish || '').trim();
   const eligible = isRaffleEligibleParish_(clean);
@@ -6256,6 +6273,7 @@ function getRaffleEligibilityFromParish_(parish) {
     reason: eligible ? '' : 'ineligible_parish',
   };
 }
+ */
 
 function getDefaultRaffleExcludedByParish_(parish) {
   return !isRaffleEligibleParish_(parish);
