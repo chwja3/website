@@ -1,0 +1,17 @@
+/beyond_us/version.txt
+  Cache-Control: no-store
+
+/beyond_us/app.html
+  Cache-Control: no-store
+
+/beyond_us/app.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/beyond_us/app.css
+  Cache-Control: public, max-age=0, must-revalidate
+
+/beyond_us/sw.js
+  Cache-Control: no-store
+
+/beyond_us/images/*
+  Cache-Control: public, max-age=31536000, immutable

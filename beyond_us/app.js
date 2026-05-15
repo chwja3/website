@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515o';
+    const APP_VERSION = '20260515p';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -604,17 +604,31 @@
       return Promise.all([
         loadAll({ silent: opts.silent === true }),
         loadNotices().catch(() => {}),
-        currentNickname ? loadUserStatus({ silent: opts.silent === true }).then(() => loadTrades()) : Promise.resolve()
+        currentNickname ? loadUserStatus({ silent: opts.silent === true }) : Promise.resolve()
       ]).then(results => {
-        scheduleFeaturePreload();
+        scheduleFullUserStatusRefresh(2200);
+        scheduleTradePreload(3600);
+        scheduleFeaturePreload(6500);
         return results;
       });
     }
 
     let _featurePreloadTimer = null;
+    let _fullUserStatusTimer = null;
+    let _tradePreloadTimer = null;
 
     function isActiveAccount(nickname) {
       return !!nickname && String(currentNickname || '') === String(nickname);
+    }
+
+    function runWhenIdle(fn, delay, timeout) {
+      setTimeout(function() {
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(fn, { timeout: timeout || 1600 });
+        } else {
+          fn();
+        }
+      }, delay || 0);
     }
 
     function cancelFeaturePreload() {
@@ -624,16 +638,58 @@
       }
     }
 
+    function cancelFullUserStatusRefresh() {
+      if (_fullUserStatusTimer) {
+        clearTimeout(_fullUserStatusTimer);
+        _fullUserStatusTimer = null;
+      }
+    }
+
+    function cancelTradePreload() {
+      if (_tradePreloadTimer) {
+        clearTimeout(_tradePreloadTimer);
+        _tradePreloadTimer = null;
+      }
+    }
+
+    function scheduleFullUserStatusRefresh(delay) {
+      cancelFullUserStatusRefresh();
+      const nickname = currentNickname;
+      if (!nickname) return;
+      _fullUserStatusTimer = setTimeout(function() {
+        _fullUserStatusTimer = null;
+        runWhenIdle(function() {
+          if (!isActiveAccount(nickname)) return;
+          loadUserStatus({ silent: true, full: true }).catch(() => {});
+        }, 0, 1800);
+      }, delay || 2200);
+    }
+
+    function scheduleTradePreload(delay) {
+      cancelTradePreload();
+      const nickname = currentNickname;
+      if (!nickname) return;
+      _tradePreloadTimer = setTimeout(function() {
+        _tradePreloadTimer = null;
+        runWhenIdle(function() {
+          if (!isActiveAccount(nickname)) return;
+          loadTrades().catch(() => {});
+        }, 0, 1800);
+      }, delay || 3600);
+    }
+
     function scheduleFeaturePreload(delay) {
       cancelFeaturePreload();
       const nickname = currentNickname;
       if (!nickname) return;
       _featurePreloadTimer = setTimeout(function() {
         _featurePreloadTimer = null;
-        if (!isActiveAccount(nickname)) return;
-        preloadImage('images/천로역정맵.webp', 'low');
-        loadHoldPray(false).catch(() => {});
-        loadBBB(true).catch(() => {});
+        runWhenIdle(function() {
+          if (!isActiveAccount(nickname)) return;
+          preloadImage('images/천로역정맵.webp', 'low');
+          loadHoldPray(false).catch(() => {});
+          loadBBB(true).catch(() => {});
+        }, 0, 2200);
       }, delay || 1200);
     }
 
@@ -659,6 +715,8 @@
 
     function resetAccountScopedState(options) {
       cancelFeaturePreload();
+      cancelFullUserStatusRefresh();
+      cancelTradePreload();
       userStatus = null;
       pendingCard = null;
       if (typeof _cachedTrades !== 'undefined') _cachedTrades = null;
@@ -1276,7 +1334,7 @@
       return (Math.max(0, Number(value) || 0)).toLocaleString('ko-KR');
     }
 
-    function openRaffleModal() {
+    async function openRaffleModal() {
       const stats = getRaffleStatsFromStatus(userStatus);
       if (stats.eligible === false) return;
       renderRaffleModal();
@@ -1285,6 +1343,10 @@
       overlay.classList.remove('hidden');
       overlay.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
+      if (userStatus && userStatus.raffleDeferred) {
+        await loadUserStatus({ silent: true, full: true }).catch(() => {});
+        if (!overlay.classList.contains('hidden')) renderRaffleModal();
+      }
     }
 
     function closeRaffleModal() {
@@ -1879,8 +1941,27 @@
     }
 
     let _loadUserStatusPromise = null;
+    let _loadUserStatusMode = '';
+
+    function mergeUserStatusResponse(nextStatus) {
+      if (!nextStatus || nextStatus.error) return nextStatus;
+      const prevRaffle = userStatus && userStatus.raffle;
+      const hasFullPrevRaffle = prevRaffle && prevRaffle.deferred !== true && userStatus.raffleDeferred !== true;
+      if (nextStatus.raffleDeferred && hasFullPrevRaffle) {
+        nextStatus.raffle = prevRaffle;
+        nextStatus.raffleDeferred = false;
+      }
+      return nextStatus;
+    }
+
     async function loadUserStatus(options) {
-      if (_loadUserStatusPromise) return _loadUserStatusPromise;
+      const requestedFull = options && options.full === true;
+      const requestedMode = requestedFull ? 'full' : 'lite';
+      if (_loadUserStatusPromise) {
+        if (!requestedFull || _loadUserStatusMode === 'full') return _loadUserStatusPromise;
+        await _loadUserStatusPromise.catch(() => {});
+      }
+      _loadUserStatusMode = requestedMode;
       _loadUserStatusPromise = (async () => {
       const opts = options || {};
       if (!currentNickname) { renderDrawSection(); return; }
@@ -1904,12 +1985,13 @@
         }
       }
       try {
+        const action = opts.full === true ? 'userStatus' : 'userStatusLite';
         const res = await fetch(
-          `${API_BASE}?action=userStatus&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
+          `${API_BASE}?action=${action}&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
           { cache: 'no-store' }
         );
         if (!res.ok) throw new Error();
-        userStatus = await res.json();
+        userStatus = mergeUserStatusResponse(await res.json());
         if (currentNickname) localStorage.setItem('beyondus_cache_userStatus_' + currentNickname, JSON.stringify(userStatus));
         // 서버 기준으로 이번 주 스탬프 동기화 (서버가 비어있으면 로컬도 지움)
         {
@@ -1936,7 +2018,7 @@
         updateScoreProgress();
         if (lastConfigData) renderConfig(lastConfigData);
       }
-      })().finally(() => { _loadUserStatusPromise = null; });
+      })().finally(() => { _loadUserStatusPromise = null; _loadUserStatusMode = ''; });
       return _loadUserStatusPromise;
     }
 
@@ -3639,6 +3721,10 @@
     let _bbbData = null;
     let _bbbLoadedFor = '';
     let _bbbLoadingFor = '';
+    let _bbbMessagesPromise = null;
+    let _bbbMessagesLoadedFor = '';
+    let _bbbMessagesLastLoadedAt = 0;
+    const BBB_MESSAGES_TTL_MS = 60000;
 
     function _resetPhotoBox(imgId, modalImgId, placeholderId, placeholderTextId, labelId, statusId) {
       const img = document.getElementById(imgId);
@@ -3659,6 +3745,9 @@
       _bbbData = null;
       _bbbLoadedFor = '';
       _bbbLoadingFor = '';
+      _bbbMessagesLoadedFor = '';
+      _bbbMessagesLastLoadedAt = 0;
+      _bbbMessagesPromise = null;
       _bbbLoadedOnce = false;
       _bbbLastLoadedAt = 0;
       _bbbLoadPromise = null;
@@ -3772,6 +3861,24 @@
     let _bbbLastLoadedAt = 0;
     const BBB_REFRESH_TTL_MS = 60000;
 
+    async function loadBBBMessages(nickname, forceRefresh) {
+      if (!nickname) return;
+      const now = Date.now();
+      if (!forceRefresh && _bbbMessagesLoadedFor === nickname && now - _bbbMessagesLastLoadedAt < BBB_MESSAGES_TTL_MS) return;
+      if (_bbbMessagesPromise) return _bbbMessagesPromise;
+      _bbbMessagesPromise = (async () => {
+        try {
+          const res = await fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+          if (!isActiveAccount(nickname)) return;
+          _bbbMessagesLoadedFor = nickname;
+          _bbbMessagesLastLoadedAt = Date.now();
+          _renderBBBMessages(res.messages || []);
+          _renderBBBSentMessages(res.sent || []);
+        } catch(e) {}
+      })().finally(() => { _bbbMessagesPromise = null; });
+      return _bbbMessagesPromise;
+    }
+
     async function loadBBB(silent = false, forceRefresh = false) {
       const nickname = localStorage.getItem('beyondus_nickname') || '';
       if (!nickname) {
@@ -3794,10 +3901,7 @@
 
       try {
         const nonce = Date.now();
-        const [bbbRes, msgRes] = await Promise.all([
-          fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json()),
-          fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json())
-        ]);
+        const bbbRes = await fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json());
         if (!isActiveAccount(nickname)) return;
 
         document.getElementById('bbbLoading').style.display = 'none';
@@ -3923,8 +4027,9 @@
         }
 
         // 받은 메시지 + 보낸 메시지
-        _renderBBBMessages(msgRes.messages || []);
-        _renderBBBSentMessages(msgRes.sent || []);
+        if (_msgOpen) {
+          loadBBBMessages(nickname, forceRefresh).catch(() => {});
+        }
 
       } catch(e) {
         if (!silent) {
@@ -4221,6 +4326,7 @@
         resultEl.style.color = '#4ade80';
         resultEl.textContent = '메시지를 보냈어요! 💌';
         document.getElementById('bbbMsgInput').value = '';
+        loadBBBMessages(nickname, true).catch(() => {});
         setTimeout(() => { resultEl.textContent = ''; }, 3000);
       } catch(e) {
         resultEl.style.color = '#f87171'; resultEl.textContent = '연결 오류';

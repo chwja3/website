@@ -956,6 +956,13 @@ function doGet(e) {
     if (auth) return jsonOutput(auth);
     return jsonOutput(getUserStatusCached_(userId, weekKey));
   }
+  if (action === 'userStatusLite') {
+    const userId  = e.parameter.userId  || '';
+    const weekKey = e.parameter.weekKey || '';
+    const auth = requireSessionForUser_(e.parameter, userId);
+    if (auth) return jsonOutput(auth);
+    return jsonOutput(getUserStatusLiteCached_(userId, weekKey));
+  }
   if (action === 'getUsers') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput(getUsers());
@@ -3356,7 +3363,7 @@ function getDashboardDataCached_() {
   const cached = cacheGetJson_(key);
   if (cached) return cached;
   const data = getDashboardData();
-  cachePutJson_(key, data, 15);
+  cachePutJson_(key, data, 45);
   return data;
 }
 
@@ -3383,11 +3390,13 @@ function clearUserCache_(userId) {
   cacheRemove_(cacheKey_('user_status_v1', cleanUserId));
   cacheRemove_(cacheKey_('user_status_v2', cleanUserId));
   cacheRemove_(cacheKey_('user_status_v3', cleanUserId));
+  cacheRemove_(cacheKey_('user_status_lite_v1', cleanUserId));
   try {
     const currentWeek = getCurrentWeek_();
     cacheRemove_(cacheKey_('user_status_v1', cleanUserId + ':w' + currentWeek));
     cacheRemove_(cacheKey_('user_status_v2', cleanUserId + ':w' + currentWeek));
     cacheRemove_(cacheKey_('user_status_v3', cleanUserId + ':w' + currentWeek));
+    cacheRemove_(cacheKey_('user_status_lite_v1', cleanUserId + ':w' + currentWeek));
   } catch(e) {}
   cacheRemove_(cacheKey_('collection_v1', cleanUserId));
 }
@@ -4378,6 +4387,136 @@ function getUserStatusCached_(userId, weekKey) {
   const data = getUserStatus(cleanUserId, cleanWeekKey, config);
   cachePutJson_(key, data, 10);
   return data;
+}
+
+function getUserStatusLiteCached_(userId, weekKey) {
+  const cleanUserId = String(userId || '').trim();
+  const config = getConfig();
+  const cleanWeekKey = String(weekKey || ('w' + config.currentWeek)).trim();
+  if (!cleanUserId) return getUserStatusLite_(cleanUserId, cleanWeekKey, config);
+  const key = cacheKey_('user_status_lite_v1', cleanUserId + ':' + cleanWeekKey);
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getUserStatusLite_(cleanUserId, cleanWeekKey, config);
+  cachePutJson_(key, data, 10);
+  return data;
+}
+
+function getUserStatusLite_(userId, weekKey, configOverride) {
+  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
+  const config = configOverride || getConfig();
+  weekKey = String(weekKey || ('w' + config.currentWeek)).trim();
+  let weekScore = 0, drawnThisWeek = false, weekCard = null;
+  const collection = [];
+  const todayItems   = [];
+  const todayIndices = [];
+  const weekDates    = [];
+  const today = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+
+  const nowKST = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+  const dow = nowKST.getUTCDay() || 7;
+  const monday = new Date(nowKST);
+  monday.setUTCDate(nowKST.getUTCDate() - (dow - 1));
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const weekStart = monday.toISOString().slice(0, 10);
+  const weekEnd   = sunday.toISOString().slice(0, 10);
+
+  let earnedTicketThisWeek = false;
+  let userEvents = null;
+  const progressState = getMissionProgressStateForUserWeek_(userId, weekKey, config, today);
+  if (progressState && progressState.ok) {
+    weekScore = Number(progressState.weekScore) || 0;
+    (progressState.todayItems || []).forEach(function(item) { todayItems.push(item); });
+    (progressState.todayIndices || []).forEach(function(idx) { todayIndices.push(idx); });
+    (progressState.weekDates || []).forEach(function(dateKey) { weekDates.push(dateKey); });
+    earnedTicketThisWeek = progressState.earnedTicketThisWeek === true;
+  } else {
+    userEvents = Events_readByUser(userId);
+    const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, weekKey);
+    submittedEvents.forEach(function(event) {
+      weekScore += getMissionEventScore_(event);
+      const rowDate = getMissionEventDateKey_(event);
+      if (rowDate >= weekStart && rowDate <= weekEnd && !weekDates.includes(rowDate)) {
+        weekDates.push(rowDate);
+      }
+      if (rowDate === today) {
+        getMissionEventItems_(event).forEach(function(item) {
+          todayItems.push(item);
+          const idx = config.items.indexOf(item);
+          if (idx >= 0) todayIndices.push(idx);
+        });
+        getMissionEventIndices_(event).forEach(function(idx) {
+          if (typeof idx === 'number') todayIndices.push(idx);
+        });
+      }
+    });
+    userEvents.forEach(function(event) {
+      if (event.type !== EVENT_TYPES.TICKET_GRANTED) return;
+      if (String(event.weekKey || '') !== String(weekKey || '')) return;
+      if (String((event.payload && event.payload.reason) || '') === 'week_complete') {
+        earnedTicketThisWeek = true;
+      }
+    });
+  }
+
+  try {
+    if (userEvents && userEvents.length) {
+      for (const event of userEvents) {
+        if (event.type !== EVENT_TYPES.CARD_DRAWN) continue;
+        if (String(event.weekKey) !== weekKey) continue;
+        const card = SPIRIT_CARDS.find(c => c.id === Number(event.refId));
+        if (!card) continue;
+        drawnThisWeek = true;
+        weekCard = card;
+      }
+    }
+  } catch(e) {}
+
+  let pendingDraws = 0;
+  let specialPackStats = { totalEarned: 0, totalConsumed: 0, remaining: 0 };
+  let raffle = getEmptyRaffleStats_();
+  try {
+    const snapshot = getCurrentCollectionSnapshot_(userId);
+    const specialPackProjection = getSpecialPackStatsFromSnapshot_(snapshot);
+    if (specialPackProjection.projected) {
+      specialPackStats = specialPackProjection;
+    } else {
+      if (!userEvents) userEvents = Events_readByUser(userId);
+      specialPackStats = getSpecialPackStatsFromEvents_(userEvents, userId);
+    }
+    pendingDraws = Number(snapshot.remaining) || 0;
+    SPIRIT_CARDS.forEach(function(card) {
+      const cnt = Number(snapshot.cardCounts[card.id]) || 0;
+      for (let j = 0; j < cnt; j++) collection.push({ id: card.id, name: card.name });
+    });
+    const raffleExcluded = isUserRaffleExcluded_(userId);
+    raffle.eligible = !raffleExcluded;
+    raffle.ineligibleReason = raffleExcluded ? 'raffle_excluded' : '';
+    raffle.uniqueCards = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, false).uniqueCards;
+    raffle.deferred = true;
+  } catch(e) {
+    raffle.deferred = true;
+  }
+
+  return {
+    ok: true,
+    lite: true,
+    weekScore,
+    drawThreshold: config.drawThreshold,
+    canDraw: pendingDraws > 0,
+    pendingDraws,
+    pendingSpecialPacks: specialPackStats.remaining,
+    earnedTicketThisWeek,
+    drawnThisWeek,
+    weekCard,
+    collection,
+    raffle,
+    raffleDeferred: true,
+    todayItems,
+    todayIndices,
+    weekDates
+  };
 }
 
 function getUserStatus(userId, weekKey, configOverride) {
