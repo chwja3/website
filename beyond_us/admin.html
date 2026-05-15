@@ -1654,7 +1654,23 @@
         const res = await get({ action: 'adminFindRaffleTicket', adminPw, ticket_no: raw });
         if (!res.ok) {
           resultEl.style.color = 'var(--danger)';
-          if (res.error === 'not_found') {
+          if (res.error === 'revoked') {
+            const cond = RAFFLE_CONDITION_LABEL[res.condition] || res.condition || '-';
+            resultEl.style.textAlign = 'left';
+            resultEl.style.padding = '0';
+            resultEl.innerHTML = `
+              <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:18px 20px;">
+                <div style="font-size:11px;font-weight:800;color:#991b1b;letter-spacing:0.16em;margin-bottom:6px;">회수된 추첨권 번호</div>
+                <div style="font-size:30px;font-weight:900;color:#991b1b;letter-spacing:-0.02em;line-height:1;margin-bottom:14px;">#${esc(res.ticket_no || raw)}</div>
+                <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;line-height:1.5;color:var(--text);">
+                  <span style="color:var(--sub);">닉네임</span><strong>${esc(res.userId || '-')}</strong>
+                  <span style="color:var(--sub);">이름</span><strong>${esc(res.name || '-')}</strong>
+                  <span style="color:var(--sub);">교구</span><strong>${esc(res.parish || '-')}</strong>
+                  <span style="color:var(--sub);">발급 조건</span><strong>${esc(cond)}</strong>
+                  <span style="color:var(--sub);">상태</span><strong>대상 교구 제외로 회수됨</strong>
+                </div>
+              </div>`;
+          } else if (res.error === 'not_found') {
             resultEl.innerHTML = `<div style="font-size:14px;font-weight:700;">#${esc(res.ticket_no || raw)} 발급되지 않은 번호예요.</div>`;
           } else {
             resultEl.innerHTML = '조회 실패: ' + esc(res.error || 'unknown');

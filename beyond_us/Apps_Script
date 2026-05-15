@@ -5320,6 +5320,8 @@ function getCollectionTickets(userId) {
 
 function getEmptyRaffleStats_() {
   return {
+    eligible: true,
+    ineligibleReason: '',
     myTickets: 0,
     totalTickets: 0,
     participantCount: 0,
@@ -5404,11 +5406,46 @@ function findUserRaffleTicket_(rows, userId, condition) {
   const cleanUser = String(userId || '').trim();
   const cleanCond = String(condition || '').trim();
   for (let i = 0; i < rows.length; i++) {
+    if (!isActiveRaffleTicketRow_(rows[i])) continue;
     if (String(rows[i][1]).trim() === cleanUser && String(rows[i][5]).trim() === cleanCond) {
       return { row: rows[i], index: i };
     }
   }
   return null;
+}
+
+function isRaffleEligibleParish_(parish) {
+  const clean = String(parish || '').replace(/\s+/g, '').trim();
+  if (!clean) return false;
+  if (clean === 'VIP') return true;
+  return /^([1-4]청)/.test(clean);
+}
+
+function getRaffleEligibilityFromParish_(parish) {
+  const clean = String(parish || '').trim();
+  const eligible = isRaffleEligibleParish_(clean);
+  return {
+    eligible: eligible,
+    parish: clean,
+    reason: eligible ? '' : 'ineligible_parish',
+  };
+}
+
+function isActiveRaffleTicketRow_(row) {
+  const status = String((row || [])[6] || '').trim().toLowerCase();
+  return status.indexOf('revoked') !== 0;
+}
+
+function getUserParishMap_() {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const map = {};
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (nickname) map[nickname] = String(row[col.parish] || '').trim();
+  });
+  return map;
 }
 
 function getUserParishFromUsers_(userId) {
@@ -5429,6 +5466,11 @@ function issueRaffleTicket_(userId, condition, weekKey) {
   const cleanUser = String(userId || '').trim();
   const cleanCond = String(condition || '').trim();
   if (!cleanUser || !cleanCond) return { ok: false, error: 'missing_fields' };
+  const parish = getUserParishFromUsers_(cleanUser);
+  const eligibility = getRaffleEligibilityFromParish_(parish);
+  if (!eligibility.eligible) {
+    return { ok: false, error: 'ineligible_parish', parish: eligibility.parish };
+  }
 
   const lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return { ok: false, error: 'lock_timeout' }; }
@@ -5441,7 +5483,6 @@ function issueRaffleTicket_(userId, condition, weekKey) {
       return { ok: true, ticket_no: padTicketNo_(existing.row[0]), dup: true };
     }
     const nextNo = padTicketNo_(getLastTicketNumber_() + 1);
-    const parish = getUserParishFromUsers_(cleanUser);
     const now = new Date().toISOString();
     const week = String(weekKey || ('w' + getCurrentWeek_())).trim();
     // appendRow는 "0001" 같은 문자열을 Sheets가 숫자로 자동 변환. 명시적으로 text 셀로 쓰기 위해 setValue 사용
@@ -5458,6 +5499,9 @@ function issueRaffleTicket_(userId, condition, weekKey) {
 function ensureUserRaffleTickets_(userId) {
   const cleanUser = String(userId || '').trim();
   if (!cleanUser) return { ok: false, issued: [] };
+  const parish = getUserParishFromUsers_(cleanUser);
+  const eligibility = getRaffleEligibilityFromParish_(parish);
+  if (!eligibility.eligible) return { ok: true, eligible: false, issued: [], parish: eligibility.parish };
 
   const sheet = getOrCreateCollectionSheet();
   const col = getCollectionColumns_(sheet);
@@ -5487,9 +5531,12 @@ function ensureUserRaffleTickets_(userId) {
 function getUserRaffleTicketNumbers_(userId) {
   const cleanUser = String(userId || '').trim();
   if (!cleanUser) return [];
+  const eligibility = getRaffleEligibilityFromParish_(getUserParishFromUsers_(cleanUser));
+  if (!eligibility.eligible) return [];
   const rows = getRaffleTicketRows_();
   const map = {};
   rows.forEach(function(r) {
+    if (!isActiveRaffleTicketRow_(r)) return;
     if (String(r[1]).trim() !== cleanUser) return;
     map[String(r[5]).trim()] = padTicketNo_(r[0]);
   });
@@ -5560,6 +5607,19 @@ function adminFindRaffleTicket(rawTicketNo) {
   for (let i = 0; i < rows.length; i++) {
     if (padTicketNo_(rows[i][0]) === ticketNo) {
       const userId = String(rows[i][1] || '').trim();
+      const status = String(rows[i][6] || '').trim();
+      if (status.indexOf('revoked') === 0) {
+        return {
+          ok: false,
+          error: 'revoked',
+          ticket_no: ticketNo,
+          userId: userId,
+          name: userNameMap[userId] || '',
+          parish: String(rows[i][2] || '').trim(),
+          condition: String(rows[i][5] || ''),
+          status: status,
+        };
+      }
       return {
         ok: true,
         ticket_no: ticketNo,
@@ -5573,6 +5633,72 @@ function adminFindRaffleTicket(rawTicketNo) {
     }
   }
   return { ok: false, error: 'not_found', ticket_no: ticketNo };
+}
+
+function revokeIneligibleRaffleTicketsDryRun() {
+  const result = revokeIneligibleRaffleTickets_(true);
+  Logger.log('revokeIneligibleRaffleTicketsDryRun result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function revokeIneligibleRaffleTicketsApply() {
+  const result = revokeIneligibleRaffleTickets_(false);
+  Logger.log('revokeIneligibleRaffleTicketsApply result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function revokeIneligibleRaffleTickets_(dryRun) {
+  const sheet = getOrCreateRaffleTicketsSheet_();
+  const last = sheet.getLastRow();
+  if (last < 2) return { ok: true, dryRun: !!dryRun, planned: 0, revoked: 0, rows: [] };
+
+  const range = sheet.getRange(2, 1, last - 1, RAFFLE_TICKET_COLUMNS.length);
+  const values = range.getValues();
+  const parishMap = getUserParishMap_();
+  const now = new Date().toISOString();
+  const planned = [];
+  const affectedUsers = {};
+
+  values.forEach(function(row, idx) {
+    if (!isActiveRaffleTicketRow_(row)) return;
+    const userId = String(row[1] || '').trim();
+    if (!userId) return;
+    const currentParish = parishMap[userId] || String(row[2] || '').trim();
+    const eligibility = getRaffleEligibilityFromParish_(currentParish);
+    if (eligibility.eligible) return;
+
+    planned.push({
+      rowNumber: idx + 2,
+      ticket_no: padTicketNo_(row[0]),
+      userId: userId,
+      parish: currentParish,
+      condition: String(row[5] || '').trim(),
+    });
+    if (!dryRun) {
+      row[2] = currentParish;
+      row[6] = 'revoked_ineligible_parish';
+      row[7] = now;
+      row[8] = 'ineligible_parish';
+      row[9] = now;
+      affectedUsers[userId] = true;
+    }
+  });
+
+  if (!dryRun && planned.length) {
+    range.setValues(values);
+    Object.keys(affectedUsers).forEach(function(userId) {
+      clearUserDerivedCaches_(userId);
+    });
+  }
+
+  return {
+    ok: true,
+    dryRun: !!dryRun,
+    planned: planned.length,
+    revoked: dryRun ? 0 : planned.length,
+    affectedUsers: Object.keys(affectedUsers),
+    rows: planned,
+  };
 }
 
 function getCollectionSnapshotMap_(rows, col) {
@@ -5606,6 +5732,18 @@ function getRaffleStatsFromRows_(userId, options) {
   (opts.usersRows || []).forEach(function(row) {
     const nickname = String(row[opts.userCol.nickname] || '').trim();
     if (!nickname) return;
+    const parish = String(row[opts.userCol.parish] || '').trim();
+    const eligibility = getRaffleEligibilityFromParish_(parish);
+    if (!eligibility.eligible) {
+      if (nickname === cleanUserId) {
+        const currentSnapshot = opts.currentSnapshot || collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
+        stats.eligible = false;
+        stats.ineligibleReason = eligibility.reason;
+        stats.uniqueCards = getRaffleTicketInfoFromCardCounts_(currentSnapshot.cardCounts, false, false).uniqueCards;
+        foundCurrentUser = true;
+      }
+      return;
+    }
     const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
     const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attendanceMap[nickname] === true, true);
     stats.totalTickets += info.tickets;
@@ -5619,6 +5757,13 @@ function getRaffleStatsFromRows_(userId, options) {
   });
 
   if (!foundCurrentUser && cleanUserId) {
+    const eligibility = getRaffleEligibilityFromParish_(getUserParishFromUsers_(cleanUserId));
+    if (!eligibility.eligible) {
+      stats.eligible = false;
+      stats.ineligibleReason = eligibility.reason;
+      stats.fillPercent = getRaffleFillPercent_(stats.totalTickets);
+      return stats;
+    }
     const snapshot = opts.currentSnapshot || collectionMap[cleanUserId] || emptyCollectionSnapshot_(cleanUserId, false);
     const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, attendanceMap[cleanUserId] === true, true);
     stats.myTickets = info.tickets;
