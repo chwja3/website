@@ -1423,6 +1423,10 @@ function getSchemaHeaders_(schema) {
 }
 
 function userIdKey_(value) {
+  return String(value || '').trim();
+}
+
+function userIdFoldKey_(value) {
   return String(value || '').trim().toLowerCase();
 }
 
@@ -1460,20 +1464,17 @@ function getUserCanonicalLookup_(sheet, col, rows) {
     exact: {},
     activeExact: {},
     inactiveExact: {},
-    activeByKey: {},
   };
   userRows.forEach(function(row, index) {
     const nickname = String(row[userCol.nickname] || '').trim();
     if (!nickname) return;
     const info = buildUserInfoFromRow_(row, index + SCHEMA.USERS.dataStartRow, userCol);
-    const key = userIdKey_(nickname);
     if (!lookup.exact[nickname]) lookup.exact[nickname] = info;
     if (info.inactive) {
       if (!lookup.inactiveExact[nickname]) lookup.inactiveExact[nickname] = info;
       return;
     }
     if (!lookup.activeExact[nickname]) lookup.activeExact[nickname] = info;
-    if (!lookup.activeByKey[key]) lookup.activeByKey[key] = info;
   });
   return lookup;
 }
@@ -1484,18 +1485,14 @@ function getActiveCanonicalUserId_(userId, lookup) {
   const userLookup = lookup || getUserCanonicalLookup_();
   if (userLookup.activeExact[clean]) return userLookup.activeExact[clean].nickname;
   if (userLookup.inactiveExact[clean]) return '';
-  const byKey = userLookup.activeByKey[userIdKey_(clean)];
-  return byKey ? byKey.nickname : '';
+  return '';
 }
 
 function isSameOwnedUserId_(rowUserId, targetUserId, lookup) {
   const rowClean = String(rowUserId || '').trim();
   const targetClean = String(targetUserId || '').trim();
   if (!rowClean || !targetClean) return false;
-  if (rowClean === targetClean) return true;
-  const userLookup = lookup || getUserCanonicalLookup_();
-  if (userLookup.exact[rowClean]) return false;
-  return userIdKey_(rowClean) === userIdKey_(targetClean);
+  return rowClean === targetClean;
 }
 
 function findUserInfoByNickname_(sheet, nickname) {
@@ -1504,22 +1501,11 @@ function findUserInfoByNickname_(sheet, nickname) {
   const schema = SCHEMA.USERS;
   const col = getUserColumns_(sheet);
   const rows = getUserRows_(sheet);
-  const target = userIdKey_(clean);
-  let activeFallback = null;
-  let inactiveFallback = null;
   for (let i = 0; i < rows.length; i++) {
     const rowNickname = String(rows[i][col.nickname] || '').trim();
-    if (rowNickname && userIdKey_(rowNickname) === target) {
-      const info = buildUserInfoFromRow_(rows[i], i + schema.dataStartRow, col);
-      if (rowNickname === clean) return info;
-      if (info.inactive) {
-        if (!inactiveFallback) inactiveFallback = info;
-      } else if (!activeFallback) {
-        activeFallback = info;
-      }
-    }
+    if (rowNickname === clean) return buildUserInfoFromRow_(rows[i], i + schema.dataStartRow, col);
   }
-  return activeFallback || inactiveFallback || null;
+  return null;
 }
 
 function getCanonicalUserId_(userId, options) {
@@ -4239,7 +4225,7 @@ function devResetCards(userId) {
     const sheet = getOrCreateEventsSheet();
     const col = getEventsColumns_(sheet);
     const rows = getEventsRows_(sheet);
-    const target = String(userId).trim().toLowerCase();
+    const target = String(userId).trim();
     const RESET_TYPES = {};
     RESET_TYPES[EVENT_TYPES.CARD_DRAWN]      = true;
     RESET_TYPES[EVENT_TYPES.CARD_GRANTED]    = true;
@@ -4249,7 +4235,7 @@ function devResetCards(userId) {
 
     let removed = 0;
     for (let i = rows.length - 1; i >= 0; i--) {
-      const rowUserId = String(rows[i][col.userId] || '').trim().toLowerCase();
+      const rowUserId = String(rows[i][col.userId] || '').trim();
       const rowType = String(rows[i][col.type] || '');
       if (rowUserId === target && RESET_TYPES[rowType]) {
         sheet.deleteRow(i + SCHEMA.EVENTS.dataStartRow);
@@ -5145,26 +5131,29 @@ function auditUserIdCaseConsistency_() {
   const userSheet = getUsersSheet_();
   const userCol = getUserColumns_(userSheet);
   const userRows = getUserRows_(userSheet);
-  const knownUsers = {};
+  const exactUsers = {};
+  const knownUsersByFold = {};
   userRows.forEach(function(row, idx) {
     const nickname = String(row[userCol.nickname] || '').trim();
     if (!nickname) return;
-    const key = userIdKey_(nickname);
-    if (!knownUsers[key]) knownUsers[key] = [];
-    knownUsers[key].push({
+    const item = {
       rowNumber: idx + SCHEMA.USERS.dataStartRow,
       nickname: nickname,
       inactive: isUserInactiveFromRow_(row, userCol),
-    });
+    };
+    exactUsers[nickname] = item;
+    const key = userIdFoldKey_(nickname);
+    if (!knownUsersByFold[key]) knownUsersByFold[key] = [];
+    knownUsersByFold[key].push(item);
   });
 
-  const duplicateUsers = Object.keys(knownUsers)
-    .filter(function(key) { return knownUsers[key].length > 1; })
-    .map(function(key) { return { key: key, users: knownUsers[key] }; });
-  const canonicalByKey = {};
-  Object.keys(knownUsers).forEach(function(key) {
-    const active = knownUsers[key].filter(function(item) { return item.inactive !== true; });
-    canonicalByKey[key] = (active[0] || knownUsers[key][0]).nickname;
+  const duplicateUsers = Object.keys(knownUsersByFold)
+    .filter(function(key) { return knownUsersByFold[key].length > 1; })
+    .map(function(key) { return { key: key, users: knownUsersByFold[key] }; });
+  const caseVariantByFold = {};
+  Object.keys(knownUsersByFold).forEach(function(key) {
+    const active = knownUsersByFold[key].filter(function(item) { return item.inactive !== true; });
+    caseVariantByFold[key] = (active[0] || knownUsersByFold[key][0]).nickname;
   });
 
   const sheetIssues = [];
@@ -5177,15 +5166,14 @@ function auditUserIdCaseConsistency_() {
       refs.forEach(function(ref) {
         const value = String(row[col[ref.key]] || '').trim();
         if (!value) return;
-        const key = userIdKey_(value);
-        const canonical = canonicalByKey[key];
-        if (!canonical) {
+        if (exactUsers[value]) return;
+        const key = userIdFoldKey_(value);
+        const caseVariant = caseVariantByFold[key];
+        if (!caseVariant) {
           sheetIssues.push({ sheet: sheetName, rowNumber: idx + schema.dataStartRow, column: ref.key, value: value, issue: 'unknown_user' });
           return;
         }
-        if (value !== canonical) {
-          sheetIssues.push({ sheet: sheetName, rowNumber: idx + schema.dataStartRow, column: ref.key, value: value, canonical: canonical, issue: 'case_mismatch' });
-        }
+        sheetIssues.push({ sheet: sheetName, rowNumber: idx + schema.dataStartRow, column: ref.key, value: value, caseVariant: caseVariant, issue: 'case_variant_unknown_user' });
       });
     });
   }
@@ -5206,18 +5194,17 @@ function auditUserIdCaseConsistency_() {
   raffleRows.forEach(function(row, idx) {
     const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
     if (!userId) return;
-    const key = userIdKey_(userId);
-    const canonical = canonicalByKey[key];
-    if (!canonical) {
+    if (exactUsers[userId]) return;
+    const key = userIdFoldKey_(userId);
+    const caseVariant = caseVariantByFold[key];
+    if (!caseVariant) {
       sheetIssues.push({ sheet: SHEET_NAMES.RAFFLE_TICKETS, rowNumber: idx + 2, column: 'userId', value: userId, issue: 'unknown_user' });
       return;
     }
-    if (userId !== canonical) {
-      sheetIssues.push({ sheet: SHEET_NAMES.RAFFLE_TICKETS, rowNumber: idx + 2, column: 'userId', value: userId, canonical: canonical, issue: 'case_mismatch' });
-    }
+    sheetIssues.push({ sheet: SHEET_NAMES.RAFFLE_TICKETS, rowNumber: idx + 2, column: 'userId', value: userId, caseVariant: caseVariant, issue: 'case_variant_unknown_user' });
   });
 
-  const mismatchCount = sheetIssues.filter(function(issue) { return issue.issue === 'case_mismatch'; }).length;
+  const mismatchCount = sheetIssues.filter(function(issue) { return issue.issue === 'case_variant_unknown_user'; }).length;
   const unknownCount = sheetIssues.filter(function(issue) { return issue.issue === 'unknown_user'; }).length;
   return {
     ok: duplicateUsers.length === 0 && sheetIssues.length === 0,
@@ -6778,7 +6765,7 @@ function getCaseVariantUserGroups_() {
   rows.forEach(function(row) {
     const nickname = String(row[col.nickname] || '').trim();
     if (!nickname) return;
-    const key = userIdKey_(nickname);
+    const key = userIdFoldKey_(nickname);
     if (!groups[key]) groups[key] = [];
     groups[key].push({
       nickname: nickname,
