@@ -7,3 +7,7 @@
 Collection은 앞으로 이벤트 발생 시점에 delta로 업데이트하는 방향이 더 낫다. 다만 원장과 projection이 어긋날 수 있으므로, 기존 `Events 기준으로 Collection 재계산` 버튼은 삭제하지 않고 복구/검증 버퍼로 남긴다.
 
 Dashboard는 `MissionProgress` 같은 사용자/주차 projection을 두는 방향이 가장 안전하다. 단순 숫자 aggregate만 저장하면 빠르지만, 중복 제출, 유저 비활성화, 교구 변경, 주차별 참여자 수 같은 정책 변경에 취약하다.
+
+2026-05-15. 카드팩 뽑기, admin 카드 지급/삭제, 히든 카드 지급, H&P 티켓 보상, 사전미션 티켓 보상, 교환 승인, BBB 희귀카드 지급은 `rebuildCollectionRow_()` 대신 `updateCollectionRowWithDeltas_()`를 사용한다. 이제 이 경로들은 Events를 append한 뒤 Collection 한 행만 읽고 쓰며, `Events_readAll_()`로 전체 원장을 다시 스캔하지 않는다.
+
+특별 카드팩 잔여 수는 아직 Events 기반이다. 다만 특별 카드팩 뽑기에서 카드 보유 현황을 판단할 때는 Events projection 대신 현재 Collection snapshot을 사용한다. 다음 최적화에서는 특별 카드팩 잔여 수 자체를 Collection 확장 컬럼이나 별도 projection으로 옮기는 것이 좋다.

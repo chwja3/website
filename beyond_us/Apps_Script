@@ -1248,7 +1248,9 @@ function adminGrantHiddenCard(body) {
       reason: 'admin_rare_grant',
     },
   });
-  rebuildCollectionRow_(userId);
+  updateCollectionRowWithDeltas_(userId, [
+    { type: EVENT_TYPES.CARD_GRANTED, cardId: 10, amount: 1 },
+  ]);
   return { ok: true };
   } finally {
     lock.releaseLock();
@@ -1284,15 +1286,18 @@ function adminGrantTestCard(body) {
         reason: 'test_card_grant',
       },
     });
-    const rebuild = rebuildCollectionRow_(userId);
+    const rebuild = updateCollectionRowWithDeltas_(userId, [
+      { type: EVENT_TYPES.CARD_GRANTED, cardId: cardId, amount: amount },
+    ]);
+    const response = collectionResponseFromSnapshot_(rebuild && rebuild.projected);
     return {
       ok: true,
       userId: userId,
       cardId: cardId,
       amount: amount,
       eventId: event.event.eventId,
-      collection: getUserCollection(userId),
-      tickets: getCollectionTickets(userId),
+      collection: response.collection,
+      tickets: response.tickets,
       rebuild: {
         ok: rebuild.ok,
         diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
@@ -1336,7 +1341,10 @@ function adminCreateCardEvent(body) {
         reason: reason,
       },
     });
-    const rebuild = rebuildCollectionRow_(userId);
+    const rebuild = updateCollectionRowWithDeltas_(userId, [
+      { type: eventType, cardId: cardId, amount: amount },
+    ]);
+    const response = collectionResponseFromSnapshot_(rebuild && rebuild.projected);
     return {
       ok: true,
       eventMode: eventMode,
@@ -1345,8 +1353,8 @@ function adminCreateCardEvent(body) {
       cardId: cardId,
       amount: amount,
       eventId: event.event.eventId,
-      collection: getUserCollection(userId),
-      tickets: getCollectionTickets(userId),
+      collection: response.collection,
+      tickets: response.tickets,
       rebuild: {
         ok: rebuild.ok,
         diffCountBeforeWrite: rebuild.diffCountBeforeWrite,
@@ -3739,7 +3747,9 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   }
   Events_appendBatch_(eventBatch);
   if (ticketEarned === 1) {
-    rebuildCollectionRow_(userId);
+    updateCollectionRowWithDeltas_(userId, [
+      { type: EVENT_TYPES.TICKET_GRANTED, amount: 1 },
+    ]);
   }
   clearUserDerivedCaches_(userId);
   const result = {
@@ -4153,8 +4163,15 @@ function drawCard(userId, weekKey, testMode, requestId) {
       },
     );
     Events_appendBatch_(eventItems);
-    // rebuild 결과의 projection snapshot을 그대로 응답에 사용 — Collection 시트 재조회 2회 제거
-    const rebuildResult = rebuildCollectionRow_(userId);
+    const collectionDeltas = [];
+    if (shouldAutoGrantDevTicket) {
+      collectionDeltas.push({ type: EVENT_TYPES.TICKET_GRANTED, amount: 1 });
+    }
+    collectionDeltas.push(
+      { type: EVENT_TYPES.TICKET_CONSUMED, amount: 1 },
+      { type: EVENT_TYPES.CARD_DRAWN, cardId: card.id, amount: 1 },
+    );
+    const rebuildResult = updateCollectionRowWithDeltas_(userId, collectionDeltas);
     // 카드 추가로 임계값(3/5/10종) 달성 시 추첨권 자동 발급
     try { ensureUserRaffleTickets_(userId); } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
@@ -4190,7 +4207,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
     }
     weekKey = String(weekKey || ('w' + getCurrentWeek_())).trim();
 
-    const events = Events_readAll_();
+    const events = Events_readByUser(cleanUserId);
     const specialPackStats = getSpecialPackStatsFromEvents_(events, cleanUserId);
     if (specialPackStats.remaining <= 0) {
       const noPackResult = { ok: false, error: '사용 가능한 미보유 카드 지급권이 없습니다.', specialPacks: specialPackStats, specialPacksRemaining: specialPackStats.remaining };
@@ -4198,7 +4215,7 @@ function drawSpecialCard(userId, weekKey, requestId) {
       return noPackResult;
     }
 
-    const snapshot = buildCollectionProjectionFromEvents_(cleanUserId, events);
+    const snapshot = getCurrentCollectionSnapshot_(cleanUserId);
     const missingRegularCards = getMissingRegularCardsFromSnapshot_(snapshot);
     const guaranteesMissingCard = missingRegularCards.length > 0;
     const drawableCards = guaranteesMissingCard ? missingRegularCards : getRegularDrawableCards_();
@@ -4233,7 +4250,9 @@ function drawSpecialCard(userId, weekKey, requestId) {
         },
       },
     ]);
-    const rebuildResult = rebuildCollectionRow_(cleanUserId);
+    const rebuildResult = updateCollectionRowWithDeltas_(cleanUserId, [
+      { type: EVENT_TYPES.CARD_DRAWN, cardId: card.id, amount: 1 },
+    ]);
     try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
     const response = collectionResponseFromSnapshot_(rebuildResult && rebuildResult.projected);
     const nextSpecialPackStats = {
@@ -4569,7 +4588,9 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
         },
         source: EVENT_SOURCES.WEB,
       });
-      rebuildCollectionRow_(nickname);
+      updateCollectionRowWithDeltas_(nickname, [
+        { type: EVENT_TYPES.TICKET_GRANTED, amount: 1 },
+      ]);
       ticketAwarded = true;
     }
   }
@@ -7290,6 +7311,18 @@ function collectionRowToSnapshot_(row, col, rowExists) {
   };
 }
 
+function cloneCollectionSnapshot_(snapshot) {
+  const clone = emptyCollectionSnapshot_(snapshot.userId, snapshot.rowExists);
+  clone.totalEarned = Number(snapshot.totalEarned) || 0;
+  clone.totalDrawn = Number(snapshot.totalDrawn) || 0;
+  clone.remaining = Number(snapshot.remaining) || 0;
+  clone.totalCards = Number(snapshot.totalCards) || 0;
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    clone.cardCounts[cardId] = Number(snapshot.cardCounts && snapshot.cardCounts[cardId]) || 0;
+  }
+  return clone;
+}
+
 function emptyCollectionSnapshot_(userId, rowExists) {
   const cardCounts = {};
   for (let cardId = 1; cardId <= 10; cardId++) cardCounts[cardId] = 0;
@@ -7408,6 +7441,73 @@ function applyAcceptedTradeProjection_(snapshot, trade, userId, userLookup) {
 function adjustProjectedCardCount_(snapshot, cardId, delta) {
   if (cardId < 1 || cardId > 10) return;
   snapshot.cardCounts[cardId] = Math.max(0, (Number(snapshot.cardCounts[cardId]) || 0) + delta);
+}
+
+function normalizeCollectionSnapshot_(snapshot) {
+  snapshot.totalEarned = Math.max(0, Number(snapshot.totalEarned) || 0);
+  snapshot.totalDrawn = Math.max(0, Number(snapshot.totalDrawn) || 0);
+  snapshot.remaining = Math.max(0, Number(snapshot.remaining) || 0);
+  snapshot.totalCards = 0;
+  for (let cardId = 1; cardId <= 10; cardId++) {
+    snapshot.cardCounts[cardId] = Math.max(0, Number(snapshot.cardCounts[cardId]) || 0);
+    snapshot.totalCards += snapshot.cardCounts[cardId];
+  }
+  return snapshot;
+}
+
+function applyCollectionDeltaToSnapshot_(snapshot, delta) {
+  const amount = Math.max(0, Number(delta.amount) || 0);
+  if (!amount) return;
+  const type = String(delta.type || '').trim();
+  if (type === EVENT_TYPES.TICKET_GRANTED) {
+    snapshot.totalEarned += amount;
+    snapshot.remaining += amount;
+  } else if (type === EVENT_TYPES.TICKET_CONSUMED) {
+    snapshot.remaining -= amount;
+  } else if (type === EVENT_TYPES.CARD_DRAWN) {
+    snapshot.totalDrawn += amount;
+    adjustProjectedCardCount_(snapshot, Number(delta.cardId), amount);
+  } else if (type === EVENT_TYPES.CARD_GRANTED) {
+    adjustProjectedCardCount_(snapshot, Number(delta.cardId), amount);
+  } else if (type === EVENT_TYPES.CARD_REMOVED) {
+    adjustProjectedCardCount_(snapshot, Number(delta.cardId), -amount);
+  }
+}
+
+function updateCollectionRowWithDeltas_(userId, deltas) {
+  const cleanUserId = getCanonicalUserId_(userId);
+  if (!cleanUserId) return { ok: false, error: 'inactive_or_unknown_user' };
+  const sheet = getOrCreateCollectionSheet();
+  const col = getCollectionColumns_(sheet);
+  const lookup = getUserCanonicalLookup_();
+  const rowIndex = findCollectionRowIndex_(sheet, col, cleanUserId, lookup);
+  const current = rowIndex === -1
+    ? emptyCollectionSnapshot_(cleanUserId, false)
+    : collectionRowToSnapshot_(sheet.getRange(rowIndex, 1, 1, COLLECTION_COL_COUNT).getValues()[0], col, true);
+  const projected = cloneCollectionSnapshot_(current);
+  projected.userId = cleanUserId;
+  projected.rowExists = true;
+  (deltas || []).forEach(function(delta) {
+    applyCollectionDeltaToSnapshot_(projected, delta || {});
+  });
+  normalizeCollectionSnapshot_(projected);
+  const diffsBeforeWrite = diffCollectionSnapshots_(current, projected);
+  const row = collectionSnapshotToRow_(projected, col);
+  if (rowIndex === -1) {
+    sheet.appendRow(row);
+  } else {
+    setSheetValues_(sheet, rowIndex, 1, [row]);
+  }
+  clearUserDerivedCaches_(cleanUserId);
+  return {
+    ok: true,
+    userId: cleanUserId,
+    rowIndex: rowIndex === -1 ? sheet.getLastRow() : rowIndex,
+    created: rowIndex === -1,
+    diffCountBeforeWrite: diffsBeforeWrite.length,
+    diffsBeforeWrite: diffsBeforeWrite,
+    projected: projected,
+  };
 }
 
 function diffCollectionSnapshots_(current, projected) {
@@ -8033,10 +8133,14 @@ function acceptTrade(body) {
       },
       source: EVENT_SOURCES.WEB,
     });
-    // 양쪽 사용자 rebuild에 공유할 events 1회 읽기 — 전체 Events 스캔 2회 → 1회
-    const sharedEvents = Events_readAll_();
-    rebuildCollectionRow_(requester, sharedEvents);
-    rebuildCollectionRow_(nickname, sharedEvents);
+    updateCollectionRowWithDeltas_(requester, [
+      { type: EVENT_TYPES.CARD_REMOVED, cardId: requesterCardId, amount: 1 },
+      { type: EVENT_TYPES.CARD_GRANTED, cardId: targetCardId, amount: 1 },
+    ]);
+    updateCollectionRowWithDeltas_(nickname, [
+      { type: EVENT_TYPES.CARD_REMOVED, cardId: targetCardId, amount: 1 },
+      { type: EVENT_TYPES.CARD_GRANTED, cardId: requesterCardId, amount: 1 },
+    ]);
     return { ok: true };
   }
   return { error: 'not_found' };
@@ -8882,7 +8986,7 @@ function adminApproveBBBPhoto(body) {
     });
     const rewardEventId = appended && appended.event ? appended.event.eventId : '';
     setBBBPhotoApproval_(photoSheet, target.rowIndex, photoCol, 'approved', now, String(body.adminId || 'admin'), rewardEventId);
-    rebuildCollectionRow_(userId);
+    clearUserDerivedCaches_(userId);
     return { ok: true, rewarded: true, rewardEventId: rewardEventId };
   } finally {
     lock.releaseLock();
@@ -9000,7 +9104,9 @@ function uploadBBBPhoto(body) {
             reason: 'bbb_m3_complete',
             source: EVENT_SOURCES.WEB,
           });
-          rebuildCollectionRow_(userId);
+          updateCollectionRowWithDeltas_(userId, [
+            { type: EVENT_TYPES.CARD_GRANTED, cardId: 10, amount: 1 },
+          ]);
           try { ensureUserRaffleTickets_(userId); } catch(e) {}
           rewarded = true;
         }
@@ -9010,7 +9116,7 @@ function uploadBBBPhoto(body) {
           reason: bonusSource === 'bbb_photo' ? 'bbb_photo' : 'bbb_mission',
           source: EVENT_SOURCES.WEB,
         });
-        rebuildCollectionRow_(userId);
+        clearUserDerivedCaches_(userId);
         rewarded = true;
       }
     }
@@ -9259,7 +9365,7 @@ function guessBBBSecret(body) {
         reason: 'bbb_secret_guess_correct',
         source: EVENT_SOURCES.WEB,
       });
-      rebuildCollectionRow_(userId);
+      clearUserDerivedCaches_(userId);
       rewarded = true;
     }
     return { ok: true, correct: true, secretName, secretNickname, rewarded };
