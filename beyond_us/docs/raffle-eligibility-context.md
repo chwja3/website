@@ -36,3 +36,5 @@ DEV 개발자 카드 초기화는 Events와 Collection만 초기화하고 Raffle
 후속 확인에서 DEV 카드 초기화가 앱 가입 추첨권까지 회수해 UI의 “앱 가입 완료 +1장” 안내와 실제 보유 추첨권이 어긋나는 문제가 있었다. DEV 초기화는 카드 조건 테스트를 되돌리는 도구이므로 `card_3`, `card_5`, `card_10` 조건 추첨권만 회수한다. `signup` 추첨권은 유지하고, 이전 버전에서 이미 회수된 경우에는 초기화 후 `includeSignup` backfill로 다시 1장을 복구한다. 단, `raffleExcluded` 사용자는 계속 추첨권 0장 상태를 유지한다.
 
 기존 가입자는 `registerUser()`를 다시 타지 않기 때문에 추첨권 기능 도입 이후에도 `signup` 추첨권이 자동 생성되지 않을 수 있다. `backfillSignupRaffleTicketsDryRun()`으로 누락 대상을 변경 없이 확인하고, `backfillSignupRaffleTicketsApply()`로 발급 제외가 아닌 기존 가입자에게 앱 가입 추첨권 1장을 채운다. 발급 제외 사용자는 이 보정에서도 제외한다.
+
+admin 앱 가입자 탭은 `adminGetRaffleAttendance()` 응답의 `raffleTickets` 값을 사용해 각 유저의 현재 활성 추첨권 개수를 표시한다. 이 값은 `RaffleTickets` 시트의 실제 활성 번호 기준이며, 발급 제외를 토글하면 해당 행의 개수도 즉시 갱신한다.

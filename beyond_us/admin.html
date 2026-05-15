@@ -396,12 +396,13 @@
                   <th>교구</th>
                   <th>이름</th>
                   <th>닉네임</th>
+                  <th>현재 추첨권</th>
                   <th>수련회 참석</th>
                   <th>추첨권 발급 제외</th>
                 </tr>
               </thead>
               <tbody id="attendanceTableBody">
-                <tr><td colspan="5" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+                <tr><td colspan="6" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
               </tbody>
             </table>
           </div>
@@ -828,7 +829,7 @@
       const tbody = document.getElementById('attendanceTableBody');
       const statusEl = document.getElementById('attendanceStatus');
       statusEl.textContent = '';
-      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
         const res = await get({ action: 'adminGetRaffleAttendance', adminPw });
         if (!res.ok) throw new Error(res.error || 'load_failed');
@@ -838,14 +839,14 @@
         document.getElementById('attendanceExcludedUsers').textContent = res.raffleExcludedCount || 0;
         renderRaffleAttendanceRows(_raffleAttendanceUsers);
       } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
       }
     }
 
     function renderRaffleAttendanceRows(users) {
       const tbody = document.getElementById('attendanceTableBody');
       if (!users.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
         return;
       }
       tbody.innerHTML = users.map(u => `
@@ -853,6 +854,7 @@
           <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
           <td>${esc(u.name)}</td>
           <td><strong>${esc(u.nickname)}</strong></td>
+          <td><span class="badge" data-raffle-ticket-count style="background:var(--primary-soft);color:var(--primary);">${Number(u.raffleTickets) || 0}장</span></td>
           <td>
             <input type="checkbox" class="attendance-toggle" data-nickname="${esc(u.nickname)}" ${u.attended ? 'checked' : ''} aria-label="${esc(u.nickname)} 수련회 참석 체크" />
           </td>
@@ -919,6 +921,8 @@
           user.raffleExcluded = excluded;
           user.raffleTickets = Number(res.raffleTickets) || 0;
         }
+        const ticketCell = checkbox.closest('tr')?.querySelector('[data-raffle-ticket-count]');
+        if (ticketCell) ticketCell.textContent = `${Number(res.raffleTickets) || 0}장`;
         document.getElementById('attendanceExcludedUsers').textContent = _raffleAttendanceUsers.filter(u => u.raffleExcluded).length;
         statusEl.textContent = excluded
           ? `${nickname}님의 추첨권 ${res.released || 0}장을 회수하고 향후 발급을 제외했어요.`
