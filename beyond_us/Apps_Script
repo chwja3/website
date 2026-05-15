@@ -36,6 +36,7 @@ const SHEET_NAMES = Object.freeze({
   USER_DASHBOARD: 'UserDashboard',
   RAFFLE_TICKETS: 'RaffleTickets',
   MISSION_PROGRESS: 'MissionProgress',
+  DASHBOARD_STATS: 'DashboardStats',
 });
 const CONFIG_SHEET_NAME = SHEET_NAMES.CONFIG;
 const SCHEMA = Object.freeze({
@@ -159,6 +160,17 @@ const SCHEMA = Object.freeze({
       slotCountsJson: 'slotCountsJson',
       updatedAt: 'updatedAt',
       dateSlotIndicesJson: 'dateSlotIndicesJson',
+    }),
+  }),
+  DASHBOARD_STATS: Object.freeze({
+    sheetName: SHEET_NAMES.DASHBOARD_STATS,
+    headerRow: 1,
+    dataStartRow: 2,
+    columns: Object.freeze({
+      cacheKey: 'cacheKey',
+      chunkIndex: 'chunkIndex',
+      updatedAt: 'updatedAt',
+      payloadJson: 'payloadJson',
     }),
   }),
   TRADES: Object.freeze({
@@ -458,6 +470,13 @@ const MISSION_PROGRESS_COLUMN_FALLBACK = Object.freeze({
   dateSlotIndicesJson: 9,
 });
 const MISSION_PROGRESS_COL_COUNT = Object.keys(SCHEMA.MISSION_PROGRESS.columns).length;
+const DASHBOARD_STATS_COLUMN_FALLBACK = Object.freeze({
+  cacheKey: 0,
+  chunkIndex: 1,
+  updatedAt: 2,
+  payloadJson: 3,
+});
+const DASHBOARD_STATS_COL_COUNT = Object.keys(SCHEMA.DASHBOARD_STATS.columns).length;
 const TRADES_COLUMN_FALLBACK = Object.freeze({
   id: 0,
   requester: 1,
@@ -687,6 +706,7 @@ const FINAL_VISIBLE_SHEET_NAMES = Object.freeze([
   SHEET_NAMES.INQUIRIES,
 ]);
 const FINAL_HIDDEN_SHEET_NAMES = Object.freeze([
+  SHEET_NAMES.DASHBOARD_STATS,
   SHEET_NAMES.CONFIG,
   SHEET_NAMES.RAW_CHECKINS,
   SHEET_NAMES.CARD_DRAWS,
@@ -972,8 +992,8 @@ function doGet(e) {
     return jsonOutput(getUsers());
   }
   if (action === 'adminGetRaffleAttendance') {
-    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
-    return jsonOutput(adminGetRaffleAttendance());
+    if (!isAdminAuthorized_(params.adminPw)) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(adminGetRaffleAttendance(params));
   }
   if (action === 'getTabSettings') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
@@ -1051,8 +1071,8 @@ function doGet(e) {
     return jsonOutput(adminFindRaffleTicket(e.parameter.ticket_no || ''));
   }
   if (action === 'adminGetRaffleTickets') {
-    if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
-    return jsonOutput(adminGetRaffleTickets());
+    if (!isAdminAuthorized_(params.adminPw)) return jsonOutput({ error: 'unauthorized' });
+    return jsonOutput(adminGetRaffleTickets(params));
   }
 
   return jsonOutput({ ok: false, message: 'Unknown action' });
@@ -1680,6 +1700,14 @@ function getMissionProgressColumns_(sheet) {
 
 function getMissionProgressRows_(sheet, maxColumns) {
   return getSheetRows(sheet, SCHEMA.MISSION_PROGRESS, maxColumns || MISSION_PROGRESS_COL_COUNT);
+}
+
+function getDashboardStatsColumns_(sheet) {
+  return getResolvedColumns_(sheet, SCHEMA.DASHBOARD_STATS, DASHBOARD_STATS_COLUMN_FALLBACK);
+}
+
+function getDashboardStatsRows_(sheet, maxColumns) {
+  return getSheetRows(sheet, SCHEMA.DASHBOARD_STATS, maxColumns || DASHBOARD_STATS_COL_COUNT);
 }
 
 function getTradesColumns_(sheet) {
@@ -3096,7 +3124,10 @@ function applyFinalSheetVisibility() {
   });
 
   FINAL_HIDDEN_SHEET_NAMES.forEach(function(sheetName) {
-    const sheet = ss.getSheetByName(sheetName);
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet && sheetName === SHEET_NAMES.DASHBOARD_STATS) {
+      sheet = getOrCreateDashboardStatsSheet_();
+    }
     if (!sheet) {
       missing.push(sheetName);
       return;
@@ -3364,6 +3395,9 @@ function cleanRequestId_(requestId) {
 
 const DASHBOARD_CACHE_VERSION = 'dashboard_v3';
 const DASHBOARD_CACHE_SECONDS = 180;
+const DASHBOARD_STATS_KEY = 'dashboard_current';
+const DASHBOARD_STATS_MAX_AGE_SECONDS = 600;
+const DASHBOARD_STATS_CHUNK_SIZE = 40000;
 const RAFFLE_SUMMARY_CACHE_VERSION = 'raffle_ticket_summary_v1';
 const RAFFLE_SUMMARY_CACHE_SECONDS = 90;
 
@@ -3372,9 +3406,102 @@ function getDashboardDataCached_(options) {
   const key = cacheKey_(DASHBOARD_CACHE_VERSION);
   const cached = opts.force === true ? null : cacheGetJson_(key);
   if (cached) return cached;
+  const sheetCached = opts.force === true ? null : readDashboardStatsSheetCache_(DASHBOARD_STATS_KEY, DASHBOARD_STATS_MAX_AGE_SECONDS);
+  if (sheetCached) {
+    cachePutJson_(key, sheetCached, DASHBOARD_CACHE_SECONDS);
+    return sheetCached;
+  }
   const data = getDashboardData();
+  writeDashboardStatsSheetCache_(DASHBOARD_STATS_KEY, data);
   cachePutJson_(key, data, DASHBOARD_CACHE_SECONDS);
   return data;
+}
+
+function getOrCreateDashboardStatsSheet_() {
+  const ss = getSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.DASHBOARD_STATS);
+  let created = false;
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAMES.DASHBOARD_STATS);
+    created = true;
+    sheet.getRange(SCHEMA.DASHBOARD_STATS.headerRow, 1, 1, DASHBOARD_STATS_COL_COUNT)
+      .setValues([getSchemaHeaders_(SCHEMA.DASHBOARD_STATS)]);
+    sheet.setFrozenRows(1);
+  }
+  const header = sheet.getRange(SCHEMA.DASHBOARD_STATS.headerRow, 1, 1, Math.max(sheet.getLastColumn(), DASHBOARD_STATS_COL_COUNT)).getValues()[0];
+  const expected = getSchemaHeaders_(SCHEMA.DASHBOARD_STATS);
+  expected.forEach(function(name, idx) {
+    if (String(header[idx] || '') !== name) sheet.getRange(SCHEMA.DASHBOARD_STATS.headerRow, idx + 1).setValue(name);
+  });
+  if (created || !sheet.isSheetHidden()) {
+    try {
+      sheet.hideSheet();
+    } catch(e) {}
+  }
+  return sheet;
+}
+
+function readDashboardStatsSheetCache_(cacheKey, maxAgeSeconds) {
+  try {
+    const cleanKey = String(cacheKey || '').trim();
+    if (!cleanKey) return null;
+    const sheet = getOrCreateDashboardStatsSheet_();
+    const rows = getDashboardStatsRows_(sheet);
+    if (!rows.length) return null;
+    const col = getDashboardStatsColumns_(sheet);
+    const chunks = [];
+    let latestUpdatedAt = '';
+    rows.forEach(function(row) {
+      if (String(row[col.cacheKey] || '').trim() !== cleanKey) return;
+      const idx = Number(row[col.chunkIndex]) || 0;
+      chunks.push({ index: idx, json: String(row[col.payloadJson] || '') });
+      const updatedAt = String(row[col.updatedAt] || '');
+      if (updatedAt > latestUpdatedAt) latestUpdatedAt = updatedAt;
+    });
+    if (!chunks.length || !latestUpdatedAt) return null;
+    const ageMs = new Date().getTime() - new Date(latestUpdatedAt).getTime();
+    if (!isNaN(ageMs) && maxAgeSeconds && ageMs > maxAgeSeconds * 1000) return null;
+    chunks.sort(function(a, b) { return a.index - b.index; });
+    return JSON.parse(chunks.map(function(chunk) { return chunk.json; }).join(''));
+  } catch(e) {
+    Logger.log('DashboardStats read fallback: ' + e);
+    return null;
+  }
+}
+
+function writeDashboardStatsSheetCache_(cacheKey, data) {
+  try {
+    const cleanKey = String(cacheKey || '').trim();
+    if (!cleanKey) return { ok: false, error: 'missing_cache_key' };
+    const sheet = getOrCreateDashboardStatsSheet_();
+    const last = sheet.getLastRow();
+    if (last >= SCHEMA.DASHBOARD_STATS.dataStartRow) {
+      clearSheetValues_(sheet, SCHEMA.DASHBOARD_STATS.dataStartRow, 1, last - SCHEMA.DASHBOARD_STATS.dataStartRow + 1, DASHBOARD_STATS_COL_COUNT);
+    }
+    const json = JSON.stringify(data || {});
+    const now = new Date().toISOString();
+    const rows = [];
+    for (let i = 0; i < json.length; i += DASHBOARD_STATS_CHUNK_SIZE) {
+      rows.push([cleanKey, rows.length, now, json.slice(i, i + DASHBOARD_STATS_CHUNK_SIZE)]);
+    }
+    if (!rows.length) rows.push([cleanKey, 0, now, '{}']);
+    setSheetValues_(sheet, SCHEMA.DASHBOARD_STATS.dataStartRow, 1, rows);
+    return { ok: true, chunks: rows.length, updatedAt: now };
+  } catch(e) {
+    Logger.log('DashboardStats write failed: ' + e);
+    return { ok: false, error: String(e) };
+  }
+}
+
+function clearDashboardStatsSheetCache_() {
+  try {
+    const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.DASHBOARD_STATS);
+    if (!sheet) return;
+    const last = sheet.getLastRow();
+    if (last >= SCHEMA.DASHBOARD_STATS.dataStartRow) {
+      clearSheetValues_(sheet, SCHEMA.DASHBOARD_STATS.dataStartRow, 1, last - SCHEMA.DASHBOARD_STATS.dataStartRow + 1, DASHBOARD_STATS_COL_COUNT);
+    }
+  } catch(e) {}
 }
 
 /*
@@ -3387,6 +3514,7 @@ function clearHotCaches_() {
 function clearDashboardCache_() {
   cacheRemove_(cacheKey_('dashboard_v2'));
   cacheRemove_(cacheKey_(DASHBOARD_CACHE_VERSION));
+  clearDashboardStatsSheetCache_();
 }
 
 function clearRaffleTicketSummaryCache_() {
@@ -5624,7 +5752,40 @@ function getOrCreateRetreatAttendanceSheet() {
   return sheet;
 }
 
-function adminGetRaffleAttendance() {
+function getAdminListOptions_(params, defaultLimit, maxLimit) {
+  const p = params || {};
+  const limit = Math.max(1, Math.min(Number(p.limit) || defaultLimit || 80, maxLimit || 500));
+  const offset = Math.max(0, Number(p.offset) || 0);
+  const query = String(p.query || '').trim().toLowerCase();
+  return { limit: limit, offset: offset, query: query };
+}
+
+function adminTextMatchesQuery_(values, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return true;
+  return (values || []).some(function(value) {
+    return String(value || '').toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function paginateAdminRows_(rows, options) {
+  const opts = options || {};
+  const list = rows || [];
+  const offset = Math.max(0, Number(opts.offset) || 0);
+  const limit = Math.max(1, Number(opts.limit) || list.length || 1);
+  const page = list.slice(offset, offset + limit);
+  return {
+    rows: page,
+    total: list.length,
+    offset: offset,
+    limit: limit,
+    returned: page.length,
+    hasMore: offset + page.length < list.length,
+  };
+}
+
+function adminGetRaffleAttendance(params) {
+  const opts = getAdminListOptions_(params, 80, 500);
   syncDefaultRaffleExcludedUsers_();
   const userSheet = getUsersSheet_();
   const userCol = getUserColumns_(userSheet);
@@ -5660,15 +5821,32 @@ function adminGetRaffleAttendance() {
     });
   const users = allUsers.filter(function(user) { return user.inactive !== true; });
   const deletedUsers = allUsers.filter(function(user) { return user.inactive === true; });
+  const filteredUsers = users.filter(function(user) {
+    return adminTextMatchesQuery_([user.parish, user.name, user.nickname, user.raffleTickets + '장'], opts.query);
+  });
+  const filteredDeletedUsers = deletedUsers.filter(function(user) {
+    return adminTextMatchesQuery_([user.parish, user.name, user.nickname, user.inactiveAt], opts.query);
+  });
+  const usersPage = paginateAdminRows_(filteredUsers, opts);
+  const deletedPage = paginateAdminRows_(filteredDeletedUsers, { limit: Math.min(opts.limit, 80), offset: 0 });
 
   return {
     ok: true,
-    users: users,
-    deletedUsers: deletedUsers,
+    users: usersPage.rows,
+    deletedUsers: deletedPage.rows,
     totalUsers: users.length,
     deletedCount: deletedUsers.length,
     attendedCount: users.filter(function(user) { return user.attended === true; }).length,
     raffleExcludedCount: users.filter(function(user) { return user.raffleExcluded === true; }).length,
+    query: opts.query,
+    limit: opts.limit,
+    offset: opts.offset,
+    filteredUsers: usersPage.total,
+    returnedUsers: usersPage.returned,
+    usersHasMore: usersPage.hasMore,
+    filteredDeletedUsers: deletedPage.total,
+    returnedDeletedUsers: deletedPage.returned,
+    deletedUsersHasMore: deletedPage.hasMore,
   };
 }
 
@@ -7488,7 +7666,8 @@ function adminFindRaffleTicket(rawTicketNo) {
   return { ok: false, error: 'not_found', ticket_no: ticketNo };
 }
 
-function adminGetRaffleTickets() {
+function adminGetRaffleTickets(params) {
+  const opts = getAdminListOptions_(params, 80, 500);
   syncDefaultRaffleExcludedUsers_();
   const rows = getRaffleTicketRows_();
   const tickets = rows
@@ -7509,12 +7688,30 @@ function adminGetRaffleTickets() {
     })
     .sort(function(a, b) { return Number(a.ticket_no) - Number(b.ticket_no); });
   const activeCount = tickets.filter(function(ticket) { return ticket.active === true; }).length;
+  const filteredTickets = tickets.filter(function(ticket) {
+    return adminTextMatchesQuery_([
+      ticket.ticket_no,
+      ticket.userId,
+      ticket.name,
+      ticket.parish,
+      ticket.condition,
+      ticket.condition_label,
+      ticket.status,
+    ], opts.query);
+  });
+  const page = paginateAdminRows_(filteredTickets, opts);
   return {
     ok: true,
     activeCount: activeCount,
     totalNumbers: tickets.length,
     availableCount: tickets.length - activeCount,
-    tickets: tickets,
+    tickets: page.rows,
+    query: opts.query,
+    limit: opts.limit,
+    offset: opts.offset,
+    filteredTotal: page.total,
+    returned: page.returned,
+    hasMore: page.hasMore,
   };
 }
 
@@ -8775,7 +8972,10 @@ function getCutoverSheetStatus_() {
   });
 
   FINAL_HIDDEN_SHEET_NAMES.forEach(function(name) {
-    const sheet = ss.getSheetByName(name);
+    let sheet = ss.getSheetByName(name);
+    if (!sheet && name === SHEET_NAMES.DASHBOARD_STATS) {
+      sheet = getOrCreateDashboardStatsSheet_();
+    }
     if (!sheet) {
       missingHidden.push(name);
       return;
