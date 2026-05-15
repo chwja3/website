@@ -403,6 +403,7 @@
             <h2 class="card-title" style="margin:0;">추첨권 번호 시트</h2>
             <button class="btn btn-ghost btn-sm" id="refreshRaffleTicketsBtn">새로고침</button>
           </div>
+          <input type="search" id="raffleTicketFilterInput" class="input" placeholder="🔍 번호, 닉네임, 이름, 교구, 이벤트 검색" style="margin-bottom:12px;" />
           <div class="table-wrap">
             <table>
               <thead>
@@ -771,6 +772,25 @@
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     let adminPw = '';
     let targetNickname = '';
+    const ADMIN_TABLE_INITIAL_LIMIT = 80;
+
+    function getVisibleAdminRows(rows, query) {
+      const list = Array.isArray(rows) ? rows : [];
+      const hasQuery = !!String(query || '').trim();
+      if (hasQuery || list.length <= ADMIN_TABLE_INITIAL_LIMIT) {
+        return { rows: list, limited: false, total: list.length };
+      }
+      return {
+        rows: list.slice(0, ADMIN_TABLE_INITIAL_LIMIT),
+        limited: true,
+        total: list.length,
+      };
+    }
+
+    function adminLimitRowHtml(colspan, shown, total, noun) {
+      if (shown >= total) return '';
+      return `<tr><td colspan="${colspan}" style="color:var(--sub);text-align:center;padding:14px;">처음 ${shown}개만 표시 중입니다. 검색하면 전체 ${total}개 ${noun || '항목'}에서 찾아요.</td></tr>`;
+    }
 
     /* ── DEV 환경 감지 ── */
     if (IS_DEV_ENV) {
@@ -1041,9 +1061,10 @@
       );
     }
 
-    async function loadCheckin() {
+    async function loadCheckin(options) {
+      const opts = options || {};
       try {
-        const res = await get({ action: 'dashboard', adminPw, t: Date.now() });
+        const res = await get({ action: 'dashboard', adminPw, force: opts.force === true ? '1' : '', t: Date.now() });
         if (!res.ok) throw new Error(res.error || 'dashboard_failed');
         document.getElementById('ciSubmission').textContent = fmtCount(res.submissionCount);
         document.getElementById('ciTotal').textContent      = fmtCount(res.totalCount);
@@ -1070,7 +1091,7 @@
         document.getElementById('weeklyParishDetailList').innerHTML = '';
       }
     }
-    document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
+    document.getElementById('refreshCheckinBtn').addEventListener('click', () => loadCheckin({ force: true }));
 
     /* ── 앱 가입자 관리 ── */
     let _raffleAttendanceUsers = [];
@@ -1092,7 +1113,7 @@
         document.getElementById('attendanceCheckedUsers').textContent = res.attendedCount || 0;
         document.getElementById('attendanceExcludedUsers').textContent = res.raffleExcludedCount || 0;
         document.getElementById('attendanceDeletedUsers').textContent = res.deletedCount || 0;
-        renderRaffleAttendanceRows(_raffleAttendanceUsers);
+        renderRaffleAttendanceRows(_raffleAttendanceUsers, document.getElementById('attendanceSearch')?.value || '');
         renderDeletedAttendanceRows(_deletedAttendanceUsers);
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
@@ -1100,13 +1121,14 @@
       }
     }
 
-    function renderRaffleAttendanceRows(users) {
+    function renderRaffleAttendanceRows(users, query) {
       const tbody = document.getElementById('attendanceTableBody');
-      if (!users.length) {
+      const view = getVisibleAdminRows(users, query);
+      if (!view.rows.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">표시할 유저가 없어요.</td></tr>';
         return;
       }
-      tbody.innerHTML = users.map(u => `
+      tbody.innerHTML = view.rows.map(u => `
         <tr>
           <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
           <td>${esc(u.name)}</td>
@@ -1122,7 +1144,7 @@
             <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
           </td>
         </tr>
-      `).join('');
+      `).join('') + adminLimitRowHtml(7, view.rows.length, view.total, '가입자');
       tbody.querySelectorAll('.attendance-toggle').forEach(input => {
         input.addEventListener('change', () => setRaffleAttendance(input.dataset.nickname, input.checked, input));
       });
@@ -1161,7 +1183,7 @@
         String(u.name || '').toLowerCase().includes(q) ||
         String(u.nickname || '').toLowerCase().includes(q)
       );
-      renderRaffleAttendanceRows(filtered);
+      renderRaffleAttendanceRows(filtered, q);
     }
 
     async function deactivateAttendanceUser(nickname, btn) {
@@ -2030,6 +2052,7 @@
       card_5:  '카드 5종 보유',
       card_10: '카드 10종 보유',
     };
+    let _raffleTicketRows = [];
     async function adminSearchRaffleTicket() {
       const input = document.getElementById('raffleSearchInput');
       const resultEl = document.getElementById('raffleSearchResult');
@@ -2092,10 +2115,41 @@
       const btn = document.getElementById('raffleSearchBtn');
       const input = document.getElementById('raffleSearchInput');
       const refreshBtn = document.getElementById('refreshRaffleTicketsBtn');
+      const filterInput = document.getElementById('raffleTicketFilterInput');
       if (btn) btn.addEventListener('click', adminSearchRaffleTicket);
       if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') adminSearchRaffleTicket(); });
       if (refreshBtn) refreshBtn.addEventListener('click', loadRaffleTickets);
+      if (filterInput) filterInput.addEventListener('input', e => renderRaffleTicketRows(_raffleTicketRows, e.target.value));
     });
+
+    function renderRaffleTicketRows(rows, query) {
+      const tbody = document.getElementById('raffleTicketTableBody');
+      if (!tbody) return;
+      const q = String(query || '').trim().toLowerCase();
+      const filtered = q
+        ? rows.filter(ticket =>
+            String(ticket.ticket_no || '').toLowerCase().includes(q) ||
+            String(ticket.userId || '').toLowerCase().includes(q) ||
+            String(ticket.name || '').toLowerCase().includes(q) ||
+            String(ticket.parish || '').toLowerCase().includes(q) ||
+            String(ticket.condition_label || RAFFLE_CONDITION_LABEL[ticket.condition] || ticket.condition || '').toLowerCase().includes(q))
+        : rows;
+      const view = getVisibleAdminRows(filtered, q);
+      if (!view.rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">추첨권 번호가 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = view.rows.map(ticket => `
+        <tr>
+          <td><strong>#${esc(ticket.ticket_no)}</strong></td>
+          <td><span class="badge" style="background:${ticket.active ? '#dcfce7' : '#f1f5f9'};color:${ticket.active ? '#166534' : '#64748b'};">${ticket.active ? '1' : '0'}</span></td>
+          <td>${esc(ticket.userId || '-')}</td>
+          <td>${esc(ticket.name || '-')}</td>
+          <td>${esc(ticket.parish || '-')}</td>
+          <td>${esc(ticket.condition_label || RAFFLE_CONDITION_LABEL[ticket.condition] || ticket.condition || '-')}</td>
+        </tr>
+      `).join('') + adminLimitRowHtml(6, view.rows.length, view.total, '번호');
+    }
 
     async function loadRaffleTickets() {
       const tbody = document.getElementById('raffleTicketTableBody');
@@ -2106,21 +2160,12 @@
         if (!res.ok) throw new Error(res.error || 'load_failed');
         document.getElementById('raffleActiveCount').textContent = res.activeCount || 0;
         document.getElementById('raffleAvailableCount').textContent = res.availableCount || 0;
-        const rows = res.tickets || [];
-        if (!rows.length) {
+        _raffleTicketRows = res.tickets || [];
+        if (!_raffleTicketRows.length) {
           tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">추첨권 번호가 아직 없어요.</td></tr>';
           return;
         }
-        tbody.innerHTML = rows.map(ticket => `
-          <tr>
-            <td><strong>#${esc(ticket.ticket_no)}</strong></td>
-            <td><span class="badge" style="background:${ticket.active ? '#dcfce7' : '#f1f5f9'};color:${ticket.active ? '#166534' : '#64748b'};">${ticket.active ? '1' : '0'}</span></td>
-            <td>${esc(ticket.userId || '-')}</td>
-            <td>${esc(ticket.name || '-')}</td>
-            <td>${esc(ticket.parish || '-')}</td>
-            <td>${esc(ticket.condition_label || RAFFLE_CONDITION_LABEL[ticket.condition] || ticket.condition || '-')}</td>
-          </tr>
-        `).join('');
+        renderRaffleTicketRows(_raffleTicketRows, document.getElementById('raffleTicketFilterInput')?.value || '');
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
       }

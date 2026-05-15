@@ -4,6 +4,9 @@
 /beyond_us/app.html
   Cache-Control: no-store
 
+/beyond_us/admin.html
+  Cache-Control: no-store
+
 /beyond_us/app.js
   Cache-Control: public, max-age=0, must-revalidate
 

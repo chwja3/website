@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515p';
+    const APP_VERSION = '20260515q';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2876,12 +2876,25 @@
     }
 
     let _dashboardPromise = null;
-    async function fetchDashboard() {
+    let _dashboardCacheData = null;
+    let _dashboardCacheAt = 0;
+    const DASHBOARD_CLIENT_TTL_MS = 60000;
+    async function fetchDashboard(options) {
+      const opts = options || {};
+      const now = Date.now();
+      if (opts.force !== true && _dashboardCacheData && now - _dashboardCacheAt < DASHBOARD_CLIENT_TTL_MS) {
+        return _dashboardCacheData;
+      }
       if (_dashboardPromise) return _dashboardPromise;
       _dashboardPromise = fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' })
         .then(res => {
           if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
           return res.json();
+        })
+        .then(data => {
+          _dashboardCacheData = data;
+          _dashboardCacheAt = Date.now();
+          return data;
         })
         .finally(() => { _dashboardPromise = null; });
       return _dashboardPromise;
@@ -3080,9 +3093,10 @@
     }
 
     async function loadAll(options) {
-      const silent = options && options.silent === true;
+      const opts = options || {};
+      const silent = opts.silent === true;
       if (!silent) setStatus('현황을 불러오고 있어요...');
-      const data = await fetchDashboard();
+      const data = await fetchDashboard({ force: opts.force === true });
       localStorage.setItem('beyondus_cache_config', JSON.stringify(data));
       renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
@@ -3212,7 +3226,7 @@
       refreshBtn.disabled = true;
       submitBtn.disabled = true;
       try {
-        await loadAll();
+        await loadAll({ force: true });
         updateCheckUI();
       } catch(err) {
         setStatus(err.message || '현황을 새로 불러오는 중 문제가 발생했어요.', 'error');

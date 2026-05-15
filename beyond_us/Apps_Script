@@ -946,9 +946,13 @@ const SPIRIT_CARDS = [
 
 // ── GET ──────────────────────────────────────────
 function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || 'dashboard';
+  const params = (e && e.parameter) || {};
+  const action = params.action || 'dashboard';
 
-  if (action === 'dashboard') return jsonOutput(getDashboardDataCached_());
+  if (action === 'dashboard') {
+    const force = isTruthyEventValue_(params.force) && isAdminAuthorized_(params.adminPw);
+    return jsonOutput(getDashboardDataCached_({ force: force }));
+  }
   if (action === 'userStatus') {
     const userId  = e.parameter.userId  || '';
     const weekKey = e.parameter.weekKey || '';
@@ -3358,12 +3362,18 @@ function cleanRequestId_(requestId) {
   return String(requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
 }
 
-function getDashboardDataCached_() {
-  const key = cacheKey_('dashboard_v2');
-  const cached = cacheGetJson_(key);
+const DASHBOARD_CACHE_VERSION = 'dashboard_v3';
+const DASHBOARD_CACHE_SECONDS = 180;
+const RAFFLE_SUMMARY_CACHE_VERSION = 'raffle_ticket_summary_v1';
+const RAFFLE_SUMMARY_CACHE_SECONDS = 90;
+
+function getDashboardDataCached_(options) {
+  const opts = options || {};
+  const key = cacheKey_(DASHBOARD_CACHE_VERSION);
+  const cached = opts.force === true ? null : cacheGetJson_(key);
   if (cached) return cached;
   const data = getDashboardData();
-  cachePutJson_(key, data, 45);
+  cachePutJson_(key, data, DASHBOARD_CACHE_SECONDS);
   return data;
 }
 
@@ -3376,6 +3386,17 @@ function clearHotCaches_() {
 
 function clearDashboardCache_() {
   cacheRemove_(cacheKey_('dashboard_v2'));
+  cacheRemove_(cacheKey_(DASHBOARD_CACHE_VERSION));
+}
+
+function clearRaffleTicketSummaryCache_() {
+  cacheRemove_(cacheKey_(RAFFLE_SUMMARY_CACHE_VERSION));
+}
+
+function clearRaffleCaches_() {
+  clearRaffleTicketSummaryCache_();
+  cacheRemove_(cacheKey_('dashboard_v2'));
+  cacheRemove_(cacheKey_(DASHBOARD_CACHE_VERSION));
 }
 
 function clearNoticesCache_() {
@@ -3403,7 +3424,6 @@ function clearUserCache_(userId) {
 
 function clearUserDerivedCaches_(userId) {
   clearUserCache_(userId);
-  clearDashboardCache_();
 }
 
 function clearConfigCaches_() {
@@ -3919,7 +3939,6 @@ function updateMissionProgressForSubmission_(userId, weekKey, config, score, dat
   } else {
     sheet.getRange(rowIndex, 1, 1, MISSION_PROGRESS_COL_COUNT).setValues([row]);
   }
-  clearDashboardCache_();
   return { ok: true, userId: cleanUserId, weekKey: cleanWeekKey, rowIndex: rowIndex === -1 ? sheet.getLastRow() : rowIndex };
 }
 
@@ -4603,16 +4622,12 @@ function getUserStatus(userId, weekKey, configOverride) {
     const collectionCol = getCollectionColumns_(collectionSheet);
     const usersSheet = getUsersSheet_();
     const userCol = getUserColumns_(usersSheet);
-    const attendanceSheet = getOrCreateRetreatAttendanceSheet();
-    const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
     const batchRows = getBatchSheetRows_([
       { key: 'collection', sheet: collectionSheet, schema: SCHEMA.COLLECTION, maxColumns: COLLECTION_COL_COUNT },
       { key: 'users', sheet: usersSheet, schema: SCHEMA.USERS },
-      { key: 'attendance', sheet: attendanceSheet, schema: SCHEMA.RETREAT_ATTENDANCE, maxColumns: 3 },
     ]);
     const collectionRows = batchRows.collection || [];
     const usersRows = batchRows.users || [];
-    const attendanceRows = batchRows.attendance || [];
     const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUserId, collectionRows, collectionCol);
     const specialPackProjection = getSpecialPackStatsFromSnapshot_(snapshot);
     if (specialPackProjection.projected) {
@@ -4626,15 +4641,12 @@ function getUserStatus(userId, weekKey, configOverride) {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;
       for (let j = 0; j < cnt; j++) collection.push({...card});
     });
-    const raffleRows = getRaffleTicketRows_();
     raffle = getRaffleStatsFromRows_(cleanUserId, {
       collectionRows: collectionRows,
       collectionCol: collectionCol,
-      raffleRows: raffleRows,
+      ticketSummary: getRaffleTicketSummaryCached_(),
       usersRows: usersRows,
       userCol: userCol,
-      attendanceRows: attendanceRows,
-      attendanceCol: attendanceCol,
       currentSnapshot: snapshot,
     });
   } catch(e) {}
@@ -5621,7 +5633,7 @@ function adminGetRaffleAttendance() {
   const attendanceSheet = getOrCreateRetreatAttendanceSheet();
   const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
   const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
-  const raffleSummary = getActiveRaffleTicketSummary_(getRaffleTicketRows_());
+  const raffleSummary = getRaffleTicketSummaryCached_();
 
   const allUsers = usersRows
     .filter(function(row) { return String(row[userCol.nickname] || '').trim(); })
@@ -5789,6 +5801,7 @@ function adminDeactivateUser(body) {
     const raffleRelease = revokeUserRaffleTickets_(canonical, 'available', 'user_deactivated');
     const deletedRows = deleteUserConnectedRows_(canonical);
     clearUserDerivedCaches_(canonical);
+    clearDashboardCache_();
     return {
       ok: true,
       nickname: canonical,
@@ -5827,6 +5840,7 @@ function adminRestoreUser(body) {
       ? { issued: [] }
       : ensureUserRaffleTickets_(canonical, { includeSignup: true, skipIssueLock: true });
     clearUserDerivedCaches_(canonical);
+    clearDashboardCache_();
     return {
       ok: true,
       nickname: canonical,
@@ -5939,29 +5953,34 @@ function syncDefaultRaffleExcludedUsers_() {
   const rows = getUserRows_(sheet);
   if (!rows.length) return { ok: true, changed: 0, released: 0 };
 
+  const newlyExcludedUsers = [];
+  let changed = 0;
   const values = rows.map(function(row) {
     if (isUserInactiveFromRow_(row, col)) return [row[col.raffleExcluded]];
     const current = row[col.raffleExcluded];
     const text = String(current === null || current === undefined ? '' : current).trim();
     if (text) return [current];
-    return [getDefaultRaffleExcludedByParish_(row[col.parish])];
+    const next = getDefaultRaffleExcludedByParish_(row[col.parish]);
+    changed++;
+    if (next === true) {
+      const nickname = String(row[col.nickname] || '').trim();
+      if (nickname) newlyExcludedUsers.push(nickname);
+    }
+    return [next];
   });
 
-  const range = sheet.getRange(SCHEMA.USERS.dataStartRow, col.raffleExcluded + 1, rows.length, 1);
-  range.setValues(values);
+  if (changed > 0) {
+    const range = sheet.getRange(SCHEMA.USERS.dataStartRow, col.raffleExcluded + 1, rows.length, 1);
+    range.setValues(values);
+  }
 
   let released = 0;
-  rows.forEach(function(row, index) {
-    const nickname = String(row[col.nickname] || '').trim();
-    if (!nickname) return;
-    if (isUserInactiveFromRow_(row, col)) return;
-    const excluded = parseRaffleExcludedValue_(values[index][0], false);
-    if (!excluded) return;
+  newlyExcludedUsers.forEach(function(nickname) {
     const result = revokeUserRaffleTickets_(nickname, 'available', 'raffle_excluded');
     released += Number(result.revoked) || 0;
   });
 
-  return { ok: true, changed: rows.length, released: released };
+  return { ok: true, changed: changed, released: released };
 }
 
 function getRaffleExcludedUserMap_() {
@@ -7032,6 +7051,7 @@ function getActiveRaffleTicketSummary_(rows) {
   const lookup = getUserCanonicalLookup_();
   const byUser = {};
   const byUserCondition = {};
+  let activeCount = 0;
   (rows || []).forEach(function(row) {
     if (!isActiveRaffleTicketRow_(row)) return;
     const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
@@ -7039,12 +7059,27 @@ function getActiveRaffleTicketSummary_(rows) {
     if (!userId || !condition) return;
     const canonical = getActiveCanonicalUserId_(userId, lookup);
     if (!canonical) return;
+    activeCount++;
     const key = userIdKey_(canonical);
     byUser[key] = (byUser[key] || 0) + 1;
     if (!byUserCondition[key]) byUserCondition[key] = {};
     byUserCondition[key][condition] = padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]);
   });
-  return { byUser: byUser, byUserCondition: byUserCondition };
+  return {
+    byUser: byUser,
+    byUserCondition: byUserCondition,
+    activeCount: activeCount,
+    participantCount: Object.keys(byUser).length,
+  };
+}
+
+function getRaffleTicketSummaryCached_() {
+  const cached = cacheGetJson_(cacheKey_(RAFFLE_SUMMARY_CACHE_VERSION));
+  if (cached) return cached;
+  const rows = getRaffleTicketRows_();
+  const summary = getActiveRaffleTicketSummary_(rows);
+  cachePutJson_(cacheKey_(RAFFLE_SUMMARY_CACHE_VERSION), summary, RAFFLE_SUMMARY_CACHE_SECONDS);
+  return summary;
 }
 
 function getRaffleTicketNumbersFromConditionMap_(conditionMap) {
@@ -7133,6 +7168,7 @@ function issueRaffleTicket_(userId, condition, weekKey, options) {
       sheet.getRange(newRow, 1).setNumberFormat('@').setValue(nextNo);
       sheet.getRange(newRow, 2, 1, RAFFLE_TICKET_COLUMNS.length - 1).setValues([nextRow.slice(1)]);
     }
+    clearRaffleCaches_();
     clearUserDerivedCaches_(cleanUser);
     return { ok: true, ticket_no: nextNo, dup: false, week_key: week };
   } finally {
@@ -7246,7 +7282,10 @@ function issueRaffleTicketsBatch_(userId, conditions, weekKey, options) {
       results.push({ condition: condition, ticket_no: nextNo, dup: false });
     });
 
-    if (issued.length) clearUserDerivedCaches_(cleanUser);
+    if (issued.length) {
+      clearRaffleCaches_();
+      clearUserDerivedCaches_(cleanUser);
+    }
     return { ok: true, issued: issued, results: results };
   } finally {
     if (lock) lock.releaseLock();
@@ -7524,6 +7563,7 @@ function revokeIneligibleRaffleTickets_(dryRun) {
 
   if (!dryRun && planned.length) {
     range.setValues(values);
+    clearRaffleCaches_();
     Object.keys(affectedUsers).forEach(function(userId) {
       clearUserDerivedCaches_(userId);
     });
@@ -7591,6 +7631,7 @@ function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
 
   if (revokedRows.length) {
     range.setValues(values);
+    clearRaffleCaches_();
     clearUserDerivedCaches_(cleanUser);
   }
 
@@ -7824,7 +7865,9 @@ function getRaffleStatsFromRows_(userId, options) {
   const cleanUserId = String(userId || '').trim();
   const stats = getEmptyRaffleStats_();
   const collectionMap = getCollectionSnapshotMap_(opts.collectionRows || [], opts.collectionCol);
-  const ticketSummary = getActiveRaffleTicketSummary_(opts.raffleRows || getRaffleTicketRows_());
+  const ticketSummary = opts.ticketSummary || (opts.raffleRows
+    ? getActiveRaffleTicketSummary_(opts.raffleRows)
+    : getRaffleTicketSummaryCached_());
   let foundCurrentUser = false;
 
   (opts.usersRows || []).forEach(function(row) {
