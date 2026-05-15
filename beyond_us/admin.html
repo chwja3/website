@@ -191,7 +191,7 @@
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
       <button class="drawer-item" data-panel="bbbphotos">BBB 사진 승인</button>
-      <button class="drawer-item" data-panel="raffle">추첨권 번호 검색</button>
+      <button class="drawer-item" data-panel="raffle">추첨권 번호</button>
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
@@ -329,8 +329,13 @@
         </div>
       </div>
 
-      <!-- 추첨권 번호 검색 -->
+      <!-- 추첨권 번호 -->
       <div id="tab-raffle" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">현재 발급</div><div class="stat-value" id="raffleActiveCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">사용 가능 번호</div><div class="stat-value" id="raffleAvailableCount">-</div></div>
+        </div>
+
         <div class="card">
           <h2 class="card-title" style="margin:0 0 4px;">🎟️ 추첨권 번호 검색</h2>
           <p style="font-size:12px;color:var(--sub);margin:0 0 14px;">실물 추첨권에 적힌 번호를 입력하면 발급된 유저 정보가 표시돼요.</p>
@@ -341,6 +346,30 @@
           </div>
           <div id="raffleSearchResult" style="font-size:14px;color:var(--sub);text-align:center;padding:18px;">번호를 입력하고 검색해주세요.</div>
         </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <h2 class="card-title" style="margin:0;">추첨권 번호 시트</h2>
+            <button class="btn btn-ghost btn-sm" id="refreshRaffleTicketsBtn">새로고침</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>번호</th>
+                  <th>활성</th>
+                  <th>닉네임</th>
+                  <th>이름</th>
+                  <th>교구</th>
+                  <th>이벤트</th>
+                </tr>
+              </thead>
+              <tbody id="raffleTicketTableBody">
+                <tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- 앱 가입자 관리 -->
@@ -348,6 +377,7 @@
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">전체 가입자</div><div class="stat-value" id="attendanceTotalUsers">-</div></div>
           <div class="stat-card"><div class="stat-label">참석 체크</div><div class="stat-value" id="attendanceCheckedUsers">-</div></div>
+          <div class="stat-card"><div class="stat-label">추첨권 제외</div><div class="stat-value" id="attendanceExcludedUsers">-</div></div>
         </div>
 
         <div class="card">
@@ -367,7 +397,7 @@
                   <th>이름</th>
                   <th>닉네임</th>
                   <th>수련회 참석</th>
-                  <th>추첨권 초기화</th>
+                  <th>추첨권 발급 제외</th>
                 </tr>
               </thead>
               <tbody id="attendanceTableBody">
@@ -726,6 +756,7 @@
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'bbbphotos') loadBBBPhotoApprovals();
+      if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
@@ -804,6 +835,7 @@
         _raffleAttendanceUsers = res.users || [];
         document.getElementById('attendanceTotalUsers').textContent = res.totalUsers || 0;
         document.getElementById('attendanceCheckedUsers').textContent = res.attendedCount || 0;
+        document.getElementById('attendanceExcludedUsers').textContent = res.raffleExcludedCount || 0;
         renderRaffleAttendanceRows(_raffleAttendanceUsers);
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
@@ -817,10 +849,6 @@
         return;
       }
       tbody.innerHTML = users.map(u => `
-        ${(() => {
-          const ticketCount = Number(u.raffleTickets) || 0;
-          const resetLabel = ticketCount > 0 ? `초기화 (${ticketCount})` : '초기화';
-          return `
         <tr>
           <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
           <td>${esc(u.name)}</td>
@@ -829,17 +857,15 @@
             <input type="checkbox" class="attendance-toggle" data-nickname="${esc(u.nickname)}" ${u.attended ? 'checked' : ''} aria-label="${esc(u.nickname)} 수련회 참석 체크" />
           </td>
           <td>
-            <button class="btn btn-ghost btn-sm raffle-reset-btn" data-nickname="${esc(u.nickname)}" ${ticketCount > 0 ? '' : 'disabled'} style="color:var(--danger);border-color:#fecaca;">${resetLabel}</button>
+            <input type="checkbox" class="raffle-excluded-toggle" data-nickname="${esc(u.nickname)}" ${u.raffleExcluded ? 'checked' : ''} aria-label="${esc(u.nickname)} 추첨권 발급 제외" style="width:22px;height:22px;accent-color:var(--danger);cursor:pointer;" />
           </td>
         </tr>
-          `;
-        })()}
       `).join('');
       tbody.querySelectorAll('.attendance-toggle').forEach(input => {
         input.addEventListener('change', () => setRaffleAttendance(input.dataset.nickname, input.checked, input));
       });
-      tbody.querySelectorAll('.raffle-reset-btn').forEach(btn => {
-        btn.addEventListener('click', () => resetUserRaffleTickets(btn.dataset.nickname, btn));
+      tbody.querySelectorAll('.raffle-excluded-toggle').forEach(input => {
+        input.addEventListener('change', () => setRaffleExcluded(input.dataset.nickname, input.checked, input));
       });
     }
 
@@ -880,26 +906,30 @@
       }
     }
 
-    async function resetUserRaffleTickets(nickname, btn) {
+    async function setRaffleExcluded(nickname, excluded, checkbox) {
       const statusEl = document.getElementById('attendanceStatus');
-      const user = _raffleAttendanceUsers.find(u => u.nickname === nickname);
-      const ticketCount = Number(user && user.raffleTickets) || 0;
-      if (ticketCount <= 0) return;
-      if (!confirm(`${nickname}님의 추첨권 ${ticketCount}장을 모두 회수할까요?`)) return;
-      btn.disabled = true;
-      statusEl.textContent = '추첨권 회수 중...';
+      checkbox.disabled = true;
+      statusEl.textContent = excluded ? '추첨권 발급 제외 중...' : '추첨권 발급 제외 해제 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'adminResetUserRaffleTickets', adminPw, nickname });
-        if (!res.ok) throw new Error(res.error || 'reset_failed');
-        if (user) user.raffleTickets = 0;
-        filterRaffleAttendance(document.getElementById('attendanceSearch').value);
-        statusEl.textContent = `${nickname}님의 추첨권 ${res.revoked || 0}장을 회수했어요.`;
+        const res = await post({ action: 'adminSetRaffleExcluded', adminPw, nickname, excluded });
+        if (!res.ok) throw new Error(res.error || 'save_failed');
+        const user = _raffleAttendanceUsers.find(u => u.nickname === nickname);
+        if (user) {
+          user.raffleExcluded = excluded;
+          user.raffleTickets = Number(res.raffleTickets) || 0;
+        }
+        document.getElementById('attendanceExcludedUsers').textContent = _raffleAttendanceUsers.filter(u => u.raffleExcluded).length;
+        statusEl.textContent = excluded
+          ? `${nickname}님의 추첨권 ${res.released || 0}장을 회수하고 향후 발급을 제외했어요.`
+          : `${nickname}님의 추첨권 발급 제외를 해제했어요.`;
         statusEl.className = 'status ok';
       } catch(e) {
-        btn.disabled = false;
-        statusEl.textContent = '추첨권 회수 실패. 잠시 후 다시 시도해주세요.';
+        checkbox.checked = !excluded;
+        statusEl.textContent = '저장 실패. 잠시 후 다시 시도해주세요.';
         statusEl.className = 'status';
+      } finally {
+        checkbox.disabled = false;
       }
     }
 
@@ -1690,21 +1720,14 @@
         const res = await get({ action: 'adminFindRaffleTicket', adminPw, ticket_no: raw });
         if (!res.ok) {
           resultEl.style.color = 'var(--danger)';
-          if (res.error === 'revoked') {
-            const cond = RAFFLE_CONDITION_LABEL[res.condition] || res.condition || '-';
+          if (res.error === 'available') {
             resultEl.style.textAlign = 'left';
             resultEl.style.padding = '0';
             resultEl.innerHTML = `
-              <div style="background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:18px 20px;">
-                <div style="font-size:11px;font-weight:800;color:#991b1b;letter-spacing:0.16em;margin-bottom:6px;">회수된 추첨권 번호</div>
-                <div style="font-size:30px;font-weight:900;color:#991b1b;letter-spacing:-0.02em;line-height:1;margin-bottom:14px;">#${esc(res.ticket_no || raw)}</div>
-                <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px;line-height:1.5;color:var(--text);">
-                  <span style="color:var(--sub);">닉네임</span><strong>${esc(res.userId || '-')}</strong>
-                  <span style="color:var(--sub);">이름</span><strong>${esc(res.name || '-')}</strong>
-                  <span style="color:var(--sub);">교구</span><strong>${esc(res.parish || '-')}</strong>
-                  <span style="color:var(--sub);">발급 조건</span><strong>${esc(cond)}</strong>
-                  <span style="color:var(--sub);">상태</span><strong>대상 교구 제외로 회수됨</strong>
-                </div>
+              <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:14px;padding:18px 20px;">
+                <div style="font-size:11px;font-weight:800;color:#475569;letter-spacing:0.16em;margin-bottom:6px;">미지급 추첨권 번호</div>
+                <div style="font-size:30px;font-weight:900;color:#334155;letter-spacing:-0.02em;line-height:1;margin-bottom:10px;">#${esc(res.ticket_no || raw)}</div>
+                <div style="font-size:14px;color:var(--sub);">현재 누구에게도 발급되어 있지 않아 다음 발급 시 재사용될 수 있어요.</div>
               </div>`;
           } else if (res.error === 'not_found') {
             resultEl.innerHTML = `<div style="font-size:14px;font-weight:700;">#${esc(res.ticket_no || raw)} 발급되지 않은 번호예요.</div>`;
@@ -1713,7 +1736,7 @@
           }
           return;
         }
-        const cond = RAFFLE_CONDITION_LABEL[res.condition] || res.condition;
+        const cond = res.condition_label || RAFFLE_CONDITION_LABEL[res.condition] || res.condition;
         resultEl.style.color = 'var(--text)';
         resultEl.style.textAlign = 'left';
         resultEl.style.padding = '0';
@@ -1740,9 +1763,40 @@
     document.addEventListener('DOMContentLoaded', () => {
       const btn = document.getElementById('raffleSearchBtn');
       const input = document.getElementById('raffleSearchInput');
+      const refreshBtn = document.getElementById('refreshRaffleTicketsBtn');
       if (btn) btn.addEventListener('click', adminSearchRaffleTicket);
       if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') adminSearchRaffleTicket(); });
+      if (refreshBtn) refreshBtn.addEventListener('click', loadRaffleTickets);
     });
+
+    async function loadRaffleTickets() {
+      const tbody = document.getElementById('raffleTicketTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      try {
+        const res = await get({ action: 'adminGetRaffleTickets', adminPw });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        document.getElementById('raffleActiveCount').textContent = res.activeCount || 0;
+        document.getElementById('raffleAvailableCount').textContent = res.availableCount || 0;
+        const rows = res.tickets || [];
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">추첨권 번호가 아직 없어요.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(ticket => `
+          <tr>
+            <td><strong>#${esc(ticket.ticket_no)}</strong></td>
+            <td><span class="badge" style="background:${ticket.active ? '#dcfce7' : '#f1f5f9'};color:${ticket.active ? '#166534' : '#64748b'};">${ticket.active ? '1' : '0'}</span></td>
+            <td>${esc(ticket.userId || '-')}</td>
+            <td>${esc(ticket.name || '-')}</td>
+            <td>${esc(ticket.parish || '-')}</td>
+            <td>${esc(ticket.condition_label || RAFFLE_CONDITION_LABEL[ticket.condition] || ticket.condition || '-')}</td>
+          </tr>
+        `).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+      }
+    }
 
     function groupBBBPhotoApprovalsByUser(photos) {
       const groups = {};
