@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515m';
+    const APP_VERSION = '20260515n';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -605,7 +605,71 @@
         loadAll({ silent: opts.silent === true }),
         loadNotices().catch(() => {}),
         currentNickname ? loadUserStatus({ silent: opts.silent === true }).then(() => loadTrades()) : Promise.resolve()
+      ]).then(results => {
+        scheduleFeaturePreload();
+        return results;
+      });
+    }
+
+    let _featurePreloadTimer = null;
+
+    function isActiveAccount(nickname) {
+      return !!nickname && String(currentNickname || '') === String(nickname);
+    }
+
+    function cancelFeaturePreload() {
+      if (_featurePreloadTimer) {
+        clearTimeout(_featurePreloadTimer);
+        _featurePreloadTimer = null;
+      }
+    }
+
+    function scheduleFeaturePreload(delay) {
+      cancelFeaturePreload();
+      const nickname = currentNickname;
+      if (!nickname) return;
+      _featurePreloadTimer = setTimeout(function() {
+        _featurePreloadTimer = null;
+        if (!isActiveAccount(nickname)) return;
+        preloadImage('images/천로역정맵.png', 'low');
+        loadHoldPray(false).catch(() => {});
+        loadBBB(true).catch(() => {});
+      }, delay || 1200);
+    }
+
+    function clearAccountScopedLocalState() {
+      const exactKeys = new Set([
+        'beyondus_known_accepts',
+        'beyondus_trade_dot',
+        'beyondus_check_dates',
       ]);
+      const prefixes = [
+        'beyondus_new_card_',
+        'beyondus_cache_hp_',
+        'beyondus_cache_userStatus_',
+        'beyondus_hp_correct_',
+        'beyondus_hp_hint_',
+      ];
+      Object.keys(localStorage).forEach(function(key) {
+        if (exactKeys.has(key) || prefixes.some(function(prefix) { return key.startsWith(prefix); })) {
+          localStorage.removeItem(key);
+        }
+      });
+    }
+
+    function resetAccountScopedState(options) {
+      cancelFeaturePreload();
+      userStatus = null;
+      pendingCard = null;
+      if (typeof _cachedTrades !== 'undefined') _cachedTrades = null;
+      if (typeof _lastTradeCollectionRenderSig !== 'undefined') _lastTradeCollectionRenderSig = '';
+      resetHoldPrayState(options);
+      resetBBBState(options);
+      updateTicketBadge(null);
+      renderDrawSection();
+      renderCollection();
+      updateScoreProgress();
+      updateInquiryLoginUI();
     }
 
     /* ════ Auth 패인 전환 ════ */
@@ -625,8 +689,8 @@
     function saveAuth(nickname, sessionToken, parish) {
       const prev = localStorage.getItem('beyondus_nickname');
       if (prev && prev !== nickname) {
-        localStorage.removeItem('beyondus_cache_userStatus_' + prev);
-        localStorage.removeItem('beyondus_cache_config');
+        clearAccountScopedLocalState();
+        resetAccountScopedState({ clearDom: true });
       }
       localStorage.setItem('beyondus_nickname', nickname);
       if (sessionToken) localStorage.setItem('beyondus_session_token', sessionToken);
@@ -3094,6 +3158,7 @@
         .forEach(k => localStorage.removeItem(k));
       currentNickname = null;
       currentParish   = null;
+      resetAccountScopedState({ clearDom: true });
       closeDrawer();
       showAuth('login');
     });
@@ -3549,6 +3614,63 @@
 
     /* ════ B.B.B. ════ */
     let _bbbData = null;
+    let _bbbLoadedFor = '';
+    let _bbbLoadingFor = '';
+
+    function _resetPhotoBox(imgId, modalImgId, placeholderId, placeholderTextId, labelId, statusId) {
+      const img = document.getElementById(imgId);
+      if (img) { img.src = ''; img.style.display = 'none'; }
+      const modalImg = modalImgId ? document.getElementById(modalImgId) : null;
+      if (modalImg) modalImg.src = '';
+      const placeholder = document.getElementById(placeholderId);
+      if (placeholder) placeholder.style.display = '';
+      const placeholderText = document.getElementById(placeholderTextId);
+      if (placeholderText) placeholderText.style.display = '';
+      const label = document.getElementById(labelId);
+      if (label) label.style.border = '1.5px dashed var(--line)';
+      const status = document.getElementById(statusId);
+      if (status) status.textContent = '';
+    }
+
+    function resetBBBState(options) {
+      _bbbData = null;
+      _bbbLoadedFor = '';
+      _bbbLoadingFor = '';
+      _bbbLoadedOnce = false;
+      _bbbLastLoadedAt = 0;
+      _bbbLoadPromise = null;
+      if (!(options && options.clearDom)) return;
+      const loading = document.getElementById('bbbLoading');
+      if (loading) {
+        loading.style.display = '';
+        loading.textContent = '';
+      }
+      const content = document.getElementById('bbbContent');
+      if (content) content.style.display = 'none';
+      const noMatch = document.getElementById('bbbNoMatch');
+      if (noMatch) noMatch.style.display = 'none';
+      const caught = document.getElementById('bbbCaughtBadge');
+      if (caught) caught.style.display = 'none';
+      const careName = document.getElementById('bbbCareBuddyName');
+      if (careName) careName.textContent = '—';
+      const secretName = document.getElementById('bbbSecretName');
+      if (secretName) secretName.textContent = '—';
+      const guessInput = document.getElementById('bbbGuessInput');
+      if (guessInput) guessInput.value = '';
+      const guessMsg = document.getElementById('bbbGuessMsg');
+      if (guessMsg) guessMsg.textContent = '';
+      _resetPhotoBox('bbbPhotoImg', 'bbbPhotoModalImg', 'bbbPhotoPlaceholder', 'bbbPhotoPlaceholderText', 'bbbPhotoLabel', 'bbbPhotoStatus');
+      _resetPhotoBox('bbbM2Img', 'bbbM2ModalImg', 'bbbM2Placeholder', 'bbbM2PlaceholderText', 'bbbM2Label', 'bbbM2Status');
+      _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
+      const msgList = document.getElementById('bbbMsgList');
+      if (msgList) msgList.innerHTML = '';
+      const sentList = document.getElementById('bbbSentMsgList');
+      if (sentList) sentList.innerHTML = '';
+      ['bbbPhotoModal', 'bbbM2Modal', 'bbbM3Modal', 'bbbM3MapModal'].forEach(function(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = 'none';
+      });
+    }
 
     function _bbbShowPhoto(src) {
       const img = document.getElementById('bbbPhotoImg');
@@ -3629,10 +3751,15 @@
 
     async function loadBBB(silent = false, forceRefresh = false) {
       const nickname = localStorage.getItem('beyondus_nickname') || '';
-      if (!nickname) return;
+      if (!nickname) {
+        resetBBBState({ clearDom: true });
+        return;
+      }
+      if (_bbbLoadedFor && _bbbLoadedFor !== nickname) resetBBBState({ clearDom: !silent });
       const now = Date.now();
-      if (!forceRefresh && _bbbLoadedOnce && now - _bbbLastLoadedAt < BBB_REFRESH_TTL_MS) return;
-      if (_bbbLoadPromise) return _bbbLoadPromise;
+      if (!forceRefresh && _bbbLoadedFor === nickname && _bbbLoadedOnce && now - _bbbLastLoadedAt < BBB_REFRESH_TTL_MS) return;
+      if (_bbbLoadPromise && _bbbLoadingFor === nickname) return _bbbLoadPromise;
+      _bbbLoadingFor = nickname;
       _bbbLoadPromise = (async () => {
 
       // 주기 동기화(silent) 시에는 로딩 UI를 띄우지 않아 깜빡임 방지
@@ -3643,12 +3770,15 @@
       }
 
       try {
+        const nonce = Date.now();
         const [bbbRes, msgRes] = await Promise.all([
-          fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}${sessionParam()}`).then(r => r.json()),
-          fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}${sessionParam()}`).then(r => r.json())
+          fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json()),
+          fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json())
         ]);
+        if (!isActiveAccount(nickname)) return;
 
         document.getElementById('bbbLoading').style.display = 'none';
+        _bbbLoadedFor = nickname;
         _bbbLoadedOnce = true;
         _bbbLastLoadedAt = Date.now();
 
@@ -3778,7 +3908,12 @@
           document.getElementById('bbbLoading').textContent = '불러오기 실패. 다시 시도해주세요.';
         }
       }
-      })().finally(() => { _bbbLoadPromise = null; });
+      })().finally(() => {
+        if (_bbbLoadingFor === nickname) {
+          _bbbLoadPromise = null;
+          _bbbLoadingFor = '';
+        }
+      });
       return _bbbLoadPromise;
     }
 
@@ -4081,6 +4216,36 @@
     let _hpTicketCardIdx = -1;
     let _hpHintReplies = {};
     let _hpRevision = '';
+    let _hpLoadedFor = '';
+
+    function hpStorageUserPart(nick) {
+      return encodeURIComponent(String(nick || currentNickname || ''));
+    }
+
+    function hpCorrectStorageKey(weekKey, cardIdx, nick) {
+      return 'beyondus_hp_correct_' + hpStorageUserPart(nick) + '_' + weekKey + '_' + cardIdx;
+    }
+
+    function hpHintStorageKey(weekKey, cardIdx, nick) {
+      return 'beyondus_hp_hint_' + hpStorageUserPart(nick) + '_' + weekKey + '_' + cardIdx;
+    }
+
+    function resetHoldPrayState(options) {
+      _hpCards = [];
+      _hpCurrentIdx = 0;
+      _hpWeekKey = '';
+      _hpCorrectMap = {};
+      _hpTicketAlreadyAwarded = false;
+      _hpTicketCardIdx = -1;
+      _hpHintReplies = {};
+      _hpRevision = '';
+      _hpLoadedFor = '';
+      if (options && options.clearDom) {
+        const el = document.getElementById('hpContent');
+        if (el) el.innerHTML = '';
+        document.getElementById('drawerPrayerDot')?.classList.remove('visible');
+      }
+    }
 
     function fitHpText(textEl, boxEl, opts = {}) {
       if (!textEl || !boxEl) return;
@@ -4110,17 +4275,24 @@
       const el = document.getElementById('hpContent');
       if (!el) return;
 
-      if (_hpCards.length === 3 && !forceRefresh) {
+      const nick = localStorage.getItem('beyondus_nickname') || '';
+      if (!nick) {
+        resetHoldPrayState({ clearDom: true });
+        return;
+      }
+      if (_hpLoadedFor && _hpLoadedFor !== nick) resetHoldPrayState({ clearDom: true });
+
+      if (_hpLoadedFor === nick && _hpCards.length === 3 && !forceRefresh) {
         renderHoldPray();
         return;
       }
 
-      const nick = localStorage.getItem('beyondus_nickname') || '';
       const hpCacheKey = 'beyondus_cache_hp_' + nick;
       const hpCached = JSON.parse(localStorage.getItem(hpCacheKey) || 'null');
       let hpHasCache = false;
 
       if (hpCached && hpCached.ok) {
+        _hpLoadedFor = nick;
         _hpCards = hpCached.cards || [];
         _hpWeekKey = hpCached.weekKey || '';
         _hpRevision = hpCached.hpRevision || '';
@@ -4130,7 +4302,7 @@
         _hpTicketCardIdx = hpCached.ticketCardIdx ?? -1;
         _hpHintReplies = hpCached.hintReplies || {};
         _hpCards.forEach((_, i) => {
-          const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+          const saved = localStorage.getItem(hpCorrectStorageKey(_hpWeekKey, i, nick));
           if (saved) _hpCorrectMap[i] = saved;
         });
         renderHoldPray();
@@ -4156,9 +4328,11 @@
         ]);
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'error');
+        if (!isActiveAccount(nick)) return;
         localStorage.setItem(hpCacheKey, JSON.stringify(data));
         const sameWeek = hpCached && hpCached.weekKey === data.weekKey;
         const prevIdx = _hpCurrentIdx;
+        _hpLoadedFor = nick;
         _hpCards = data.cards || [];
         _hpWeekKey = data.weekKey || '';
         _hpRevision = data.hpRevision || '';
@@ -4168,20 +4342,20 @@
         _hpTicketCardIdx = data.ticketCardIdx ?? -1;
         _hpHintReplies = data.hintReplies || {};
         _hpCards.forEach((_, i) => {
-          const saved = localStorage.getItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+          const saved = localStorage.getItem(hpCorrectStorageKey(_hpWeekKey, i, nick));
           if (saved) _hpCorrectMap[i] = saved;
         });
         if (data.correctMap) {
           _hpCards.forEach((_, i) => {
             if (!(String(i) in data.correctMap)) {
               delete _hpCorrectMap[i];
-              localStorage.removeItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i);
+              localStorage.removeItem(hpCorrectStorageKey(_hpWeekKey, i, nick));
             }
           });
           Object.keys(data.correctMap).forEach(k => {
             const i = Number(k);
             _hpCorrectMap[i] = data.correctMap[k];
-            localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + i, data.correctMap[k]);
+            localStorage.setItem(hpCorrectStorageKey(_hpWeekKey, i, nick), data.correctMap[k]);
           });
         }
         renderHoldPray();
@@ -4292,7 +4466,7 @@
         let hintHtml;
         if (_hpHintReplies[idx]) {
           hintHtml = `<p class="hp-hint-below-reply">💡 ${escHtml(_hpHintReplies[idx])}</p>`;
-        } else if (localStorage.getItem('beyondus_hp_hint_' + _hpWeekKey + '_' + idx)) {
+        } else if (localStorage.getItem(hpHintStorageKey(_hpWeekKey, idx))) {
           hintHtml = `<p class="hp-hint-below-pending">힌트 요청이 접수됐어요 🙏</p>`;
         } else {
           hintHtml = `<button class="hp-hint-below" onclick="hpHintInquiry(${idx})">현수막에서 카드를 못 찾겠어요</button>`;
@@ -4376,7 +4550,7 @@
         const data = await res.json();
         if (data.correct) {
           _hpCorrectMap[cardIdx] = guess;
-          localStorage.setItem('beyondus_hp_correct_' + _hpWeekKey + '_' + cardIdx, guess);
+          localStorage.setItem(hpCorrectStorageKey(_hpWeekKey, cardIdx), guess);
           renderHpCard(cardIdx);
           hpConfetti();
           const slot = document.getElementById('hpCardSlot');
@@ -4420,7 +4594,7 @@
         });
         const data = await res.json();
         if (data.ok) {
-          localStorage.setItem('beyondus_hp_hint_' + _hpWeekKey + '_' + cardIdx, data.id || 'submitted');
+          localStorage.setItem(hpHintStorageKey(_hpWeekKey, cardIdx), data.id || 'submitted');
           renderHpCard(cardIdx);
         }
       } catch(e) {
