@@ -4238,13 +4238,13 @@ function buildDashboardParishSummariesFromProgress_(progressRecords, config, wee
   const groups = {};
   getDashboardParishGroupOrder_().forEach(function(key) {
     const labelMap = {
-      p1: '1援먭뎄',
-      p2: '2援먭뎄',
-      p3: '3援먭뎄',
-      p4: '4援먭뎄',
+      p1: '1교구',
+      p2: '2교구',
+      p3: '3교구',
+      p4: '4교구',
       vip: 'VIP',
-      churchSchool: '援먰쉶?숆탳/紐⑹뼇援먭뎄',
-      etc: '湲고?',
+      churchSchool: '교회학교/목양교구',
+      etc: '기타',
     };
     groups[key] = { key: key, label: labelMap[key], users: {}, dateSet: {}, totalScore: 0 };
   });
@@ -4255,7 +4255,7 @@ function buildDashboardParishSummariesFromProgress_(progressRecords, config, wee
     if (!userInfo) return;
     const groupKey = userInfo.parishGroup || 'etc';
     if (!groups[groupKey]) {
-      groups[groupKey] = { key: groupKey, label: userInfo.parishGroupLabel || userInfo.parish || '湲고?', users: {}, dateSet: {}, totalScore: 0 };
+      groups[groupKey] = { key: groupKey, label: userInfo.parishGroupLabel || userInfo.parish || '기타', users: {}, dateSet: {}, totalScore: 0 };
     }
     const group = groups[groupKey];
     const dateKeys = Array.isArray(record.dateKeys) ? record.dateKeys : [];
