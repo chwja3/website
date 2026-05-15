@@ -99,6 +99,17 @@
     .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
     .stat-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
     .stat-value { font-size: 26px; font-weight: 800; }
+    .dashboard-pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+    .dashboard-pill-row .btn.active { background: var(--primary); color: #faf6ef; border-color: var(--primary); }
+    .parish-summary-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+    .parish-summary-card { border:1px solid var(--line); border-radius:12px; padding:12px; background:#fffaf2; cursor:pointer; text-align:left; color:var(--text); font:inherit; }
+    .parish-summary-card:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .parish-summary-title { font-weight:800; margin-bottom:8px; }
+    .parish-summary-meta { display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; color:var(--sub); font-size:12px; }
+    .parish-summary-meta strong { display:block; color:var(--text); font-size:16px; margin-top:2px; }
+    .parish-detail { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:var(--card); overflow:hidden; }
+    .parish-detail summary { cursor:pointer; padding:12px 14px; font-weight:800; background:var(--primary-soft); }
+    .parish-detail .table-wrap { padding:0 12px 12px; }
 
     /* ── 테이블 ── */
     .table-wrap { overflow-x: auto; }
@@ -244,12 +255,12 @@
       <div id="tab-checkin" class="tab-panel active">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">이번 주 참여자 수</div><div class="stat-value" id="ciSubmission">-</div></div>
-          <div class="stat-card"><div class="stat-label">누적 실천 수</div><div class="stat-value" id="ciTotal">-</div></div>
+          <div class="stat-card"><div class="stat-label">이번 주 실천 수</div><div class="stat-value" id="ciTotal">-</div></div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h2 class="card-title" style="margin:0;">항목별 현황</h2>
+            <h2 class="card-title" style="margin:0;">이번 주 항목별 현황</h2>
             <button class="btn btn-ghost btn-sm" id="refreshCheckinBtn">새로고침</button>
           </div>
           <div class="table-wrap">
@@ -260,6 +271,27 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">주차별 항목 기록</h2>
+          <div class="dashboard-pill-row" id="weeklyCheckinTabs"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>항목</th><th>체크 수</th></tr></thead>
+              <tbody id="weeklyCheckinTableBody">
+                <tr><td colspan="2" style="color:var(--sub); text-align:center; padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">교구별 이번 주 참여</h2>
+          <div class="parish-summary-grid" id="parishSummaryGrid">
+            <div style="color:var(--sub); padding:12px;">불러오는 중...</div>
+          </div>
+          <div id="parishDetailList"></div>
         </div>
       </div>
 
@@ -783,6 +815,7 @@
       document.getElementById('activePanelLabel').textContent = label || panelId;
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
+      if (panelId === 'checkin') loadCheckin();
       if (panelId === 'bbbphotos') loadBBBPhotoApprovals();
       if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
@@ -832,20 +865,129 @@
     document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
 
     /* ── 체크인 현황 ── */
+    let _weeklyCheckinSummaries = [];
+    let _selectedWeeklyCheckinKey = '';
+
+    function fmtCount(n) {
+      return Number(n || 0).toLocaleString('ko-KR');
+    }
+
+    function renderWeeklyCheckin(weeklySummaries, currentWeek) {
+      _weeklyCheckinSummaries = Array.isArray(weeklySummaries)
+        ? weeklySummaries.slice().sort((a, b) => Number(a.week) - Number(b.week))
+        : [];
+      const tabs = document.getElementById('weeklyCheckinTabs');
+      const tbody = document.getElementById('weeklyCheckinTableBody');
+      if (!_weeklyCheckinSummaries.length) {
+        tabs.innerHTML = '';
+        tbody.innerHTML = '<tr><td colspan="2" style="color:var(--sub);text-align:center;padding:20px;">주차별 기록이 없어요.</td></tr>';
+        return;
+      }
+      const currentKey = 'w' + (Number(currentWeek) || 1);
+      _selectedWeeklyCheckinKey = _weeklyCheckinSummaries.some(s => s.weekKey === currentKey)
+        ? currentKey
+        : _weeklyCheckinSummaries[0].weekKey;
+      renderWeeklyCheckinTabs();
+      selectWeeklyCheckin(_selectedWeeklyCheckinKey);
+    }
+
+    function renderWeeklyCheckinTabs() {
+      const tabs = document.getElementById('weeklyCheckinTabs');
+      tabs.innerHTML = _weeklyCheckinSummaries.map(summary => `
+        <button class="btn btn-ghost btn-sm ${summary.weekKey === _selectedWeeklyCheckinKey ? 'active' : ''}"
+                onclick="selectWeeklyCheckin('${summary.weekKey}')">
+          ${esc(summary.weekTitle || (summary.week + '주차'))}
+        </button>`).join('');
+    }
+
+    function selectWeeklyCheckin(weekKey) {
+      _selectedWeeklyCheckinKey = weekKey;
+      renderWeeklyCheckinTabs();
+      const summary = _weeklyCheckinSummaries.find(s => s.weekKey === weekKey);
+      const tbody = document.getElementById('weeklyCheckinTableBody');
+      if (!summary) {
+        tbody.innerHTML = '<tr><td colspan="2" style="color:var(--sub);text-align:center;padding:20px;">선택한 주차 기록이 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = (summary.items || []).map(item => `
+        <tr>
+          <td>${esc(item)}</td>
+          <td><strong>${fmtCount((summary.counts || {})[item])}</strong></td>
+        </tr>`).join('');
+    }
+
+    function focusParishDetail(key) {
+      const el = document.getElementById('parishDetail-' + key);
+      if (!el) return;
+      el.open = true;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderParishDashboard(parishSummaries) {
+      const summaries = Array.isArray(parishSummaries) ? parishSummaries : [];
+      const grid = document.getElementById('parishSummaryGrid');
+      const detailList = document.getElementById('parishDetailList');
+      if (!summaries.length) {
+        grid.innerHTML = '<div style="color:var(--sub); padding:12px;">교구별 참여 기록이 없어요.</div>';
+        detailList.innerHTML = '';
+        return;
+      }
+      grid.innerHTML = summaries.map(summary => `
+        <button class="parish-summary-card" onclick="focusParishDetail('${summary.key}')">
+          <div class="parish-summary-title">${esc(summary.label)}</div>
+          <div class="parish-summary-meta">
+            <span>참여자<strong>${fmtCount(summary.participantCount)}</strong></span>
+            <span>날짜 합계<strong>${fmtCount(summary.activeDays)}</strong></span>
+            <span>점수<strong>${fmtCount(summary.totalScore)}</strong></span>
+          </div>
+        </button>`).join('');
+
+      detailList.innerHTML = summaries.map(summary => {
+        const rows = (summary.users || []).map((user, idx) => `
+          <tr>
+            <td>${idx + 1}</td>
+            <td><strong>${esc(user.nickname)}</strong><div style="color:var(--sub);font-size:12px;">${esc(user.name)}</div></td>
+            <td>${esc(user.parish || '-')}</td>
+            <td>${fmtCount(user.activeDays)}</td>
+            <td><strong>${fmtCount(user.score)}</strong></td>
+          </tr>`).join('') || '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:16px;">이번 주 참여자가 없어요.</td></tr>';
+        return `
+          <details class="parish-detail" id="parishDetail-${summary.key}">
+            <summary>${esc(summary.label)} · ${fmtCount(summary.participantCount)}명 · ${fmtCount(summary.totalScore)}점</summary>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>순위</th><th>유저</th><th>교구</th><th>참여 날짜</th><th>주차 점수</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </details>`;
+      }).join('');
+    }
+
     async function loadCheckin() {
       try {
         const res = await get({ action: 'dashboard', adminPw, t: Date.now() });
-        if (!res.ok) return;
-        document.getElementById('ciSubmission').textContent = res.submissionCount;
-        document.getElementById('ciTotal').textContent      = res.totalCount;
+        if (!res.ok) throw new Error(res.error || 'dashboard_failed');
+        document.getElementById('ciSubmission').textContent = fmtCount(res.submissionCount);
+        document.getElementById('ciTotal').textContent      = fmtCount(res.totalCount);
 
         const tbody = document.getElementById('checkinTableBody');
-        tbody.innerHTML = res.items.map(item => `
+        tbody.innerHTML = (res.items || []).map(item => `
           <tr>
             <td>${esc(item)}</td>
-            <td><strong>${res.counts[item] || 0}</strong></td>
+            <td><strong>${fmtCount((res.counts || {})[item])}</strong></td>
           </tr>`).join('');
-      } catch(e) {}
+        renderWeeklyCheckin(res.weeklySummaries || [], res.currentWeek);
+        renderParishDashboard(res.parishSummaries || []);
+      } catch(e) {
+        document.getElementById('checkinTableBody').innerHTML =
+          '<tr><td colspan="2" style="color:var(--danger);">서버 연결 오류</td></tr>';
+        document.getElementById('weeklyCheckinTableBody').innerHTML =
+          '<tr><td colspan="2" style="color:var(--danger);">서버 연결 오류</td></tr>';
+        document.getElementById('parishSummaryGrid').innerHTML =
+          '<div style="color:var(--danger); padding:12px;">서버 연결 오류</div>';
+        document.getElementById('parishDetailList').innerHTML = '';
+      }
     }
     document.getElementById('refreshCheckinBtn').addEventListener('click', loadCheckin);
 

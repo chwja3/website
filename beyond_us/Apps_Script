@@ -3218,7 +3218,7 @@ function cleanRequestId_(requestId) {
 }
 
 function getDashboardDataCached_() {
-  const key = cacheKey_('dashboard_v1');
+  const key = cacheKey_('dashboard_v2');
   const cached = cacheGetJson_(key);
   if (cached) return cached;
   const data = getDashboardData();
@@ -3231,7 +3231,7 @@ function clearHotCaches_() {
 }
 
 function clearDashboardCache_() {
-  cacheRemove_(cacheKey_('dashboard_v1'));
+  cacheRemove_(cacheKey_('dashboard_v2'));
 }
 
 function clearNoticesCache_() {
@@ -3317,6 +3317,221 @@ function getMissionEventIndices_(event) {
 function getMissionEventScore_(event) {
   const payload = event.payload || {};
   return Number(payload.score) || 0;
+}
+
+function getDashboardConfigsForWeeks_() {
+  const ss = getSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAMES.MISSION_DEFINITIONS);
+  if (!sheet || sheet.getLastRow() < SCHEMA.MISSION_DEFINITIONS.dataStartRow) return {};
+  const col = getMissionDefinitionsColumns_(sheet);
+  const rows = getMissionDefinitionsRows_(sheet);
+  const rowsByWeek = {};
+  rows.forEach(function(row) {
+    const weekKey = String(row[col.weekKey] || '').trim();
+    const weekFromKey = /^w(\d+)$/.test(weekKey) ? Number(weekKey.replace('w', '')) : 0;
+    const week = Number(row[col.weekOrder]) || weekFromKey;
+    if (week < 1 || week > 6) return;
+    if (!rowsByWeek[week]) rowsByWeek[week] = [];
+    rowsByWeek[week].push(row);
+  });
+
+  const configs = {};
+  Object.keys(rowsByWeek).forEach(function(weekKey) {
+    const week = Number(weekKey);
+    const rowsForWeek = rowsByWeek[week].slice().sort(function(a, b) {
+      return (Number(a[col.itemNo]) || 0) - (Number(b[col.itemNo]) || 0);
+    });
+    const first = rowsForWeek[0] || [];
+    const config = {
+      weekTitle: String(first[col.weekTitle] || (week + '주차')).trim(),
+      items: [],
+      scores: {},
+      cats: {},
+      drawThreshold: Number(first[col.drawThreshold]) || 6,
+      currentWeek: week,
+    };
+    const byItemNo = {};
+    rowsForWeek.forEach(function(row) {
+      const itemNo = Number(row[col.itemNo]) || 0;
+      if (itemNo >= 1 && itemNo <= CONFIG_LAYOUT.missionRowsPerWeek && !byItemNo[itemNo]) byItemNo[itemNo] = row;
+    });
+    for (let itemNo = 1; itemNo <= CONFIG_LAYOUT.missionRowsPerWeek; itemNo++) {
+      const row = byItemNo[itemNo];
+      if (!row) continue;
+      const itemText = String(row[col.itemText] || '').trim();
+      const enabledCell = row[col.enabled];
+      const enabled = enabledCell === '' ? itemText !== '' : isTruthyEventValue_(enabledCell);
+      if (!enabled || !itemText) continue;
+      config.items.push(itemText);
+      config.scores[itemText] = Number(row[col.scoreWeight]) || 1;
+      config.cats[itemText] = String(row[col.category] || 'L').trim();
+    }
+    configs[week] = config;
+  });
+  return configs;
+}
+
+function getActiveUserInfoMap_() {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const map = {};
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname || isUserInactiveFromRow_(row, col)) return;
+    const parish = String(row[col.parish] || '').trim();
+    const group = getDashboardParishGroup_(parish);
+    map[userIdKey_(nickname)] = {
+      nickname: nickname,
+      name: String(row[col.name] || '').trim(),
+      parish: parish,
+      parishGroup: group.key,
+      parishGroupLabel: group.label,
+    };
+  });
+  return map;
+}
+
+function getDashboardParishGroup_(parish) {
+  const clean = String(parish || '').replace(/\s+/g, '').trim();
+  if (/^1(청|교구)/.test(clean)) return { key: 'p1', label: '1교구' };
+  if (/^2(청|교구)/.test(clean)) return { key: 'p2', label: '2교구' };
+  if (/^3(청|교구)/.test(clean)) return { key: 'p3', label: '3교구' };
+  if (/^4(청|교구)/.test(clean)) return { key: 'p4', label: '4교구' };
+  if (clean === 'VIP') return { key: 'vip', label: 'VIP' };
+  if (clean.indexOf('목양') !== -1 || clean.indexOf('교회학교') !== -1 || clean.indexOf('초등') !== -1 || clean.indexOf('소년') !== -1) {
+    return { key: 'churchSchool', label: '교회학교/목양교구' };
+  }
+  return { key: 'etc', label: clean || '기타' };
+}
+
+function getDashboardParishGroupOrder_() {
+  return ['p1', 'p2', 'p3', 'p4', 'vip', 'churchSchool', 'etc'];
+}
+
+function buildMissionDashboardWeekSummary_(week, config, events, userInfoMap) {
+  const weekKey = 'w' + week;
+  const counts = {};
+  config.items.forEach(function(item) { counts[item] = 0; });
+  const submittedUsers = {};
+  let totalScore = 0;
+  let submissionEventCount = 0;
+
+  getMissionSubmittedEventsForConfig_(events, config, weekKey)
+    .forEach(function(event) {
+      const userKey = userIdKey_(event.userId);
+      if (!userInfoMap[userKey]) return;
+      submittedUsers[userKey] = true;
+      submissionEventCount++;
+      totalScore += getMissionEventScore_(event);
+
+      const counted = new Set();
+      getMissionEventItems_(event).forEach(function(item) {
+        if (counts[item] !== undefined) counted.add(item);
+      });
+      getMissionEventIndices_(event).forEach(function(idx) {
+        if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
+      });
+      counted.forEach(function(item) { counts[item]++; });
+    });
+
+  return {
+    week: week,
+    weekKey: weekKey,
+    weekTitle: config.weekTitle,
+    items: config.items,
+    scores: config.scores,
+    cats: config.cats,
+    drawThreshold: config.drawThreshold,
+    counts: counts,
+    totalCount: Object.values(counts).reduce(function(sum, count) { return sum + count; }, 0),
+    submissionCount: Object.keys(submittedUsers).length,
+    submissionEventCount: submissionEventCount,
+    totalScore: totalScore,
+  };
+}
+
+function buildDashboardParishSummaries_(events, config, week, userInfoMap) {
+  const weekKey = 'w' + week;
+  const groups = {};
+  getDashboardParishGroupOrder_().forEach(function(key) {
+    const labelMap = {
+      p1: '1교구',
+      p2: '2교구',
+      p3: '3교구',
+      p4: '4교구',
+      vip: 'VIP',
+      churchSchool: '교회학교/목양교구',
+      etc: '기타',
+    };
+    groups[key] = { key: key, label: labelMap[key], users: {}, dateSet: {}, totalScore: 0 };
+  });
+
+  getMissionSubmittedEventsForConfig_(events, config, weekKey)
+    .forEach(function(event) {
+      const userKey = userIdKey_(event.userId);
+      const userInfo = userInfoMap[userKey];
+      if (!userInfo) return;
+      const groupKey = userInfo.parishGroup || 'etc';
+      if (!groups[groupKey]) {
+        groups[groupKey] = { key: groupKey, label: userInfo.parishGroupLabel || userInfo.parish || '기타', users: {}, dateSet: {}, totalScore: 0 };
+      }
+      const group = groups[groupKey];
+      if (!group.users[userKey]) {
+        group.users[userKey] = {
+          nickname: userInfo.nickname,
+          name: userInfo.name,
+          parish: userInfo.parish,
+          score: 0,
+          dateSet: {},
+          submissionEventCount: 0,
+        };
+      }
+      const score = getMissionEventScore_(event);
+      const dateKey = getMissionEventDateKey_(event);
+      group.users[userKey].score += score;
+      group.users[userKey].submissionEventCount++;
+      group.totalScore += score;
+      if (dateKey) {
+        group.users[userKey].dateSet[dateKey] = true;
+        group.dateSet[dateKey] = true;
+      }
+    });
+
+  return Object.keys(groups)
+    .map(function(key) {
+      const group = groups[key];
+      const users = Object.keys(group.users)
+        .map(function(userKey) {
+          const user = group.users[userKey];
+          return {
+            nickname: user.nickname,
+            name: user.name,
+            parish: user.parish,
+            score: user.score,
+            activeDays: Object.keys(user.dateSet).length,
+            submissionEventCount: user.submissionEventCount,
+          };
+        })
+        .sort(function(a, b) {
+          return Number(b.score) - Number(a.score) ||
+            Number(b.activeDays) - Number(a.activeDays) ||
+            String(a.name || a.nickname).localeCompare(String(b.name || b.nickname), 'ko');
+        });
+      return {
+        key: key,
+        label: group.label,
+        participantCount: users.length,
+        totalScore: group.totalScore,
+        activeDays: users.reduce(function(sum, user) { return sum + user.activeDays; }, 0),
+        distinctDateCount: Object.keys(group.dateSet).length,
+        users: users,
+      };
+    })
+    .sort(function(a, b) {
+      const order = getDashboardParishGroupOrder_();
+      return order.indexOf(a.key) - order.indexOf(b.key);
+    });
 }
 
 // ── raw_checkins 컬럼 구조 ────────────────────────
@@ -3467,39 +3682,53 @@ function backfillRawCheckinsCols() {
 }
 
 function getDashboardData() {
-  const config   = getConfig();
-  const counts = {};
-  config.items.forEach(item => counts[item] = 0);
-  const activeMap = getUserActiveMap_();
-  const currentWeekEvents = getMissionSubmittedEventsForConfig_(Events_readAll_(), config, 'w' + config.currentWeek)
-    .filter(function(event) { return !!activeMap[userIdKey_(event.userId)]; });
-  const submittedUsers = {};
+  const currentWeek = getCurrentWeek_();
+  const events = Events_readAll_();
+  const userInfoMap = getActiveUserInfoMap_();
+  const weekConfigMap = getDashboardConfigsForWeeks_();
+  const weeklySummaries = [];
 
-  currentWeekEvents.forEach(event => {
-    submittedUsers[userIdKey_(event.userId)] = true;
-    const counted = new Set();
-    // 텍스트 기반 카운트
-    getMissionEventItems_(event).forEach(item => {
-      if (counts[item] !== undefined) counted.add(item);
-    });
-    // 인덱스 기반 폴백 (텍스트 변경된 구 데이터 보완)
-    getMissionEventIndices_(event).forEach(idx => {
-      if (typeof idx === 'number' && config.items[idx] !== undefined) counted.add(config.items[idx]);
-    });
-    counted.forEach(item => { counts[item]++; });
+  for (let week = 1; week <= 6; week++) {
+    const weekConfig = weekConfigMap[week];
+    if (!weekConfig) continue;
+    weeklySummaries.push(buildMissionDashboardWeekSummary_(week, weekConfig, events, userInfoMap));
+  }
+
+  let currentSummary = weeklySummaries.find(function(summary) {
+    return Number(summary.week) === currentWeek;
   });
+  let currentConfig = weekConfigMap[currentWeek];
+  if (!currentConfig) {
+    const legacyConfig = getConfig();
+    currentConfig = {
+      weekTitle: legacyConfig.weekTitle,
+      items: legacyConfig.items,
+      scores: legacyConfig.scores,
+      cats: legacyConfig.cats,
+      drawThreshold: legacyConfig.drawThreshold,
+      currentWeek: currentWeek,
+    };
+    currentSummary = buildMissionDashboardWeekSummary_(currentWeek, currentConfig, events, userInfoMap);
+  }
+  if (!currentSummary) {
+    currentSummary = weeklySummaries[0] || buildMissionDashboardWeekSummary_(currentWeek, currentConfig, events, userInfoMap);
+  }
 
   return {
     ok: true,
-    weekTitle:       config.weekTitle,
-    items:           config.items,
-    scores:          config.scores,
-    cats:            config.cats,
-    drawThreshold:   config.drawThreshold,
-    counts,
-    totalCount:      Object.values(counts).reduce((s,n) => s+n, 0),
-    submissionCount: Object.keys(submittedUsers).length,
-    submissionEventCount: currentWeekEvents.length,
+    currentWeek:     currentWeek,
+    weekTitle:       currentSummary.weekTitle,
+    items:           currentSummary.items,
+    scores:          currentSummary.scores,
+    cats:            currentSummary.cats,
+    drawThreshold:   currentSummary.drawThreshold,
+    counts:          currentSummary.counts,
+    totalCount:      currentSummary.totalCount,
+    submissionCount: currentSummary.submissionCount,
+    submissionEventCount: currentSummary.submissionEventCount,
+    currentWeekSummary: currentSummary,
+    weeklySummaries: weeklySummaries,
+    parishSummaries: buildDashboardParishSummaries_(events, currentConfig, currentWeek, userInfoMap),
     tabSettings:     getTabSettings()
   };
 }
