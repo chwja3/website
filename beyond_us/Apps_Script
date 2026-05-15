@@ -1442,6 +1442,62 @@ function isUserInactiveFromRow_(row, col) {
   return isTruthyCell_(row && row[col.inactive]);
 }
 
+function buildUserInfoFromRow_(row, rowIndex, col) {
+  return {
+    row: row,
+    rowIndex: rowIndex,
+    col: col,
+    nickname: String(row[col.nickname] || '').trim(),
+    inactive: isUserInactiveFromRow_(row, col),
+  };
+}
+
+function getUserCanonicalLookup_(sheet, col, rows) {
+  const userSheet = sheet || (col && rows ? null : getUsersSheet_());
+  const userCol = col || getUserColumns_(userSheet);
+  const userRows = rows || getUserRows_(userSheet);
+  const lookup = {
+    exact: {},
+    activeExact: {},
+    inactiveExact: {},
+    activeByKey: {},
+  };
+  userRows.forEach(function(row, index) {
+    const nickname = String(row[userCol.nickname] || '').trim();
+    if (!nickname) return;
+    const info = buildUserInfoFromRow_(row, index + SCHEMA.USERS.dataStartRow, userCol);
+    const key = userIdKey_(nickname);
+    if (!lookup.exact[nickname]) lookup.exact[nickname] = info;
+    if (info.inactive) {
+      if (!lookup.inactiveExact[nickname]) lookup.inactiveExact[nickname] = info;
+      return;
+    }
+    if (!lookup.activeExact[nickname]) lookup.activeExact[nickname] = info;
+    if (!lookup.activeByKey[key]) lookup.activeByKey[key] = info;
+  });
+  return lookup;
+}
+
+function getActiveCanonicalUserId_(userId, lookup) {
+  const clean = String(userId || '').trim();
+  if (!clean) return '';
+  const userLookup = lookup || getUserCanonicalLookup_();
+  if (userLookup.activeExact[clean]) return userLookup.activeExact[clean].nickname;
+  if (userLookup.inactiveExact[clean]) return '';
+  const byKey = userLookup.activeByKey[userIdKey_(clean)];
+  return byKey ? byKey.nickname : '';
+}
+
+function isSameOwnedUserId_(rowUserId, targetUserId, lookup) {
+  const rowClean = String(rowUserId || '').trim();
+  const targetClean = String(targetUserId || '').trim();
+  if (!rowClean || !targetClean) return false;
+  if (rowClean === targetClean) return true;
+  const userLookup = lookup || getUserCanonicalLookup_();
+  if (userLookup.exact[rowClean]) return false;
+  return userIdKey_(rowClean) === userIdKey_(targetClean);
+}
+
 function findUserInfoByNickname_(sheet, nickname) {
   const clean = String(nickname || '').trim();
   if (!clean) return null;
@@ -1449,19 +1505,21 @@ function findUserInfoByNickname_(sheet, nickname) {
   const col = getUserColumns_(sheet);
   const rows = getUserRows_(sheet);
   const target = userIdKey_(clean);
+  let activeFallback = null;
+  let inactiveFallback = null;
   for (let i = 0; i < rows.length; i++) {
     const rowNickname = String(rows[i][col.nickname] || '').trim();
     if (rowNickname && userIdKey_(rowNickname) === target) {
-      return {
-        row: rows[i],
-        rowIndex: i + schema.dataStartRow,
-        col: col,
-        nickname: rowNickname,
-        inactive: isUserInactiveFromRow_(rows[i], col),
-      };
+      const info = buildUserInfoFromRow_(rows[i], i + schema.dataStartRow, col);
+      if (rowNickname === clean) return info;
+      if (info.inactive) {
+        if (!inactiveFallback) inactiveFallback = info;
+      } else if (!activeFallback) {
+        activeFallback = info;
+      }
     }
   }
-  return null;
+  return activeFallback || inactiveFallback || null;
 }
 
 function getCanonicalUserId_(userId, options) {
@@ -1469,7 +1527,12 @@ function getCanonicalUserId_(userId, options) {
   const clean = String(userId || '').trim();
   if (!clean) return '';
   try {
-    const info = findUserInfoByNickname_(getUsersSheet_(), clean);
+    const sheet = getUsersSheet_();
+    const col = getUserColumns_(sheet);
+    const rows = getUserRows_(sheet);
+    const lookup = getUserCanonicalLookup_(sheet, col, rows);
+    const exactInfo = lookup.exact[clean];
+    const info = exactInfo || findUserInfoByNickname_(sheet, clean);
     if (!info) return clean;
     if (info.inactive && opts.includeInactive !== true) return '';
     return info.nickname;
@@ -3381,13 +3444,15 @@ function getActiveUserInfoMap_() {
     if (!nickname || isUserInactiveFromRow_(row, col)) return;
     const parish = String(row[col.parish] || '').trim();
     const group = getDashboardParishGroup_(parish);
-    map[userIdKey_(nickname)] = {
+    const info = {
       nickname: nickname,
       name: String(row[col.name] || '').trim(),
       parish: parish,
       parishGroup: group.key,
       parishGroupLabel: group.label,
     };
+    map[nickname] = info;
+    map[userIdKey_(nickname)] = info;
   });
   return map;
 }
@@ -3416,10 +3481,13 @@ function buildMissionDashboardWeekSummary_(week, config, events, userInfoMap) {
   const submittedUsers = {};
   let totalScore = 0;
   let submissionEventCount = 0;
+  const lookup = getUserCanonicalLookup_();
 
   getMissionSubmittedEventsForConfig_(events, config, weekKey)
     .forEach(function(event) {
-      const userKey = userIdKey_(event.userId);
+      const canonical = getActiveCanonicalUserId_(event.userId, lookup);
+      if (!canonical) return;
+      const userKey = userIdKey_(canonical);
       if (!userInfoMap[userKey]) return;
       submittedUsers[userKey] = true;
       submissionEventCount++;
@@ -3454,6 +3522,7 @@ function buildMissionDashboardWeekSummary_(week, config, events, userInfoMap) {
 function buildDashboardParishSummaries_(events, config, week, userInfoMap) {
   const weekKey = 'w' + week;
   const groups = {};
+  const lookup = getUserCanonicalLookup_();
   getDashboardParishGroupOrder_().forEach(function(key) {
     const labelMap = {
       p1: '1교구',
@@ -3469,7 +3538,9 @@ function buildDashboardParishSummaries_(events, config, week, userInfoMap) {
 
   getMissionSubmittedEventsForConfig_(events, config, weekKey)
     .forEach(function(event) {
-      const userKey = userIdKey_(event.userId);
+      const canonical = getActiveCanonicalUserId_(event.userId, lookup);
+      if (!canonical) return;
+      const userKey = userIdKey_(canonical);
       const userInfo = userInfoMap[userKey];
       if (!userInfo) return;
       const groupKey = userInfo.parishGroup || 'etc';
@@ -4844,6 +4915,7 @@ function adminGetRaffleAttendance() {
   const userSheet = getUsersSheet_();
   const userCol = getUserColumns_(userSheet);
   const usersRows = getUserRows_(userSheet);
+  const userLookup = getUserCanonicalLookup_(userSheet, userCol, usersRows);
   const attendanceSheet = getOrCreateRetreatAttendanceSheet();
   const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
   const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
@@ -4855,6 +4927,7 @@ function adminGetRaffleAttendance() {
       const nickname = String(row[userCol.nickname] || '').trim();
       const attended = attendanceMap[userIdKey_(nickname)] === true;
       const raffleExcluded = getUserRaffleExcludedFromRow_(row, userCol);
+      const canonical = getActiveCanonicalUserId_(nickname, userLookup);
       return {
         parish: String(row[userCol.parish] || '').trim(),
         name: String(row[userCol.name] || '').trim(),
@@ -4863,7 +4936,7 @@ function adminGetRaffleAttendance() {
         raffleExcluded: raffleExcluded,
         inactive: isUserInactiveFromRow_(row, userCol),
         inactiveAt: String(row[userCol.inactiveAt] || '').trim(),
-        raffleTickets: raffleSummary.byUser[userIdKey_(nickname)] || 0,
+        raffleTickets: canonical ? (raffleSummary.byUser[userIdKey_(canonical)] || 0) : 0,
       };
     })
     .sort(function(a, b) {
@@ -4914,31 +4987,28 @@ function adminSetRaffleExcluded(body) {
   if (!nickname) return { error: 'missing_nickname' };
 
   const sheet = getUsersSheet_();
-  const col = getUserColumns_(sheet);
-  const rows = getUserRows_(sheet);
-  for (let i = 0; i < rows.length; i++) {
-    if (!isSameUserId_(rows[i][col.nickname], nickname)) continue;
-    const rowIndex = i + SCHEMA.USERS.dataStartRow;
-    sheet.getRange(rowIndex, col.raffleExcluded + 1).setValue(excluded);
-    let released = { revoked: 0, rows: [] };
-    let issued = { issued: [] };
-    if (excluded) {
-      released = revokeUserRaffleTickets_(nickname, 'available', 'raffle_excluded');
-    } else {
-      issued = ensureUserRaffleTickets_(nickname, { includeSignup: true });
-    }
-    clearUserDerivedCaches_(nickname);
-    const activeCount = getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[userIdKey_(nickname)] || 0;
-    return {
-      ok: true,
-      nickname: nickname,
-      excluded: excluded,
-      released: released.revoked || 0,
-      issued: issued.issued || [],
-      raffleTickets: activeCount,
-    };
+  const info = findUserInfoByNickname_(sheet, nickname);
+  if (!info) return { error: 'not_found' };
+  if (info.inactive) return { error: 'inactive_user' };
+  const canonical = info.nickname;
+  sheet.getRange(info.rowIndex, info.col.raffleExcluded + 1).setValue(excluded);
+  let released = { revoked: 0, rows: [] };
+  let issued = { issued: [] };
+  if (excluded) {
+    released = revokeUserRaffleTickets_(canonical, 'available', 'raffle_excluded');
+  } else {
+    issued = ensureUserRaffleTickets_(canonical, { includeSignup: true });
   }
-  return { error: 'not_found' };
+  clearUserDerivedCaches_(canonical);
+  const activeCount = getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[userIdKey_(canonical)] || 0;
+  return {
+    ok: true,
+    nickname: canonical,
+    excluded: excluded,
+    released: released.revoked || 0,
+    issued: issued.issued || [],
+    raffleTickets: activeCount,
+  };
 }
 
 function deleteRowsMatching_(sheetName, schema, getColumnsFn, getRowsFn, predicate) {
@@ -4957,38 +5027,39 @@ function deleteRowsMatching_(sheetName, schema, getColumnsFn, getRowsFn, predica
 
 function deleteUserConnectedRows_(userId) {
   const cleanUser = String(userId || '').trim();
+  const lookup = getUserCanonicalLookup_();
   const deleted = {};
   deleted.collection = deleteRowsMatching_(SHEET_NAMES.COLLECTION, SCHEMA.COLLECTION, getCollectionColumns_, getCollectionRows_, function(row, col) {
-    return isSameUserId_(row[col.userId], cleanUser);
+    return isSameOwnedUserId_(row[col.userId], cleanUser, lookup);
   });
   deleted.retreatAttendance = deleteRowsMatching_(SHEET_NAMES.RETREAT_ATTENDANCE, SCHEMA.RETREAT_ATTENDANCE, getRetreatAttendanceColumns_, getRetreatAttendanceRows_, function(row, col) {
-    return isSameUserId_(row[col.nickname], cleanUser);
+    return isSameOwnedUserId_(row[col.nickname], cleanUser, lookup);
   });
   deleted.cardReceived = deleteRowsMatching_(SHEET_NAMES.CARD_RECEIVED, SCHEMA.CARD_RECEIVED, getCardReceivedColumns_, getCardReceivedRows_, function(row, col) {
-    return isSameUserId_(row[col.nickname], cleanUser);
+    return isSameOwnedUserId_(row[col.nickname], cleanUser, lookup);
   });
   deleted.hpGuesses = deleteRowsMatching_(SHEET_NAMES.HP_GUESSES, SCHEMA.HP_GUESSES, getHpGuessColumns_, getHpGuessRows_, function(row, col) {
-    return isSameUserId_(row[col.nickname], cleanUser);
+    return isSameOwnedUserId_(row[col.nickname], cleanUser, lookup);
   });
   deleted.holdPray = deleteRowsMatching_(SHEET_NAMES.HOLD_PRAY, SCHEMA.HOLD_PRAY, getHoldPrayColumns_, getHoldPrayRows_, function(row, col) {
-    return isSameUserId_(row[col.nickname], cleanUser);
+    return isSameOwnedUserId_(row[col.nickname], cleanUser, lookup);
   });
   deleted.trades = deleteRowsMatching_(SHEET_NAMES.TRADES, SCHEMA.TRADES, getTradesColumns_, getTradesRows_, function(row, col) {
-    return isSameUserId_(row[col.requester], cleanUser) || isSameUserId_(row[col.target], cleanUser);
+    return isSameOwnedUserId_(row[col.requester], cleanUser, lookup) || isSameOwnedUserId_(row[col.target], cleanUser, lookup);
   });
   deleted.inquiries = deleteRowsMatching_(SHEET_NAMES.INQUIRIES, SCHEMA.INQUIRIES, getInquiryColumns_, getInquiryRows_, function(row, col) {
-    return isSameUserId_(row[col.nickname], cleanUser);
+    return isSameOwnedUserId_(row[col.nickname], cleanUser, lookup);
   });
   deleted.bbb = deleteRowsMatching_(SHEET_NAMES.BBB, SCHEMA.BBB, getBbbColumns_, getBbbRows_, function(row, col) {
-    return isSameUserId_(row[col.userId], cleanUser) ||
-      isSameUserId_(row[col.careBuddyId], cleanUser) ||
-      isSameUserId_(row[col.secretBuddyId], cleanUser);
+    return isSameOwnedUserId_(row[col.userId], cleanUser, lookup) ||
+      isSameOwnedUserId_(row[col.careBuddyId], cleanUser, lookup) ||
+      isSameOwnedUserId_(row[col.secretBuddyId], cleanUser, lookup);
   });
   deleted.bbbMessages = deleteRowsMatching_(SHEET_NAMES.BBB_MESSAGES, SCHEMA.BBB_MESSAGES, getBbbMessageColumns_, getBbbMessageRows_, function(row, col) {
-    return isSameUserId_(row[col.fromUserId], cleanUser) || isSameUserId_(row[col.toUserId], cleanUser);
+    return isSameOwnedUserId_(row[col.fromUserId], cleanUser, lookup) || isSameOwnedUserId_(row[col.toUserId], cleanUser, lookup);
   });
   deleted.bbbPhotos = deleteRowsMatching_(SHEET_NAMES.BBB_PHOTOS, SCHEMA.BBB_PHOTOS, getBbbPhotoColumns_, getBbbPhotoRows_, function(row, col) {
-    return isSameUserId_(row[col.userId], cleanUser);
+    return isSameOwnedUserId_(row[col.userId], cleanUser, lookup);
   });
   return deleted;
 }
@@ -5446,7 +5517,7 @@ function setDrawReceived(body) {
 }
 
 function getCardStats() {
-  var activeMap = getUserActiveMap_();
+  var userLookup = getUserCanonicalLookup_();
   var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
 
   // 1. Events.card.drawn → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
@@ -5461,8 +5532,8 @@ function getCardStats() {
       var cid = Number(event.refId);
       var amount = eventAmount_(event, 1);
       if (!nick || !cid || amount <= 0) return;
-      if (!activeMap[userIdKey_(nick)]) return;
-      nick = activeMap[userIdKey_(nick)];
+      nick = getActiveCanonicalUserId_(nick, userLookup);
+      if (!nick) return;
       cardCounts[cid] = (cardCounts[cid] || 0) + amount;
       totalDraws += amount;
       if (!userDrawMap[nick]) userDrawMap[nick] = {};
@@ -5484,8 +5555,8 @@ function getCardStats() {
         var cid  = Number(row[rcvCol.cardId]);
         var qty  = Number(row[rcvCol.receivedQty]) || 0;
         if (!nick || !cid) return;
-        if (!activeMap[userIdKey_(nick)]) return;
-        nick = activeMap[userIdKey_(nick)];
+        nick = getActiveCanonicalUserId_(nick, userLookup);
+        if (!nick) return;
         receivedCounts[cid] = (receivedCounts[cid] || 0) + qty;
         if (!userReceivedMap[nick]) userReceivedMap[nick] = {};
         userReceivedMap[nick][cid] = qty;
@@ -5507,9 +5578,9 @@ function getCardStats() {
         var reqCard  = Number(row[tradeCol.requesterCardId]);
         var tgt      = String(row[tradeCol.target]);
         var tgtCard  = Number(row[tradeCol.targetCardId]);
-        if (!activeMap[userIdKey_(req)] || !activeMap[userIdKey_(tgt)]) return;
-        req = activeMap[userIdKey_(req)];
-        tgt = activeMap[userIdKey_(tgt)];
+        req = getActiveCanonicalUserId_(req, userLookup);
+        tgt = getActiveCanonicalUserId_(tgt, userLookup);
+        if (!req || !tgt) return;
         // requester: 양도 reqCard → tgt, 취득 tgtCard ← tgt
         if (!tradeOutMap[req]) tradeOutMap[req] = {};
         if (!tradeOutMap[req][reqCard]) tradeOutMap[req][reqCard] = [];
@@ -5827,11 +5898,11 @@ function getInquiries(source) {
   if (last < SCHEMA.INQUIRIES.dataStartRow) return { ok: true, inquiries: [] };
   const col = getInquiryColumns_(sheet);
   const rows = getInquiryRows_(sheet);
-  const activeMap = adminAuthorized ? getUserActiveMap_() : null;
+  const userLookup = adminAuthorized ? getUserCanonicalLookup_() : null;
   const inquiries = rows
     .map((r, i) => ({ row: r, rowIndex: i + SCHEMA.INQUIRIES.dataStartRow }))
     .filter(item => item.row[col.id])
-    .filter(item => !adminAuthorized || activeMap[userIdKey_(item.row[col.nickname])])
+    .filter(item => !adminAuthorized || getActiveCanonicalUserId_(item.row[col.nickname], userLookup))
     .filter(item => adminAuthorized || isSameUserId_(item.row[col.nickname], requester))
     .map(item => ({
       rowIndex:  item.rowIndex,
@@ -5944,12 +6015,15 @@ function getOrCreateCollectionSheet() {
 
 // { cardId: count } 형태로 반환 (카드 1~9: col 5~13 = idx 4~12, 히든(10): col 15 = idx 14)
 function getUserCollection(userId) {
+  const cleanUser = getCanonicalUserId_(userId);
+  if (!cleanUser) return {};
   const sheet = getOrCreateCollectionSheet();
   const col = getCollectionColumns_(sheet);
   const rows = getCollectionRows_(sheet);
   if (!rows.length) return {};
+  const lookup = getUserCanonicalLookup_();
   for (const row of rows) {
-    if (!isSameUserId_(row[col.userId], userId)) continue;
+    if (!isSameOwnedUserId_(row[col.userId], cleanUser, lookup)) continue;
     const counts = {};
     for (let i = 1; i <= 9; i++) {
       const cnt = Number(row[col['card' + i]]) || 0;
@@ -5964,12 +6038,15 @@ function getUserCollection(userId) {
 
 // Collection 시트에서 뽑기권 현황 읽기 (B=누적, C=뽑은, D=남은)
 function getCollectionTickets(userId) {
+  const cleanUser = getCanonicalUserId_(userId);
+  if (!cleanUser) return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
   const sheet = getOrCreateCollectionSheet();
   const col = getCollectionColumns_(sheet);
   const rows = getCollectionRows_(sheet);
   if (!rows.length) return { totalEarned: 0, totalDrawn: 0, remaining: 0 };
+  const lookup = getUserCanonicalLookup_();
   for (const row of rows) {
-    if (isSameUserId_(row[col.userId], userId)) {
+    if (isSameOwnedUserId_(row[col.userId], cleanUser, lookup)) {
       return {
         totalEarned: Number(row[col.totalEarned]) || 0,
         totalDrawn:  Number(row[col.totalDrawn]) || 0,
@@ -6157,9 +6234,10 @@ function findAvailableRaffleTicket_(rows) {
 function findUserRaffleTicket_(rows, userId, condition) {
   const cleanUser = String(userId || '').trim();
   const cleanCond = String(condition || '').trim();
+  const lookup = getUserCanonicalLookup_();
   for (let i = 0; i < rows.length; i++) {
     if (!isActiveRaffleTicketRow_(rows[i])) continue;
-    if (isSameUserId_(rows[i][RAFFLE_TICKET_COL.userId], cleanUser) &&
+    if (isSameOwnedUserId_(rows[i][RAFFLE_TICKET_COL.userId], cleanUser, lookup) &&
         String(rows[i][RAFFLE_TICKET_COL.condition]).trim() === cleanCond) {
       return { row: rows[i], index: i };
     }
@@ -6220,6 +6298,7 @@ function isActiveRaffleTicketRow_(row) {
 }
 
 function getActiveRaffleTicketSummary_(rows) {
+  const lookup = getUserCanonicalLookup_();
   const byUser = {};
   const byUserCondition = {};
   (rows || []).forEach(function(row) {
@@ -6227,7 +6306,9 @@ function getActiveRaffleTicketSummary_(rows) {
     const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
     const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
     if (!userId || !condition) return;
-    const key = userIdKey_(userId);
+    const canonical = getActiveCanonicalUserId_(userId, lookup);
+    if (!canonical) return;
+    const key = userIdKey_(canonical);
     byUser[key] = (byUser[key] || 0) + 1;
     if (!byUserCondition[key]) byUserCondition[key] = {};
     byUserCondition[key][condition] = padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]);
@@ -6251,21 +6332,15 @@ function getUserParishMap_() {
 
 function getUserParishFromUsers_(userId) {
   const sheet = getUsersSheet_();
-  const col = getUserColumns_(sheet);
-  const rows = getUserRows_(sheet);
-  const target = String(userId || '').trim();
-  for (let i = 0; i < rows.length; i++) {
-    if (!isUserInactiveFromRow_(rows[i], col) && isSameUserId_(rows[i][col.nickname], target)) {
-      return String(rows[i][col.parish] || '').trim();
-    }
-  }
-  return '';
+  const info = findUserInfoByNickname_(sheet, userId);
+  if (!info || info.inactive) return '';
+  return String(info.row[info.col.parish] || '').trim();
 }
 
 // 핵심: 한 번에 한 condition 발급. 중복 발급 차단. LockService로 동시성 보장.
 function issueRaffleTicket_(userId, condition, weekKey, options) {
   const opts = options || {};
-  const cleanUser = getCanonicalUserId_(userId) || String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId);
   const cleanCond = String(condition || '').trim();
   if (!cleanUser || !cleanCond) return { ok: false, error: 'missing_fields' };
   if (isUserRaffleExcluded_(cleanUser)) {
@@ -6328,7 +6403,7 @@ function issueRaffleTicket_(userId, condition, weekKey, options) {
 // 사용자의 현재 상태(보유 카드/가입 여부) 기준으로 필요한 모든 티켓을 backfill 발급
 function ensureUserRaffleTickets_(userId, options) {
   const opts = options || {};
-  const cleanUser = getCanonicalUserId_(userId) || String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId);
   if (!cleanUser) return { ok: false, issued: [] };
   if (isUserRaffleExcluded_(cleanUser)) return { ok: true, eligible: false, issued: [], excluded: true };
 
@@ -6358,14 +6433,15 @@ function ensureUserRaffleTickets_(userId, options) {
 }
 
 function getUserRaffleTicketNumbers_(userId) {
-  const cleanUser = getCanonicalUserId_(userId) || String(userId || '').trim();
+  const cleanUser = getCanonicalUserId_(userId);
   if (!cleanUser) return [];
   if (isUserRaffleExcluded_(cleanUser)) return [];
   const rows = getRaffleTicketRows_();
+  const lookup = getUserCanonicalLookup_();
   const map = {};
   rows.forEach(function(r) {
     if (!isActiveRaffleTicketRow_(r)) return;
-    if (!isSameUserId_(r[RAFFLE_TICKET_COL.userId], cleanUser)) return;
+    if (!isSameOwnedUserId_(r[RAFFLE_TICKET_COL.userId], cleanUser, lookup)) return;
     map[String(r[RAFFLE_TICKET_COL.condition]).trim()] = padTicketNo_(r[RAFFLE_TICKET_COL.ticketNo]);
   });
   return ['signup', 'card_3', 'card_5', 'card_10']
@@ -6649,6 +6725,7 @@ function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
   const now = new Date().toISOString();
   const revokedRows = [];
   const conditionMap = {};
+  const lookup = getUserCanonicalLookup_();
   (conditionsToRelease || []).forEach(function(condition) {
     const key = String(condition || '').trim();
     if (key) conditionMap[key] = true;
@@ -6657,7 +6734,7 @@ function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
 
   values.forEach(function(row, idx) {
     if (!isActiveRaffleTicketRow_(row)) return;
-    if (!isSameUserId_(row[RAFFLE_TICKET_COL.userId], cleanUser)) return;
+    if (!isSameOwnedUserId_(row[RAFFLE_TICKET_COL.userId], cleanUser, lookup)) return;
     const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
     if (hasConditionFilter && !conditionMap[condition]) return;
     revokedRows.push({
@@ -6681,14 +6758,209 @@ function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
   };
 }
 
+function repairCaseVariantUserDataDryRun() {
+  const result = repairCaseVariantUserData_(true);
+  Logger.log('repairCaseVariantUserDataDryRun result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function repairCaseVariantUserDataApply() {
+  const result = repairCaseVariantUserData_(false);
+  Logger.log('repairCaseVariantUserDataApply result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function getCaseVariantUserGroups_() {
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const rows = getUserRows_(sheet);
+  const groups = {};
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname) return;
+    const key = userIdKey_(nickname);
+    if (!groups[key]) groups[key] = [];
+    groups[key].push({
+      nickname: nickname,
+      inactive: isUserInactiveFromRow_(row, col),
+      parish: String(row[col.parish] || '').trim(),
+      name: String(row[col.name] || '').trim(),
+    });
+  });
+  return Object.keys(groups)
+    .filter(function(key) { return groups[key].length > 1; })
+    .map(function(key) { return { key: key, users: groups[key] }; });
+}
+
+function repairCaseVariantRaffleTickets_(dryRun, lookup) {
+  const sheet = getOrCreateRaffleTicketsSheet_();
+  const last = sheet.getLastRow();
+  if (last < 2) return { ok: true, released: 0, renamed: 0, duplicateReleased: 0, planned: [] };
+
+  const range = sheet.getRange(2, 1, last - 1, RAFFLE_TICKET_COLUMNS.length);
+  const values = range.getValues();
+  const userNameMap = getUserNameMap_();
+  const parishMap = getUserParishMap_();
+  const now = new Date().toISOString();
+  const activeItems = [];
+  const planned = [];
+
+  values.forEach(function(row, idx) {
+    if (!isActiveRaffleTicketRow_(row)) return;
+    const oldUserId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
+    const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
+    const canonical = getActiveCanonicalUserId_(oldUserId, lookup);
+    if (!oldUserId || !condition || !canonical) {
+      planned.push({
+        action: 'release',
+        reason: !canonical ? 'inactive_or_unknown_user' : 'missing_user_or_condition',
+        rowNumber: idx + 2,
+        ticket_no: padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]),
+        userId: oldUserId,
+        condition: condition,
+      });
+      return;
+    }
+    activeItems.push({
+      index: idx,
+      rowNumber: idx + 2,
+      ticket_no: padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]),
+      oldUserId: oldUserId,
+      canonical: canonical,
+      condition: condition,
+      exact: oldUserId === canonical,
+    });
+  });
+
+  const keepByGroup = {};
+  activeItems.forEach(function(item) {
+    const key = userIdKey_(item.canonical) + '|' + item.condition;
+    const keep = keepByGroup[key];
+    if (!keep || (item.exact && !keep.exact) || (item.exact === keep.exact && item.index < keep.index)) {
+      keepByGroup[key] = item;
+    }
+  });
+
+  activeItems.forEach(function(item) {
+    const key = userIdKey_(item.canonical) + '|' + item.condition;
+    if (keepByGroup[key] !== item) {
+      planned.push({
+        action: 'release',
+        reason: 'duplicate_condition',
+        rowNumber: item.rowNumber,
+        ticket_no: item.ticket_no,
+        userId: item.oldUserId,
+        canonical: item.canonical,
+        condition: item.condition,
+      });
+      return;
+    }
+    if (item.oldUserId !== item.canonical) {
+      planned.push({
+        action: 'rename',
+        rowNumber: item.rowNumber,
+        ticket_no: item.ticket_no,
+        from: item.oldUserId,
+        to: item.canonical,
+        condition: item.condition,
+      });
+    }
+  });
+
+  if (!dryRun && planned.length) {
+    planned.forEach(function(item) {
+      const row = values[item.rowNumber - 2];
+      if (item.action === 'release') {
+        releaseRaffleTicketRow_(row, now);
+      } else if (item.action === 'rename') {
+        row[RAFFLE_TICKET_COL.userId] = item.to;
+        row[RAFFLE_TICKET_COL.name] = userNameMap[item.to] || '';
+        row[RAFFLE_TICKET_COL.parish] = parishMap[item.to] || '';
+        row[RAFFLE_TICKET_COL.updatedAt] = now;
+      }
+    });
+    range.setValues(values);
+  }
+
+  return {
+    ok: true,
+    released: planned.filter(function(item) { return item.action === 'release'; }).length,
+    renamed: planned.filter(function(item) { return item.action === 'rename'; }).length,
+    duplicateReleased: planned.filter(function(item) { return item.reason === 'duplicate_condition'; }).length,
+    planned: planned.slice(0, 100),
+  };
+}
+
+function ensureAllActiveUserRaffleTickets_(dryRun, lookup) {
+  const userSheet = getUsersSheet_();
+  const col = getUserColumns_(userSheet);
+  const rows = getUserRows_(userSheet);
+  const users = [];
+  const issued = [];
+  rows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname || isUserInactiveFromRow_(row, col)) return;
+    if (getUserRaffleExcludedFromRow_(row, col)) return;
+    users.push(nickname);
+    if (dryRun) return;
+    const result = ensureUserRaffleTickets_(nickname, { includeSignup: true, skipIssueLock: true });
+    if (result && result.issued && result.issued.length) {
+      issued.push({ nickname: nickname, ticket_no: result.issued });
+    }
+  });
+  return {
+    ok: true,
+    checked: users.length,
+    issued: issued,
+    issueCount: issued.reduce(function(sum, item) { return sum + item.ticket_no.length; }, 0),
+  };
+}
+
+function repairCaseVariantUserData_(dryRun) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) {
+    return { ok: false, error: 'lock_timeout' };
+  }
+
+  try {
+    const lookup = getUserCanonicalLookup_();
+    const caseVariantGroups = getCaseVariantUserGroups_();
+    const raffleRepair = repairCaseVariantRaffleTickets_(dryRun, lookup);
+    const collectionRepair = dryRun
+      ? { ok: true, planned: true, action: 'rebuildCollectionRowsFromEvents' }
+      : rebuildCollectionRowsFromEvents_();
+    const raffleEnsure = ensureAllActiveUserRaffleTickets_(dryRun, lookup);
+    if (!dryRun) {
+      clearDashboardCache_();
+      Object.keys(lookup.activeExact).forEach(function(nickname) {
+        clearUserDerivedCaches_(nickname);
+      });
+    }
+    return {
+      ok: true,
+      dryRun: dryRun,
+      caseVariantGroups: caseVariantGroups,
+      raffleRepair: raffleRepair,
+      collectionRepair: collectionRepair,
+      raffleEnsure: raffleEnsure,
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getCollectionSnapshotMap_(rows, col) {
+  const lookup = getUserCanonicalLookup_();
   const map = {};
   (rows || []).forEach(function(row) {
     const rowUserId = String(row[col.userId] || '').trim();
     if (!rowUserId) return;
+    const canonical = getActiveCanonicalUserId_(rowUserId, lookup);
+    if (!canonical) return;
     const snapshot = collectionRowToSnapshot_(row, col, true);
-    map[rowUserId] = snapshot;
-    map[userIdKey_(rowUserId)] = snapshot;
+    snapshot.userId = canonical;
+    if (!map[canonical] || rowUserId === canonical) map[canonical] = snapshot;
+    if (!map[userIdKey_(canonical)] || rowUserId === canonical) map[userIdKey_(canonical)] = snapshot;
   });
   return map;
 }
@@ -6785,15 +7057,16 @@ function getTicketStats() {
   const col = getCollectionColumns_(sheet);
   const rows = getCollectionRows_(sheet);
   if (!rows.length) return { ok: true, users: [], totalRemaining: 0 };
-  const activeMap = getUserActiveMap_();
+  const lookup = getUserCanonicalLookup_();
   const users = rows
     .filter(function(r) {
       const userId = String(r[col.userId]).trim();
-      return userId && activeMap[userIdKey_(userId)];
+      return userId && getActiveCanonicalUserId_(userId, lookup);
     })
     .map(function(r) {
+      const canonical = getActiveCanonicalUserId_(r[col.userId], lookup);
       return {
-        nickname:     String(r[col.userId]),
+        nickname:     canonical,
         totalEarned:  Number(r[col.totalEarned]) || 0,
         totalDrawn:   Number(r[col.totalDrawn]) || 0,
         remaining:    Number(r[col.remaining]) || 0
@@ -6855,9 +7128,14 @@ function getCollectionProjectionInputs_() {
 
 function getCollectionProjectionCandidateUserIds_(events, inputs) {
   const ids = {};
-  const activeMap = getUserActiveMap_();
+  let lookup;
+  if (inputs && inputs.userCol) {
+    lookup = getUserCanonicalLookup_(null, inputs.userCol, inputs.usersRows || []);
+  } else {
+    lookup = getUserCanonicalLookup_();
+  }
   function addIfActive(userId) {
-    const canonical = activeMap[userIdKey_(userId)];
+    const canonical = getActiveCanonicalUserId_(userId, lookup);
     if (canonical) ids[canonical] = true;
   }
   if (inputs && inputs.userCol) {
@@ -6907,8 +7185,11 @@ function getCollectionProjectionCandidateUserIds_(events, inputs) {
 }
 
 function compareCollectionProjectionForUser_(userId, events, inputs) {
+  const lookup = inputs && inputs.userCol
+    ? getUserCanonicalLookup_(null, inputs.userCol, inputs.usersRows || [])
+    : getUserCanonicalLookup_();
   const current = getCurrentCollectionSnapshot_(userId, inputs);
-  const projected = buildCollectionProjectionFromEvents_(userId, events);
+  const projected = buildCollectionProjectionFromEvents_(userId, events, lookup);
   const diffs = diffCollectionSnapshots_(current, projected);
   return {
     userId: userId,
@@ -6933,10 +7214,11 @@ function getCurrentCollectionSnapshot_(userId, inputs) {
   return getCurrentCollectionSnapshotFromRows_(userId, rows, col);
 }
 
-function getCurrentCollectionSnapshotFromRows_(userId, rows, col) {
+function getCurrentCollectionSnapshotFromRows_(userId, rows, col, lookup) {
+  const userLookup = lookup || getUserCanonicalLookup_();
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (!isSameUserId_(row[col.userId], userId)) continue;
+    if (!isSameOwnedUserId_(row[col.userId], userId, userLookup)) continue;
     return collectionRowToSnapshot_(row, col, true);
   }
   return emptyCollectionSnapshot_(userId, false);
@@ -6993,13 +7275,14 @@ function collectionResponseFromSnapshot_(snapshot) {
   };
 }
 
-function buildCollectionProjectionFromEvents_(userId, events) {
+function buildCollectionProjectionFromEvents_(userId, events, lookup) {
   const snapshot = emptyCollectionSnapshot_(userId, true);
   const tradeRequests = buildTradeRequestMapFromEvents_(events);
   const acceptedTradeIds = {};
+  const userLookup = lookup || getUserCanonicalLookup_();
 
   events.forEach(function(event) {
-    if (!isSameUserId_(event.userId, userId)) return;
+    if (!isSameOwnedUserId_(event.userId, userId, userLookup)) return;
     if (event.type === EVENT_TYPES.TICKET_GRANTED) {
       snapshot.totalEarned += eventAmount_(event, 1);
     } else if (event.type === EVENT_TYPES.TICKET_CONSUMED) {
@@ -7027,7 +7310,7 @@ function buildCollectionProjectionFromEvents_(userId, events) {
     const trade = tradeRequests[tradeId];
     if (!trade) return;
     acceptedTradeIds[tradeId] = true;
-    applyAcceptedTradeProjection_(snapshot, trade, userId);
+    applyAcceptedTradeProjection_(snapshot, trade, userId, userLookup);
   });
 
   snapshot.remaining = Math.max(0, snapshot.totalEarned + snapshot.remaining);
@@ -7063,11 +7346,11 @@ function buildTradeRequestMapFromEvents_(events) {
   return trades;
 }
 
-function applyAcceptedTradeProjection_(snapshot, trade, userId) {
-  if (isSameUserId_(trade.requester, userId)) {
+function applyAcceptedTradeProjection_(snapshot, trade, userId, userLookup) {
+  if (isSameOwnedUserId_(trade.requester, userId, userLookup)) {
     adjustProjectedCardCount_(snapshot, trade.requesterCardId, -1);
     adjustProjectedCardCount_(snapshot, trade.targetCardId, 1);
-  } else if (isSameUserId_(trade.target, userId)) {
+  } else if (isSameOwnedUserId_(trade.target, userId, userLookup)) {
     adjustProjectedCardCount_(snapshot, trade.targetCardId, -1);
     adjustProjectedCardCount_(snapshot, trade.requesterCardId, 1);
   }
@@ -7131,12 +7414,14 @@ function rebuildCollectionRow(userId) {
 }
 
 function rebuildCollectionRow_(userId, eventsOverride) {
-  userId = getCanonicalUserId_(userId) || String(userId || '').trim();
+  userId = getCanonicalUserId_(userId);
+  if (!userId) return { ok: false, error: 'inactive_or_unknown_user' };
   const events = eventsOverride || Events_readAll_();
-  const projected = buildCollectionProjectionFromEvents_(userId, events);
+  const lookup = getUserCanonicalLookup_();
+  const projected = buildCollectionProjectionFromEvents_(userId, events, lookup);
   const sheet = getOrCreateCollectionSheet();
   const col = getCollectionColumns_(sheet);
-  const rowIndex = findCollectionRowIndex_(sheet, col, userId);
+  const rowIndex = findCollectionRowIndex_(sheet, col, userId, lookup);
   const current = rowIndex === -1
     ? emptyCollectionSnapshot_(userId, false)
     : collectionRowToSnapshot_(sheet.getRange(rowIndex, 1, 1, COLLECTION_COL_COUNT).getValues()[0], col, true);
@@ -7187,6 +7472,9 @@ function rebuildCollectionRowsFromEvents_() {
   const inputs = getCollectionProjectionInputs_();
   const events = inputs.events;
   const userIds = getCollectionProjectionCandidateUserIds_(events, inputs);
+  const lookup = inputs.userCol
+    ? getUserCanonicalLookup_(null, inputs.userCol, inputs.usersRows || [])
+    : getUserCanonicalLookup_();
   const sheet = inputs.collectionSheet;
   const col = inputs.collectionCol;
   const last = sheet.getLastRow();
@@ -7194,7 +7482,7 @@ function rebuildCollectionRowsFromEvents_() {
     clearSheetValues_(sheet, SCHEMA.COLLECTION.dataStartRow, 1, last - SCHEMA.COLLECTION.dataStartRow + 1, COLLECTION_COL_COUNT);
   }
   const rows = userIds.map(function(userId) {
-    return collectionSnapshotToRow_(buildCollectionProjectionFromEvents_(userId, events), col);
+    return collectionSnapshotToRow_(buildCollectionProjectionFromEvents_(userId, events, lookup), col);
   });
   if (rows.length) {
     setSheetValues_(sheet, SCHEMA.COLLECTION.dataStartRow, 1, rows);
@@ -7525,12 +7813,13 @@ function getLegacySheetVisibilityStatus_() {
   });
 }
 
-function findCollectionRowIndex_(sheet, col, userId) {
+function findCollectionRowIndex_(sheet, col, userId, lookup) {
   const last = sheet.getLastRow();
   if (last < SCHEMA.COLLECTION.dataStartRow) return -1;
   const ids = sheet.getRange(SCHEMA.COLLECTION.dataStartRow, col.userId + 1, last - SCHEMA.COLLECTION.dataStartRow + 1, 1).getValues();
+  const userLookup = lookup || getUserCanonicalLookup_();
   for (let i = 0; i < ids.length; i++) {
-    if (isSameUserId_(ids[i][0], userId)) return i + SCHEMA.COLLECTION.dataStartRow;
+    if (isSameOwnedUserId_(ids[i][0], userId, userLookup)) return i + SCHEMA.COLLECTION.dataStartRow;
   }
   return -1;
 }
@@ -7883,10 +8172,10 @@ function getAdminTrades() {
 
   _expireOldTrades(sheet);
   const rows = getTradesRows_(sheet);
-  const activeMap = getUserActiveMap_();
+  const userLookup = getUserCanonicalLookup_();
   const trades = rows
     .filter(r => r[col.id])
-    .filter(r => activeMap[userIdKey_(r[col.requester])] && activeMap[userIdKey_(r[col.target])])
+    .filter(r => getActiveCanonicalUserId_(r[col.requester], userLookup) && getActiveCanonicalUserId_(r[col.target], userLookup))
     .map(row => ({
       id: String(row[col.id]), requester: String(row[col.requester]),
       requesterCardId: Number(row[col.requesterCardId]), requesterCardName: String(row[col.requesterCardName]),
@@ -8839,12 +9128,12 @@ function adminGetBBB() {
   const msgSheet = getOrCreateBBBMessagesSheet();
   const bbbCol = getBbbColumns_(bbbSheet);
   const msgCol = getBbbMessageColumns_(msgSheet);
-  const activeMap = getUserActiveMap_();
+  const userLookup = getUserCanonicalLookup_();
 
   const lastB = bbbSheet.getLastRow();
   const matches = lastB < SCHEMA.BBB.dataStartRow ? [] :
     getBbbRows_(bbbSheet)
-      .filter(r => r[bbbCol.userId] && activeMap[userIdKey_(r[bbbCol.userId])])
+      .filter(r => r[bbbCol.userId] && getActiveCanonicalUserId_(r[bbbCol.userId], userLookup))
       .map(r => ({
         userId: String(r[bbbCol.userId]),
         careBuddyId: String(r[bbbCol.careBuddyId]), careBuddyName: String(r[bbbCol.careBuddyName]),
@@ -8855,7 +9144,7 @@ function adminGetBBB() {
   const lastM = msgSheet.getLastRow();
   const messages = lastM < SCHEMA.BBB_MESSAGES.dataStartRow ? [] :
     getBbbMessageRows_(msgSheet)
-      .filter(r => r[msgCol.msgId] && activeMap[userIdKey_(r[msgCol.fromUserId])] && activeMap[userIdKey_(r[msgCol.toUserId])])
+      .filter(r => r[msgCol.msgId] && getActiveCanonicalUserId_(r[msgCol.fromUserId], userLookup) && getActiveCanonicalUserId_(r[msgCol.toUserId], userLookup))
       .map(r => ({
         id: String(r[msgCol.msgId]),
         from: String(r[msgCol.fromUserId]),
