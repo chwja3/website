@@ -8188,6 +8188,8 @@ function getAdminTrades() {
 // ── 자동 백업 ─────────────────────────────────────
 const BACKUP_FOLDER_NAME = 'BeyondUs_Backup';
 const BACKUP_KEEP_COUNT  = 7; // 최근 N개만 유지
+const BACKUP_SCHEMA_VERSION = 'events_v2';
+const BACKUP_FILE_PREFIX = 'BeyondUs_' + BACKUP_SCHEMA_VERSION + '_';
 
 function backupSpreadsheet() {
   try {
@@ -8197,17 +8199,147 @@ function backupSpreadsheet() {
     folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(BACKUP_FOLDER_NAME);
 
     const dateStr = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd_HHmm');
+    const fileName = BACKUP_FILE_PREFIX + dateStr;
 
-    DriveApp.getFileById(getSpreadsheetId_())
-      .makeCopy('BeyondUs_' + dateStr, folder);
+    const backupFile = DriveApp.getFileById(getSpreadsheetId_()).makeCopy(fileName, folder);
+    const normalized = normalizeModernBackupSpreadsheet_(backupFile.getId());
     _cleanOldBackups(folder, 'BeyondUs_');
 
     Logger.log('백업 완료: ' + dateStr);
-    return { ok: true, backed_up: dateStr };
+    return {
+      ok: true,
+      backed_up: dateStr,
+      schemaVersion: BACKUP_SCHEMA_VERSION,
+      fileName: fileName,
+      fileId: backupFile.getId(),
+      normalized: normalized,
+    };
   } catch(e) {
     Logger.log('백업 오류: ' + e);
-    return { error: String(e) };
+    return { ok: false, error: String(e) };
   }
+}
+
+function normalizeModernBackupSpreadsheet_(spreadsheetId) {
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const ensured = ensureModernBackupSheets_(ss);
+  const layout = applyModernBackupLayout_(ss);
+  SpreadsheetApp.flush();
+  return {
+    ok: true,
+    spreadsheetId: spreadsheetId,
+    ensured: ensured,
+    layout: layout,
+  };
+}
+
+function ensureModernBackupSheets_(ss) {
+  const created = [];
+  function ensureSheet(sheetName) {
+    let sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(sheetName);
+      created.push(sheetName);
+    }
+    return sheet;
+  }
+
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.USERS), SCHEMA.USERS);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.RETREAT_ATTENDANCE), SCHEMA.RETREAT_ATTENDANCE);
+  ensureBackupEventsSheet_(ensureSheet(SHEET_NAMES.EVENTS));
+  ensureBackupTwoHeaderSheet_(ensureSheet(SHEET_NAMES.APP_SETTINGS), SCHEMA.APP_SETTINGS, APP_SETTINGS_LABELS, APP_SETTINGS_COL_COUNT);
+  ensureBackupTwoHeaderSheet_(ensureSheet(SHEET_NAMES.MISSION_DEFINITIONS), SCHEMA.MISSION_DEFINITIONS, MISSION_DEFINITIONS_LABELS, MISSION_DEFINITIONS_COL_COUNT);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.COLLECTION), SCHEMA.COLLECTION);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.CARD_RECEIVED), SCHEMA.CARD_RECEIVED);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.TRADES), SCHEMA.TRADES);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.HOLD_PRAY), SCHEMA.HOLD_PRAY);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.HP_GUESSES), SCHEMA.HP_GUESSES);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.TAB_SETTINGS), SCHEMA.TAB_SETTINGS);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.BBB_SETTINGS), SCHEMA.BBB_SETTINGS);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.BBB), SCHEMA.BBB);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.BBB_MESSAGES), SCHEMA.BBB_MESSAGES);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.BBB_PHOTOS), SCHEMA.BBB_PHOTOS);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.NOTICES), SCHEMA.NOTICES);
+  ensureBackupOneHeaderSheet_(ensureSheet(SHEET_NAMES.INQUIRIES), SCHEMA.INQUIRIES);
+
+  const raffleSheet = ensureSheet(SHEET_NAMES.RAFFLE_TICKETS);
+  ensureRaffleTicketsSheetSchema_(raffleSheet);
+  raffleSheet.getRange('A:A').setNumberFormat('@');
+
+  ensureBackupUserDashboardSheet_(ensureSheet(SHEET_NAMES.USER_DASHBOARD));
+
+  return {
+    created: created,
+    requiredVisibleSheets: FINAL_VISIBLE_SHEET_NAMES.slice(),
+    hiddenLegacySheets: FINAL_HIDDEN_SHEET_NAMES.slice(),
+  };
+}
+
+function ensureBackupOneHeaderSheet_(sheet, schema) {
+  const colCount = Object.keys(schema.columns).length;
+  if (sheet.getMaxColumns() < colCount) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), colCount - sheet.getMaxColumns());
+  }
+  if (sheet.getMaxRows() < schema.headerRow) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), schema.headerRow - sheet.getMaxRows());
+  }
+  sheet.getRange(schema.headerRow, 1, 1, colCount).setValues([getSchemaHeaders_(schema)]);
+  sheet.setFrozenRows(schema.headerRow);
+}
+
+function ensureBackupTwoHeaderSheet_(sheet, schema, labels, colCount) {
+  ensureTwoHeaderSheet_(sheet, schema, labels, colCount);
+}
+
+function ensureBackupEventsSheet_(sheet) {
+  ensureEventsSheet_(sheet);
+}
+
+function ensureBackupUserDashboardSheet_(sheet) {
+  ensureUserDashboardSheet_(sheet, USER_DASHBOARD_DEFAULT_ROWS);
+}
+
+function applyModernBackupLayout_(ss) {
+  const shown = [];
+  const hidden = [];
+  const colored = [];
+  const ordered = [];
+  const missing = [];
+
+  FINAL_VISIBLE_SHEET_NAMES.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      missing.push(sheetName);
+      return;
+    }
+    sheet.showSheet();
+    shown.push(sheetName);
+  });
+
+  FINAL_SHEET_TABS.forEach(function(tab, index) {
+    const sheet = ss.getSheetByName(tab.name);
+    if (!sheet) return;
+    ss.setActiveSheet(sheet);
+    ss.moveActiveSheet(index + 1);
+    ordered.push(tab.name);
+    sheet.setTabColor(tab.color);
+    colored.push(tab.name);
+  });
+
+  FINAL_HIDDEN_SHEET_NAMES.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return;
+    sheet.hideSheet();
+    hidden.push(sheetName);
+  });
+
+  return {
+    shown: shown,
+    hidden: hidden,
+    ordered: ordered,
+    colored: colored,
+    missing: missing,
+  };
 }
 
 function _cleanOldBackups(folder, prefix) {
