@@ -101,15 +101,25 @@
     .stat-value { font-size: 26px; font-weight: 800; }
     .dashboard-pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
     .dashboard-pill-row .btn.active { background: var(--primary); color: #faf6ef; border-color: var(--primary); }
-    .parish-summary-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
-    .parish-summary-card { border:1px solid var(--line); border-radius:12px; padding:12px; background:#fffaf2; cursor:pointer; text-align:left; color:var(--text); font:inherit; }
-    .parish-summary-card:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .parish-summary-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+    .parish-summary-card { border:1px solid var(--line); border-radius:12px; padding:14px; min-height:112px; background:#fffaf2; cursor:pointer; text-align:left; color:var(--text); font:inherit; transition:border-color .15s ease, transform .15s ease; }
+    .parish-summary-card:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .parish-summary-card.parish-p1 { background:#fee2e2; border-color:#fecaca; }
+    .parish-summary-card.parish-p2 { background:#fef9c3; border-color:#fde68a; }
+    .parish-summary-card.parish-p3 { background:#dcfce7; border-color:#bbf7d0; }
+    .parish-summary-card.parish-p4 { background:#dbeafe; border-color:#bfdbfe; }
+    .parish-summary-card.parish-vip { background:#ede9fe; border-color:#ddd6fe; }
+    .parish-summary-card.parish-churchSchool { background:#f1f5f9; border-color:#cbd5e1; }
+    .parish-summary-card.parish-etc { background:#fffaf2; border-color:var(--line); }
     .parish-summary-title { font-weight:800; margin-bottom:8px; }
-    .parish-summary-meta { display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; color:var(--sub); font-size:12px; }
+    .parish-summary-meta { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; color:var(--sub); font-size:12px; }
+    .parish-summary-meta span { min-width:0; white-space:nowrap; }
     .parish-summary-meta strong { display:block; color:var(--text); font-size:16px; margin-top:2px; }
     .parish-detail { border:1px solid var(--line); border-radius:12px; margin-bottom:10px; background:var(--card); overflow:hidden; }
     .parish-detail summary { cursor:pointer; padding:12px 14px; font-weight:800; background:var(--primary-soft); }
     .parish-detail .table-wrap { padding:0 12px 12px; }
+    @media (max-width: 760px) { .parish-summary-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 460px) { .parish-summary-grid { grid-template-columns: 1fr; } }
 
     /* ── 테이블 ── */
     .table-wrap { overflow-x: auto; }
@@ -274,6 +284,14 @@
         </div>
 
         <div class="card">
+          <h2 class="card-title">교구별 이번 주 참여</h2>
+          <div class="parish-summary-grid" id="parishSummaryGrid">
+            <div style="color:var(--sub); padding:12px;">불러오는 중...</div>
+          </div>
+          <div id="parishDetailList"></div>
+        </div>
+
+        <div class="card">
           <h2 class="card-title">주차별 항목 기록</h2>
           <div class="dashboard-pill-row" id="weeklyCheckinTabs"></div>
           <div class="table-wrap">
@@ -284,14 +302,6 @@
               </tbody>
             </table>
           </div>
-        </div>
-
-        <div class="card">
-          <h2 class="card-title">교구별 이번 주 참여</h2>
-          <div class="parish-summary-grid" id="parishSummaryGrid">
-            <div style="color:var(--sub); padding:12px;">불러오는 중...</div>
-          </div>
-          <div id="parishDetailList"></div>
         </div>
       </div>
 
@@ -923,6 +933,14 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function parishSummaryClass(summary) {
+      const key = String((summary && summary.key) || '').trim();
+      if (['p1', 'p2', 'p3', 'p4', 'vip', 'churchSchool'].includes(key)) {
+        return 'parish-' + key;
+      }
+      return 'parish-etc';
+    }
+
     function renderParishDashboard(parishSummaries) {
       const summaries = Array.isArray(parishSummaries) ? parishSummaries : [];
       const grid = document.getElementById('parishSummaryGrid');
@@ -933,7 +951,7 @@
         return;
       }
       grid.innerHTML = summaries.map(summary => `
-        <button class="parish-summary-card" onclick="focusParishDetail('${summary.key}')">
+        <button class="parish-summary-card ${parishSummaryClass(summary)}" onclick="focusParishDetail('${summary.key}')">
           <div class="parish-summary-title">${esc(summary.label)}</div>
           <div class="parish-summary-meta">
             <span>참여자<strong>${fmtCount(summary.participantCount)}</strong></span>
