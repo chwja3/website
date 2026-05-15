@@ -143,6 +143,8 @@ const SCHEMA = Object.freeze({
       specialPackEarned: 'specialPackEarned',
       specialPackConsumed: 'specialPackConsumed',
       specialPackRemaining: 'specialPackRemaining',
+      raffleTickets: 'raffleTickets',
+      raffleTicketNumbersJson: 'raffleTicketNumbersJson',
     }),
   }),
   MISSION_PROGRESS: Object.freeze({
@@ -454,6 +456,8 @@ const COLLECTION_COLUMN_FALLBACK = Object.freeze({
   specialPackEarned: 15,
   specialPackConsumed: 16,
   specialPackRemaining: 17,
+  raffleTickets: 18,
+  raffleTicketNumbersJson: 19,
 });
 // SCHEMA.COLLECTION.columns 키 수에서 자동 도출 — 하드코딩 15 대신 이 상수 사용
 const COLLECTION_COL_COUNT = Object.keys(SCHEMA.COLLECTION.columns).length;
@@ -628,6 +632,8 @@ const EVENT_TYPES = Object.freeze({
   CARD_REMOVED: 'card.removed',
   SPECIAL_PACK_GRANTED: 'special_pack.granted',
   SPECIAL_PACK_CONSUMED: 'special_pack.consumed',
+  RAFFLE_GRANTED: 'raffle.granted',
+  RAFFLE_REVOKED: 'raffle.revoked',
   CARD_RECEIVED: 'card.received',
   TRADE_REQUESTED: 'trade.requested',
   TRADE_ACCEPTED: 'trade.accepted',
@@ -4641,6 +4647,10 @@ function getUserStatusLite_(userId, weekKey, configOverride) {
     raffle.eligible = !raffleExcluded;
     raffle.ineligibleReason = raffleExcluded ? 'raffle_excluded' : '';
     raffle.uniqueCards = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, false).uniqueCards;
+    if (snapshot.hasRaffleProjection === true) {
+      raffle.myTickets = Number(snapshot.raffleTickets) || 0;
+      raffle.myTicketNumbers = normalizeRaffleTicketNumberItems_(snapshot.raffleTicketNumbers);
+    }
     raffle.deferred = true;
   } catch(e) {
     raffle.deferred = true;
@@ -4772,7 +4782,6 @@ function getUserStatus(userId, weekKey, configOverride) {
     raffle = getRaffleStatsFromRows_(cleanUserId, {
       collectionRows: collectionRows,
       collectionCol: collectionCol,
-      ticketSummary: getRaffleTicketSummaryCached_(),
       usersRows: usersRows,
       userCol: userCol,
       currentSnapshot: snapshot,
@@ -5791,10 +5800,17 @@ function adminGetRaffleAttendance(params) {
   const userCol = getUserColumns_(userSheet);
   const usersRows = getUserRows_(userSheet);
   const userLookup = getUserCanonicalLookup_(userSheet, userCol, usersRows);
+  const collectionSheet = getOrCreateCollectionSheet();
+  const collectionCol = getCollectionColumns_(collectionSheet);
+  const collectionMap = getCollectionSnapshotMap_(getCollectionRows_(collectionSheet), collectionCol);
   const attendanceSheet = getOrCreateRetreatAttendanceSheet();
   const attendanceCol = getRetreatAttendanceColumns_(attendanceSheet);
   const attendanceMap = getRetreatAttendanceMapFromRows_(getRetreatAttendanceRows_(attendanceSheet), attendanceCol);
-  const raffleSummary = getRaffleTicketSummaryCached_();
+  let raffleSummary = null;
+  function getFallbackRaffleCount(canonical) {
+    if (!raffleSummary) raffleSummary = getRaffleTicketSummaryCached_();
+    return raffleSummary.byUser[userIdKey_(canonical)] || 0;
+  }
 
   const allUsers = usersRows
     .filter(function(row) { return String(row[userCol.nickname] || '').trim(); })
@@ -5803,6 +5819,7 @@ function adminGetRaffleAttendance(params) {
       const attended = attendanceMap[userIdKey_(nickname)] === true;
       const raffleExcluded = getUserRaffleExcludedFromRow_(row, userCol);
       const canonical = getActiveCanonicalUserId_(nickname, userLookup);
+      const snapshot = canonical ? (collectionMap[canonical] || collectionMap[userIdKey_(canonical)]) : null;
       return {
         parish: String(row[userCol.parish] || '').trim(),
         name: String(row[userCol.name] || '').trim(),
@@ -5811,7 +5828,11 @@ function adminGetRaffleAttendance(params) {
         raffleExcluded: raffleExcluded,
         inactive: isUserInactiveFromRow_(row, userCol),
         inactiveAt: String(row[userCol.inactiveAt] || '').trim(),
-        raffleTickets: canonical ? (raffleSummary.byUser[userIdKey_(canonical)] || 0) : 0,
+        raffleTickets: canonical
+          ? (snapshot && snapshot.hasRaffleProjection === true
+              ? (Number(snapshot.raffleTickets) || 0)
+              : getFallbackRaffleCount(canonical))
+          : 0,
       };
     })
     .sort(function(a, b) {
@@ -5889,10 +5910,13 @@ function adminSetRaffleExcluded(body) {
   if (excluded) {
     released = revokeUserRaffleTickets_(canonical, 'available', 'raffle_excluded');
   } else {
-    issued = ensureUserRaffleTickets_(canonical, { includeSignup: true });
+    issued = ensureUserRaffleTickets_(canonical, { includeSignup: true, reason: 'raffle_excluded_removed' });
   }
   clearUserDerivedCaches_(canonical);
-  const activeCount = getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[userIdKey_(canonical)] || 0;
+  const activeSnapshot = getCurrentCollectionSnapshot_(canonical);
+  const activeCount = activeSnapshot && activeSnapshot.hasRaffleProjection === true
+    ? (Number(activeSnapshot.raffleTickets) || 0)
+    : (getActiveRaffleTicketSummary_(getRaffleTicketRows_()).byUser[userIdKey_(canonical)] || 0);
   return {
     ok: true,
     nickname: canonical,
@@ -7269,6 +7293,67 @@ function getRaffleTicketNumbersFromConditionMap_(conditionMap) {
     });
 }
 
+function parseRaffleTicketNumbersJson_(value) {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value || '[]') : value;
+    if (!Array.isArray(parsed)) return [];
+    return normalizeRaffleTicketNumberItems_(parsed);
+  } catch(e) {
+    return [];
+  }
+}
+
+function normalizeRaffleTicketNumberItems_(items) {
+  const byCondition = {};
+  (items || []).forEach(function(item) {
+    const condition = String((item && item.condition) || '').trim();
+    const ticketNo = padTicketNo_((item && (item.ticket_no || item.ticketNo)) || '');
+    if (!condition || ticketNo === '0000') return;
+    byCondition[condition] = ticketNo;
+  });
+  return getRaffleTicketNumbersFromConditionMap_(byCondition);
+}
+
+function getRaffleConditionMapFromItems_(items) {
+  const map = {};
+  normalizeRaffleTicketNumberItems_(items).forEach(function(item) {
+    map[item.condition] = item.ticket_no;
+  });
+  return map;
+}
+
+function updateSnapshotRaffleProjection_(snapshot, items) {
+  const list = normalizeRaffleTicketNumberItems_(items);
+  snapshot.raffleTicketNumbers = list;
+  snapshot.raffleTickets = list.length;
+  snapshot.hasRaffleProjection = true;
+}
+
+function addRaffleTicketToSnapshot_(snapshot, condition, ticketNo) {
+  const map = getRaffleConditionMapFromItems_(snapshot.raffleTicketNumbers);
+  const cleanCondition = String(condition || '').trim();
+  const cleanTicketNo = padTicketNo_(ticketNo || '');
+  if (!cleanCondition || cleanTicketNo === '0000') return;
+  map[cleanCondition] = cleanTicketNo;
+  updateSnapshotRaffleProjection_(snapshot, getRaffleTicketNumbersFromConditionMap_(map));
+}
+
+function removeRaffleTicketFromSnapshot_(snapshot, condition, ticketNo) {
+  const cleanCondition = String(condition || '').trim();
+  const cleanTicketNo = padTicketNo_(ticketNo || '');
+  const items = normalizeRaffleTicketNumberItems_(snapshot.raffleTicketNumbers).filter(function(item) {
+    if (cleanCondition && item.condition === cleanCondition) return false;
+    if (!cleanCondition && cleanTicketNo !== '0000' && item.ticket_no === cleanTicketNo) return false;
+    return true;
+  });
+  updateSnapshotRaffleProjection_(snapshot, items);
+}
+
+function stringifyRaffleTicketNumbers_(items) {
+  const normalized = normalizeRaffleTicketNumberItems_(items);
+  return normalized.length ? JSON.stringify(normalized) : '[]';
+}
+
 function getUserParishMap_() {
   const sheet = getUsersSheet_();
   const col = getUserColumns_(sheet);
@@ -7288,6 +7373,60 @@ function getUserParishFromUsers_(userId) {
   const info = findUserInfoByNickname_(sheet, userId);
   if (!info || info.inactive) return '';
   return String(info.row[info.col.parish] || '').trim();
+}
+
+// 추첨권 발급/회수 이벤트를 Events와 Collection projection에 함께 반영한다.
+function getRaffleGrantReason_(condition, explicitReason) {
+  const reason = String(explicitReason || '').trim();
+  if (reason) return reason;
+  const cleanCondition = String(condition || '').trim();
+  if (cleanCondition === 'signup') return 'signup';
+  if (cleanCondition === 'card_3' || cleanCondition === 'card_5' || cleanCondition === 'card_10') return cleanCondition;
+  return cleanCondition || 'raffle_granted';
+}
+
+function buildRaffleEventItem_(type, userId, ticketNo, condition, weekKey, reason, source, timestamp) {
+  const cleanCondition = String(condition || '').trim();
+  const cleanTicketNo = padTicketNo_(ticketNo || '');
+  return {
+    type: type,
+    userId: userId,
+    options: {
+      refId: cleanTicketNo,
+      amount: 1,
+      weekKey: weekKey || '',
+      timestamp: timestamp || new Date().toISOString(),
+      payload: {
+        ticketNo: cleanTicketNo,
+        condition: cleanCondition,
+        conditionLabel: getRaffleConditionLabel_(cleanCondition),
+        reason: String(reason || '').trim(),
+      },
+      source: source || EVENT_SOURCES.SERVER,
+    },
+  };
+}
+
+function appendRaffleEventsAndUpdateProjection_(userId, eventItems) {
+  const cleanUser = getCanonicalUserId_(userId, { includeInactive: true }) || String(userId || '').trim();
+  const items = (eventItems || []).filter(function(item) {
+    return item && item.options && padTicketNo_(item.options.refId) !== '0000';
+  });
+  if (!cleanUser || !items.length) return { ok: true, events: [] };
+  const appendResult = Events_appendBatch_(items);
+  const deltas = items.map(function(item) {
+    const payload = item.options.payload || {};
+    return {
+      type: item.type,
+      amount: 1,
+      ticketNo: item.options.refId,
+      condition: payload.condition,
+    };
+  });
+  try { updateCollectionRowWithDeltas_(cleanUser, deltas); } catch(e) {}
+  clearRaffleCaches_();
+  clearUserDerivedCaches_(cleanUser);
+  return appendResult;
 }
 
 // 핵심: 한 번에 한 condition 발급. 중복 발급 차단. LockService로 동시성 보장.
@@ -7346,8 +7485,18 @@ function issueRaffleTicket_(userId, condition, weekKey, options) {
       sheet.getRange(newRow, 1).setNumberFormat('@').setValue(nextNo);
       sheet.getRange(newRow, 2, 1, RAFFLE_TICKET_COLUMNS.length - 1).setValues([nextRow.slice(1)]);
     }
-    clearRaffleCaches_();
-    clearUserDerivedCaches_(cleanUser);
+    appendRaffleEventsAndUpdateProjection_(cleanUser, [
+      buildRaffleEventItem_(
+        EVENT_TYPES.RAFFLE_GRANTED,
+        cleanUser,
+        nextNo,
+        cleanCond,
+        week,
+        getRaffleGrantReason_(cleanCond, opts.reason),
+        opts.source || EVENT_SOURCES.SERVER,
+        now
+      ),
+    ]);
     return { ok: true, ticket_no: nextNo, dup: false, week_key: week };
   } finally {
     if (lock) lock.releaseLock();
@@ -7407,6 +7556,7 @@ function issueRaffleTicketsBatch_(userId, conditions, weekKey, options) {
     });
     const issued = [];
     const results = [];
+    const eventItems = [];
 
     function findExisting(condition) {
       for (let i = 0; i < rows.length; i++) {
@@ -7458,11 +7608,20 @@ function issueRaffleTicketsBatch_(userId, conditions, weekKey, options) {
       }
       issued.push(nextNo);
       results.push({ condition: condition, ticket_no: nextNo, dup: false });
+      eventItems.push(buildRaffleEventItem_(
+        EVENT_TYPES.RAFFLE_GRANTED,
+        cleanUser,
+        nextNo,
+        condition,
+        week,
+        getRaffleGrantReason_(condition, opts.reason),
+        opts.source || EVENT_SOURCES.SERVER,
+        now
+      ));
     });
 
     if (issued.length) {
-      clearRaffleCaches_();
-      clearUserDerivedCaches_(cleanUser);
+      appendRaffleEventsAndUpdateProjection_(cleanUser, eventItems);
     }
     return { ok: true, issued: issued, results: results };
   } finally {
@@ -7474,6 +7633,8 @@ function ensureUserRaffleTicketsFromSnapshot_(userId, snapshot, options) {
   const conditions = getRaffleConditionsForSnapshot_(snapshot, options || {});
   return issueRaffleTicketsBatch_(userId, conditions, null, {
     skipLock: (options || {}).skipIssueLock === true,
+    reason: (options || {}).reason,
+    source: (options || {}).source,
   });
 }
 
@@ -7577,8 +7738,95 @@ function backfillSignupRaffleTickets_(dryRun) {
   };
 }
 
-// 기존 RaffleTickets 시트의 ticket_no 컬럼을 4자리 zero-pad 텍스트로 일괄 정규화
-// (Google Sheets 자동 숫자 변환으로 '1', '2' 등으로 저장된 옛 데이터 복구용)
+// 기존 active RaffleTickets를 현재 시점의 raffle.granted 이벤트로 백필한다.
+function getRaffleEventIdentityKey_(type, userId, ticketNo, condition) {
+  return [
+    String(type || '').trim(),
+    userIdKey_(userId),
+    padTicketNo_(ticketNo || ''),
+    String(condition || '').trim(),
+  ].join('|');
+}
+
+function backfillRaffleTicketEventsDryRun() {
+  const result = backfillRaffleTicketEvents_(true);
+  Logger.log('backfillRaffleTicketEventsDryRun result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function backfillRaffleTicketEventsApply() {
+  const result = backfillRaffleTicketEvents_(false);
+  Logger.log('backfillRaffleTicketEventsApply result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function backfillRaffleTicketEvents_(dryRun) {
+  const rows = getRaffleTicketRows_();
+  const lookup = getUserCanonicalLookup_();
+  const existing = {};
+  Events_readAll_().forEach(function(event) {
+    if (event.type !== EVENT_TYPES.RAFFLE_GRANTED) return;
+    const condition = String((event.payload && event.payload.condition) || '').trim();
+    existing[getRaffleEventIdentityKey_(event.type, event.userId, event.refId, condition)] = true;
+  });
+
+  const now = new Date().toISOString();
+  const planned = [];
+  rows.forEach(function(row) {
+    if (!isActiveRaffleTicketRow_(row)) return;
+    const ticketNo = padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]);
+    if (ticketNo === '0000') return;
+    const userId = String(row[RAFFLE_TICKET_COL.userId] || '').trim();
+    const canonical = getActiveCanonicalUserId_(userId, lookup);
+    if (!canonical) return;
+    const condition = String(row[RAFFLE_TICKET_COL.condition] || '').trim();
+    if (!condition) return;
+    const key = getRaffleEventIdentityKey_(EVENT_TYPES.RAFFLE_GRANTED, canonical, ticketNo, condition);
+    if (existing[key]) return;
+    planned.push({
+      userId: canonical,
+      ticket_no: ticketNo,
+      condition: condition,
+      weekKey: String(row[RAFFLE_TICKET_COL.weekKey] || '').trim(),
+    });
+    existing[key] = true;
+  });
+
+  if (dryRun || !planned.length) {
+    return {
+      ok: true,
+      dryRun: !!dryRun,
+      planned: planned.length,
+      eventsWritten: 0,
+      collectionRebuilt: false,
+      sample: planned.slice(0, 20),
+    };
+  }
+
+  Events_appendBatch_(planned.map(function(item) {
+    return buildRaffleEventItem_(
+      EVENT_TYPES.RAFFLE_GRANTED,
+      item.userId,
+      item.ticket_no,
+      item.condition,
+      item.weekKey,
+      'migration_current_active',
+      EVENT_SOURCES.MIGRATION,
+      now
+    );
+  }));
+  const rebuild = rebuildCollectionRowsFromEvents_();
+  clearRaffleCaches_();
+  return {
+    ok: true,
+    dryRun: false,
+    planned: planned.length,
+    eventsWritten: planned.length,
+    collectionRebuilt: rebuild && rebuild.ok === true,
+    rebuilt: rebuild && rebuild.rebuilt,
+  };
+}
+
 /*
  * Manual-only admin repair helper, disabled 2026-05-15.
 function adminNormalizeRaffleTicketColumn() {
@@ -7760,9 +8008,22 @@ function revokeIneligibleRaffleTickets_(dryRun) {
 
   if (!dryRun && planned.length) {
     range.setValues(values);
-    clearRaffleCaches_();
-    Object.keys(affectedUsers).forEach(function(userId) {
-      clearUserDerivedCaches_(userId);
+    const groupedEvents = {};
+    planned.forEach(function(item) {
+      if (!groupedEvents[item.userId]) groupedEvents[item.userId] = [];
+      groupedEvents[item.userId].push(buildRaffleEventItem_(
+        EVENT_TYPES.RAFFLE_REVOKED,
+        item.userId,
+        item.ticket_no,
+        item.condition,
+        '',
+        'raffle_excluded',
+        EVENT_SOURCES.SERVER,
+        now
+      ));
+    });
+    Object.keys(groupedEvents).forEach(function(userId) {
+      appendRaffleEventsAndUpdateProjection_(userId, groupedEvents[userId]);
     });
   }
 
@@ -7828,8 +8089,18 @@ function revokeUserRaffleTickets_(userId, status, reason, conditionsToRelease) {
 
   if (revokedRows.length) {
     range.setValues(values);
-    clearRaffleCaches_();
-    clearUserDerivedCaches_(cleanUser);
+    appendRaffleEventsAndUpdateProjection_(cleanUser, revokedRows.map(function(item) {
+      return buildRaffleEventItem_(
+        EVENT_TYPES.RAFFLE_REVOKED,
+        cleanUser,
+        item.ticket_no,
+        item.condition,
+        '',
+        reason || 'raffle_revoked',
+        EVENT_SOURCES.SERVER,
+        now
+      );
+    }));
   }
 
   return {
@@ -7962,6 +8233,25 @@ function repairCaseVariantRaffleTickets_(dryRun, lookup) {
       }
     });
     range.setValues(values);
+    const groupedEvents = {};
+    planned.filter(function(item) { return item.action === 'release'; }).forEach(function(item) {
+      const eventUser = item.canonical || item.oldUserId || item.userId;
+      if (!groupedEvents[eventUser]) groupedEvents[eventUser] = [];
+      groupedEvents[eventUser].push(buildRaffleEventItem_(
+        EVENT_TYPES.RAFFLE_REVOKED,
+        eventUser,
+        item.ticket_no,
+        item.condition,
+        '',
+        item.reason || 'case_variant_repair',
+        EVENT_SOURCES.SERVER,
+        now
+      ));
+    });
+    Object.keys(groupedEvents).forEach(function(userId) {
+      appendRaffleEventsAndUpdateProjection_(userId, groupedEvents[userId]);
+    });
+    clearRaffleCaches_();
   }
 
   return {
@@ -8062,9 +8352,20 @@ function getRaffleStatsFromRows_(userId, options) {
   const cleanUserId = String(userId || '').trim();
   const stats = getEmptyRaffleStats_();
   const collectionMap = getCollectionSnapshotMap_(opts.collectionRows || [], opts.collectionCol);
-  const ticketSummary = opts.ticketSummary || (opts.raffleRows
-    ? getActiveRaffleTicketSummary_(opts.raffleRows)
-    : getRaffleTicketSummaryCached_());
+  let useCollectionProjection = true;
+  (opts.usersRows || []).forEach(function(row) {
+    const nickname = String(row[opts.userCol.nickname] || '').trim();
+    if (!nickname) return;
+    if (isUserInactiveFromRow_(row, opts.userCol)) return;
+    if (getUserRaffleExcludedFromRow_(row, opts.userCol)) return;
+    const snapshot = collectionMap[nickname] || collectionMap[userIdKey_(nickname)];
+    if (!snapshot || snapshot.hasRaffleProjection !== true) useCollectionProjection = false;
+  });
+  const ticketSummary = useCollectionProjection
+    ? null
+    : (opts.ticketSummary || (opts.raffleRows
+      ? getActiveRaffleTicketSummary_(opts.raffleRows)
+      : getRaffleTicketSummaryCached_()));
   let foundCurrentUser = false;
 
   (opts.usersRows || []).forEach(function(row) {
@@ -8075,7 +8376,7 @@ function getRaffleStatsFromRows_(userId, options) {
     const nicknameKey = userIdKey_(nickname);
     if (raffleExcluded) {
       if (isSameUserId_(nickname, cleanUserId)) {
-        const currentSnapshot = opts.currentSnapshot || collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
+        const currentSnapshot = opts.currentSnapshot || collectionMap[nickname] || collectionMap[userIdKey_(nickname)] || emptyCollectionSnapshot_(nickname, false);
         stats.eligible = false;
         stats.ineligibleReason = 'raffle_excluded';
         stats.uniqueCards = getRaffleTicketInfoFromCardCounts_(currentSnapshot.cardCounts, false, false).uniqueCards;
@@ -8085,11 +8386,15 @@ function getRaffleStatsFromRows_(userId, options) {
     }
     const snapshot = collectionMap[nickname] || emptyCollectionSnapshot_(nickname, false);
     const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, true);
-    const activeTickets = ticketSummary.byUser[nicknameKey] || 0;
+    const activeTickets = useCollectionProjection
+      ? (Number(snapshot.raffleTickets) || 0)
+      : (ticketSummary.byUser[nicknameKey] || 0);
     stats.totalTickets += activeTickets;
     if (activeTickets > 0) stats.participantCount++;
     if (isSameUserId_(nickname, cleanUserId)) {
-      const byCondition = ticketSummary.byUserCondition[nicknameKey] || {};
+      const byCondition = useCollectionProjection
+        ? getRaffleConditionMapFromItems_(snapshot.raffleTicketNumbers)
+        : (ticketSummary.byUserCondition[nicknameKey] || {});
       stats.myTickets = activeTickets;
       stats.uniqueCards = info.uniqueCards;
       stats.breakdown = {
@@ -8116,8 +8421,12 @@ function getRaffleStatsFromRows_(userId, options) {
     const snapshot = opts.currentSnapshot || collectionMap[cleanUserId] || emptyCollectionSnapshot_(cleanUserId, false);
     const info = getRaffleTicketInfoFromCardCounts_(snapshot.cardCounts, false, true);
     const cleanUserKey = userIdKey_(cleanUserId);
-    const byCondition = ticketSummary.byUserCondition[cleanUserKey] || {};
-    const activeTickets = ticketSummary.byUser[cleanUserKey] || 0;
+    const byCondition = useCollectionProjection
+      ? getRaffleConditionMapFromItems_(snapshot.raffleTicketNumbers)
+      : (ticketSummary.byUserCondition[cleanUserKey] || {});
+    const activeTickets = useCollectionProjection
+      ? (Number(snapshot.raffleTickets) || 0)
+      : (ticketSummary.byUser[cleanUserKey] || 0);
     stats.myTickets = activeTickets;
     stats.uniqueCards = info.uniqueCards;
     stats.breakdown = {
@@ -8322,6 +8631,11 @@ function collectionRowToSnapshot_(row, col, rowExists) {
   const hasSpecialPackProjection = [col.specialPackEarned, col.specialPackConsumed, col.specialPackRemaining].some(function(index) {
     return index !== undefined && row[index] !== '' && row[index] !== null && row[index] !== undefined;
   });
+  const raffleTicketNumbers = parseRaffleTicketNumbersJson_(row[col.raffleTicketNumbersJson]);
+  const raffleTickets = Number(row[col.raffleTickets]) || raffleTicketNumbers.length || 0;
+  const hasRaffleProjection = [col.raffleTickets, col.raffleTicketNumbersJson].some(function(index) {
+    return index !== undefined && row[index] !== '' && row[index] !== null && row[index] !== undefined;
+  });
   return {
     rowExists: rowExists,
     userId: String(row[col.userId] || ''),
@@ -8334,6 +8648,9 @@ function collectionRowToSnapshot_(row, col, rowExists) {
     specialPackConsumed: specialPackConsumed,
     specialPackRemaining: specialPackRemaining,
     hasSpecialPackProjection: hasSpecialPackProjection,
+    raffleTickets: raffleTickets,
+    raffleTicketNumbers: raffleTicketNumbers,
+    hasRaffleProjection: hasRaffleProjection,
   };
 }
 
@@ -8347,6 +8664,9 @@ function cloneCollectionSnapshot_(snapshot) {
   clone.specialPackConsumed = Number(snapshot.specialPackConsumed) || 0;
   clone.specialPackRemaining = Number(snapshot.specialPackRemaining) || 0;
   clone.hasSpecialPackProjection = snapshot.hasSpecialPackProjection === true;
+  clone.raffleTickets = Number(snapshot.raffleTickets) || 0;
+  clone.raffleTicketNumbers = normalizeRaffleTicketNumberItems_(snapshot.raffleTicketNumbers);
+  clone.hasRaffleProjection = snapshot.hasRaffleProjection === true;
   for (let cardId = 1; cardId <= 10; cardId++) {
     clone.cardCounts[cardId] = Number(snapshot.cardCounts && snapshot.cardCounts[cardId]) || 0;
   }
@@ -8368,6 +8688,9 @@ function emptyCollectionSnapshot_(userId, rowExists) {
     specialPackConsumed: 0,
     specialPackRemaining: 0,
     hasSpecialPackProjection: false,
+    raffleTickets: 0,
+    raffleTicketNumbers: [],
+    hasRaffleProjection: false,
   };
 }
 
@@ -8420,6 +8743,10 @@ function buildCollectionProjectionFromEvents_(userId, events, lookup) {
       snapshot.specialPackEarned += eventAmount_(event, 1);
     } else if (event.type === EVENT_TYPES.SPECIAL_PACK_CONSUMED) {
       snapshot.specialPackConsumed += eventAmount_(event, 1);
+    } else if (event.type === EVENT_TYPES.RAFFLE_GRANTED) {
+      addRaffleTicketToSnapshot_(snapshot, event.payload && event.payload.condition, event.refId);
+    } else if (event.type === EVENT_TYPES.RAFFLE_REVOKED) {
+      removeRaffleTicketFromSnapshot_(snapshot, event.payload && event.payload.condition, event.refId);
     }
   });
 
@@ -8492,6 +8819,12 @@ function normalizeCollectionSnapshot_(snapshot) {
   snapshot.specialPackEarned = Math.max(0, Number(snapshot.specialPackEarned) || 0);
   snapshot.specialPackConsumed = Math.max(0, Number(snapshot.specialPackConsumed) || 0);
   snapshot.specialPackRemaining = Math.max(0, Number(snapshot.specialPackRemaining) || 0);
+  if (snapshot.hasRaffleProjection === true) {
+    updateSnapshotRaffleProjection_(snapshot, snapshot.raffleTicketNumbers);
+  } else {
+    snapshot.raffleTickets = Math.max(0, Number(snapshot.raffleTickets) || 0);
+    snapshot.raffleTicketNumbers = normalizeRaffleTicketNumberItems_(snapshot.raffleTicketNumbers);
+  }
   snapshot.totalCards = 0;
   for (let cardId = 1; cardId <= 10; cardId++) {
     snapshot.cardCounts[cardId] = Math.max(0, Number(snapshot.cardCounts[cardId]) || 0);
@@ -8524,6 +8857,10 @@ function applyCollectionDeltaToSnapshot_(snapshot, delta) {
     snapshot.specialPackConsumed += amount;
     snapshot.specialPackRemaining -= amount;
     snapshot.hasSpecialPackProjection = true;
+  } else if (type === EVENT_TYPES.RAFFLE_GRANTED) {
+    addRaffleTicketToSnapshot_(snapshot, delta.condition, delta.ticketNo);
+  } else if (type === EVENT_TYPES.RAFFLE_REVOKED) {
+    removeRaffleTicketFromSnapshot_(snapshot, delta.condition, delta.ticketNo);
   }
 }
 
@@ -8580,11 +8917,19 @@ function diffCollectionSnapshots_(current, projected) {
     'specialPackEarned',
     'specialPackConsumed',
     'specialPackRemaining',
+    'raffleTickets',
   ].forEach(function(key) {
     if (Number(current[key]) !== Number(projected[key])) {
       diffs.push({ field: key, current: current[key], projected: projected[key] });
     }
   });
+  if (stringifyRaffleTicketNumbers_(current.raffleTicketNumbers) !== stringifyRaffleTicketNumbers_(projected.raffleTicketNumbers)) {
+    diffs.push({
+      field: 'raffleTicketNumbersJson',
+      current: stringifyRaffleTicketNumbers_(current.raffleTicketNumbers),
+      projected: stringifyRaffleTicketNumbers_(projected.raffleTicketNumbers),
+    });
+  }
   for (let cardId = 1; cardId <= 10; cardId++) {
     const currentCount = Number(current.cardCounts[cardId]) || 0;
     const projectedCount = Number(projected.cardCounts[cardId]) || 0;
@@ -9061,6 +9406,13 @@ function collectionSnapshotToRow_(snapshot, col) {
     row[col.specialPackEarned] = '';
     row[col.specialPackConsumed] = '';
     row[col.specialPackRemaining] = '';
+  }
+  if (snapshot.hasRaffleProjection === true) {
+    row[col.raffleTickets] = Number(snapshot.raffleTickets) || 0;
+    row[col.raffleTicketNumbersJson] = stringifyRaffleTicketNumbers_(snapshot.raffleTicketNumbers);
+  } else {
+    row[col.raffleTickets] = '';
+    row[col.raffleTicketNumbersJson] = '';
   }
   return row;
 }
