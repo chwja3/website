@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515n';
+    const APP_VERSION = '20260515o';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -103,22 +103,22 @@
 
     /* ── 성령의 열매 카드 데이터 ── */
     const SPIRIT_CARDS = [
-      { id:1, name:'사랑',    g1:'#ff758c', g2:'#c0392b', img:'images/앤카드사랑최최종.png' },
-      { id:2, name:'희락',    g1:'#f7971e', g2:'#c0850a', img:'images/앤카드희락최최종.png' },
-      { id:3, name:'화평',    g1:'#185a9d', g2:'#43cea2', img:'images/앤카드화평최최종.png' },
-      { id:4, name:'오래참음', g1:'#8b6914', g2:'#c8a96e', img:'images/앤카드오래참음최최종.png' },
-      { id:5, name:'자비',    g1:'#2d6a4f', g2:'#52b788', img:'images/앤카드자비최최종.png' },
-      { id:6, name:'양선',    g1:'#11998e', g2:'#38ef7d', img:'images/앤카드양선최최종.png' },
-      { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/앤카드충성최최종.png' },
-      { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/앤카드온유최최종.png' },
-      { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/앤카드절제최최종.png' },
+      { id:1, name:'사랑',    g1:'#ff758c', g2:'#c0392b', img:'images/앤카드사랑최최종.webp' },
+      { id:2, name:'희락',    g1:'#f7971e', g2:'#c0850a', img:'images/앤카드희락최최종.webp' },
+      { id:3, name:'화평',    g1:'#185a9d', g2:'#43cea2', img:'images/앤카드화평최최종.webp' },
+      { id:4, name:'오래참음', g1:'#8b6914', g2:'#c8a96e', img:'images/앤카드오래참음최최종.webp' },
+      { id:5, name:'자비',    g1:'#2d6a4f', g2:'#52b788', img:'images/앤카드자비최최종.webp' },
+      { id:6, name:'양선',    g1:'#11998e', g2:'#38ef7d', img:'images/앤카드양선최최종.webp' },
+      { id:7, name:'충성',    g1:'#b5451b', g2:'#e8a87c', img:'images/앤카드충성최최종.webp' },
+      { id:8, name:'온유',    g1:'#7b4fa6', g2:'#c084fc', img:'images/앤카드온유최최종.webp' },
+      { id:9, name:'절제',    g1:'#1a3a5c', g2:'#2e86c1', img:'images/앤카드절제최최종.webp' },
     ];
-    const HIDDEN_CARD = { id:10, name:'레어', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.png' };
+    const HIDDEN_CARD = { id:10, name:'레어', g1:'#1a1a2e', g2:'#3a3060', img:'images/히든.webp' };
 
     /* ── 카드/뽑기 이미지 프리로드 ── */
     const DRAW_ASSET_URLS = [
-      'images/앤카드팩디자인배경제거.png',
-      'images/앤카드뒷면최최종.png',
+      'images/앤카드팩디자인배경제거.webp',
+      'images/앤카드뒷면최최종.webp',
     ];
     const _preloadedImages = {};
     let _cardImagePreloadStarted = false;
@@ -631,7 +631,7 @@
       _featurePreloadTimer = setTimeout(function() {
         _featurePreloadTimer = null;
         if (!isActiveAccount(nickname)) return;
-        preloadImage('images/천로역정맵.png', 'low');
+        preloadImage('images/천로역정맵.webp', 'low');
         loadHoldPray(false).catch(() => {});
         loadBBB(true).catch(() => {});
       }, delay || 1200);
@@ -1053,6 +1053,14 @@
         </div>`;
     }
 
+    function makeMiniCardImage(src, alt) {
+      return `<img src="${src}" class="mini-card-image" alt="${alt || ''}" loading="lazy" decoding="async" fetchpriority="low" width="637" height="1014">`;
+    }
+
+    function makeMiniCardSilhouette() {
+      return '<img src="images/앤수배.webp" class="mini-card-silhouette" alt="" loading="lazy" decoding="async" fetchpriority="low">';
+    }
+
     function getSpecialPackCount(status) {
       return Math.max(0, Number(status?.pendingSpecialPacks) || 0);
     }
@@ -1199,13 +1207,13 @@
                  <div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`
               : `<div class="mini-card-ghost mini-card-ghost-1" style="${gStyle}"></div>`)
           : '';
-        const unlockedContent = `<img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">`;
+        const unlockedContent = makeMiniCardImage(card.img, card.name);
         return `
           <div class="mini-card-wrap" style="${!locked ? 'cursor:pointer;' : ''}">
             ${ghosts}
             <div class="mini-card ${locked ? 'mini-card-locked' : 'mini-card-img'}" ${!locked ? `onclick="openCardDetail(${card.id},${cnt})"` : ''}>
               ${locked
-                ? `<img src="images/앤수배.png" class="mini-card-silhouette" alt="">`
+                ? makeMiniCardSilhouette()
                 : unlockedContent
               }
             </div>
@@ -1397,8 +1405,8 @@
 
       const got = hiddenCnt > 0;
       const cardInner = got
-        ? `<div class="mini-card mini-card-img" onclick="openCardDetail(10,${hiddenCnt})"><img src="images/히든.png" style="width:100%;height:100%;object-fit:contain;display:block;"></div>`
-        : `<div class="mini-card mini-card-locked mini-card-rare-locked"><img src="images/앤수배.png" class="mini-card-silhouette" alt=""></div>`;
+        ? `<div class="mini-card mini-card-img" onclick="openCardDetail(10,${hiddenCnt})">${makeMiniCardImage('images/히든.webp', HIDDEN_CARD.name)}</div>`
+        : `<div class="mini-card mini-card-locked mini-card-rare-locked">${makeMiniCardSilhouette()}</div>`;
 
       slot.innerHTML = `
         <p class="coll-subtitle">레어카드</p>
@@ -1494,7 +1502,7 @@
         const sel = _tradeMyCardId === card.id ? 'outline:2.5px solid #e8854a;' : '';
         return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectMyCard(${card.id})">
           <div class="mini-card mini-card-img" style="${sel}">
-            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+            ${makeMiniCardImage(card.img, card.name)}
           </div>
           <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name} ×${cnt}</div>
         </div>`;
@@ -1511,10 +1519,10 @@
     function _renderTheirCards() {
       document.getElementById('tradeTargetName').textContent = _tradeTargetNickname;
       const myCard = SPIRIT_CARDS.find(c => c.id === _tradeMyCardId);
-      if (myCard) document.getElementById('tradePreviewMine').innerHTML = `<img src="${myCard.img}" style="width:100%;height:100%;object-fit:contain;">`;
+      if (myCard) document.getElementById('tradePreviewMine').innerHTML = makeMiniCardImage(myCard.img, myCard.name);
       if (_tradeTheirCardId) {
         const tc = SPIRIT_CARDS.find(c => c.id === _tradeTheirCardId);
-        if (tc) document.getElementById('tradePreviewTheirs').innerHTML = `<img src="${tc.img}" style="width:100%;height:100%;object-fit:contain;">`;
+        if (tc) document.getElementById('tradePreviewTheirs').innerHTML = makeMiniCardImage(tc.img, tc.name);
       } else {
         document.getElementById('tradePreviewTheirs').innerHTML = `<span style="font-size:18px;color:var(--sub);">?</span>`;
       }
@@ -1525,7 +1533,7 @@
         const sel = _tradeTheirCardId === card.id ? 'outline:2.5px solid #7c3aed;' : '';
         return `<div class="mini-card-wrap" style="cursor:pointer;" onclick="tradeSelectTheirCard(${card.id})">
           <div class="mini-card mini-card-img" style="${sel}">
-            <img src="${card.img}" style="width:100%;height:100%;object-fit:contain;display:block;">
+            ${makeMiniCardImage(card.img, card.name)}
           </div>
           <div style="font-size:10px;text-align:center;margin-top:3px;color:var(--sub);">${card.name}</div>
         </div>`;
@@ -2267,6 +2275,21 @@
         }, 0.02);
     }
 
+    function schedulePostDrawUserStatusRefresh() {
+      const run = function() {
+        if (!currentNickname) return;
+        loadUserStatus({ silent: true }).then(function() {
+          renderCollection();
+          renderDrawSection();
+        }).catch(function() {});
+      };
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(run, { timeout: 1800 });
+      } else {
+        setTimeout(run, 900);
+      }
+    }
+
     function closeDrawOverlay() {
       drawOverlayActive = false;
       clearDrawTimers();
@@ -2307,11 +2330,8 @@
         renderDrawSection();
         renderCollection();
         pendingCard = null;
-        switchSection('collection');
-        loadUserStatus({ silent: true }).then(function() {
-          renderCollection();
-          renderDrawSection();
-        }).catch(function() {});
+        switchSection('collection', { skipUserStatusRefresh: true });
+        schedulePostDrawUserStatusRefresh();
       }
       drawPackType = 'normal';
     }
@@ -2493,11 +2513,11 @@
                 drawState = 'card_back_wait';
                 gsap.set('#cardLoadingHint', { opacity: 0 });
                 enableRevealClick();
-              }, [], 0.46)
+              }, [], 0.01)
               .fromTo('#flipHint',
                 { opacity: 0, y: 10 },
                 { opacity: 0.72, y: 0, duration: 0.28, ease: 'power2.out' },
-                0.46
+                0.01
               );
           }
         })
@@ -3179,7 +3199,8 @@
     let _currentSection = 'mission';
     const _sectionScrollPos = {};
     let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/14 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, msgOpen:{open:false} };
-    function switchSection(name) {
+    function switchSection(name, options) {
+      const opts = options || {};
       const prev = _currentSection;
       _sectionScrollPos[prev] = window.scrollY;
       Object.values(SECTION_IDS).forEach(id => {
@@ -3197,7 +3218,9 @@
       }
       if (name === 'collection') {
         renderCollection();
-        loadUserStatus({ silent: true }).then(() => { renderCollection(); loadTrades(); }).catch(() => {});
+        if (!opts.skipUserStatusRefresh) {
+          loadUserStatus({ silent: true }).then(() => { renderCollection(); loadTrades(); }).catch(() => {});
+        }
       }
       if (name === 'secret') { loadBBB(); }
       if (name === 'pilgrim') { loadBBB(); }
@@ -4493,7 +4516,7 @@
       slot.innerHTML = `
         <div class="hp-card-frame">
           <div class="hp-card" style="margin-top:8px;">
-            <img src="images/h&amp;p익명.jpeg" class="hp-card-img" alt="Hold &amp; Pray" />
+            <img src="images/h&amp;p익명.webp" class="hp-card-img" alt="Hold &amp; Pray" />
             <div class="hp-overlay">
               <p class="hp-overlay-text">${escHtml(card.content).replace(/ (\d+\.) /g, '<br>$1 ')}</p>
             </div>

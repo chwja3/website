@@ -297,7 +297,7 @@
     .pack {
       width: 150px; height: 239px;
       border-radius: 14px;
-      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-image: url('images/앤카드팩디자인배경제거.webp');
       background-size: 100% 100%;
       border: none;
       box-shadow: 0 14px 40px rgba(0,0,0,0.55), 0 0 20px rgba(196,128,0,0.2);
@@ -306,10 +306,10 @@
       cursor: pointer;
       display: flex; flex-direction: column; align-items: center;
       transition: transform .2s;
-      -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
+      -webkit-mask-image: url('images/앤카드팩디자인배경제거.webp');
       -webkit-mask-size: 100% 100%;
       -webkit-mask-repeat: no-repeat;
-      mask-image: url('images/앤카드팩디자인배경제거.png');
+      mask-image: url('images/앤카드팩디자인배경제거.webp');
       mask-size: 100% 100%;
       mask-repeat: no-repeat;
     }
@@ -391,7 +391,7 @@
       -webkit-clip-path: inset(0 round 12px);
       clip-path: inset(0 round 12px);
       transform: translateZ(0.1px);
-      background-image: url('images/앤카드뒷면최최종.png');
+      background-image: url('images/앤카드뒷면최최종.webp');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 100% 100%;
@@ -922,7 +922,7 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background-image: url('images/앤카드뒷면최최종.png');
+      background-image: url('images/앤카드뒷면최최종.webp');
       background-repeat: no-repeat;
       background-position: center center;
       background-size: 100% 100%;
@@ -1206,16 +1206,16 @@
     .c-pack {
       width: 150px; height: 239px;
       border-radius: 14px;
-      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-image: url('images/앤카드팩디자인배경제거.webp');
       background-size: 100% 100%;
       border: none;
       overflow: hidden;
       clip-path: inset(0 round 14px);
       display: flex; flex-direction: column; align-items: center;
-      -webkit-mask-image: url('images/앤카드팩디자인배경제거.png');
+      -webkit-mask-image: url('images/앤카드팩디자인배경제거.webp');
       -webkit-mask-size: 100% 100%;
       -webkit-mask-repeat: no-repeat;
-      mask-image: url('images/앤카드팩디자인배경제거.png');
+      mask-image: url('images/앤카드팩디자인배경제거.webp');
       mask-size: 100% 100%;
       mask-repeat: no-repeat;
       backface-visibility: hidden;
@@ -1257,7 +1257,7 @@
     /* ════ 찢긴 팩 윗조각 ════ */
     #packTopPiece {
       position: absolute; border-radius: 14px 14px 0 0;
-      background-image: url('images/앤카드팩디자인배경제거.png');
+      background-image: url('images/앤카드팩디자인배경제거.webp');
       background-size: 100% 1000%;
       background-position: top center;
       border: none;
@@ -1370,6 +1370,13 @@
       padding: 0;
       border: none;
       overflow: visible;
+    }
+    .mini-card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      aspect-ratio: 637 / 1014;
     }
 
     .coll-subtitle {
