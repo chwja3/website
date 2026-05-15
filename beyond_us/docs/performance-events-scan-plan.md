@@ -33,3 +33,12 @@
 4. `MissionProgress` projection 추가.
 5. dashboard를 `MissionProgress` 기준으로 전환.
 6. 기존 Events 전체 집계는 admin 수동 재계산/검증 함수로만 유지.
+Follow-up. userStatus/saveCheckin Events 의존 축소.
+
+목표는 사용자 앱의 첫 진입, 현황 동기화, 사전미션 제출 전 검증에서 Events 전체 행 읽기를 줄이는 것이다.
+
+1. MissionProgress에 날짜별 제출 인덱스 projection을 추가한다.
+2. saveCheckin은 MISSION_PROGRESS_READY=true일 때 MissionProgress를 우선 사용해 오늘 제출 항목과 주차 점수를 계산한다.
+3. getUserStatus는 MissionProgress를 우선 사용해 weekScore, todayItems, todayIndices, weekDates, earnedTicketThisWeek를 만든다.
+4. projection이 준비되지 않았거나 특정 사용자의 projection row가 없으면 기존 Events_readByUser 경로로 fallback한다.
+5. adminRebuildEventDerivedViews 또는 rebuildMissionProgressFromEvents를 실행하면 새 projection 컬럼이 채워져야 한다.

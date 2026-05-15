@@ -158,6 +158,7 @@ const SCHEMA = Object.freeze({
       submissionEventCount: 'submissionEventCount',
       slotCountsJson: 'slotCountsJson',
       updatedAt: 'updatedAt',
+      dateSlotIndicesJson: 'dateSlotIndicesJson',
     }),
   }),
   TRADES: Object.freeze({
@@ -454,6 +455,7 @@ const MISSION_PROGRESS_COLUMN_FALLBACK = Object.freeze({
   submissionEventCount: 6,
   slotCountsJson: 7,
   updatedAt: 8,
+  dateSlotIndicesJson: 9,
 });
 const MISSION_PROGRESS_COL_COUNT = Object.keys(SCHEMA.MISSION_PROGRESS.columns).length;
 const TRADES_COLUMN_FALLBACK = Object.freeze({
@@ -3700,8 +3702,20 @@ function getOrCreateMissionProgressSheet_() {
     sheet = ss.insertSheet(SHEET_NAMES.MISSION_PROGRESS);
     sheet.getRange(SCHEMA.MISSION_PROGRESS.headerRow, 1, 1, MISSION_PROGRESS_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.MISSION_PROGRESS)]);
     sheet.setFrozenRows(1);
+  } else {
+    ensureMissionProgressSheetHeaders_(sheet);
   }
   return sheet;
+}
+
+function ensureMissionProgressSheetHeaders_(sheet) {
+  const expected = getSchemaHeaders_(SCHEMA.MISSION_PROGRESS);
+  const width = Math.max(sheet.getLastColumn(), expected.length);
+  const headers = sheet.getRange(SCHEMA.MISSION_PROGRESS.headerRow, 1, 1, width).getValues()[0];
+  expected.forEach(function(header, index) {
+    if (headers.indexOf(header) !== -1) return;
+    sheet.getRange(SCHEMA.MISSION_PROGRESS.headerRow, index + 1).setValue(header);
+  });
 }
 
 function weekNumberFromWeekKey_(weekKey) {
@@ -3738,6 +3752,7 @@ function missionProgressRowToRecord_(row, col) {
     dateKeys: parseJsonSafe_(row[col.dateKeysJson], []),
     submissionEventCount: Number(row[col.submissionEventCount]) || 0,
     slotCounts: parseJsonSafe_(row[col.slotCountsJson], {}),
+    dateSlotIndices: parseJsonSafe_(row[col.dateSlotIndicesJson], {}),
     updatedAt: String(row[col.updatedAt] || ''),
   };
 }
@@ -3753,6 +3768,7 @@ function missionProgressRecordToRow_(record, col) {
   row[col.submissionEventCount] = Number(record.submissionEventCount) || 0;
   row[col.slotCountsJson] = JSON.stringify(record.slotCounts || {});
   row[col.updatedAt] = record.updatedAt || new Date().toISOString();
+  row[col.dateSlotIndicesJson] = JSON.stringify(record.dateSlotIndices || {});
   return row;
 }
 
@@ -3767,6 +3783,63 @@ function getMissionProgressRecords_() {
   });
 }
 
+function getMissionProgressRecordForUserWeek_(userId, weekKey) {
+  if (!isMissionProgressReady_()) return null;
+  const cleanUserId = getCanonicalUserId_(userId);
+  const cleanWeekKey = String(weekKey || '').trim();
+  if (!cleanUserId || !cleanWeekKey) return null;
+  const sheet = getOrCreateMissionProgressSheet_();
+  const col = getMissionProgressColumns_(sheet);
+  const rows = getMissionProgressRows_(sheet);
+  const lookup = getUserCanonicalLookup_();
+  for (let i = 0; i < rows.length; i++) {
+    if (!isSameOwnedUserId_(rows[i][col.userId], cleanUserId, lookup)) continue;
+    if (String(rows[i][col.weekKey] || '').trim() !== cleanWeekKey) continue;
+    return missionProgressRowToRecord_(rows[i], col);
+  }
+  return {
+    userId: cleanUserId,
+    weekKey: cleanWeekKey,
+    week: weekNumberFromWeekKey_(cleanWeekKey),
+    weekTitle: '',
+    totalScore: 0,
+    dateKeys: [],
+    submissionEventCount: 0,
+    slotCounts: {},
+    dateSlotIndices: {},
+    updatedAt: '',
+  };
+}
+
+function getMissionProgressStateForUserWeek_(userId, weekKey, config, dateKey) {
+  if (!isMissionProgressReady_()) return null;
+  const record = getMissionProgressRecordForUserWeek_(userId, weekKey);
+  if (!record) return null;
+  const cleanDateKey = eventDateKey_(dateKey);
+  const dateKeys = Array.isArray(record.dateKeys) ? record.dateKeys : [];
+  const dateSlotIndices = record.dateSlotIndices || {};
+  if (cleanDateKey && dateKeys.indexOf(cleanDateKey) !== -1 && !Array.isArray(dateSlotIndices[cleanDateKey])) {
+    return null;
+  }
+  const todayIndices = (cleanDateKey && Array.isArray(dateSlotIndices[cleanDateKey]))
+    ? dateSlotIndices[cleanDateKey]
+        .map(function(idx) { return Number(idx); })
+        .filter(function(idx) { return !isNaN(idx) && config.items[idx] !== undefined; })
+    : [];
+  const todayItems = todayIndices.map(function(idx) { return config.items[idx]; });
+  const weekScore = Number(record.totalScore) || 0;
+  const drawThreshold = Number(config.drawThreshold) || 0;
+  return {
+    ok: true,
+    record: record,
+    weekScore: weekScore,
+    todayItems: todayItems,
+    todayIndices: todayIndices,
+    weekDates: dateKeys.slice(),
+    earnedTicketThisWeek: drawThreshold > 0 && weekScore >= drawThreshold,
+  };
+}
+
 function applyMissionProgressSubmission_(record, score, dateKey, slotIndices, nowIso) {
   const dateSet = {};
   (record.dateKeys || []).forEach(function(key) {
@@ -3775,14 +3848,27 @@ function applyMissionProgressSubmission_(record, score, dateKey, slotIndices, no
   const cleanDateKey = eventDateKey_(dateKey);
   if (cleanDateKey) dateSet[cleanDateKey] = true;
   const slotCounts = record.slotCounts || {};
+  const dateSlotIndices = record.dateSlotIndices || {};
+  const dateSlots = cleanDateKey ? (dateSlotIndices[cleanDateKey] || []) : [];
+  const dateSlotSet = {};
+  dateSlots.forEach(function(idx) {
+    if (typeof idx === 'number') dateSlotSet[String(idx)] = true;
+  });
   (slotIndices || []).forEach(function(idx) {
     const key = String(idx);
     slotCounts[key] = (Number(slotCounts[key]) || 0) + 1;
+    if (cleanDateKey && typeof idx === 'number') dateSlotSet[key] = true;
   });
+  if (cleanDateKey) {
+    dateSlotIndices[cleanDateKey] = Object.keys(dateSlotSet)
+      .map(function(idx) { return Number(idx); })
+      .sort(function(a, b) { return a - b; });
+  }
   record.totalScore = (Number(record.totalScore) || 0) + (Number(score) || 0);
   record.submissionEventCount = (Number(record.submissionEventCount) || 0) + 1;
   record.dateKeys = Object.keys(dateSet).sort();
   record.slotCounts = slotCounts;
+  record.dateSlotIndices = dateSlotIndices;
   record.updatedAt = nowIso || new Date().toISOString();
   return record;
 }
@@ -3813,6 +3899,7 @@ function updateMissionProgressForSubmission_(userId, weekKey, config, score, dat
       dateKeys: [],
       submissionEventCount: 0,
       slotCounts: {},
+      dateSlotIndices: {},
       updatedAt: '',
     };
   }
@@ -3850,6 +3937,7 @@ function rebuildMissionProgressFromEvents_() {
           dateKeys: [],
           submissionEventCount: 0,
           slotCounts: {},
+          dateSlotIndices: {},
           updatedAt: '',
         };
       }
@@ -4009,21 +4097,30 @@ function saveCheckin(items, userId, weekKey, dateKey, score, requestId) {
   // 서버사이드 중복 제출 방지: Events payload의 텍스트 + 인덱스 둘 다 체크
   const submittedToday   = new Set();
   const submittedIndices = new Set();
-  const userEvents = Events_readByUser(userId);
-  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, effectiveWeekKey);
   let prevWeekScore = 0;
-  if (submittedEvents.length) {
-    for (const event of submittedEvents) {
-      prevWeekScore += getMissionEventScore_(event);
-      if (getMissionEventDateKey_(event) === today) {
-        getMissionEventItems_(event).forEach(function(item) {
-          submittedToday.add(item);
-          const idx = config.items.indexOf(item);
-          if (idx >= 0) submittedIndices.add(idx);
-        });
-        getMissionEventIndices_(event).forEach(function(idx) {
-          if (typeof idx === 'number') submittedIndices.add(idx);
-        });
+  const progressState = getMissionProgressStateForUserWeek_(userId, effectiveWeekKey, config, today);
+  if (progressState && progressState.ok) {
+    prevWeekScore = Number(progressState.weekScore) || 0;
+    (progressState.todayItems || []).forEach(function(item) { submittedToday.add(item); });
+    (progressState.todayIndices || []).forEach(function(idx) {
+      if (typeof idx === 'number') submittedIndices.add(idx);
+    });
+  } else {
+    const userEvents = Events_readByUser(userId);
+    const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, effectiveWeekKey);
+    if (submittedEvents.length) {
+      for (const event of submittedEvents) {
+        prevWeekScore += getMissionEventScore_(event);
+        if (getMissionEventDateKey_(event) === today) {
+          getMissionEventItems_(event).forEach(function(item) {
+            submittedToday.add(item);
+            const idx = config.items.indexOf(item);
+            if (idx >= 0) submittedIndices.add(idx);
+          });
+          getMissionEventIndices_(event).forEach(function(idx) {
+            if (typeof idx === 'number') submittedIndices.add(idx);
+          });
+        }
       }
     }
   }
@@ -4305,9 +4402,18 @@ function getUserStatus(userId, weekKey, configOverride) {
   const weekStart = monday.toISOString().slice(0, 10);
   const weekEnd   = sunday.toISOString().slice(0, 10);
 
-  const userEvents = Events_readByUser(userId);
-  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, weekKey);
   let earnedTicketThisWeek = false;
+  let userEvents = null;
+  const progressState = getMissionProgressStateForUserWeek_(userId, weekKey, config, today);
+  if (progressState && progressState.ok) {
+    weekScore = Number(progressState.weekScore) || 0;
+    (progressState.todayItems || []).forEach(function(item) { todayItems.push(item); });
+    (progressState.todayIndices || []).forEach(function(idx) { todayIndices.push(idx); });
+    (progressState.weekDates || []).forEach(function(dateKey) { weekDates.push(dateKey); });
+    earnedTicketThisWeek = progressState.earnedTicketThisWeek === true;
+  } else {
+  userEvents = Events_readByUser(userId);
+  const submittedEvents = getMissionSubmittedEventsForConfig_(userEvents, config, weekKey);
   submittedEvents.forEach(function(event) {
     weekScore += getMissionEventScore_(event);
     const rowDate = getMissionEventDateKey_(event);
@@ -4333,12 +4439,13 @@ function getUserStatus(userId, weekKey, configOverride) {
       earnedTicketThisWeek = true;
     }
   });
-  let specialPackStats = getSpecialPackStatsFromEvents_(userEvents, userId);
+  }
+  let specialPackStats = { totalEarned: 0, totalConsumed: 0, remaining: 0 };
   let raffle = getEmptyRaffleStats_();
 
   // 카드 뽑기 이력 (drawnThisWeek, weekCard)
   try {
-    if (userEvents.length) {
+    if (userEvents && userEvents.length) {
       for (const event of userEvents) {
         if (event.type !== EVENT_TYPES.CARD_DRAWN) continue;
         if (String(event.weekKey) !== weekKey) continue;
@@ -4364,7 +4471,12 @@ function getUserStatus(userId, weekKey, configOverride) {
     const attendanceRows = getRetreatAttendanceRows_(attendanceSheet);
     const snapshot = getCurrentCollectionSnapshotFromRows_(cleanUserId, collectionRows, collectionCol);
     const specialPackProjection = getSpecialPackStatsFromSnapshot_(snapshot);
-    if (specialPackProjection.projected) specialPackStats = specialPackProjection;
+    if (specialPackProjection.projected) {
+      specialPackStats = specialPackProjection;
+    } else {
+      if (!userEvents) userEvents = Events_readByUser(userId);
+      specialPackStats = getSpecialPackStatsFromEvents_(userEvents, userId);
+    }
     pendingDraws = Number(snapshot.remaining) || 0;
     SPIRIT_CARDS.forEach(card => {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;

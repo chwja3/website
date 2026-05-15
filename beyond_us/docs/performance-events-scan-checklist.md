@@ -10,3 +10,10 @@
 - [x] `MissionProgress` 또는 동등한 dashboard projection 시트 설계.
 - [x] dashboard API를 projection 기준으로 전환.
 - [x] Events 기준 dashboard 재계산 함수는 admin 수동 복구 도구로 유지.
+Follow-up checklist.
+
+- [x] MissionProgress에 날짜별 제출 인덱스 projection 추가.
+- [x] getUserStatus의 미션 상태 계산을 MissionProgress 우선으로 전환.
+- [x] saveCheckin의 제출 전 중복 검증을 MissionProgress 우선으로 전환.
+- [x] projection 미준비 시 기존 Events fallback 유지.
+- [x] 문법 검사와 diff 확인.
