@@ -3996,18 +3996,18 @@ function getUserStatus(userId, weekKey, configOverride) {
       const cnt = Number(snapshot.cardCounts[card.id]) || 0;
       for (let j = 0; j < cnt; j++) collection.push({...card});
     });
-    // 추첨권 통계는 실제 RaffleTickets 행 기준이므로, 현재 조건을 먼저 backfill한다.
-    try { ensureUserRaffleTickets_(cleanUserId); } catch(e) {}
+    const raffleRows = getRaffleTicketRows_();
     raffle = getRaffleStatsFromRows_(cleanUserId, {
       collectionRows: collectionRows,
       collectionCol: collectionCol,
+      raffleRows: raffleRows,
       usersRows: usersRows,
       userCol: userCol,
       attendanceRows: attendanceRows,
       attendanceCol: attendanceCol,
       currentSnapshot: snapshot,
     });
-    raffle.myTicketNumbers = getUserRaffleTicketNumbers_(cleanUserId);
+    raffle.myTicketNumbers = getUserRaffleTicketNumbers_(cleanUserId, raffleRows);
   } catch(e) {}
 
   return {
@@ -6478,11 +6478,11 @@ function ensureUserRaffleTickets_(userId, options) {
   return { ok: true, issued: issued };
 }
 
-function getUserRaffleTicketNumbers_(userId) {
+function getUserRaffleTicketNumbers_(userId, raffleRows) {
   const cleanUser = getCanonicalUserId_(userId);
   if (!cleanUser) return [];
   if (isUserRaffleExcluded_(cleanUser)) return [];
-  const rows = getRaffleTicketRows_();
+  const rows = raffleRows || getRaffleTicketRows_();
   const lookup = getUserCanonicalLookup_();
   const map = {};
   rows.forEach(function(r) {

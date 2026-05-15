@@ -1,0 +1,9 @@
+# 성능 최적화 컨텍스트
+
+2026-05-15. 느림의 핵심 원인은 `Events`를 원장과 실시간 조회 테이블로 동시에 쓰는 구조다. `Events`는 계속 append-only 원장으로 유지하되, 앱의 평상시 조회는 projection을 읽게 바꾸기로 했다.
+
+첫 변경은 `getUserStatus()`의 읽기 전용화다. 기존에는 사용자가 상태를 조회할 때도 `ensureUserRaffleTickets_()`가 실행되어 `RaffleTickets`를 쓰거나 cache invalidation을 일으킬 수 있었다. 이제 추첨권 발급은 명시적인 쓰기 경로에서만 발생해야 한다.
+
+Collection은 앞으로 이벤트 발생 시점에 delta로 업데이트하는 방향이 더 낫다. 다만 원장과 projection이 어긋날 수 있으므로, 기존 `Events 기준으로 Collection 재계산` 버튼은 삭제하지 않고 복구/검증 버퍼로 남긴다.
+
+Dashboard는 `MissionProgress` 같은 사용자/주차 projection을 두는 방향이 가장 안전하다. 단순 숫자 aggregate만 저장하면 빠르지만, 중복 제출, 유저 비활성화, 교구 변경, 주차별 참여자 수 같은 정책 변경에 취약하다.
