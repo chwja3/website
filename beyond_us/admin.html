@@ -606,7 +606,7 @@
             <div>
               <h2 class="card-title" style="margin:0;">Events 기준 재계산</h2>
               <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
-                Collection 캐시와 UserDashboard 공식을 Events 기준으로 다시 만듭니다.
+                Collection, MissionProgress, UserDashboard를 Events 기준으로 다시 만들고 대시보드를 새로고침합니다.
               </p>
             </div>
             <button class="btn btn-primary" id="rebuildEventsDashboardBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="runRebuildEventDerivedViews()">재계산</button>
@@ -2440,18 +2440,19 @@
     }
 
     async function runRebuildEventDerivedViews() {
-      if (!confirm('Events 기준으로 Collection과 UserDashboard를 다시 계산합니다.\n진행할까요?')) return;
+      if (!confirm('Events 기준으로 Collection, MissionProgress, UserDashboard를 다시 계산합니다.\n진행할까요?')) return;
       const btn = document.getElementById('rebuildEventsDashboardBtn');
       const statusEl = document.getElementById('rebuildEventsDashboardStatus');
       const rowLimit = Number(document.getElementById('eventDashboardRows').value) || 300;
       btn.disabled = true;
       btn.textContent = '재계산 중...';
-      statusEl.textContent = '';
+      statusEl.textContent = 'Events 기준 projection을 다시 만드는 중입니다.';
       statusEl.className = 'status';
       try {
         const res = await post({ action: 'adminRebuildEventDerivedViews', adminPw, rowLimit });
         if (res.ok) {
-          statusEl.textContent = `✅ 완료. Collection ${res.collectionRebuilt}명, UserDashboard ${res.dashboardRows}행`;
+          const missionProgress = Number(res.missionProgressRebuilt) || 0;
+          statusEl.textContent = `완료. Collection ${res.collectionRebuilt || 0}명, MissionProgress ${missionProgress}행, UserDashboard ${res.dashboardRows || 0}행. 대시보드를 새로고침했습니다.`;
           statusEl.className = 'status ok';
           await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin()]);
         } else {
