@@ -1012,7 +1012,7 @@ function doGet(e) {
     const parish = e.parameter.parish || '';
     return jsonOutput(findNickname(name, parish));
   }
-  if (action === 'getHoldPray') return jsonOutput(getHoldPray(e.parameter.weekKey || '', e.parameter.nickname || ''));
+  if (action === 'getHoldPray') return jsonOutput(getHoldPrayCached_(e.parameter.weekKey || '', e.parameter.nickname || ''));
   if (action === 'getCurrentWeek') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
     return jsonOutput({ ok: true, week: getCurrentWeek_() });
@@ -1055,14 +1055,14 @@ function doGet(e) {
     if (!uid) return jsonOutput({ error: 'missing_userId' });
     const auth = requireSessionForUser_(e.parameter, uid);
     if (auth) return jsonOutput(auth);
-    return jsonOutput(getBBB(uid));
+    return jsonOutput(getBBBCached_(uid));
   }
   if (action === 'getBBBMessages') {
     const uid = e.parameter.userId || '';
     if (!uid) return jsonOutput({ error: 'missing_userId' });
     const auth = requireSessionForUser_(e.parameter, uid);
     if (auth) return jsonOutput(auth);
-    return jsonOutput(getBBBMessages(uid));
+    return jsonOutput(getBBBMessagesCached_(uid));
   }
   if (action === 'adminGetBBB') {
     if (!isAdminAuthorized_(e.parameter.adminPw)) return jsonOutput({ error: 'unauthorized' });
@@ -1453,11 +1453,13 @@ function adminRebuildEventDerivedViews(body) {
     const missionProgress = rebuildMissionProgressFromEvents_();
     const dashboard = setupUserDashboard(rowLimit);
     clearDashboardCache_();
+    const dashboardData = getDashboardDataCached_({ force: true });
     return {
       ok: true,
       collectionRebuilt: collection.rebuilt,
       missionProgressRebuilt: missionProgress.rebuilt,
       dashboardRows: dashboard.rowsPrepared,
+      dashboardCached: !!(dashboardData && dashboardData.ok),
       collectionSheet: SHEET_NAMES.COLLECTION,
       missionProgressSheet: SHEET_NAMES.MISSION_PROGRESS,
       dashboardSheet: SHEET_NAMES.USER_DASHBOARD,
@@ -3224,6 +3226,8 @@ function getUsersSheet_() {
  * Apps Script 에디터에서 직접 Run으로 실행 (1회성).
  * 실행한 GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 적용됨.
  */
+/*
+ * Manual-only parish migration helper, disabled 2026-05-15.
 function migrateParishJangnyeon() {
   const sheet = getSpreadsheet().getSheetByName(SHEET_NAMES.USERS);
   if (!sheet) throw new Error('Users 시트를 찾을 수 없습니다.');
@@ -3245,6 +3249,8 @@ function migrateParishJangnyeon() {
   }
   Logger.log('migrateParishJangnyeon 완료. 변경된 행 수: ' + changed + ' / 전체 ' + values.length);
 }
+
+ */
 
 function ensureUserSessionColumns_(sheet) {
   const col = getUserColumns_(sheet);
@@ -3406,6 +3412,14 @@ const DASHBOARD_STATS_MAX_AGE_SECONDS = 600;
 const DASHBOARD_STATS_CHUNK_SIZE = 40000;
 const RAFFLE_SUMMARY_CACHE_VERSION = 'raffle_ticket_summary_v1';
 const RAFFLE_SUMMARY_CACHE_SECONDS = 90;
+const HOLD_PRAY_CACHE_VERSION = 'hold_pray_v1';
+const HOLD_PRAY_CACHE_SECONDS = 120;
+const HOLD_PRAY_CACHE_REVISION_KEY = 'CACHE_REVISION_HOLD_PRAY';
+const BBB_CACHE_VERSION = 'bbb_v1';
+const BBB_MESSAGES_CACHE_VERSION = 'bbb_messages_v1';
+const BBB_CACHE_SECONDS = 45;
+const BBB_MESSAGES_CACHE_SECONDS = 45;
+const BBB_CACHE_REVISION_KEY = 'CACHE_REVISION_BBB';
 
 function getDashboardDataCached_(options) {
   const opts = options || {};
@@ -3558,6 +3572,54 @@ function clearUserCache_(userId) {
 
 function clearUserDerivedCaches_(userId) {
   clearUserCache_(userId);
+}
+
+function getDomainCacheRevision_(key) {
+  return getOptionalScriptProperty_(key) || '0';
+}
+
+function bumpDomainCacheRevision_(key) {
+  try {
+    PropertiesService.getScriptProperties().setProperty(key, String(new Date().getTime()));
+  } catch(e) {}
+}
+
+function getScopedDomainCacheKey_(version, revisionKey, scope) {
+  return cacheKey_(version, getDomainCacheRevision_(revisionKey) + ':' + String(scope || '').trim());
+}
+
+function cachePutJsonIfSmall_(key, value, seconds) {
+  try {
+    const raw = JSON.stringify(value || {});
+    if (raw.length > 90000) return;
+    CacheService.getScriptCache().put(key, raw, seconds);
+  } catch(e) {}
+}
+
+function clearHoldPrayCache_(userId, weekKey) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return;
+  const weeks = {};
+  if (weekKey) weeks[String(weekKey)] = true;
+  try { weeks['w' + getCurrentWeek_()] = true; } catch(e) {}
+  Object.keys(weeks).forEach(function(wk) {
+    cacheRemove_(getScopedDomainCacheKey_(HOLD_PRAY_CACHE_VERSION, HOLD_PRAY_CACHE_REVISION_KEY, cleanUser + ':' + wk));
+  });
+}
+
+function bumpHoldPrayCacheRevision_() {
+  bumpDomainCacheRevision_(HOLD_PRAY_CACHE_REVISION_KEY);
+}
+
+function clearBBBCache_(userId) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return;
+  cacheRemove_(getScopedDomainCacheKey_(BBB_CACHE_VERSION, BBB_CACHE_REVISION_KEY, cleanUser));
+  cacheRemove_(getScopedDomainCacheKey_(BBB_MESSAGES_CACHE_VERSION, BBB_CACHE_REVISION_KEY, cleanUser));
+}
+
+function bumpBBBCacheRevision_() {
+  bumpDomainCacheRevision_(BBB_CACHE_REVISION_KEY);
 }
 
 function clearConfigCaches_() {
@@ -4129,9 +4191,12 @@ function rebuildMissionProgressFromEvents_() {
   return { ok: true, rebuilt: rows.length, sheetName: SHEET_NAMES.MISSION_PROGRESS };
 }
 
+/*
+ * Manual-only projection wrapper, disabled 2026-05-15. Use adminRebuildEventDerivedViews instead.
 function rebuildMissionProgressFromEvents() {
   return logJsonResult_('rebuildMissionProgressFromEvents result', rebuildMissionProgressFromEvents_());
 }
+ */
 
 function buildMissionDashboardWeekSummaryFromProgress_(week, config, progressRecords, userInfoMap) {
   const weekKey = 'w' + week;
@@ -5195,6 +5260,18 @@ function fixHoldPrayBlankNames() {
 }
  */
 
+function getHoldPrayCached_(weekKey, nickname) {
+  const cleanNick = String(nickname || '').trim();
+  const effectiveWeekKey = weekKey ? String(weekKey) : 'w' + getCurrentWeek_();
+  if (!cleanNick) return getHoldPray(effectiveWeekKey, cleanNick);
+  const key = getScopedDomainCacheKey_(HOLD_PRAY_CACHE_VERSION, HOLD_PRAY_CACHE_REVISION_KEY, cleanNick + ':' + effectiveWeekKey);
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getHoldPray(effectiveWeekKey, cleanNick);
+  if (data && data.ok) cachePutJsonIfSmall_(key, data, HOLD_PRAY_CACHE_SECONDS);
+  return data;
+}
+
 function getHoldPray(weekKey, nickname) {
   if (!weekKey) weekKey = 'w' + getCurrentWeek_();
   nickname = getCanonicalUserId_(nickname) || String(nickname || '').trim();
@@ -5391,6 +5468,7 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
       ticketAwarded = true;
     }
   }
+  clearHoldPrayCache_(nickname, weekKey);
   return { ok: true, correct, ticketAwarded };
   } finally {
     lock.releaseLock();
@@ -5608,6 +5686,7 @@ function setTabSettings(body) {
     }
   }
   clearConfigCaches_();
+  bumpBBBCacheRevision_();
   return { ok: true };
 }
 
@@ -6640,6 +6719,8 @@ const ALL_WEEK_DATA = [
   ]},
 ];
 
+/*
+ * Manual-only legacy mission setup helper, disabled 2026-05-15.
 function setupAllWeeks() {
   ALL_WEEK_DATA.forEach((w, i) => {
     setMissionConfigInDefinitions_({
@@ -6658,11 +6739,17 @@ function setupAllWeeks() {
 
 // ── 일회성 config/raw_checkins 복구 (B5/B6 충돌 수정 후 1회 실행) ───────────
 // GAS 에디터에서 직접 실행: fixConfigSheetConflict()
+ */
+
+/*
+ * Manual-only legacy config repair helper, disabled 2026-05-15.
 function fixConfigSheetConflict() {
   return { ok: false, error: 'deprecated_config_raw_checkins', message: 'config/raw_checkins 복구 도구는 Events 전환 이후 사용하지 않습니다.' };
 }
 
 // ── 미션 config 읽기/쓰기 ─────────────────────────
+ */
+
 function getMissionConfig(week) {
   if (week < 1 || week > 6) return { error: 'invalid_week' };
   const config = getMissionConfigModel_(week);
@@ -6824,6 +6911,7 @@ function postHpHint(body) {
   const id = new Date().getTime();
   const content = '[H&P 힌트 요청] 주차: ' + weekKey + ', 카드: ' + (cardIndex + 1) + '번 | 정답: ' + answerInfo;
   sheet.appendRow([id, nickname, content, new Date().toISOString(), '', '']);
+  clearHoldPrayCache_(nickname, weekKey);
   return { ok: true, id: String(id) };
 }
 
@@ -6882,6 +6970,7 @@ function editInquiry(body) {
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][col.id]) === id && isSameUserId_(rows[i][col.nickname], nickname)) {
       sheet.getRange(i + SCHEMA.INQUIRIES.dataStartRow, col.content + 1).setValue(content);
+      bumpHoldPrayCacheRevision_();
       return { ok: true };
     }
   }
@@ -6901,11 +6990,13 @@ function deleteInquiry(body) {
     if (String(rows[i][col.id]) !== id) continue;
     if (isAdminAuthorized_(body.adminPw)) {
       sheet.deleteRow(rowIndex);
+      bumpHoldPrayCacheRevision_();
       return { ok: true };
     }
     const nickname = getCanonicalUserId_(body.nickname) || String(body.nickname || '').trim();
     if (isSameUserId_(rows[i][col.nickname], nickname) && hasValidUserAuth_(body, nickname)) {
       sheet.deleteRow(rowIndex);
+      bumpHoldPrayCacheRevision_();
       return { ok: true };
     }
     return { error: 'unauthorized' };
@@ -6928,6 +7019,7 @@ function replyInquiry(body) {
       const rowIndex = i + SCHEMA.INQUIRIES.dataStartRow;
       sheet.getRange(rowIndex, col.reply + 1).setValue(reply);
       sheet.getRange(rowIndex, col.repliedAt + 1).setValue(reply ? new Date().toISOString() : '');
+      bumpHoldPrayCacheRevision_();
       return { ok: true };
     }
   }
@@ -9003,6 +9095,8 @@ function rebuildCollectionRow_(userId, eventsOverride) {
   };
 }
 
+/*
+ * Manual-only projection wrapper, disabled 2026-05-15. Use adminRebuildEventDerivedViews instead.
 function rebuildCollectionRowsFromEvents() {
   const lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) {
@@ -9024,6 +9118,8 @@ function rebuildCollectionRowsFromEvents() {
     lock.releaseLock();
   }
 }
+
+ */
 
 function rebuildCollectionRowsFromEvents_() {
   const inputs = getCollectionProjectionInputs_();
@@ -9426,12 +9522,16 @@ function rebuildCollectionSheet() {
  */
 
 // 어드민 래퍼 (adminPw 체크)
+/*
+ * Unused admin wrapper, disabled 2026-05-15. The doPost action calls rebuildCollectionRowsFromEvents_ directly.
 function adminRebuildCollection(body) {
   if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
   return rebuildCollectionRowsFromEvents_();
 }
 
 // Events → Collection 재계산. 기존 액션명은 하위 호환용으로 유지.
+ */
+
 function migrateCardDrawsToCollection() {
   return rebuildCollectionRowsFromEvents_();
 }
@@ -10411,6 +10511,7 @@ function adminApproveBBBPhoto(body) {
         String(body.adminId || 'admin'),
         String((rewardEvent && rewardEvent.eventId) || '')
       );
+      clearBBBCache_(userId);
       return { ok: true, rewarded: false, alreadyRewarded: true };
     }
 
@@ -10422,6 +10523,7 @@ function adminApproveBBBPhoto(body) {
     });
     const rewardEventId = appended && appended.event ? appended.event.eventId : '';
     setBBBPhotoApproval_(photoSheet, target.rowIndex, photoCol, 'approved', now, String(body.adminId || 'admin'), rewardEventId);
+    clearBBBCache_(userId);
     return { ok: true, rewarded: true, rewardEventId: rewardEventId };
   } finally {
     lock.releaseLock();
@@ -10456,6 +10558,7 @@ function adminRejectBBBPhoto(body) {
       String(body.adminId || 'admin'),
       ''
     );
+    clearBBBCache_(userId);
     return { ok: true, rejected: true };
   }
   return { error: 'photo_not_found' };
@@ -10508,6 +10611,7 @@ function uploadBBBPhoto(body) {
     }
 
     if (approvalRequired) {
+      clearBBBCache_(userId);
       return {
         ok: true,
         rewarded: false,
@@ -10555,6 +10659,7 @@ function uploadBBBPhoto(body) {
       }
     }
 
+    clearBBBCache_(userId);
     return { ok: true, rewarded };
   } finally {
     lock.releaseLock();
@@ -10580,6 +10685,7 @@ function deleteBBBPhoto(body) {
         }
       }
       photoSheet.deleteRow(i + SCHEMA.BBB_PHOTOS.dataStartRow);
+      clearBBBCache_(userId);
       break;
     }
   }
@@ -10598,6 +10704,7 @@ function adminWriteBBBRows(rows) {
     return [userId, careBuddyId, careBuddyName, false, secretBuddyId, secretBuddyName];
   });
   bbbSheet.getRange(SCHEMA.BBB.dataStartRow, 1, values.length, 6).setValues(values);
+  bumpBBBCacheRevision_();
   return { ok: true, written: values.length };
 }
 
@@ -10634,6 +10741,7 @@ function setupBBBMatching() {
     return [person.nickname, careBuddy.nickname, careBuddy.name, false, secretBuddy.nickname, secretBuddy.name];
   });
   bbbSheet.getRange(SCHEMA.BBB.dataStartRow, 1, rows.length, 6).setValues(rows);
+  bumpBBBCacheRevision_();
 
   Logger.log('BBB 매칭 완료: ' + rows.map(function(r) {
     const [userId, , careBuddyName, , , secretBuddyName] = r;
@@ -10650,6 +10758,17 @@ function setupBBBMatching() {
 }
 
 // ─ 내 BBB 정보 조회
+function getBBBCached_(userId) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return getBBB(cleanUser);
+  const key = getScopedDomainCacheKey_(BBB_CACHE_VERSION, BBB_CACHE_REVISION_KEY, cleanUser);
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getBBB(cleanUser);
+  if (data && data.ok) cachePutJsonIfSmall_(key, data, BBB_CACHE_SECONDS);
+  return data;
+}
+
 function getBBB(userId) {
   userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const bbbSheet = getOrCreateBBBSheet();
@@ -10801,6 +10920,7 @@ function guessBBBSecret(body) {
       });
       rewarded = true;
     }
+    bumpBBBCacheRevision_();
     return { ok: true, correct: true, secretName, secretNickname, rewarded };
   }
   return { ok: true, correct: false };
@@ -10844,10 +10964,23 @@ function sendBBBMessage(body) {
   }
   const msgId = 'bm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   msgSheet.appendRow([msgId, userId, careBuddyId, message, new Date().toISOString()]);
+  clearBBBCache_(userId);
+  clearBBBCache_(careBuddyId);
   return { ok: true };
 }
 
 // ─ 내가 받은 익명 메시지 조회 (발신자 숨김)
+function getBBBMessagesCached_(userId) {
+  const cleanUser = String(userId || '').trim();
+  if (!cleanUser) return getBBBMessages(cleanUser);
+  const key = getScopedDomainCacheKey_(BBB_MESSAGES_CACHE_VERSION, BBB_CACHE_REVISION_KEY, cleanUser);
+  const cached = cacheGetJson_(key);
+  if (cached) return cached;
+  const data = getBBBMessages(cleanUser);
+  if (data && data.ok) cachePutJsonIfSmall_(key, data, BBB_MESSAGES_CACHE_SECONDS);
+  return data;
+}
+
 function getBBBMessages(userId) {
   userId = getCanonicalUserId_(userId) || String(userId || '').trim();
   const msgSheet = getOrCreateBBBMessagesSheet();
@@ -10923,6 +11056,7 @@ function adminSetBBBMessageOpen(body) {
   }
   if (!updated) bbbSheet.appendRow(['msgOpen', open, '']);
   clearConfigCaches_();
+  bumpBBBCacheRevision_();
   return { ok: true, messageOpen: open };
 }
 

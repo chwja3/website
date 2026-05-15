@@ -1079,7 +1079,7 @@
         document.getElementById('weeklyParishDetailList').innerHTML = '';
       }
     }
-    document.getElementById('refreshCheckinBtn').addEventListener('click', () => loadCheckin({ force: true }));
+    document.getElementById('refreshCheckinBtn').addEventListener('click', () => loadCheckin());
 
     /* ── 앱 가입자 관리 ── */
     let _raffleAttendanceUsers = [];
@@ -2532,7 +2532,7 @@
           const missionProgress = Number(res.missionProgressRebuilt) || 0;
           statusEl.textContent = `완료. Collection ${res.collectionRebuilt || 0}명, MissionProgress ${missionProgress}행, UserDashboard ${res.dashboardRows || 0}행. 대시보드를 새로고침했습니다.`;
           statusEl.className = 'status ok';
-          await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin({ force: true })]);
+          await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin()]);
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
