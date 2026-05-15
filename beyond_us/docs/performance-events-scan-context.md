@@ -22,3 +22,5 @@ Follow-up context.
 2026-05-15. MissionProgress에 dateSlotIndicesJson 컬럼을 추가했다. rebuildMissionProgressFromEvents 또는 admin Events 기준 재계산을 실행하면 기존 mission.submitted 이벤트에서 날짜별 제출 인덱스가 다시 채워진다. 이후 getUserStatus와 saveCheckin은 MissionProgress를 우선 읽고, projection이 준비되지 않았거나 오늘 제출 기록의 날짜별 인덱스가 비어 있는 경우에만 Events_readByUser로 fallback한다.
 
 2026-05-15. 카드 뽑기 직후 추첨권 조건 확인은 updateCollectionRowWithDeltas 결과 snapshot을 재사용하도록 바꿨다. 기존 ensureUserRaffleTickets는 Collection을 다시 읽은 뒤 조건마다 issueRaffleTicket을 호출했지만, 이제 snapshot 기반 helper가 3종/5종/10종 조건을 계산하고 RaffleTickets를 한 번 읽어서 필요한 번호만 발급한다.
+
+2026-05-15. 카드팩 오버레이에서는 서버 draw 요청을 카드팩을 찢는 순간이 아니라 카드팩을 선택한 직후 시작하도록 앞당겼다. 찢기 애니메이션이 진행되는 동안 GAS 요청이 먼저 진행되므로, 사용자가 카드 클릭 가능 상태까지 기다리는 시간이 줄어드는 것을 기대한다. cache-busting 버전은 20260515l로 갱신했다.

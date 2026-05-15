@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515k';
+    const APP_VERSION = '20260515l';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1912,6 +1912,7 @@
     let drawServerTickets = null;
     let drawServerSpecialPacks = null;
     let drawPackType = 'normal';
+    let drawCardPromise = null;
 
     function scheduleDrawTimer(fn, delay) {
       var id = setTimeout(function() {
@@ -2074,6 +2075,7 @@
       drawServerCollection = null;
       drawServerTickets = null;
       drawServerSpecialPacks = null;
+      drawCardPromise = null;
       carouselCenter = 1;
 
       preloadDrawAssets();
@@ -2219,6 +2221,19 @@
     document.getElementById('drawMuteBtn').onclick = toggleSfxMute;
     updateMuteBtnUI();
 
+    function startDrawCardRequest() {
+      if (drawCardPromise) return drawCardPromise;
+      var drawAction = drawPackType === 'special' ? 'drawSpecialCard' : 'drawCard';
+      drawCardPromise = fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(), requestId: drawRequestId, packType: drawPackType }))
+      })
+      .then(function(r) { return r.json(); })
+      .catch(function() { return null; });
+      return drawCardPromise;
+    }
+
     /* ════ 캐러셀 ════ */
     (function() {
       var trackEl  = document.getElementById('carouselTrack');
@@ -2262,6 +2277,7 @@
         if (drawState !== 'carousel') return;
         drawState = 'pack_zoom';
         playSfx('packClick');
+        startDrawCardRequest();
         gsap.set('#carouselLayer', { pointerEvents: 'none' });
 
         gsap.timeline({ onComplete: function() {
@@ -2304,15 +2320,9 @@
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
         // GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
-        var drawAction = drawPackType === 'special' ? 'drawSpecialCard' : 'drawCard';
-        var cardPromise = fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(), requestId: drawRequestId, packType: drawPackType }))
-        })
-        .then(function(r) { return r.json(); })
-        .catch(function() { return null; });
+        var cardPromise = startDrawCardRequest();
         cardPromise.then(function(result) {
+          if (!drawOverlayActive) return;
           if (result && !result.error && result.card) {
             pendingCard = SPIRIT_CARDS.find(function(c) { return Number(c.id) === Number(result.card.id); }) || result.card;
             drawIsNew = (result.isNew !== false); // false 명시 시만 중복, undefined/true → 신규
