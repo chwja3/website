@@ -1318,7 +1318,8 @@
           const details       = c.tradeInFromDetails || (c.tradeInFrom || []).map(f => ({from: f, partnerReceived: false}));
           const tfNeedDirect  = details.filter(d => !d.partnerReceived); // TF가 직접 줘야 하는 교환취득
           const tfFromPartner = details.filter(d => d.partnerReceived);  // 파트너에게 받아야 하는 교환취득
-          const tfTarget      = Math.max(0, c.drew - c.tradeOut) + tfNeedDirect.length;
+          const serverTarget  = Number(c.tfTarget);
+          const tfTarget      = Number.isFinite(serverTarget) ? serverTarget : Math.max(0, c.drew - c.tradeOut) + tfNeedDirect.length;
 
           // ── TF 배부 필요 행 (뽑기 취득 or 파트너미수령 교환취득) ──
           if (tfTarget > 0) {
@@ -1390,7 +1391,8 @@
             if (cd) {
               const details = cd.tradeInFromDetails || (cd.tradeInFrom || []).map(f => ({from: f, partnerReceived: false}));
               const tfNeedDirectCount = details.filter(d => !d.partnerReceived).length;
-              const target = Math.max(0, cd.drew - cd.tradeOut) + tfNeedDirectCount;
+              const serverTarget = Number(cd.tfTarget);
+              const target = Number.isFinite(serverTarget) ? serverTarget : Math.max(0, cd.drew - cd.tradeOut) + tfNeedDirectCount;
               cd.received = qty;
               cd.needed = Math.max(0, target - qty);
             }

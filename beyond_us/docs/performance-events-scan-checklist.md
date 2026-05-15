@@ -12,6 +12,8 @@
 - [x] Events 기준 dashboard 재계산 함수는 admin 수동 복구 도구로 유지.
 Follow-up checklist.
 
+- [x] admin getCardStats를 Events 전체 스캔 대신 Collection projection 기준으로 전환.
+- [x] userStatus 추첨권 번호 계산을 RaffleTickets 단일 스캔 결과에서 재사용.
 - [x] 카드 뽑기 후 추첨권 발급이 Collection을 다시 읽지 않도록 snapshot 기반 helper 적용.
 - [x] 여러 추첨권 조건을 한 번의 RaffleTickets read로 처리.
 - [x] 카드팩 선택 시점에 drawCard 요청을 미리 시작하도록 프론트 체감 지연 완화.

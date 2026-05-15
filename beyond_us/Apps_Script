@@ -4498,7 +4498,6 @@ function getUserStatus(userId, weekKey, configOverride) {
       attendanceCol: attendanceCol,
       currentSnapshot: snapshot,
     });
-    raffle.myTicketNumbers = getUserRaffleTicketNumbers_(cleanUserId, raffleRows);
   } catch(e) {}
 
   return {
@@ -6086,6 +6085,17 @@ function setDrawReceived(body) {
 
 function getCardStats() {
   var userLookup = getUserCanonicalLookup_();
+  var collectionSheet = getOrCreateCollectionSheet();
+  var collectionCol = getCollectionColumns_(collectionSheet);
+  var rcvSheet = getOrCreateCardReceivedSheet();
+  var rcvCol = getCardReceivedColumns_(rcvSheet);
+  var tradeSheet = getOrCreateTradesSheet();
+  var tradeCol = getTradesColumns_(tradeSheet);
+  var batchRows = getBatchSheetRows_([
+    { key: 'collection', sheet: collectionSheet, schema: SCHEMA.COLLECTION, maxColumns: COLLECTION_COL_COUNT },
+    { key: 'received', sheet: rcvSheet, schema: SCHEMA.CARD_RECEIVED, maxColumns: 4 },
+    { key: 'trades', sheet: tradeSheet, schema: SCHEMA.TRADES, maxColumns: 12 },
+  ]);
   var CARD_NAMES = ['사랑','희락','화평','오래참음','자비','양선','충성','온유','절제'];
 
   // 1. Events.card.drawn → 카드별 총 뽑기 횟수(상단 그리드) + 유저별 뽑기 횟수
@@ -6094,18 +6104,17 @@ function getCardStats() {
   var userDrawMap = {}; // nickname → { cardId: count }
   SPIRIT_CARDS.forEach(function(c) { cardCounts[c.id] = 0; });
   try {
-    Events_readAll_().forEach(function(event) {
-      if (event.type !== EVENT_TYPES.CARD_DRAWN) return;
-      var nick = String(event.userId || '').trim();
-      var cid = Number(event.refId);
-      var amount = eventAmount_(event, 1);
-      if (!nick || !cid || amount <= 0) return;
-      nick = getActiveCanonicalUserId_(nick, userLookup);
+    (batchRows.collection || []).forEach(function(row) {
+      var nick = getActiveCanonicalUserId_(row[collectionCol.userId], userLookup);
       if (!nick) return;
-      cardCounts[cid] = (cardCounts[cid] || 0) + amount;
-      totalDraws += amount;
       if (!userDrawMap[nick]) userDrawMap[nick] = {};
-      userDrawMap[nick][cid] = (userDrawMap[nick][cid] || 0) + amount;
+      for (var cid = 1; cid <= 9; cid++) {
+        var amount = Number(row[collectionCol['card' + cid]]) || 0;
+        if (amount <= 0) continue;
+        cardCounts[cid] = (cardCounts[cid] || 0) + amount;
+        totalDraws += amount;
+        userDrawMap[nick][cid] = amount;
+      }
     });
   } catch(e) {}
 
@@ -6114,9 +6123,7 @@ function getCardStats() {
   var userReceivedMap = {}; // nickname → { cardId: qty }
   SPIRIT_CARDS.forEach(function(c) { receivedCounts[c.id] = 0; });
   try {
-    var rcvSheet = getOrCreateCardReceivedSheet();
-    var rcvCol = getCardReceivedColumns_(rcvSheet);
-    var rcvRows = getCardReceivedRows_(rcvSheet);
+    var rcvRows = batchRows.received || [];
     if (rcvRows.length) {
       rcvRows.forEach(function(row) {
         var nick = String(row[rcvCol.nickname]);
@@ -6136,9 +6143,7 @@ function getCardStats() {
   var tradeOutMap = {}; // nickname → { cardId: [counterpart, ...] }
   var tradeInMap  = {}; // nickname → { cardId: [counterpart, ...] }
   try {
-    var tradeSheet = getOrCreateTradesSheet();
-    var tradeCol = getTradesColumns_(tradeSheet);
-    var tradeRows = getTradesRows_(tradeSheet);
+    var tradeRows = batchRows.trades || [];
     if (tradeRows.length) {
       tradeRows.forEach(function(row) {
         if (String(row[tradeCol.status]) !== 'accepted') return;
@@ -6192,8 +6197,9 @@ function getCardStats() {
         return { from: partnerName, partnerReceived: pRcv > 0 };
       });
       // TF배부 필요 수량: (뽑기 - 양도) + 파트너미수령 교환취득
-      var tfNeedFromTrade = inDetails.filter(function(d) { return !d.partnerReceived; }).length;
-      var tfTarget = Math.max(0, drew - outList.length) + tfNeedFromTrade;
+      var tfFromPartner = inDetails.filter(function(d) { return d.partnerReceived; }).length;
+      var tfTarget = Math.max(0, drew - tfFromPartner);
+      if (tfTarget <= 0 && tfFromPartner <= 0) continue;
       var receivedCapped = Math.min(received, tfTarget);
       cards.push({
         cardId:    ci,
@@ -6201,6 +6207,7 @@ function getCardStats() {
         drew:      drew,
         received:  receivedCapped,
         needed:    Math.max(0, tfTarget - receivedCapped),
+        tfTarget:  tfTarget,
         tradeOut:  outList.length,
         tradeOutTo: outList,
         tradeIn:   inList.length,
@@ -6648,6 +6655,7 @@ function getEmptyRaffleStats_() {
     uniqueCards: 0,
     visualCap: RAFFLE_VISUAL_CAP,
     fillPercent: 0,
+    myTicketNumbers: [],
   };
 }
 
@@ -6898,6 +6906,15 @@ function getActiveRaffleTicketSummary_(rows) {
     byUserCondition[key][condition] = padTicketNo_(row[RAFFLE_TICKET_COL.ticketNo]);
   });
   return { byUser: byUser, byUserCondition: byUserCondition };
+}
+
+function getRaffleTicketNumbersFromConditionMap_(conditionMap) {
+  const map = conditionMap || {};
+  return ['signup', 'card_3', 'card_5', 'card_10']
+    .filter(function(condition) { return map[condition]; })
+    .map(function(condition) {
+      return { condition: condition, ticket_no: map[condition] };
+    });
 }
 
 function getUserParishMap_() {
@@ -7705,6 +7722,7 @@ function getRaffleStatsFromRows_(userId, options) {
         card10Ticket: byCondition.card_10 ? 1 : 0,
         attendanceTicket: 0,
       };
+      stats.myTicketNumbers = getRaffleTicketNumbersFromConditionMap_(byCondition);
       foundCurrentUser = true;
     }
   });
@@ -7732,6 +7750,7 @@ function getRaffleStatsFromRows_(userId, options) {
       card10Ticket: byCondition.card_10 ? 1 : 0,
       attendanceTicket: 0,
     };
+    stats.myTicketNumbers = getRaffleTicketNumbersFromConditionMap_(byCondition);
   }
 
   stats.fillPercent = getRaffleFillPercent_(stats.totalTickets);
