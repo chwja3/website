@@ -5762,6 +5762,7 @@ function issueRaffleTicket_(userId, condition, weekKey, options) {
       sheet.getRange(newRow, 1).setNumberFormat('@').setValue(nextNo);
       sheet.getRange(newRow, 2, 1, RAFFLE_TICKET_COLUMNS.length - 1).setValues([nextRow.slice(1)]);
     }
+    clearUserDerivedCaches_(cleanUser);
     return { ok: true, ticket_no: nextNo, dup: false, week_key: week };
   } finally {
     if (lock) lock.releaseLock();
@@ -5814,6 +5815,75 @@ function getUserRaffleTicketNumbers_(userId) {
   return ['signup', 'card_3', 'card_5', 'card_10']
     .filter(function(c) { return map[c]; })
     .map(function(c) { return { condition: c, ticket_no: map[c] }; });
+}
+
+function backfillSignupRaffleTicketsDryRun() {
+  const result = backfillSignupRaffleTickets_(true);
+  Logger.log('backfillSignupRaffleTicketsDryRun result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function backfillSignupRaffleTicketsApply() {
+  const result = backfillSignupRaffleTickets_(false);
+  Logger.log('backfillSignupRaffleTicketsApply result\n' + JSON.stringify(result, null, 2));
+  return result;
+}
+
+function backfillSignupRaffleTickets_(dryRun) {
+  const syncResult = dryRun
+    ? { ok: true, dryRun: true, changed: 0, released: 0 }
+    : syncDefaultRaffleExcludedUsers_();
+  const sheet = getUsersSheet_();
+  const col = getUserColumns_(sheet);
+  const userRows = getUserRows_(sheet);
+  const raffleRows = getRaffleTicketRows_();
+  const missingUsers = [];
+  const excludedUsers = [];
+  const alreadyIssuedUsers = [];
+
+  userRows.forEach(function(row) {
+    const nickname = String(row[col.nickname] || '').trim();
+    if (!nickname) return;
+    if (getUserRaffleExcludedFromRow_(row, col)) {
+      excludedUsers.push(nickname);
+      return;
+    }
+    if (findUserRaffleTicket_(raffleRows, nickname, 'signup')) {
+      alreadyIssuedUsers.push(nickname);
+      return;
+    }
+    missingUsers.push(nickname);
+  });
+
+  const issued = [];
+  const errors = [];
+  if (!dryRun) {
+    missingUsers.forEach(function(nickname) {
+      const res = issueRaffleTicket_(nickname, 'signup');
+      if (res && res.ok) {
+        if (!res.dup) issued.push({ nickname: nickname, ticket_no: res.ticket_no });
+        clearUserDerivedCaches_(nickname);
+      } else {
+        errors.push({ nickname: nickname, error: res && res.error ? res.error : 'unknown' });
+      }
+    });
+  }
+
+  return {
+    ok: errors.length === 0,
+    dryRun: !!dryRun,
+    usersChecked: userRows.length,
+    eligibleUsers: alreadyIssuedUsers.length + missingUsers.length,
+    excludedUsers: excludedUsers.length,
+    alreadyIssued: alreadyIssuedUsers.length,
+    missingSignupTickets: missingUsers.length,
+    plannedToIssue: missingUsers.length,
+    issued: issued.length,
+    syncDefaultExcluded: syncResult,
+    sampleMissingUsers: missingUsers.slice(0, 20),
+    issuedRows: issued.slice(0, 20),
+    errors: errors,
+  };
 }
 
 // 기존 RaffleTickets 시트의 ticket_no 컬럼을 4자리 zero-pad 텍스트로 일괄 정규화
