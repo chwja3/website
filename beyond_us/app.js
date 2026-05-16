@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260516b';
+    const APP_VERSION = '20260516c';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -4174,17 +4174,17 @@
       const container = document.getElementById('bbbM3Spots');
       if (!container) return;
       const safePhotos = Array.isArray(photos) ? photos : _bbbEmptyM3Photos();
-      const SIZE = 46; // px
+      const SIZE = 44; // px
       container.innerHTML = BBB_M3_SPOTS.map((spot, i) => {
         const src = safePhotos[i];
         const circleStyle = src
-          ? `border:1px solid rgba(255,255,255,0.7);box-shadow:0 2px 8px rgba(0,0,0,0.28);background:transparent;`
-          : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
+          ? `border:2px solid rgba(255,255,255,0.95);box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 2px rgba(123,79,166,0.35);background:transparent;`
+          : `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(123,79,166,0.42),0 0 14px rgba(255,255,255,0.9);background:rgba(255,255,255,0.96);`;
         return `
           <div style="position:absolute;top:${spot.top}%;left:${spot.left}%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:2;pointer-events:auto;">
             <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;${circleStyle}display:flex;align-items:center;justify-content:center;cursor:pointer;"
                  onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}">
-              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;color:rgba(255,255,255,0.85);font-weight:300;line-height:1;">+</span>`}
+              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;color:#7b4fa6;font-weight:800;line-height:1;">+</span>`}
             </div>
             <span style="font-size:9px;font-weight:700;color:#333;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:6px;white-space:nowrap;">${spot.label}</span>
             <input type="file" id="bbbM3Input${i}" accept="image/*" style="display:none;" onchange="bbbM3Upload(${i}, this)" />
