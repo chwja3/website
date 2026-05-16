@@ -99,6 +99,9 @@
     .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
     .stat-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
     .stat-value { font-size: 26px; font-weight: 800; }
+    .stat-chip-list { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; font-size:11px; color:var(--sub); line-height:1.25; }
+    .stat-chip-list .ticket-chip { display:inline-flex; align-items:center; padding:3px 7px; border-radius:999px; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:800; }
+    .stat-chip-list .more-chip { color:var(--sub); font-weight:700; padding:3px 0; }
     .dashboard-pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
     .dashboard-pill-row .btn.active { background: var(--primary); color: #faf6ef; border-color: var(--primary); }
     .parish-summary-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:14px; }
@@ -384,7 +387,7 @@
       <div id="tab-raffle" class="tab-panel">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">현재 발급</div><div class="stat-value" id="raffleActiveCount">-</div></div>
-          <div class="stat-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div><div class="stat-chip-list" id="raffleAvailableNumbers">-</div></div>
         </div>
 
         <div class="card">
@@ -2174,6 +2177,21 @@
       `).join('');
     }
 
+    function renderRaffleAvailableNumbers(numbers) {
+      const el = document.getElementById('raffleAvailableNumbers');
+      if (!el) return;
+      const list = Array.isArray(numbers) ? numbers.filter(Boolean) : [];
+      if (!list.length) {
+        el.innerHTML = '<span class="more-chip">없음</span>';
+        return;
+      }
+      const maxVisible = 24;
+      const shown = list.slice(0, maxVisible);
+      const extra = list.length - shown.length;
+      el.innerHTML = shown.map(no => `<span class="ticket-chip">#${esc(no)}</span>`).join('')
+        + (extra > 0 ? `<span class="more-chip">외 ${fmtCount(extra)}개</span>` : '');
+    }
+
     async function loadRaffleTickets(options) {
       const opts = options || {};
       if (opts.resetLimit) _raffleTicketLimit = ADMIN_TABLE_INITIAL_LIMIT;
@@ -2182,12 +2200,14 @@
       const moreBtn = document.getElementById('raffleTicketMoreBtn');
       const query = document.getElementById('raffleTicketFilterInput')?.value || '';
       if (moreBtn) moreBtn.style.display = 'none';
+      renderRaffleAvailableNumbers(null);
       tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
         const res = await get({ action: 'adminGetRaffleTickets', adminPw, query, limit: _raffleTicketLimit, offset: 0 });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         document.getElementById('raffleActiveCount').textContent = res.activeCount || 0;
         document.getElementById('raffleAvailableCount').textContent = res.availableCount || 0;
+        renderRaffleAvailableNumbers(res.availableNumbers || []);
         _raffleTicketRows = res.tickets || [];
         if (!_raffleTicketRows.length) {
           tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">추첨권 번호가 아직 없어요.</td></tr>';
@@ -2198,6 +2218,7 @@
         updateRaffleTicketMoreButton(res);
       } catch(e) {
         if (moreBtn) moreBtn.style.display = 'none';
+        renderRaffleAvailableNumbers(null);
         tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
       }
     }
