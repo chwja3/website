@@ -8028,6 +8028,9 @@ function adminGetRaffleTickets(params) {
     })
     .sort(function(a, b) { return Number(a.ticket_no) - Number(b.ticket_no); });
   const activeCount = tickets.filter(function(ticket) { return ticket.active === true; }).length;
+  const availableNumbers = tickets
+    .filter(function(ticket) { return ticket.active !== true; })
+    .map(function(ticket) { return ticket.ticket_no; });
   const filteredTickets = tickets.filter(function(ticket) {
     return adminTextMatchesQuery_([
       ticket.ticket_no,
@@ -8045,6 +8048,7 @@ function adminGetRaffleTickets(params) {
     activeCount: activeCount,
     totalNumbers: tickets.length,
     availableCount: tickets.length - activeCount,
+    availableNumbers: availableNumbers,
     tickets: page.rows,
     query: opts.query,
     limit: opts.limit,
