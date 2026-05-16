@@ -9,5 +9,6 @@
 - 날짜 인덱스는 2026-05-01부터 2026-06-30까지 61개가 모두 잡혔다.
 - 산출물은 `beyond_us/data/qt/extracted`와 `beyond_us/data/qt/pages`에 만들었다.
 - `QTContents` 시트 초안은 `beyond_us/data/qt/extracted/qt-contents-sheet-draft.csv`로 생성했다.
+- CSV는 Windows Excel에서 한글이 깨지지 않도록 UTF-8 BOM을 붙여 생성한다.
 - 페이지별 PDF는 총 약 72MB라 Git에 넣지 않고 로컬 검수용 산출물로 둔다.
 - 날짜별 제목 추정은 PDF의 2단 레이아웃 때문에 일부 지저분하므로 `QTContents` 시트 반영 전 CSV 검수가 필요하다.

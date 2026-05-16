@@ -20,6 +20,10 @@ function csvEscape(value) {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function withUtf8Bom(text) {
+  return `\uFEFF${text}`;
+}
+
 function normalizeTitle(text) {
   return text
     .replace(/믿음에 행복을 더하는 큐티진/g, ' ')
@@ -111,7 +115,7 @@ const csv = [
   headers.join(','),
   ...entries.map((entry) => headers.map((key) => csvEscape(entry[key])).join(',')),
 ].join('\n') + '\n';
-await fs.writeFile(path.join(outDir, 'qt-date-index.csv'), csv, 'utf8');
+await fs.writeFile(path.join(outDir, 'qt-date-index.csv'), withUtf8Bom(csv), 'utf8');
 
 const sheetHeaders = [
   'date_key',
@@ -136,7 +140,7 @@ const sheetCsv = [
     entry.kind,
   ].map(csvEscape).join(',')),
 ].join('\n') + '\n';
-await fs.writeFile(path.join(outDir, 'qt-contents-sheet-draft.csv'), sheetCsv, 'utf8');
+await fs.writeFile(path.join(outDir, 'qt-contents-sheet-draft.csv'), withUtf8Bom(sheetCsv), 'utf8');
 
 const missing = [];
 for (const month of ['05', '06']) {
