@@ -653,6 +653,8 @@ const EVENT_SOURCES = Object.freeze({
   MIGRATION: 'migration',
 });
 const BBB_PHOTO_REWARD_SOURCES = Object.freeze(['bbb_photo', 'bbb_m2', 'bbb_m3', 'bbb_secret_guess']);
+const BBB_M3_SPOT_COUNT = 7;
+const BBB_M3_REQUIRED_SPOT_COUNT = 2;
 const USER_DASHBOARD_LABELS = Object.freeze([
   '닉네임',
   '이름',
@@ -3417,7 +3419,7 @@ const RAFFLE_SUMMARY_CACHE_SECONDS = 90;
 const HOLD_PRAY_CACHE_VERSION = 'hold_pray_v1';
 const HOLD_PRAY_CACHE_SECONDS = 120;
 const HOLD_PRAY_CACHE_REVISION_KEY = 'CACHE_REVISION_HOLD_PRAY';
-const BBB_CACHE_VERSION = 'bbb_v1';
+const BBB_CACHE_VERSION = 'bbb_v2';
 const BBB_MESSAGES_CACHE_VERSION = 'bbb_messages_v1';
 const BBB_CACHE_SECONDS = 45;
 const BBB_MESSAGES_CACHE_SECONDS = 45;
@@ -10208,6 +10210,79 @@ function isBBBPhotoApprovalRequired_(missionType) {
   return clean === 'm1' || clean === 'm2';
 }
 
+function hashStringForMissionSeed_(value) {
+  const text = String(value || '');
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash >>> 0;
+}
+
+function getBbbM3AssignedSpots_(userId) {
+  const cleanUserId = getCanonicalUserId_(userId) || String(userId || '').trim();
+  if (!cleanUserId) return [];
+  const spots = [];
+  for (let i = 0; i < BBB_M3_SPOT_COUNT; i++) spots.push(i);
+
+  let state = hashStringForMissionSeed_('bbb_m3:' + cleanUserId);
+  for (let i = spots.length - 1; i > 0; i--) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    const j = state % (i + 1);
+    const tmp = spots[i];
+    spots[i] = spots[j];
+    spots[j] = tmp;
+  }
+  return spots.slice(0, BBB_M3_REQUIRED_SPOT_COUNT).sort(function(a, b) { return a - b; });
+}
+
+function getBbbM3PhotoState_(userId) {
+  const cleanUserId = getCanonicalUserId_(userId) || String(userId || '').trim();
+  const myPhotoM3 = [null, null, null, null, null, null, null];
+  const assignedSpots = getBbbM3AssignedSpots_(cleanUserId);
+  if (!cleanUserId) {
+    return {
+      myPhotoM3: myPhotoM3,
+      m3AssignedSpots: assignedSpots,
+      m3CompletedSpots: [],
+      m3RequiredCount: BBB_M3_REQUIRED_SPOT_COUNT,
+      m3Rewarded: false,
+    };
+  }
+
+  try {
+    const photoSheet = getOrCreateBBBPhotosSheet();
+    const pLast = photoSheet.getLastRow();
+    if (pLast >= SCHEMA.BBB_PHOTOS.dataStartRow) {
+      const photoCol = getBbbPhotoColumns_(photoSheet);
+      const pRows = getBbbPhotoRows_(photoSheet);
+      pRows.forEach(function(r) {
+        if (!isSameUserId_(r[photoCol.userId], cleanUserId)) return;
+        const mt = String(r[photoCol.missionType] || '').trim();
+        if (!mt.startsWith('m3_')) return;
+        const idx = Number(mt.split('_')[1]);
+        if (idx >= 0 && idx < BBB_M3_SPOT_COUNT) myPhotoM3[idx] = String(r[photoCol.photoBase64] || '');
+      });
+    }
+  } catch(e) {}
+
+  const completedSpots = assignedSpots.filter(function(idx) { return !!myPhotoM3[idx]; });
+  let m3Rewarded = false;
+  try {
+    const bbbPhotoRewardMap = getBBBPhotoRewardEventMap_();
+    m3Rewarded = !!bbbPhotoRewardMap[getBBBPhotoRewardEventKey_(cleanUserId, 'bbb_m3')];
+  } catch(e) {}
+
+  return {
+    myPhotoM3: myPhotoM3,
+    m3AssignedSpots: assignedSpots,
+    m3CompletedSpots: completedSpots,
+    m3RequiredCount: BBB_M3_REQUIRED_SPOT_COUNT,
+    m3Rewarded: m3Rewarded,
+  };
+}
+
 function normalizeBBBPhotoMissionType_(missionType) {
   const clean = String(missionType || '').trim();
   if (clean === 'm1') return { ok: true, missionType: clean, sectionKey: 'm1', bonusSource: 'bbb_photo' };
@@ -10263,6 +10338,21 @@ function validateBBBPhotoUpload_(userId, missionType) {
       missionType: normalized.missionType,
       sectionKey: normalized.sectionKey,
     };
+  }
+
+  if (normalized.sectionKey === 'm3') {
+    const assignedSpots = getBbbM3AssignedSpots_(userId);
+    if (assignedSpots.indexOf(normalized.spotIndex) === -1) {
+      return {
+        ok: false,
+        error: 'not_assigned_spot',
+        missionType: normalized.missionType,
+        sectionKey: normalized.sectionKey,
+        assignedSpots: assignedSpots,
+      };
+    }
+    normalized.assignedSpots = assignedSpots;
+    return normalized;
   }
 
   const match = getBBBMatchForUser_(userId);
@@ -10703,18 +10793,20 @@ function uploadBBBPhoto(body) {
       if (missionType.startsWith('m3_')) {
         const pSheet = getOrCreateBBBPhotosSheet();
         const pLast = pSheet.getLastRow();
+        const assignedSpots = validation.assignedSpots || getBbbM3AssignedSpots_(userId);
         let filledSpots = 0;
         if (pLast >= SCHEMA.BBB_PHOTOS.dataStartRow) {
           const pCol = getBbbPhotoColumns_(pSheet);
           const pRows = getBbbPhotoRows_(pSheet);
-          for (let s = 0; s < 7; s++) {
+          for (let a = 0; a < assignedSpots.length; a++) {
+            const s = assignedSpots[a];
             const found = pRows.some(function(r) {
               return isSameUserId_(r[pCol.userId], userId) && String(r[pCol.missionType]) === 'm3_' + s && String(r[pCol.photoBase64]);
             });
             if (found) filledSpots++;
           }
         }
-        if (filledSpots >= 7) {
+        if (assignedSpots.length > 0 && filledSpots >= assignedSpots.length) {
           grantBBBRareCard_(userId, missionType, {
             timestamp: now,
             reason: 'bbb_m3_complete',
@@ -10737,6 +10829,9 @@ function uploadBBBPhoto(body) {
     }
 
     clearBBBCache_(userId);
+    if (missionType.startsWith('m3_')) {
+      return Object.assign({ ok: true, rewarded }, getBbbM3PhotoState_(userId));
+    }
     return { ok: true, rewarded };
   } finally {
     lock.releaseLock();
@@ -10851,6 +10946,9 @@ function getBBB(userId) {
   const bbbSheet = getOrCreateBBBSheet();
   const bbbCol = getBbbColumns_(bbbSheet);
   const last = bbbSheet.getLastRow();
+  if (last < SCHEMA.BBB.dataStartRow) {
+    return Object.assign({ ok: false, error: 'no_match' }, getBbbM3PhotoState_(userId));
+  }
   if (last < SCHEMA.BBB.dataStartRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
   const rows = getBbbRows_(bbbSheet);
@@ -10859,6 +10957,9 @@ function getBBB(userId) {
   let myRow = null, myRowIdx = -1;
   for (let i = 0; i < rows.length; i++) {
     if (isSameUserId_(rows[i][bbbCol.userId], userId)) { myRow = rows[i]; myRowIdx = i; break; }
+  }
+  if (!myRow) {
+    return Object.assign({ ok: false, error: 'no_match' }, getBbbM3PhotoState_(userId));
   }
   if (!myRow) return { ok: false, error: '매칭 정보가 없어요.' };
 
@@ -10918,12 +11019,17 @@ function getBBB(userId) {
     m2Rewarded = !!bbbPhotoRewardMap[getBBBPhotoRewardEventKey_(userId, 'bbb_m2')];
     m3Rewarded = !!bbbPhotoRewardMap[getBBBPhotoRewardEventKey_(userId, 'bbb_m3')];
   } catch(e) {}
+  const m3AssignedSpots = getBbbM3AssignedSpots_(userId);
+  const m3CompletedSpots = m3AssignedSpots.filter(function(idx) { return !!myPhotoM3[idx]; });
 
   return {
     ok: true,
     myPhoto,
     myPhotoM2,
     myPhotoM3,
+    m3AssignedSpots,
+    m3CompletedSpots,
+    m3RequiredCount: BBB_M3_REQUIRED_SPOT_COUNT,
     m1Rewarded,
     m2Rewarded,
     m3Rewarded,

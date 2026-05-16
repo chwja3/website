@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260516c';
+    const APP_VERSION = '20260516d';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -3809,7 +3809,7 @@
       if (guessMsg) guessMsg.textContent = '';
       _resetPhotoBox('bbbPhotoImg', 'bbbPhotoModalImg', 'bbbPhotoPlaceholder', 'bbbPhotoPlaceholderText', 'bbbPhotoLabel', 'bbbPhotoStatus');
       _resetPhotoBox('bbbM2Img', 'bbbM2ModalImg', 'bbbM2Placeholder', 'bbbM2PlaceholderText', 'bbbM2Label', 'bbbM2Status');
-      _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
+      _bbbRenderM3Spots(_bbbEmptyM3Photos(), false, []);
       const msgList = document.getElementById('bbbMsgList');
       if (msgList) msgList.innerHTML = '';
       const sentList = document.getElementById('bbbSentMsgList');
@@ -3987,7 +3987,16 @@
         if (!bbbRes.ok) {
           if (anyLocked || _isDev || m3Open) {
             document.getElementById('bbbContent').style.display = 'flex';
-            if (_isDev || m3Open) _bbbRenderM3Spots(_bbbEmptyM3Photos(), false);
+            if (m3Open) {
+              ['bbbCareBuddyLive', 'bbbM1Live', 'bbbM2Live', 'bbbSecretLive'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+              });
+            }
+            if (_isDev || m3Open) {
+              _bbbData = bbbRes;
+              _bbbRenderM3Spots(bbbRes.myPhotoM3 || _bbbEmptyM3Photos(), bbbRes.m3Rewarded, bbbRes.m3AssignedSpots || []);
+            }
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
           }
@@ -4170,36 +4179,54 @@
       return [null, null, null, null, null, null, null];
     }
 
-    function _bbbRenderM3Spots(photos, m3Rewarded) {
+    function _bbbRenderM3Spots(photos, m3Rewarded, assignedSpots) {
       const container = document.getElementById('bbbM3Spots');
       if (!container) return;
       const safePhotos = Array.isArray(photos) ? photos : _bbbEmptyM3Photos();
+      const assigned = Array.isArray(assignedSpots) ? assignedSpots : [];
+      const assignedMap = {};
+      assigned.forEach(idx => { assignedMap[Number(idx)] = true; });
       const SIZE = 44; // px
       container.innerHTML = BBB_M3_SPOTS.map((spot, i) => {
         const src = safePhotos[i];
-        const circleStyle = src
+        const isAssigned = assignedMap[i] === true;
+        const isCompleted = isAssigned && !!src;
+        const circleStyle = isCompleted
+          ? `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(42,157,95,0.36),0 0 14px rgba(109,214,150,0.68);background:#2fa95f;color:#fff;`
+          : isAssigned
+          ? `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(203,55,65,0.36),0 0 14px rgba(244,97,108,0.62);background:#d8444d;color:#fff;`
+          : src
           ? `border:2px solid rgba(255,255,255,0.95);box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 2px rgba(123,79,166,0.35);background:transparent;`
           : `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(123,79,166,0.42),0 0 14px rgba(255,255,255,0.9);background:rgba(255,255,255,0.96);`;
+        const actionAttr = isAssigned
+          ? `onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}"`
+          : '';
+        const marker = isCompleted
+          ? `<span style="font-size:21px;color:#fff;font-weight:900;line-height:1;">✓</span>`
+          : isAssigned
+          ? `<span style="font-size:20px;color:#fff;font-weight:900;line-height:1;">+</span>`
+          : '';
         return `
           <div style="position:absolute;top:${spot.top}%;left:${spot.left}%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:2;pointer-events:auto;">
-            <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;${circleStyle}display:flex;align-items:center;justify-content:center;cursor:pointer;"
-                 onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}">
-              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;color:#7b4fa6;font-weight:800;line-height:1;">+</span>`}
+            <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;${circleStyle}display:flex;align-items:center;justify-content:center;cursor:${isAssigned ? 'pointer' : 'default'};"
+                 ${actionAttr}>
+              ${marker}
             </div>
             <span style="font-size:9px;font-weight:700;color:#333;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:6px;white-space:nowrap;">${spot.label}</span>
             <input type="file" id="bbbM3Input${i}" accept="image/*" style="display:none;" onchange="bbbM3Upload(${i}, this)" />
           </div>`;
       }).join('');
-      const filled = safePhotos.filter(Boolean).length;
+      const filled = assigned.filter(idx => !!safePhotos[Number(idx)]).length;
+      const required = assigned.length || 2;
       const statusEl = document.getElementById('bbbM3Status');
       if (statusEl) {
-        statusEl.textContent = m3Rewarded ? '✓ 카드팩 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
+        statusEl.textContent = m3Rewarded ? '✓ 레어 카드 획득 완료' : filled > 0 ? `${filled}/${required} 완료` : '';
         statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
       }
     }
     function _bbbInitMission3(bbbRes) {
       const safeRes = bbbRes || {};
-      _bbbRenderM3Spots(safeRes.myPhotoM3 || _bbbEmptyM3Photos(), safeRes.m3Rewarded);
+      _bbbRenderM3Spots(safeRes.myPhotoM3 || _bbbEmptyM3Photos(), safeRes.m3Rewarded, safeRes.m3AssignedSpots || []);
     }
     async function bbbM3Upload(spotIdx, input) {
       const file = input.files[0];
@@ -4211,11 +4238,15 @@
         const base64 = await _compressImage(file, 400, 0.55);
         const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm3_' + spotIdx })), redirect: 'follow' })).json();
         if (res.ok) {
-          if (_bbbData) { _bbbData.myPhotoM3 = _bbbData.myPhotoM3 || [null,null,null,null,null,null,null]; _bbbData.myPhotoM3[spotIdx] = base64; if (res.rewarded) _bbbData.m3Rewarded = true; }
-          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], res.rewarded || (_bbbData && _bbbData.m3Rewarded));
+          _bbbData = _bbbData || {};
+          _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
+          if (!Array.isArray(res.myPhotoM3)) _bbbData.myPhotoM3[spotIdx] = base64;
+          _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : (_bbbData.m3AssignedSpots || []);
+          if (res.rewarded || res.m3Rewarded) _bbbData.m3Rewarded = true;
+          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
           stopAnimDots(dotsTimer, statusEl, '');
           if (res.rewarded) { syncTicketBadgeFromServer(); }
-        } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
+        } else { stopAnimDots(dotsTimer, statusEl, res.error === 'not_assigned_spot' ? '내 미션 스팟만 인증할 수 있어요.' : (res.error || '업로드 실패')); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
     }
     function openBbbM3Modal(spotIdx) {
@@ -4241,7 +4272,7 @@
         const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm3_' + spotIdx })), redirect: 'follow' })).json();
         if (res.ok) {
           if (_bbbData && _bbbData.myPhotoM3) _bbbData.myPhotoM3[spotIdx] = null;
-          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded);
+          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded, (_bbbData && _bbbData.m3AssignedSpots) || []);
           stopAnimDots(dotsTimer, statusEl, '');
         } else { stopAnimDots(dotsTimer, statusEl, '삭제 실패'); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류'); }
