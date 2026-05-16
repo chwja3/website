@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260516d';
+    const APP_VERSION = '20260516e';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -4186,18 +4186,16 @@
       const assigned = Array.isArray(assignedSpots) ? assignedSpots : [];
       const assignedMap = {};
       assigned.forEach(idx => { assignedMap[Number(idx)] = true; });
-      const SIZE = 44; // px
+      const SIZE = 46; // px
       container.innerHTML = BBB_M3_SPOTS.map((spot, i) => {
         const src = safePhotos[i];
         const isAssigned = assignedMap[i] === true;
         const isCompleted = isAssigned && !!src;
         const circleStyle = isCompleted
-          ? `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(42,157,95,0.36),0 0 14px rgba(109,214,150,0.68);background:#2fa95f;color:#fff;`
+          ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(116,181,142,0.22);background:rgba(116,181,142,0.78);color:#fff;`
           : isAssigned
-          ? `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(203,55,65,0.36),0 0 14px rgba(244,97,108,0.62);background:#d8444d;color:#fff;`
-          : src
-          ? `border:2px solid rgba(255,255,255,0.95);box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 2px rgba(123,79,166,0.35);background:transparent;`
-          : `border:2px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,0.34),0 0 0 3px rgba(123,79,166,0.42),0 0 14px rgba(255,255,255,0.9);background:rgba(255,255,255,0.96);`;
+          ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(216,111,116,0.22);background:rgba(216,111,116,0.78);color:#fff;`
+          : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
         const actionAttr = isAssigned
           ? `onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}"`
           : '';
