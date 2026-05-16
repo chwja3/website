@@ -226,6 +226,7 @@ const SCHEMA = Object.freeze({
       key: 'tab_key',
       label: 'label',
       enabled: 'enabled',
+      status: 'status',
     }),
   }),
   BBB_SETTINGS: Object.freeze({
@@ -513,6 +514,7 @@ const TAB_SETTINGS_COLUMN_FALLBACK = Object.freeze({
   key: 0,
   label: 1,
   enabled: 2,
+  status: 3,
 });
 const BBB_SETTINGS_COLUMN_FALLBACK = Object.freeze({
   key: 0,
@@ -1747,7 +1749,7 @@ function getTabSettingsColumns_(sheet) {
 }
 
 function getTabSettingsRows_(sheet, maxColumns) {
-  return getSheetRows(sheet, SCHEMA.TAB_SETTINGS, maxColumns || 3);
+  return getSheetRows(sheet, SCHEMA.TAB_SETTINGS, maxColumns || TAB_SETTINGS_COL_COUNT);
 }
 
 function getBbbSettingsColumns_(sheet) {
@@ -5477,9 +5479,10 @@ function submitHoldPrayGuess(weekKey, guess, nickname, cardIndex) {
 
 // ── 탭 설정 ──────────────────────────────────────
 // TabSettings 시트 구조:
-// A열: tab_key (holdpray / secret / chat / qt / pilgrim / specialPack)
-// B열: label   (Hold & Pray / B.B.B 미션 / 채팅방 / Q.T. 말씀 묵상 / 천로역정 / 특별 카드팩)
+// A열: tab_key (notice / mission / holdpray / qt / secret / pilgrim / collection / faq / inquiry / chat / specialPack)
+// B열: label   (공지사항 / 사전미션 / Hold & Pray / Q.T. 말씀 묵상 / B.B.B 미션 / 천로역정 / 카드 컬렉션 / QnA / 개발자 문의 / 채팅방 / 특별 카드팩)
 // C열: enabled (TRUE/FALSE)
+// D열: status  (open / closed)
 //
 // BBBSettings 시트 구조:
 // A열: key (careBuddy / m1 / m2 / m3 / secretBuddy / msgOpen)
@@ -5495,22 +5498,42 @@ var BBB_SECTIONS_DEFAULT = {
   msgOpen:     { open: false },
 };
 
+const TAB_STATUS_OPEN = 'open';
+const TAB_STATUS_CLOSED = 'closed';
+const TAB_SETTINGS_COL_COUNT = 4;
+
+function normalizeTabStatus_(value, fallback) {
+  const text = String(value || '').trim().toLowerCase();
+  if (text === TAB_STATUS_OPEN || text === 'green' || text === 'active' || text === 'available') return TAB_STATUS_OPEN;
+  if (text === TAB_STATUS_CLOSED || text === 'red' || text === 'inactive' || text === 'unavailable') return TAB_STATUS_CLOSED;
+  return fallback || TAB_STATUS_CLOSED;
+}
+
+function getTabApiKey_(key) {
+  return key === 'holdpray' ? 'prayer' : key;
+}
+
 function getTabSettingsDefaultRows_() {
   var holdprayVal = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, true) === true;
   var secretVal   = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, true) === true;
   var chatVal     = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, false) === true;
   return [
-    ['holdpray', 'Hold & Pray', holdprayVal],
-    ['secret',   'B.B.B 미션',   secretVal],
-    ['chat',     '채팅방',        chatVal],
-    ['qt',       'Q.T. 말씀 묵상', true],
-    ['pilgrim',  '천로역정',      false],
-    ['specialPack', '특별 카드팩', false],
+    ['notice',   '공지사항',       true,       TAB_STATUS_OPEN],
+    ['mission',  '사전미션',       true,       TAB_STATUS_OPEN],
+    ['holdpray', 'Hold & Pray',    holdprayVal, TAB_STATUS_OPEN],
+    ['qt',       'Q.T. 말씀 묵상', true,       TAB_STATUS_CLOSED],
+    ['secret',   'B.B.B 미션',     secretVal,  TAB_STATUS_CLOSED],
+    ['pilgrim',  '천로역정',       false,      TAB_STATUS_CLOSED],
+    ['collection', '카드 컬렉션',  true,       TAB_STATUS_OPEN],
+    ['faq',      'QnA',            true,       TAB_STATUS_OPEN],
+    ['inquiry',  '개발자 문의',    true,       TAB_STATUS_OPEN],
+    ['chat',     '채팅방',         chatVal,    TAB_STATUS_CLOSED],
+    ['specialPack', '미보유 카드 지급권', false, TAB_STATUS_CLOSED],
   ];
 }
 
 function ensureTabSettingsDefaultRows_(sheet) {
-  sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
+  sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, TAB_SETTINGS_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
   const tabCol = getTabSettingsColumns_(sheet);
   const rows = getTabSettingsRows_(sheet);
   const existing = {};
@@ -5526,6 +5549,9 @@ function ensureTabSettingsDefaultRows_(sheet) {
       if (String(existing[key].row[tabCol.label] || '') !== defaultRow[1]) {
         sheet.getRange(existing[key].rowIndex, tabCol.label + 1).setValue(defaultRow[1]);
       }
+      if (!String(existing[key].row[tabCol.status] || '').trim()) {
+        sheet.getRange(existing[key].rowIndex, tabCol.status + 1).setValue(defaultRow[3]);
+      }
       return;
     }
     rowsToAppend.push(defaultRow);
@@ -5533,7 +5559,7 @@ function ensureTabSettingsDefaultRows_(sheet) {
 
   if (rowsToAppend.length) {
     const startRow = Math.max(sheet.getLastRow() + 1, SCHEMA.TAB_SETTINGS.dataStartRow);
-    sheet.getRange(startRow, 1, rowsToAppend.length, 3).setValues(rowsToAppend);
+    sheet.getRange(startRow, 1, rowsToAppend.length, TAB_SETTINGS_COL_COUNT).setValues(rowsToAppend);
   }
 }
 
@@ -5546,10 +5572,10 @@ function getOrCreateTabSettingsSheet() {
   }
 
   sheet = ss.insertSheet(SHEET_NAMES.TAB_SETTINGS);
-  sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, 3).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
+  sheet.getRange(SCHEMA.TAB_SETTINGS.headerRow, 1, 1, TAB_SETTINGS_COL_COUNT).setValues([getSchemaHeaders_(SCHEMA.TAB_SETTINGS)]);
   sheet.setFrozenRows(1);
 
-  sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, getTabSettingsDefaultRows_().length, 3).setValues(getTabSettingsDefaultRows_());
+  sheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, getTabSettingsDefaultRows_().length, TAB_SETTINGS_COL_COUNT).setValues(getTabSettingsDefaultRows_());
   return sheet;
 }
 
@@ -5612,56 +5638,103 @@ function getBBBSectionSettingsMap_() {
 }
 
 function getTabSettings() {
-  // TabSettings 시트에서 holdpray/secret/chat/qt/pilgrim/specialPack 읽기
+  // TabSettings 시트에서 유저 앱 탭 노출 여부와 상태 표시를 읽기
   const tabSheet = getOrCreateTabSettingsSheet();
-  const tabMap = { holdpray: true, secret: true, chat: false, qt: true, pilgrim: false, specialPack: false };
+  const tabMap = {};
+  getTabSettingsDefaultRows_().forEach(function(row) {
+    tabMap[row[0]] = {
+      key: row[0],
+      apiKey: getTabApiKey_(row[0]),
+      label: row[1],
+      enabled: row[2] === true,
+      status: normalizeTabStatus_(row[3], row[2] === true ? TAB_STATUS_OPEN : TAB_STATUS_CLOSED),
+    };
+  });
   if (tabSheet && tabSheet.getLastRow() >= SCHEMA.TAB_SETTINGS.dataStartRow) {
     const tabCol = getTabSettingsColumns_(tabSheet);
     getTabSettingsRows_(tabSheet).forEach(function(r) {
       const key = String(r[tabCol.key]).trim();
-      if (Object.prototype.hasOwnProperty.call(tabMap, key)) tabMap[key] = r[tabCol.enabled] === true;
+      if (!Object.prototype.hasOwnProperty.call(tabMap, key)) return;
+      tabMap[key].label = String(r[tabCol.label] || tabMap[key].label).trim();
+      tabMap[key].enabled = r[tabCol.enabled] === true;
+      tabMap[key].status = normalizeTabStatus_(r[tabCol.status], tabMap[key].enabled ? TAB_STATUS_OPEN : TAB_STATUS_CLOSED);
     });
   } else {
     const hpSetting = getAppSetting_(APP_SETTING_KEYS.HOLD_PRAY_OPEN, null);
     const secretSetting = getAppSetting_(APP_SETTING_KEYS.SECRET_OPEN, null);
     const chatSetting = getAppSetting_(APP_SETTING_KEYS.CHAT_OPEN, null);
-    if (hpSetting !== null && hpSetting !== undefined) tabMap.holdpray = hpSetting === true;
-    if (secretSetting !== null && secretSetting !== undefined) tabMap.secret = secretSetting === true;
-    if (chatSetting !== null && chatSetting !== undefined) tabMap.chat = chatSetting === true;
+    if (hpSetting !== null && hpSetting !== undefined) tabMap.holdpray.enabled = hpSetting === true;
+    if (secretSetting !== null && secretSetting !== undefined) tabMap.secret.enabled = secretSetting === true;
+    if (chatSetting !== null && chatSetting !== undefined) tabMap.chat.enabled = chatSetting === true;
   }
 
   // BBBSettings 시트에서 현장미션 섹션 오픈 설정 읽기
   const bbbSections = getBBBSectionSettingsMap_();
+  const items = getTabSettingsDefaultRows_()
+    .map(function(row) { return tabMap[row[0]]; })
+    .filter(Boolean);
+  const statusMap = {};
+  items.forEach(function(item) {
+    statusMap[item.key] = item.status;
+    statusMap[item.apiKey] = item.status;
+  });
 
-  return {
+  const result = {
     ok:          true,
-    prayer:      tabMap.holdpray, // API 키는 'prayer' 유지 (index.html/admin.html 호환)
-    secret:      tabMap.secret,
-    chat:        tabMap.chat,
-    qt:          tabMap.qt,
-    pilgrim:     tabMap.pilgrim,
-    specialPack: tabMap.specialPack,
-    bbbSections: bbbSections
+    items:       items,
+    statuses:    statusMap,
+    notice:      tabMap.notice.enabled,
+    mission:     tabMap.mission.enabled,
+    prayer:      tabMap.holdpray.enabled, // API 키는 'prayer' 유지 (index.html/admin.html 호환)
+    secret:      tabMap.secret.enabled,
+    chat:        tabMap.chat.enabled,
+    qt:          tabMap.qt.enabled,
+    pilgrim:     tabMap.pilgrim.enabled,
+    collection:  tabMap.collection.enabled,
+    faq:         tabMap.faq.enabled,
+    inquiry:     tabMap.inquiry.enabled,
+    specialPack: tabMap.specialPack.enabled,
+    bbbSections: bbbSections,
   };
+  return result;
 }
 
 function setTabSettings(body) {
   if (!isAdminAuthorized_(body.adminPw)) return { error: 'unauthorized' };
+  const itemUpdates = {};
+  if (Array.isArray(body.tabItems)) {
+    body.tabItems.forEach(function(item) {
+      const key = String(item && item.key || '').trim();
+      if (!key) return;
+      itemUpdates[key] = item;
+    });
+  }
 
   // TabSettings 시트 업데이트
   const tabSheet = getOrCreateTabSettingsSheet();
   const tabLastRow = tabSheet.getLastRow();
   if (tabLastRow >= SCHEMA.TAB_SETTINGS.dataStartRow) {
     const tabCol = getTabSettingsColumns_(tabSheet);
-    const tabRange = tabSheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, tabLastRow - SCHEMA.TAB_SETTINGS.dataStartRow + 1, 3);
+    const tabRange = tabSheet.getRange(SCHEMA.TAB_SETTINGS.dataStartRow, 1, tabLastRow - SCHEMA.TAB_SETTINGS.dataStartRow + 1, TAB_SETTINGS_COL_COUNT);
     const tabRows = tabRange.getValues();
     tabRows.forEach(function(r) {
       const key = String(r[tabCol.key]).trim();
+      const update = itemUpdates[key];
+      if (update) {
+        r[tabCol.enabled] = update.enabled === true;
+        r[tabCol.status] = normalizeTabStatus_(update.status, r[tabCol.enabled] ? TAB_STATUS_OPEN : TAB_STATUS_CLOSED);
+        return;
+      }
+      if (key === 'notice'   && body.notice !== undefined) r[tabCol.enabled] = body.notice !== false;
+      if (key === 'mission'  && body.mission !== undefined) r[tabCol.enabled] = body.mission !== false;
       if (key === 'holdpray' && body.prayer !== undefined) r[tabCol.enabled] = body.prayer !== false;
       if (key === 'secret'   && body.secret !== undefined) r[tabCol.enabled] = body.secret  !== false;
       if (key === 'chat'     && body.chat   !== undefined) r[tabCol.enabled] = body.chat    !== false;
       if (key === 'qt'       && body.qt     !== undefined) r[tabCol.enabled] = body.qt      !== false;
       if (key === 'pilgrim'  && body.pilgrim !== undefined) r[tabCol.enabled] = body.pilgrim === true;
+      if (key === 'collection' && body.collection !== undefined) r[tabCol.enabled] = body.collection !== false;
+      if (key === 'faq' && body.faq !== undefined) r[tabCol.enabled] = body.faq !== false;
+      if (key === 'inquiry' && body.inquiry !== undefined) r[tabCol.enabled] = body.inquiry !== false;
       if (key === 'specialPack' && body.specialPack !== undefined) r[tabCol.enabled] = body.specialPack === true;
     });
     tabRange.setValues(tabRows);

@@ -82,6 +82,26 @@
     }
     .drawer-section-divider { height: 10px; border-bottom: 1px solid var(--line); background: #faf6ef; }
 
+    /* ── 유저 앱 탭 설정 ── */
+    .tab-settings-list { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+    .tab-setting-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:14px 16px; background:var(--primary-soft); border:1px solid var(--line); border-radius:12px; }
+    .tab-setting-title { min-width:0; }
+    .tab-setting-label { display:block; font-size:15px; font-weight:800; color:var(--text); }
+    .tab-setting-meta { display:block; font-size:11px; color:var(--sub); margin-top:3px; }
+    .tab-setting-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end; }
+    .tab-visible-toggle { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:800; color:var(--sub); white-space:nowrap; }
+    .tab-visible-toggle input { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; }
+    .tab-status-group { display:flex; gap:5px; padding:3px; border:1px solid var(--line); border-radius:999px; background:var(--card); }
+    .tab-status-option { display:flex; align-items:center; gap:4px; padding:6px 9px; border-radius:999px; font-size:12px; font-weight:800; cursor:pointer; color:var(--sub); white-space:nowrap; }
+    .tab-status-option input { position:absolute; opacity:0; pointer-events:none; }
+    .tab-status-option:has(input:checked) { color:var(--text); background:#fff; box-shadow:0 1px 4px rgba(44,36,23,.08); }
+    .tab-status-option.status-open:has(input:checked) { color:#166534; background:#dcfce7; }
+    .tab-status-option.status-closed:has(input:checked) { color:#991b1b; background:#fee2e2; }
+    @media (max-width: 680px) {
+      .tab-setting-row { grid-template-columns:1fr; }
+      .tab-setting-controls { justify-content:flex-start; }
+    }
+
     /* ── 패널 ── */
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -710,33 +730,11 @@
       <!-- 탭 활성화 패널 -->
       <div id="tab-tabtoggle" class="tab-panel">
         <div class="card">
-          <h2 class="card-title">메뉴 탭 활성화</h2>
-          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">비활성화하면 모든 사용자의 앱에서 해당 탭이 숨겨져요.</p>
+          <h2 class="card-title">유저 앱 탭 관리</h2>
+          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">표시를 끄면 앱 메뉴에서 숨겨져요. 상태는 유저 앱 메뉴에서 초록/빨강 점으로 보여요.</p>
 
-          <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">Hold &amp; Pray</span>
-              <input type="checkbox" id="togglePrayer" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">B.B.B 미션</span>
-              <input type="checkbox" id="toggleSecret" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">Q.T. 말씀 묵상</span>
-              <input type="checkbox" id="toggleQt" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">천로역정</span>
-              <input type="checkbox" id="togglePilgrim" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="min-width:0;">
-                <span style="display:block;font-size:15px;font-weight:700;">미보유 카드 지급권</span>
-                <span style="display:block;font-size:11px;color:var(--sub);margin-top:3px;">사전미션 카드팩 영역에 보라색 미보유 카드 지급 버튼 표시</span>
-              </span>
-              <input type="checkbox" id="toggleSpecialPack" style="width:20px; height:20px; accent-color:#8b5cf6; cursor:pointer; flex-shrink:0;" />
-            </label>
+          <div id="tabSettingsList" class="tab-settings-list">
+            <p style="font-size:13px;color:var(--sub);margin:0;">불러오는 중...</p>
           </div>
 
           <div class="status" id="settingsStatus"></div>
@@ -778,6 +776,18 @@
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
+    const TAB_SETTING_ID_MAP = {
+      holdpray: 'togglePrayer',
+      secret: 'toggleSecret',
+      qt: 'toggleQt',
+      pilgrim: 'togglePilgrim',
+      specialPack: 'toggleSpecialPack',
+      chat: 'toggleChat',
+    };
+    const TAB_STATUS_LABELS = {
+      open: '🟢 가능',
+      closed: '🔴 불가',
+    };
     let _attendanceLimit = ADMIN_TABLE_INITIAL_LIMIT;
     let _attendanceSearchTimer = null;
     let _raffleTicketLimit = ADMIN_TABLE_INITIAL_LIMIT;
@@ -1701,17 +1711,71 @@
     });
 
     /* ── 탭 설정 ── */
+    function normalizeAdminTabStatus(status) {
+      return status === 'open' ? 'open' : 'closed';
+    }
+
+    function renderTabSettings(items) {
+      const listEl = document.getElementById('tabSettingsList');
+      if (!listEl) return;
+      const list = Array.isArray(items) ? items : [];
+      if (!list.length) {
+        listEl.innerHTML = '<p style="font-size:13px;color:var(--danger);margin:0;">탭 설정을 불러오지 못했어요.</p>';
+        return;
+      }
+      listEl.innerHTML = list.map(item => {
+        const key = String(item.key || '').trim();
+        const checkboxId = TAB_SETTING_ID_MAP[key] || `toggleTab_${key}`;
+        const radioName = `tabStatus_${key}`;
+        const status = normalizeAdminTabStatus(item.status);
+        const meta = key === 'specialPack'
+          ? '부가 기능 · 사전미션 카드팩 영역'
+          : '유저 앱 메뉴 탭';
+        return `
+          <div class="tab-setting-row" data-tab-key="${esc(key)}">
+            <div class="tab-setting-title">
+              <span class="tab-setting-label">${esc(item.label || key)}</span>
+              <span class="tab-setting-meta">${esc(meta)}</span>
+            </div>
+            <div class="tab-setting-controls">
+              <label class="tab-visible-toggle">
+                <input type="checkbox" id="${esc(checkboxId)}" class="tab-enabled-input" ${item.enabled !== false ? 'checked' : ''} />
+                표시
+              </label>
+              <div class="tab-status-group">
+                <label class="tab-status-option status-open">
+                  <input type="radio" name="${esc(radioName)}" value="open" ${status === 'open' ? 'checked' : ''} />
+                  ${TAB_STATUS_LABELS.open}
+                </label>
+                <label class="tab-status-option status-closed">
+                  <input type="radio" name="${esc(radioName)}" value="closed" ${status === 'closed' ? 'checked' : ''} />
+                  ${TAB_STATUS_LABELS.closed}
+                </label>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function collectTabSettingsItems() {
+      return Array.from(document.querySelectorAll('#tabSettingsList .tab-setting-row')).map(row => {
+        const key = row.dataset.tabKey;
+        const enabled = row.querySelector('.tab-enabled-input')?.checked === true;
+        const status = row.querySelector(`input[name="tabStatus_${key}"]:checked`)?.value || 'closed';
+        return { key, enabled, status };
+      });
+    }
+
     async function loadTabSettings() {
       try {
         const res = await get({ action: 'getTabSettings', adminPw });
         if (res.ok) {
-          document.getElementById('togglePrayer').checked = res.prayer !== false;
-          document.getElementById('toggleSecret').checked = res.secret !== false;
-          document.getElementById('toggleQt').checked = res.qt !== false;
-          document.getElementById('togglePilgrim').checked = res.pilgrim === true;
-          document.getElementById('toggleSpecialPack').checked = res.specialPack === true;
+          renderTabSettings(res.items || []);
         }
-      } catch(e) {}
+      } catch(e) {
+        renderTabSettings([]);
+      }
     }
 
     document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
@@ -1724,11 +1788,7 @@
         const res = await post({
           action: 'setTabSettings',
           adminPw,
-          prayer: document.getElementById('togglePrayer').checked,
-          secret: document.getElementById('toggleSecret').checked,
-          qt: document.getElementById('toggleQt').checked,
-          pilgrim: document.getElementById('togglePilgrim').checked,
-          specialPack: document.getElementById('toggleSpecialPack').checked
+          tabItems: collectTabSettingsItems()
         });
         if (res.ok) {
           statusEl.className = 'status ok';

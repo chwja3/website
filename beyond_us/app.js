@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515s';
+    const APP_VERSION = '20260516a';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2902,29 +2902,51 @@
 
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
-      const { prayer, secret, qt, pilgrim } = data.tabSettings;
-      const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
-      const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
-      const qtItem = document.querySelector('.drawer-item[data-section="qt"]');
-      const pilgrimItem = document.querySelector('.drawer-item[data-section="pilgrim"]');
+      const settings = data.tabSettings;
+      const statuses = settings.statuses || {};
       const nextSpecialPackOpen = data.tabSettings.specialPack === true;
       const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
       specialPackOpen = nextSpecialPackOpen;
-      if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
-      if (qtItem) qtItem.style.display = (qt === false) ? 'none' : '';
+      const tabEnabled = {
+        notice: settings.notice !== false,
+        mission: settings.mission !== false,
+        prayer: settings.prayer !== false,
+        qt: settings.qt !== false,
+        secret: settings.secret !== false,
+        pilgrim: settings.pilgrim === true,
+        chat: settings.chat === true,
+        collection: settings.collection !== false,
+        faq: settings.faq !== false,
+        inquiry: settings.inquiry !== false,
+      };
+      Object.keys(tabEnabled).forEach(section => {
+        applyDrawerTabState(section, tabEnabled[section], statuses[section] || 'open');
+      });
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
-      if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
-      if (pilgrimItem) pilgrimItem.style.display = (pilgrim === true) ? '' : 'none';
-      const hiddenCurrent =
-        (_currentSection === 'prayer'  && prayer === false) ||
-        (_currentSection === 'qt'      && qt === false) ||
-        (_currentSection === 'secret'  && secret === false) ||
-        (_currentSection === 'pilgrim' && pilgrim !== true);
-      if (hiddenCurrent) switchSection('mission');
+      if (tabEnabled[_currentSection] === false) switchSection(getFirstVisibleDrawerSection() || 'mission');
       if (specialPackChanged) {
         updateTicketBadge(userStatus);
         renderDrawSection();
       }
+    }
+
+    function applyDrawerTabState(section, enabled, status) {
+      const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
+      if (!item) return;
+      item.style.display = enabled === false ? 'none' : '';
+      let dot = item.querySelector('.drawer-status-dot');
+      if (!dot) {
+        dot = document.createElement('span');
+        dot.className = 'drawer-status-dot';
+        item.appendChild(dot);
+      }
+      dot.classList.toggle('is-open', status === 'open');
+      dot.classList.toggle('is-closed', status !== 'open');
+    }
+
+    function getFirstVisibleDrawerSection() {
+      const item = Array.from(document.querySelectorAll('.drawer-item[data-section]')).find(el => el.style.display !== 'none');
+      return item ? item.dataset.section : '';
     }
 
     function updateScoreProgress() {
