@@ -24,3 +24,5 @@
 - [x] `app.js`에 Supabase 우선, GAS fallback API client 연결.
 - [x] DEV 사용자 앱용 `submit_pre_mission` 쓰기 RPC 작성.
 - [x] 사전미션 제출을 Supabase 우선, GAS fallback으로 연결.
+- [x] DEV 사용자 앱 비파일 쓰기 RPC 묶음 작성.
+- [x] 카드팩, 교환, 문의, BBB 메시지/시크릿 추측을 Supabase 우선으로 연결.

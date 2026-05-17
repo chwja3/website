@@ -72,7 +72,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518l';
+    const APP_VERSION = '20260518m';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -921,7 +921,7 @@
         body: JSON.stringify(args || {}),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || (data && data.ok === false)) {
+      if (!res.ok || (data && data.ok === false && opts.allowOkFalse !== true)) {
         const error = new Error((data && (data.error || data.message)) || `supabase_rpc_${functionName}_failed`);
         error.response = data;
         error.status = res.status;
@@ -956,6 +956,35 @@
         body: JSON.stringify(withSession(Object.assign({ action: 'submit' }, payload || {})))
       });
       if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
+      return res.json();
+    }
+
+    function buildGasQuery(action, params) {
+      const search = new URLSearchParams();
+      search.set('action', action);
+      Object.entries(params || {}).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        search.set(key, String(value));
+      });
+      search.set('t', String(Date.now()));
+      const token = getSessionToken();
+      if (token && !search.has('sessionToken')) search.set('sessionToken', token);
+      return `${API_BASE}?${search.toString()}`;
+    }
+
+    async function fetchGasGetAction(action, params) {
+      const res = await fetch(buildGasQuery(action, params), { cache: 'no-store' });
+      if (!res.ok) throw new Error(`${action}_failed`);
+      return res.json();
+    }
+
+    async function fetchGasPostAction(action, payload) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(withSession(Object.assign({ action }, payload || {})))
+      });
+      if (!res.ok) throw new Error(`${action}_failed`);
       return res.json();
     }
 
@@ -1001,6 +1030,169 @@
           }
         }
         return fetchGasSubmitMission(body);
+      },
+      async drawCardPack(payload) {
+        const body = payload || {};
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('draw_card_pack', {
+              p_login_id: body.userId || currentNickname || '',
+              p_week_key: body.weekKey || getWeekKey(),
+              p_pack_type: body.packType || 'normal',
+              p_request_id: body.requestId || '',
+              p_test_mode: body.testMode === true,
+            }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase draw failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction(body.action || (body.packType === 'special' ? 'drawSpecialCard' : 'drawCard'), body);
+      },
+      async getPublicCollection(nickname) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('get_public_collection', { p_login_id: nickname }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase public collection failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasGetAction('getPublicCollection', { userId: nickname });
+      },
+      async getTrades() {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('get_user_trades', { p_login_id: currentNickname }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase trades read failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasGetAction('getTrades', { userId: currentNickname });
+      },
+      async requestTrade(payload) {
+        const body = payload || {};
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('request_trade', {
+              p_login_id: currentNickname,
+              p_target_login_id: body.targetNickname || '',
+              p_requester_card_id: Number(body.requesterCardId) || 0,
+              p_target_card_id: Number(body.targetCardId) || 0,
+            }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase trade request failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('requestTrade', Object.assign({ nickname: currentNickname }, body));
+      },
+      async acceptTrade(tradeId) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('accept_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase trade accept failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('acceptTrade', { tradeId, nickname: currentNickname });
+      },
+      async rejectTrade(tradeId) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('reject_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase trade reject failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('rejectTrade', { tradeId, nickname: currentNickname });
+      },
+      async cancelTrade(tradeId) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('cancel_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase trade cancel failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('cancelTrade', { tradeId, nickname: currentNickname });
+      },
+      async prayForTrade(tradeId) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('pray_for_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase trade prayer failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('prayForTrade', { tradeId, nickname: currentNickname });
+      },
+      async getInquiries() {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('get_my_inquiries', { p_login_id: currentNickname }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase inquiries read failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasGetAction('getInquiries', { nickname: currentNickname });
+      },
+      async postInquiry(content) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('create_inquiry', { p_login_id: currentNickname, p_content: content }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase inquiry create failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('postInquiry', { nickname: currentNickname, content });
+      },
+      async editInquiry(id, content) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('update_inquiry', { p_login_id: currentNickname, p_id: id, p_content: content }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase inquiry update failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('editInquiry', { nickname: currentNickname, id, content });
+      },
+      async deleteInquiry(id) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase inquiry delete failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('deleteInquiry', { nickname: currentNickname, id });
+      },
+      async getBBBMessages(nickname, forceRefresh) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase BBB messages read failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasGetAction('getBBBMessages', { userId: nickname || currentNickname, force: forceRefresh ? 1 : '' });
+      },
+      async sendBBBMessage(message) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('send_bbb_message', { p_login_id: currentNickname, p_message: message }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase BBB message send failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('sendBBBMessage', { userId: currentNickname, message });
+      },
+      async guessBBBSecret(guess) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('guess_bbb_secret', { p_login_id: currentNickname, p_guess: guess }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase BBB secret guess failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('guessBBBSecret', { userId: currentNickname, guess });
       },
     };
 
@@ -1903,7 +2095,7 @@
       if (nick === currentNickname) { el.textContent = '자기 자신과는 교환할 수 없어요.'; return; }
       const dotsTimerSearch = animDots(el, '검색 중');
       try {
-        const res = await fetch(`${API_BASE}?action=getPublicCollection&userId=${encodeURIComponent(nick)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        const res = await apiClient.getPublicCollection(nick);
         if (!res.ok) { stopAnimDots(dotsTimerSearch, el, '찾을 수 없는 닉네임이에요.'); return; }
         const hasCards = Object.values(res.collection || {}).some(v => v >= 2);
         if (!hasCards) { stopAnimDots(dotsTimerSearch, el, `${nick}님은 교환 가능한 중복 카드가 없어요.`); return; }
@@ -2001,9 +2193,7 @@
       btn.disabled = true;
       const dotsTimerTrade = animDots(statusEl, '전송 중');
       try {
-        const res = await post({
-          action: 'requestTrade',
-          nickname: currentNickname,
+        const res = await apiClient.requestTrade({
           requesterCardId: _tradeMyCardId,
           targetNickname: _tradeTargetNickname,
           targetCardId: _tradeTheirCardId
@@ -2026,7 +2216,7 @@
       if (_loadTradesPromise) return _loadTradesPromise;
       _loadTradesPromise = (async () => {
       try {
-        const res = await fetch(`${API_BASE}?action=getTrades&userId=${encodeURIComponent(currentNickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        const res = await apiClient.getTrades();
         if (!res.ok) return;
         _cachedTrades = res;
         const all = [...(res.incoming || []), ...(res.outgoing || [])];
@@ -2103,7 +2293,7 @@
         btn.parentElement.replaceChild(label, btn);
       }
       try {
-        const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.prayForTrade(tradeId);
         if (res.ok) loadTrades();
         else alert(res.error || res.message || '오류가 발생했어요.');
       } catch(e) { alert('연결 오류: ' + e.message); }
@@ -2252,7 +2442,7 @@
     async function doTradeAccept(tradeId) {
       if (!confirm('교환을 수락할까요?')) return;
       try {
-        const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.acceptTrade(tradeId);
         if (res.ok) {
           // 수락한 사람은 새 카드 알림 불필요 — known에 미리 추가
           const ka = JSON.parse(localStorage.getItem('beyondus_known_accepts') || '[]');
@@ -2266,7 +2456,7 @@
     async function doTradeReject(tradeId) {
       if (!confirm('교환을 거절할까요?')) return;
       try {
-        const res = await post({ action: 'rejectTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.rejectTrade(tradeId);
         if (res.ok) loadTrades();
         else alert(res.error || '거절 실패');
       } catch(e) { alert('연결 오류'); }
@@ -2275,7 +2465,7 @@
     async function doTradeCancelTrade(tradeId) {
       if (!confirm('교환 신청을 취소할까요?')) return;
       try {
-        const res = await post({ action: 'cancelTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.cancelTrade(tradeId);
         if (res.ok) loadTrades();
         else alert(res.error || '취소 실패');
       } catch(e) { alert('연결 오류'); }
@@ -2784,12 +2974,14 @@
     function startDrawCardRequest() {
       if (drawCardPromise) return drawCardPromise;
       var drawAction = drawPackType === 'special' ? 'drawSpecialCard' : 'drawCard';
-      drawCardPromise = fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(), requestId: drawRequestId, packType: drawPackType }))
+      drawCardPromise = apiClient.drawCardPack({
+        action: drawAction,
+        userId: currentNickname,
+        weekKey: getWeekKey(),
+        testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(),
+        requestId: drawRequestId,
+        packType: drawPackType
       })
-      .then(function(r) { return r.json(); })
       .catch(function() { return null; });
       return drawCardPromise;
     }
@@ -3944,8 +4136,7 @@
       }
       list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
       try {
-        const res  = await fetch(`${API_BASE}?action=getInquiries&nickname=${encodeURIComponent(currentNickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' });
-        const data = await res.json();
+        const data = await apiClient.getInquiries();
         if (!data.ok) throw new Error();
         renderInquiries(data.inquiries);
       } catch(e) {
@@ -4017,12 +4208,7 @@
       const dotsTimer = animDots(statusEl, '삭제 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'deleteInquiry', nickname: currentNickname, id }))
-        });
-        const data = await res.json();
+        const data = await apiClient.deleteInquiry(id);
         if (data.ok) {
           stopAnimDots(dotsTimer, statusEl, '');
           loadInquiries();
@@ -4046,12 +4232,7 @@
       const dotsTimerSave = animDots(statusEl, '저장 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'editInquiry', nickname: currentNickname, id, content }))
-        });
-        const data = await res.json();
+        const data = await apiClient.editInquiry(id, content);
         if (data.ok) {
           stopAnimDots(dotsTimerSave, statusEl, '');
           loadInquiries();
@@ -4079,12 +4260,7 @@
       const dotsTimerPost = animDots(statusEl, '등록 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'postInquiry', nickname: currentNickname, content }))
-        });
-        const data = await res.json();
+        const data = await apiClient.postInquiry(content);
         if (data.ok) {
           input.value = '';
           stopAnimDots(dotsTimerPost, statusEl, '등록됐어요!');
@@ -4267,7 +4443,7 @@
       if (_bbbMessagesPromise) return _bbbMessagesPromise;
       _bbbMessagesPromise = (async () => {
         try {
-          const res = await fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+          const res = await apiClient.getBBBMessages(nickname, forceRefresh);
           if (!isActiveAccount(nickname)) return;
           _bbbMessagesLoadedFor = nickname;
           _bbbMessagesLastLoadedAt = Date.now();
@@ -4724,7 +4900,7 @@
       msgEl.style.color = 'var(--sub)';
       const dotsTimer = animDots(msgEl, '확인 중');
       try {
-        const res = await post({ action: 'guessBBBSecret', userId: nickname, guess });
+        const res = await apiClient.guessBBBSecret(guess);
         if (res.error) { stopAnimDots(dotsTimer, msgEl, res.error); msgEl.style.color = '#f87171'; return; }
         if (res.correct) {
           const successMsg = res.rewarded
@@ -4761,7 +4937,7 @@
         '<span style="width:6px;height:6px;border-radius:50%;background:#faf6ef;display:inline-block;animation:splashDot 1.2s ease-in-out .4s infinite;"></span>' +
         '</span>';
       try {
-        const res = await post({ action: 'sendBBBMessage', userId: nickname, message });
+        const res = await apiClient.sendBBBMessage(message);
         if (res.error) { resultEl.style.color = '#f87171'; resultEl.textContent = res.error; return; }
         resultEl.style.color = '#4ade80';
         resultEl.textContent = '메시지를 보냈어요! 💌';

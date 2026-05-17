@@ -28,6 +28,7 @@
 - 2026-05-18. 첫 API 전환은 사용자 앱의 `dashboard`, `userStatus` 읽기부터 진행한다. RPC가 실패하거나 Supabase 세션이 없으면 기존 GAS로 fallback해 DEV 앱이 깨지지 않게 한다.
 - 2026-05-18. `dashboard`, `userStatus` Supabase 읽기 RPC를 추가했다. 아직 쓰기 action은 GAS에 남아 있으므로 DEV 앱 기본값은 GAS이고, `?supabaseData=1` 또는 `localStorage.beyondus_supabase_data_read=1` 상태에서만 Supabase 읽기를 먼저 시도한다.
 - 2026-05-18. 첫 쓰기 전환으로 `submit_pre_mission` RPC를 추가했다. `?supabaseData=1` 상태에서 사전미션 제출은 Supabase를 먼저 호출하고, 실패하면 기존 GAS `submit`으로 fallback한다. RPC는 클라이언트 score를 신뢰하지 않고 `mission_items`의 활성 항목과 점수를 기준으로 저장 항목, 저장 인덱스, 새 점수, 주차 누적 점수를 다시 계산한다.
+- 2026-05-18. 사용자 앱 비파일 쓰기 묶음으로 카드팩 개봉, 교환, 개발자 문의, BBB 메시지, 시크릿버디 추측 RPC를 추가했다. 사진 업로드와 H&P, admin 쓰기는 Storage와 권한 모델을 먼저 확정해야 해서 이번 묶음에서 제외했다.
 
 ## 주요 리스크
 
