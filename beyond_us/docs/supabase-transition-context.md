@@ -14,6 +14,7 @@
 - 기존 GAS의 마이그레이션, cutover, Phase 2E 진단 action은 Supabase 이후 의미가 없어지므로 폐기 대상으로 둔다.
 - 첫 migration은 `beyond_us/supabase/migrations/20260517000100_initial_schema.sql`에 작성했다.
 - 첫 migration은 핵심 테이블, enum, 기본 seed, 인덱스, RLS 활성화까지 포함한다.
+- 테이블과 주요 컬럼 설명은 `beyond_us/supabase/migrations/20260517000200_schema_comments.sql`에서 `COMMENT ON`으로 별도 관리한다.
 - 실제 접근 정책은 다음 RLS migration에서 작성한다. 따라서 이 migration만 적용하면 service role 외 클라이언트 접근은 아직 막혀 있는 상태가 정상이다.
 
 ## 주요 리스크

@@ -7,6 +7,7 @@
 - [x] 기존 기능별 API map 작성.
 - [x] Sheet 기반 현재 상태 테이블과 Supabase 대체 테이블 매핑.
 - [x] 첫 SQL migration 작성.
+- [x] 테이블과 주요 컬럼 설명 migration 작성.
 - [ ] Supabase Auth 가입, 로그인, 비밀번호 재설정 방식 확정.
 - [ ] Storage bucket 정책 확정.
 - [ ] RLS 정책 migration 작성.
