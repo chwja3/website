@@ -40,7 +40,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518b';
+    const APP_VERSION = '20260518c';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -4309,13 +4309,11 @@
         const h12 = hh % 12 || 12;
         return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
       }
-      // 받은 메시지 = 왼쪽 정렬 (시크릿버디 → 나)
+      // 받은 메시지 = 박스 양끝까지, 날짜는 우하단
       function _bubble(m) {
-        return `<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">
-          <div style="max-width:80%;background:var(--primary-soft);border-radius:12px 12px 12px 2px;padding:10px 13px;">
-            <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
-            <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
-          </div>
+        return `<div style="background:var(--primary-soft);border-radius:12px;padding:10px 13px;margin-bottom:6px;">
+          <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
         </div>`;
       }
       const latest = messages[messages.length - 1];
