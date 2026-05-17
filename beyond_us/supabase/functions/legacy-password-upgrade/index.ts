@@ -28,6 +28,7 @@ const corsHeaders = {
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_MINUTES = 10;
+const MIN_SUPABASE_PASSWORD_LENGTH = 6;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -41,6 +42,7 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const loginId = text(body.loginId || body.login_id || body.nickname);
     const password = text(body.password);
+    const newPassword = text(body.newPassword || body.new_password);
 
     if (!loginId || !password) {
       return jsonResponse({ ok: false, error: 'missing_fields' }, 400);
@@ -95,8 +97,18 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: 'invalid_credentials' }, 401);
     }
 
+    const passwordForAuth = newPassword || password;
+    const usedNewPassword = Boolean(newPassword);
+    if (passwordForAuth.length < MIN_SUPABASE_PASSWORD_LENGTH) {
+      return jsonResponse({
+        ok: false,
+        error: usedNewPassword ? 'invalid_new_password' : 'weak_password_needs_reset',
+        minPasswordLength: MIN_SUPABASE_PASSWORD_LENGTH,
+      }, usedNewPassword ? 400 : 409);
+    }
+
     const { error: authError } = await supabase.auth.admin.updateUserById(profile.auth_user_id, {
-      password,
+      password: passwordForAuth,
       user_metadata: {
         login_id: profile.login_id,
         display_name: profile.login_id,
@@ -105,6 +117,15 @@ Deno.serve(async (req: Request) => {
         password_migrated_at: new Date().toISOString(),
       },
     });
+    const weakPasswordReasons = getWeakPasswordReasons(authError);
+    if (weakPasswordReasons) {
+      return jsonResponse({
+        ok: false,
+        error: usedNewPassword ? 'invalid_new_password' : 'weak_password_needs_reset',
+        minPasswordLength: MIN_SUPABASE_PASSWORD_LENGTH,
+        reasons: weakPasswordReasons,
+      }, usedNewPassword ? 400 : 409);
+    }
     if (authError) throw authError;
 
     const migratedAt = new Date().toISOString();
@@ -130,7 +151,10 @@ Deno.serve(async (req: Request) => {
       profile_id: profile.id,
       event_type: 'auth.password_migrated',
       ref_type: 'auth',
-      payload: { method: 'legacy_hash_upgrade' },
+      payload: {
+        method: 'legacy_hash_upgrade',
+        password_source: usedNewPassword ? 'new_password' : 'legacy_password',
+      },
       source: 'server',
     });
 
@@ -234,6 +258,14 @@ function getSupabaseServiceRoleKey(): string {
 function text(value: unknown): string {
   if (value === null || value === undefined) return '';
   return String(value).trim();
+}
+
+function getWeakPasswordReasons(error: unknown): string[] | null {
+  if (!error || typeof error !== 'object') return null;
+  const value = error as { code?: unknown; name?: unknown; reasons?: unknown };
+  if (value.code !== 'weak_password' && value.name !== 'AuthWeakPasswordError') return null;
+  if (!Array.isArray(value.reasons)) return [];
+  return value.reasons.map((reason) => String(reason));
 }
 
 function jsonResponse(body: unknown, status: number): Response {

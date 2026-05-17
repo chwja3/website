@@ -2,7 +2,7 @@
 
 ## 목적
 
-기존 Google Sheet의 `pwv1$...` 비밀번호 해시를 이용해 사용자가 기존 비밀번호로 첫 로그인할 수 있게 한다. 성공한 사용자는 입력한 기존 비밀번호가 Supabase Auth password로 저장되고, 이후부터는 Supabase Auth만 사용한다.
+기존 Google Sheet의 `pwv1$...` 비밀번호 해시를 이용해 사용자가 기존 비밀번호로 첫 로그인할 수 있게 한다. 기존 비밀번호가 Supabase Auth 정책을 만족하면 그대로 승격하고, 기존 4자리 비밀번호처럼 정책을 만족하지 않으면 기존 비밀번호로 본인 확인 후 새 비밀번호를 설정한다.
 
 ## 보안 원칙
 
@@ -79,8 +79,53 @@ npx supabase@latest functions deploy legacy-password-upgrade --project-ref qjwtk
 1. 사용자가 아이디와 비밀번호를 입력한다.
 2. Supabase Auth `signInWithPassword`를 먼저 시도한다.
 3. 실패했고 `profiles.password_migration_required=true`인 사용자라면 `legacy-password-upgrade`를 호출한다.
-4. `legacy-password-upgrade`가 `{ ok: true, passwordMigrated: true }`를 반환하면 같은 아이디와 비밀번호로 다시 `signInWithPassword`를 호출한다.
-5. 이후부터는 legacy hash를 쓰지 않는다.
+4. `legacy-password-upgrade`가 `{ ok: false, error: "weak_password_needs_reset" }`를 반환하면 새 비밀번호 입력 화면을 띄운다.
+5. 사용자가 기존 비밀번호와 6자 이상 새 비밀번호를 함께 제출하면 `legacy-password-upgrade`를 다시 호출한다.
+6. `legacy-password-upgrade`가 `{ ok: true, passwordMigrated: true }`를 반환하면 같은 아이디와 새 비밀번호로 다시 `signInWithPassword`를 호출한다.
+7. 이후부터는 legacy hash를 쓰지 않는다.
+
+## 수동 테스트
+
+기존 4자리 비밀번호만 보내면 재설정 필요 응답이 나와야 한다.
+
+```powershell
+$body = @{
+  loginId = "테스트아이디"
+  password = "기존비밀번호"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "https://qjwtkvfdzpeovjabdwxv.supabase.co/functions/v1/legacy-password-upgrade" `
+  -ContentType "application/json" `
+  -Body $body
+```
+
+예상 응답은 아래와 같다.
+
+```json
+{
+  "ok": false,
+  "error": "weak_password_needs_reset",
+  "minPasswordLength": 6
+}
+```
+
+새 비밀번호를 함께 보내면 승격이 완료되어야 한다.
+
+```powershell
+$body = @{
+  loginId = "테스트아이디"
+  password = "기존비밀번호"
+  newPassword = "새비밀번호6자이상"
+} | ConvertTo-Json
+
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "https://qjwtkvfdzpeovjabdwxv.supabase.co/functions/v1/legacy-password-upgrade" `
+  -ContentType "application/json" `
+  -Body $body
+```
 
 ## 확인 쿼리
 

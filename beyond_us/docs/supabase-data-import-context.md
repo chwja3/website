@@ -49,3 +49,4 @@
 - 사용자가 `PASSWORD_PEPPER`를 찾았으므로 기존 비밀번호 유지형 전환을 지원한다.
 - `legacy_auth_hashes`는 기존 GAS `pwv1$...` 해시를 임시 보관한다. 승격 성공 후 `password_hash`는 null로 지운다.
 - `legacy-password-upgrade` Edge Function은 `LEGACY_PASSWORD_PEPPER` secret으로 기존 비밀번호를 검증하고, 성공 시 Supabase Auth password를 입력한 비밀번호로 업데이트한다.
+- 2026-05-18. DEV 수동 호출에서 `AuthWeakPasswordError: Password should be at least 6 characters`가 확인됐다. 기존 유저 비밀번호가 전부 4자리이므로 기존 비밀번호는 본인 확인용으로만 쓰고, 검증 성공 후 6자 이상 새 비밀번호를 받아 Supabase Auth로 승격하는 흐름으로 바꾼다.

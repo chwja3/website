@@ -24,8 +24,9 @@
 - [x] DEV legacy password hash 테이블 migration 작성.
 - [x] DEV legacy password hash 적재 도구 작성.
 - [x] DEV legacy password upgrade Edge Function 초안 작성.
-- [ ] DEV legacy password hash 적재 실행.
-- [ ] DEV legacy password upgrade Edge Function 배포와 1명 테스트.
+- [x] DEV legacy password hash 적재 실행.
+- [x] DEV legacy password upgrade 4자리 비밀번호 재설정 응답 구현.
+- [ ] DEV legacy password upgrade Edge Function 재배포와 기존 비밀번호 및 새 비밀번호 1명 테스트.
 - [ ] DEV 비밀번호 재설정 Edge Function 작성.
 - [ ] DEV 현재 상태 테이블 재계산.
 - [ ] DEV 원본 projection과 Supabase 결과 비교.
