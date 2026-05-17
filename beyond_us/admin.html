@@ -95,6 +95,8 @@
     .tab-status-option { display:flex; align-items:center; gap:4px; padding:6px 9px; border-radius:999px; font-size:12px; font-weight:800; cursor:pointer; color:var(--sub); white-space:nowrap; }
     .tab-status-option input { position:absolute; opacity:0; pointer-events:none; }
     .tab-status-option:has(input:checked) { color:var(--text); background:#fff; box-shadow:0 1px 4px rgba(44,36,23,.08); }
+    .tab-status-option.status-hidden:has(input:checked) { color:#475569; background:#e2e8f0; }
+    .tab-status-option.status-coming:has(input:checked) { color:#991b1b; background:#fee2e2; }
     .tab-status-option.status-open:has(input:checked) { color:#166534; background:#dcfce7; }
     .tab-status-option.status-closed:has(input:checked) { color:#991b1b; background:#fee2e2; }
     @media (max-width: 680px) {
@@ -731,7 +733,7 @@
       <div id="tab-tabtoggle" class="tab-panel">
         <div class="card">
           <h2 class="card-title">유저 앱 탭 관리</h2>
-          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">표시를 끄면 앱 메뉴에서 숨겨져요. 🟢/🔴는 햄버거 메뉴 '곧 오픈' 칩 표시 + <strong>B.B.B 미션은 페이지 Coming Soon 커버까지 함께 제어</strong>해요.</p>
+          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;"><strong>메뉴 숨김</strong>: 햄버거에서 안 보임 / <strong>곧 오픈</strong>: 메뉴엔 보이지만 '곧 오픈' 칩 표시 (B.B.B는 페이지 커버) / <strong>오픈</strong>: 정상 사용 가능</p>
 
           <div id="tabSettingsList" class="tab-settings-list">
             <p style="font-size:13px;color:var(--sub);margin:0;">불러오는 중...</p>
@@ -1725,9 +1727,11 @@
       }
       listEl.innerHTML = list.map(item => {
         const key = String(item.key || '').trim();
-        const checkboxId = TAB_SETTING_ID_MAP[key] || `toggleTab_${key}`;
-        const radioName = `tabStatus_${key}`;
+        const radioName = `tabState_${key}`;
         const status = normalizeAdminTabStatus(item.status);
+        const enabled = item.enabled !== false;
+        // 3상태: hidden(메뉴 숨김) / coming(곧 오픈) / open(오픈)
+        const state = !enabled ? 'hidden' : (status === 'open' ? 'open' : 'coming');
         const meta = key === 'specialPack'
           ? '부가 기능 · 사전미션 카드팩 영역'
           : '유저 앱 메뉴 탭';
@@ -1738,18 +1742,18 @@
               <span class="tab-setting-meta">${esc(meta)}</span>
             </div>
             <div class="tab-setting-controls">
-              <label class="tab-visible-toggle">
-                <input type="checkbox" id="${esc(checkboxId)}" class="tab-enabled-input" ${item.enabled !== false ? 'checked' : ''} />
-                표시
-              </label>
               <div class="tab-status-group">
-                <label class="tab-status-option status-open">
-                  <input type="radio" name="${esc(radioName)}" value="open" ${status === 'open' ? 'checked' : ''} />
-                  ${TAB_STATUS_LABELS.open}
+                <label class="tab-status-option status-hidden">
+                  <input type="radio" name="${esc(radioName)}" value="hidden" ${state === 'hidden' ? 'checked' : ''} />
+                  메뉴 숨김
                 </label>
-                <label class="tab-status-option status-closed">
-                  <input type="radio" name="${esc(radioName)}" value="closed" ${status === 'closed' ? 'checked' : ''} />
-                  ${TAB_STATUS_LABELS.closed}
+                <label class="tab-status-option status-coming">
+                  <input type="radio" name="${esc(radioName)}" value="coming" ${state === 'coming' ? 'checked' : ''} />
+                  곧 오픈
+                </label>
+                <label class="tab-status-option status-open">
+                  <input type="radio" name="${esc(radioName)}" value="open" ${state === 'open' ? 'checked' : ''} />
+                  오픈
                 </label>
               </div>
             </div>
@@ -1761,8 +1765,9 @@
     function collectTabSettingsItems() {
       return Array.from(document.querySelectorAll('#tabSettingsList .tab-setting-row')).map(row => {
         const key = row.dataset.tabKey;
-        const enabled = row.querySelector('.tab-enabled-input')?.checked === true;
-        const status = row.querySelector(`input[name="tabStatus_${key}"]:checked`)?.value || 'closed';
+        const state = row.querySelector(`input[name="tabState_${key}"]:checked`)?.value || 'hidden';
+        const enabled = state !== 'hidden';
+        const status  = state === 'open' ? 'open' : 'closed';
         return { key, enabled, status };
       });
     }
