@@ -24,6 +24,9 @@
 - Google Sheet 원본 row는 `legacy_sheet_rows`에 보관하고, 변환 대상과 연결은 `legacy_import_refs`에 남긴다. 감사 테이블은 `beyond_us/supabase/migrations/20260517000400_import_audit_tables.sql`에서 만든다.
 - DEV Sheet를 먼저 이관해 검증한 뒤, PROD는 서버 점검 상태에서 같은 절차를 한 번에 수행한다.
 - 실제 접근 정책은 다음 RLS migration에서 작성한다. 따라서 이 migration만 적용하면 service role 외 클라이언트 접근은 아직 막혀 있는 상태가 정상이다.
+- 2026-05-18. DEV Sheet 데이터는 Supabase 정규 테이블로 가져오는 도구와 검증 쿼리가 준비되어 있지만, 앱과 admin의 실제 읽기/쓰기는 아직 GAS `API_BASE`를 사용한다.
+- 2026-05-18. 첫 API 전환은 사용자 앱의 `dashboard`, `userStatus` 읽기부터 진행한다. RPC가 실패하거나 Supabase 세션이 없으면 기존 GAS로 fallback해 DEV 앱이 깨지지 않게 한다.
+- 2026-05-18. `dashboard`, `userStatus` Supabase 읽기 RPC를 추가했다. 아직 쓰기 action은 GAS에 남아 있으므로 DEV 앱 기본값은 GAS이고, `?supabaseData=1` 또는 `localStorage.beyondus_supabase_data_read=1` 상태에서만 Supabase 읽기를 먼저 시도한다.
 
 ## 주요 리스크
 

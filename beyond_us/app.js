@@ -17,6 +17,8 @@
     const SUPABASE_AUTH_MODE = IS_DEV_ENV && SUPABASE_ANON_KEY ? 'shadow' : 'off'; // off | shadow | primary
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
+    const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
+    const SUPABASE_DATA_READ_MODE = getSupabaseDataReadMode(); // off | read
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'password_migration_required',
@@ -55,11 +57,22 @@
     function isSupabaseShadowAuth() {
       return isSupabaseAuthConfigured() && SUPABASE_AUTH_MODE === 'shadow';
     }
+    function getSupabaseDataReadMode() {
+      if (!IS_DEV_ENV || !SUPABASE_PROJECT_URL || !SUPABASE_ANON_KEY) return 'off';
+      try {
+        const flag = new URLSearchParams(location.search).get('supabaseData');
+        if (flag === '1') localStorage.setItem('beyondus_supabase_data_read', '1');
+        if (flag === '0') localStorage.removeItem('beyondus_supabase_data_read');
+        return localStorage.getItem('beyondus_supabase_data_read') === '1' ? 'read' : 'off';
+      } catch(e) {
+        return 'off';
+      }
+    }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518j';
+    const APP_VERSION = '20260518k';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -883,6 +896,86 @@
       if (!res.ok && !data.error) data.error = 'request_failed';
       return data;
     }
+
+    function getSupabaseAccessToken() {
+      return localStorage.getItem('beyondus_supabase_access_token') || '';
+    }
+
+    function canUseSupabaseDataRead(requireAuth) {
+      if (SUPABASE_DATA_READ_MODE !== 'read') return false;
+      if (requireAuth === false) return true;
+      return !!getSupabaseAccessToken();
+    }
+
+    async function callSupabaseRpc(functionName, args, options) {
+      const opts = options || {};
+      const token = getSupabaseAccessToken();
+      if (opts.requireAuth !== false && !token) throw new Error('supabase_auth_required');
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token || SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(args || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const error = new Error((data && (data.error || data.message)) || `supabase_rpc_${functionName}_failed`);
+        error.response = data;
+        error.status = res.status;
+        throw error;
+      }
+      return data;
+    }
+
+    async function fetchGasDashboard(options) {
+      const opts = options || {};
+      const forceParam = opts.force === true ? '&force=1' : '';
+      const res = await fetch(`${API_BASE}?action=dashboard${forceParam}&t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
+      return res.json();
+    }
+
+    async function fetchGasUserStatus(options) {
+      const opts = options || {};
+      const action = opts.full === true ? 'userStatus' : 'userStatusLite';
+      const res = await fetch(
+        `${API_BASE}?action=${action}&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
+      if (!res.ok) throw new Error('user_status_failed');
+      return res.json();
+    }
+
+    const apiClient = {
+      async getDashboard(options) {
+        if (canUseSupabaseDataRead(false)) {
+          try {
+            return await callSupabaseRpc('get_app_bootstrap', {}, { requireAuth: false });
+          } catch(e) {
+            console.warn('[DIAG] Supabase dashboard read failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasDashboard(options);
+      },
+      async getUserStatus(options) {
+        const opts = options || {};
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('get_user_status', {
+              p_login_id: currentNickname,
+              p_week_key: getWeekKey(),
+              p_lite: opts.full !== true,
+            });
+          } catch(e) {
+            console.warn('[DIAG] Supabase userStatus read failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasUserStatus(opts);
+      },
+    };
 
     function saveAuth(nickname, sessionToken, parish) {
       const prev = localStorage.getItem('beyondus_nickname');
@@ -2229,13 +2322,7 @@
         }
       }
       try {
-        const action = opts.full === true ? 'userStatus' : 'userStatusLite';
-        const res = await fetch(
-          `${API_BASE}?action=${action}&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) throw new Error();
-        userStatus = mergeUserStatusResponse(await res.json());
+        userStatus = mergeUserStatusResponse(await apiClient.getUserStatus(opts));
         if (currentNickname) localStorage.setItem('beyondus_cache_userStatus_' + currentNickname, JSON.stringify(userStatus));
         // 서버 기준으로 이번 주 스탬프 동기화 (서버가 비어있으면 로컬도 지움)
         {
@@ -3130,11 +3217,7 @@
         return _dashboardCacheData;
       }
       if (_dashboardPromise) return _dashboardPromise;
-      _dashboardPromise = fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' })
-        .then(res => {
-          if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
-          return res.json();
-        })
+      _dashboardPromise = apiClient.getDashboard(opts)
         .then(data => {
           _dashboardCacheData = data;
           _dashboardCacheAt = Date.now();

@@ -19,4 +19,6 @@
 - [x] 이관 감사 테이블 migration 작성.
 - [x] 기존 Sheet 데이터 export 방식 확정.
 - [x] 기존 Sheet 원본 row 적재 스크립트 작성.
-- [ ] 기존 Sheet 정규 테이블 변환 스크립트 작성.
+- [x] 기존 Sheet 정규 테이블 변환 스크립트 작성.
+- [x] DEV 사용자 앱용 `dashboard`, `userStatus` 읽기 RPC 작성.
+- [x] `app.js`에 Supabase 우선, GAS fallback API client 연결.
