@@ -3153,7 +3153,7 @@
           tag.className = 'drawer-coming-soon-tag';
           item.appendChild(tag);
         }
-        tag.textContent = COMING_SOON_DATES[section] || '곧 오픈';
+        tag.textContent = COMING_SOON_DATES[section] || 'Coming Soon';
       } else if (tag) {
         tag.remove();
       }
