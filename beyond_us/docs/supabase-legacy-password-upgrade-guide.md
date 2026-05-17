@@ -63,8 +63,14 @@ beyond_us/supabase/functions/legacy-password-upgrade/index.ts
 Supabase CLI를 사용할 경우 예시는 다음과 같다.
 
 ```powershell
-supabase functions deploy legacy-password-upgrade
+Set-Location "C:\Users\jkjk9\OneDrive\Documents\00_Work\01_AGC\AGC\2026_Youth_treat\website\beyond_us"
+npx supabase@latest login
+npx supabase@latest functions deploy legacy-password-upgrade --project-ref qjwtkvfdzpeovjabdwxv
 ```
+
+전역 `supabase` 명령이 없어도 `npx supabase@latest`로 실행할 수 있다. Node.js 20 이상이 필요하며, 현재 작업 환경은 Node.js 24 계열이라 조건을 만족한다.
+
+`legacy-password-upgrade`는 로그인 전 사용자가 호출해야 하므로 `supabase/config.toml`에서 `verify_jwt = false`로 둔다.
 
 ## 5. 첫 로그인 흐름
 

@@ -1,0 +1,2 @@
+[functions.legacy-password-upgrade]
+verify_jwt = false
