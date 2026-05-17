@@ -9,6 +9,7 @@
 - DEV Sheet를 먼저 가져와서 변환 규칙, 정합성, 앱 동작을 검증한다.
 - DEV 검증이 끝난 뒤 PROD는 서버를 잠시 닫고 같은 절차를 한 번에 실행한다.
 - PROD 작업 시간은 최소화한다. 이관 스크립트와 검증 쿼리는 DEV에서 먼저 확정한다.
+- Google Sheet export는 CSV가 아니라 Apps Script JSON export 함수로 수행한다.
 - 기존 원본 row는 `legacy_sheet_rows`에 그대로 보관한다.
 - 변환된 Supabase 행은 `legacy_import_refs`로 원본 row와 연결한다.
 - `Events`는 과거 로그 원장으로 가져오고, `user_cards`, `user_inventory`, `user_summary`는 Events와 도메인 시트에서 다시 계산한다.
@@ -47,16 +48,17 @@
 ## DEV 이관 순서
 
 1. DEV Supabase에 모든 migration을 적용한다.
-2. DEV Google Sheet를 읽어 모든 대상 시트 row를 `legacy_sheet_rows`에 적재한다.
-3. `Users`부터 `profiles`와 Auth 계정을 만든다.
-4. 설정 시트 `AppSettings`, `MissionDefinitions`, `TabSettings`, `BBBSettings`를 이관한다.
-5. `Events`를 이관한다.
-6. 도메인 시트 `HoldPray`, `HPGuesses`, `BBB`, `BBBMessages`, `BBBPhotos`, `Trades`, `CardReceived`, `Notices`, `Inquiries`를 이관한다.
-7. `RaffleTickets`를 번호 단위로 이관한다.
-8. Events와 도메인 상태를 기준으로 `user_cards`, `user_inventory`, `user_summary`, `mission_progress`를 재계산한다.
-9. `Collection`, `UserDashboard`, `MissionProgress` 원본과 Supabase 재계산 결과를 비교한다.
-10. `migration_issues`가 error 없이 끝나는지 확인한다.
-11. DEV 앱을 Supabase API에 연결해 로그인, 미션, 카드팩, H&P, BBB, 천로역정, 추첨권, 관리자 화면을 검증한다.
+2. DEV GAS에서 `exportSupabaseMigrationJsonDev`를 실행해 Drive JSON 파일을 만든다.
+3. DEV JSON export 파일을 import 스크립트에 넣어 모든 대상 시트 row를 `legacy_sheet_rows`에 적재한다.
+4. `Users`부터 `profiles`와 Auth 계정을 만든다.
+5. 설정 시트 `AppSettings`, `MissionDefinitions`, `TabSettings`, `BBBSettings`를 이관한다.
+6. `Events`를 이관한다.
+7. 도메인 시트 `HoldPray`, `HPGuesses`, `BBB`, `BBBMessages`, `BBBPhotos`, `Trades`, `CardReceived`, `Notices`, `Inquiries`를 이관한다.
+8. `RaffleTickets`를 번호 단위로 이관한다.
+9. Events와 도메인 상태를 기준으로 `user_cards`, `user_inventory`, `user_summary`, `mission_progress`를 재계산한다.
+10. `Collection`, `UserDashboard`, `MissionProgress` 원본과 Supabase 재계산 결과를 비교한다.
+11. `migration_issues`가 error 없이 끝나는지 확인한다.
+12. DEV 앱을 Supabase API에 연결해 로그인, 미션, 카드팩, H&P, BBB, 천로역정, 추첨권, 관리자 화면을 검증한다.
 
 ## PROD 한 번에 작업할 순서
 
@@ -64,15 +66,16 @@
 2. 사용자 앱을 maintenance 또는 점검 안내 상태로 전환한다.
 3. PROD Google Sheet 전체 사본을 만든다.
 4. PROD Supabase에 DEV에서 검증된 migration이 모두 적용되어 있는지 확인한다.
-5. PROD Google Sheet export 또는 이관 스크립트를 실행해 `legacy_sheet_rows`를 먼저 채운다.
-6. Auth 계정과 `profiles`를 생성한다.
-7. 설정, Events, 도메인 시트, 추첨권 순서로 정규 테이블을 채운다.
-8. 현재 상태 테이블을 재계산한다.
-9. 검증 쿼리로 사용자 수, Events 수, 활성 추첨권 수, 카드 보유 합계, 사진 제출 수, 문의 수를 대조한다.
-10. 앱과 admin의 API endpoint를 Supabase 기준으로 전환한다.
-11. smoke test를 한다.
-12. 문제가 없으면 maintenance를 해제한다.
-13. Google Sheet와 GAS는 읽기 전용 백업으로 보관한다.
+5. PROD GAS에서 `exportSupabaseMigrationJsonProd`를 실행해 Drive JSON 파일을 만든다.
+6. PROD JSON export 파일을 import 스크립트에 넣어 `legacy_sheet_rows`를 먼저 채운다.
+7. Auth 계정과 `profiles`를 생성한다.
+8. 설정, Events, 도메인 시트, 추첨권 순서로 정규 테이블을 채운다.
+9. 현재 상태 테이블을 재계산한다.
+10. 검증 쿼리로 사용자 수, Events 수, 활성 추첨권 수, 카드 보유 합계, 사진 제출 수, 문의 수를 대조한다.
+11. 앱과 admin의 API endpoint를 Supabase 기준으로 전환한다.
+12. smoke test를 한다.
+13. 문제가 없으면 maintenance를 해제한다.
+14. Google Sheet와 GAS는 읽기 전용 백업으로 보관한다.
 
 ## PROD 검증 기준
 

@@ -32,6 +32,7 @@
 
 ## 다음 구현 후보
 
-- Google Sheet export를 CSV 묶음으로 할지, Apps Script JSON export 함수로 할지 결정해야 한다.
-- 현재 구조에서는 JSON export가 더 안전하다. 헤더 이름과 row number를 같이 보존할 수 있고, 한글 CSV 깨짐 문제를 피할 수 있기 때문이다.
+- Sheet export는 Apps Script JSON export 함수로 확정했다. 헤더 이름과 row number를 같이 보존할 수 있고, 한글 CSV 깨짐 문제를 피할 수 있기 때문이다.
+- DEV에서는 `exportSupabaseMigrationJsonDev`, PROD에서는 `exportSupabaseMigrationJsonProd`를 실행한다.
+- export 함수는 Google Drive에 `beyond_us_supabase_export_<env>_YYYYMMDD_HHMMSS.json` 파일을 생성하며 Sheet 데이터는 수정하지 않는다.
 - import 스크립트는 `tools/supabase_import` 아래에 Node 또는 Python으로 두는 방향이 좋다.

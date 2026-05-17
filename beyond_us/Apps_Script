@@ -722,6 +722,7 @@ const FINAL_HIDDEN_SHEET_NAMES = Object.freeze([
   SHEET_NAMES.CARD_DRAWS,
   SHEET_NAMES.BONUS_DRAWS,
 ]);
+const SUPABASE_MIGRATION_EXPORT_VERSION = 1;
 const FINAL_SHEET_TABS = Object.freeze([
   Object.freeze({ name: SHEET_NAMES.EVENTS, color: '#9333EA' }),
   Object.freeze({ name: SHEET_NAMES.USER_DASHBOARD, color: USER_DASHBOARD_TAB_COLOR }),
@@ -11241,6 +11242,225 @@ function adminSetBBBMessageOpen(body) {
   clearConfigCaches_();
   bumpBBBCacheRevision_();
   return { ok: true, messageOpen: open };
+}
+
+// ── Supabase 이관 JSON export ─────────────────────
+function exportSupabaseMigrationJsonDev() {
+  return logJsonResult_('exportSupabaseMigrationJsonDev result', exportSupabaseMigrationJson_({
+    sourceEnvironment: 'dev'
+  }));
+}
+
+function exportSupabaseMigrationJsonProd() {
+  return logJsonResult_('exportSupabaseMigrationJsonProd result', exportSupabaseMigrationJson_({
+    sourceEnvironment: 'prod'
+  }));
+}
+
+function exportSupabaseMigrationJson_(options) {
+  const opts = options || {};
+  const env = String(opts.sourceEnvironment || '').trim().toLowerCase();
+  const sourceEnvironment = env === 'prod' ? 'prod' : 'dev';
+  const ss = getSpreadsheet();
+  const exportedAt = new Date();
+  const exportLabel = Utilities.formatDate(
+    exportedAt,
+    Session.getScriptTimeZone() || 'Asia/Seoul',
+    'yyyyMMdd_HHmmss'
+  );
+  const sheetNames = getSupabaseMigrationExportSheetNames_();
+  const payload = {
+    exportVersion: SUPABASE_MIGRATION_EXPORT_VERSION,
+    sourceEnvironment: sourceEnvironment,
+    sourceSpreadsheetId: ss.getId(),
+    sourceSpreadsheetName: ss.getName(),
+    sourceSnapshotLabel: sourceEnvironment + '_' + exportLabel,
+    exportedAt: exportedAt.toISOString(),
+    sheets: [],
+    rowCounts: {},
+    missingSheets: [],
+  };
+
+  sheetNames.forEach(function(sheetName) {
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      payload.missingSheets.push(sheetName);
+      payload.rowCounts[sheetName] = 0;
+      return;
+    }
+    const exportedSheet = exportSupabaseMigrationSheet_(sheet);
+    payload.sheets.push(exportedSheet);
+    payload.rowCounts[sheetName] = exportedSheet.rows.length;
+  });
+
+  const fileName = 'beyond_us_supabase_export_' + sourceEnvironment + '_' + exportLabel + '.json';
+  const blob = Utilities.newBlob(
+    JSON.stringify(payload, null, 2),
+    'application/json',
+    fileName
+  );
+  const file = DriveApp.createFile(blob);
+  return {
+    ok: true,
+    sourceEnvironment: sourceEnvironment,
+    sourceSpreadsheetId: payload.sourceSpreadsheetId,
+    sourceSnapshotLabel: payload.sourceSnapshotLabel,
+    exportedAt: payload.exportedAt,
+    fileName: fileName,
+    fileId: file.getId(),
+    fileUrl: file.getUrl(),
+    sheetCount: payload.sheets.length,
+    rowCounts: payload.rowCounts,
+    missingSheets: payload.missingSheets,
+  };
+}
+
+function getSupabaseMigrationExportSheetNames_() {
+  const seen = {};
+  const names = [];
+  Object.keys(SHEET_NAMES).forEach(function(key) {
+    const sheetName = SHEET_NAMES[key];
+    if (sheetName && !seen[sheetName]) {
+      seen[sheetName] = true;
+      names.push(sheetName);
+    }
+  });
+  return names;
+}
+
+function exportSupabaseMigrationSheet_(sheet) {
+  const sheetName = sheet.getName();
+  const schema = getSupabaseMigrationSchemaForSheet_(sheetName);
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+  const headerRow = schema ? schema.headerRow : 1;
+  const dataStartRow = schema ? schema.dataStartRow : 2;
+  const headers = getSupabaseMigrationSheetHeaders_(sheet, headerRow, lastRow, lastColumn);
+  const rows = [];
+
+  if (lastRow >= dataStartRow && lastColumn > 0) {
+    const values = sheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, lastColumn).getValues();
+    values.forEach(function(row, index) {
+      const serialized = row.map(serializeSupabaseMigrationCell_);
+      if (isSupabaseMigrationEmptyRow_(serialized)) return;
+      const rowNumber = dataStartRow + index;
+      const object = {};
+      headers.forEach(function(header, colIndex) {
+        object[header] = serialized[colIndex];
+      });
+      const rowKey = getSupabaseMigrationRowKey_(object, serialized);
+      const sourceHash = sha256HexForSupabaseMigration_(
+        JSON.stringify({
+          sheetName: sheetName,
+          rowNumber: rowNumber,
+          object: object,
+        })
+      );
+      rows.push({
+        rowNumber: rowNumber,
+        rowKey: rowKey,
+        sourceHash: sourceHash,
+        values: serialized,
+        object: object,
+      });
+    });
+  }
+
+  return {
+    sheetName: sheetName,
+    headerRow: headerRow,
+    dataStartRow: dataStartRow,
+    lastRow: lastRow,
+    lastColumn: lastColumn,
+    headers: headers,
+    rows: rows,
+  };
+}
+
+function getSupabaseMigrationSchemaForSheet_(sheetName) {
+  const keys = Object.keys(SCHEMA);
+  for (let i = 0; i < keys.length; i++) {
+    const schema = SCHEMA[keys[i]];
+    if (schema && schema.sheetName === sheetName) return schema;
+  }
+  return null;
+}
+
+function getSupabaseMigrationSheetHeaders_(sheet, headerRow, lastRow, lastColumn) {
+  if (lastColumn <= 0) return [];
+  const rawHeaders = headerRow <= lastRow
+    ? sheet.getRange(headerRow, 1, 1, lastColumn).getValues()[0]
+    : [];
+  const used = {};
+  const headers = [];
+  for (let i = 0; i < lastColumn; i++) {
+    let key = String(rawHeaders[i] || '').trim();
+    if (!key) key = 'column_' + (i + 1);
+    if (used[key]) {
+      used[key]++;
+      key = key + '_' + used[key];
+    } else {
+      used[key] = 1;
+    }
+    headers.push(key);
+  }
+  return headers;
+}
+
+function serializeSupabaseMigrationCell_(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (value === null || value === undefined) return '';
+  return value;
+}
+
+function isSupabaseMigrationEmptyRow_(values) {
+  return values.every(function(value) {
+    return value === '' || value === null || value === undefined;
+  });
+}
+
+function getSupabaseMigrationRowKey_(object, values) {
+  const candidates = [
+    'nickname',
+    'userId',
+    'eventId',
+    'ticket_no',
+    'ticketNo',
+    'id',
+    'msgId',
+    'key',
+    'weekKey',
+    'name',
+    '이름(n)',
+  ];
+  for (let i = 0; i < candidates.length; i++) {
+    const value = object[candidates[i]];
+    if (value !== null && value !== undefined && String(value).trim() !== '') {
+      return String(value).trim();
+    }
+  }
+  for (let j = 0; j < values.length; j++) {
+    if (values[j] !== null && values[j] !== undefined && String(values[j]).trim() !== '') {
+      return String(values[j]).trim();
+    }
+  }
+  return '';
+}
+
+function sha256HexForSupabaseMigration_(text) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(text || ''),
+    Utilities.Charset.UTF_8
+  );
+  const parts = [];
+  for (let i = 0; i < digest.length; i++) {
+    const byte = digest[i];
+    const value = byte < 0 ? byte + 256 : byte;
+    const hex = value.toString(16);
+    parts.push(hex.length === 1 ? '0' + hex : hex);
+  }
+  return parts.join('');
 }
 
 // ── 일회성: HoldPray 신규 기도제목 추가 (2026-05-09) ────────────────
