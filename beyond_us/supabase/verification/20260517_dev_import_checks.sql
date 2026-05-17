@@ -347,3 +347,24 @@ from public.profiles
 where auth_user_id is null
 order by participant_no
 limit 20;
+
+-- 13. Legacy password hash 적재와 승격 상태를 확인한다.
+select
+  count(*)::integer as legacy_hash_rows,
+  count(*) filter (where migrated_at is null and password_hash is not null)::integer as pending_legacy_migration,
+  count(*) filter (where migrated_at is not null and password_hash is null)::integer as migrated_legacy_passwords,
+  count(*) filter (where locked_until is not null and locked_until > now())::integer as temporarily_locked
+from public.legacy_auth_hashes;
+
+select
+  profiles.login_id,
+  profiles.name,
+  profiles.password_migration_required,
+  legacy.migrated_at,
+  legacy.failed_attempts,
+  legacy.locked_until
+from public.profiles profiles
+left join public.legacy_auth_hashes legacy on legacy.profile_id = profiles.id
+where legacy.profile_id is null
+order by profiles.participant_no
+limit 20;

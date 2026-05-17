@@ -69,8 +69,12 @@ u_<sha256(trim(login_id))>@auth.beyond-us.local
 
 - Google Sheet의 기존 비밀번호 해시는 Supabase Auth 해시로 직접 변환하지 않는다.
 - 이관 시 기존 사용자별 Supabase Auth 계정을 생성하되 임시 랜덤 비밀번호를 사용한다.
-- `profiles.password_migration_required`를 `true`로 두고, 첫 접속 시 비밀번호 재설정 흐름으로 새 비밀번호를 설정하게 한다.
-- 재설정이 완료되면 `password_migration_required`를 `false`로 바꾼다.
+- 기존 GAS `pwv1$...` 해시는 `legacy_auth_hashes`에 임시 보관한다.
+- `PASSWORD_PEPPER`는 Edge Function Secret `LEGACY_PASSWORD_PEPPER`에만 저장한다.
+- 사용자가 기존 아이디와 비밀번호로 첫 로그인을 시도하면 `legacy-password-upgrade` Edge Function이 기존 해시를 1회 검증한다.
+- 검증 성공 시 입력한 비밀번호를 Supabase Auth password로 설정하고 `profiles.password_migration_required=false`로 바꾼다.
+- 승격 성공 후 `legacy_auth_hashes.password_hash`는 `null`로 지운다.
+- 기존 해시 검증이 불가능하거나 실패한 사용자는 비밀번호 재설정 흐름으로 새 비밀번호를 설정한다.
 
 ## 관리자 권한
 

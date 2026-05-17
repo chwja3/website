@@ -45,3 +45,7 @@
 - DEV 검증 SQL은 `supabase/verification/20260517_dev_import_checks.sql`에 둔다. row count, 예상 밖 issue, Collection/UserDashboard/MissionProgress projection, 유저별 활성 추첨권, 추첨권 제외 유저의 활성 추첨권 잔존 여부를 확인한다.
 - Auth 사용자 생성 도구는 `tools/supabase_import/create_auth_users.mjs`에 둔다. 기존 비밀번호 해시는 가져오지 않고, synthetic email과 랜덤 임시 비밀번호로 Auth 사용자를 만든 뒤 `profiles.auth_user_id`를 연결한다.
 - Auth 사용자 생성은 처음에 `--login-id`로 개발자 계정 1명만 apply해서 검증한 뒤 전체 실행한다.
+- 사용자가 DEV Supabase Auth 계정 생성과 `profiles.auth_user_id` 연결을 완료했다고 확인했다.
+- 사용자가 `PASSWORD_PEPPER`를 찾았으므로 기존 비밀번호 유지형 전환을 지원한다.
+- `legacy_auth_hashes`는 기존 GAS `pwv1$...` 해시를 임시 보관한다. 승격 성공 후 `password_hash`는 null로 지운다.
+- `legacy-password-upgrade` Edge Function은 `LEGACY_PASSWORD_PEPPER` secret으로 기존 비밀번호를 검증하고, 성공 시 Supabase Auth password를 입력한 비밀번호로 업데이트한다.
