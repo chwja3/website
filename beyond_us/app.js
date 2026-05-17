@@ -59,7 +59,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518h';
+    const APP_VERSION = '20260518i';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -1053,6 +1053,15 @@
         const data = await res.json();
         if (data.ok) {
           stopAnimDots(dotsTimerLogin, statusEl, '');
+          if (isSupabaseShadowAuth()) {
+            const authResult = await trySupabaseLogin(nickname, password).catch((error) => {
+              console.warn('[DIAG] Supabase shadow login failed', error);
+              return { ok: false, error: 'shadow_login_failed' };
+            });
+            if (!authResult.ok && await promptLegacyUpgradeIfNeeded(nickname, password)) {
+              return;
+            }
+          }
           saveAuth(nickname, data.sessionToken || '', data.parish || '');
           localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
           localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
@@ -1063,18 +1072,6 @@
             syncInitialData().catch(() => {});
           } else {
             showComingSoon();
-          }
-          if (isSupabaseShadowAuth()) {
-            trySupabaseLogin(nickname, password)
-              .then((authResult) => {
-                if (!authResult.ok) {
-                  return promptLegacyUpgradeIfNeeded(nickname, password);
-                }
-                return false;
-              })
-              .catch((error) => {
-                console.warn('[DIAG] Supabase shadow login failed', error);
-              });
           }
         } else if (data.error === 'not_found') {
           stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');

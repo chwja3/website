@@ -8,6 +8,7 @@
 - 2026-05-18. Supabase Auth REST password login helper를 추가했다. `SUPABASE_ANON_KEY`가 비어 있으면 `off`, 값이 있으면 기본 `shadow`로 동작한다. `shadow`는 기존 GAS 로그인 성공 후 Supabase 세션 저장만 시도하고, `primary`는 앱 데이터 API 전환 전까지 켜지 않는다.
 - 2026-05-18. Supabase publishable key를 `SUPABASE_ANON_KEY`에 반영했다. 이 값은 public key이며, 반영 후 앱은 기본 `shadow` 모드로 동작한다.
 - 2026-05-18. shadow mode에서 기존 GAS 로그인은 성공하지만 Supabase access token이 `null`로 남는 상황을 확인했다. 원인은 기존 4자리 비밀번호 계정이 아직 Supabase Auth password로 승격되지 않았기 때문이다. GAS 로그인 성공 후 Supabase 로그인 실패 시 `legacy-password-upgrade`를 probe로 호출하고, `weak_password_needs_reset`이면 새 비밀번호 업데이트 pane을 띄우도록 보강했다.
+- 2026-05-18. 첫 보강에서는 `showApp()` 이후에 shadow probe가 실행되어 auth pane은 바뀌어도 화면에 보이지 않았다. GAS 로그인 성공 직후 앱 진입 전에 shadow login과 legacy probe를 먼저 실행하고, 업데이트가 필요하면 `showApp()`으로 넘어가지 않도록 순서를 바꿨다.
 
 ## 남은 연결
 
