@@ -43,9 +43,26 @@ select count(*) as hold_pray_entries from public.hold_pray_entries;
 select count(*) as inquiries from public.inquiries;
 ```
 
+## DEV 정밀 검증
+
+정규 테이블 apply 후에는 아래 SQL 파일을 Supabase SQL Editor에서 실행한다.
+
+```text
+beyond_us/supabase/verification/20260517_dev_import_checks.sql
+```
+
+확인 기준은 다음과 같다.
+
+- 최근 `migration_batches`의 normalized import batch가 `completed`인지 확인한다.
+- 원본 Sheet row 수와 대상 테이블 row 수 비교에서 1:1 매핑 대상은 `ok`여야 한다.
+- Events 이벤트 타입별 count 비교가 모두 `ok`여야 한다.
+- `migration_issues`는 `qt`, `pilgrim`의 `duplicate_tab_key` 2개만 남아야 한다.
+- Collection 카드팩 잔액, 카드 보유량, 유저별 활성 추첨권, MissionProgress, UserDashboard mismatch 쿼리는 결과가 없어야 한다.
+- `raffle_excluded=true` 유저에게 활성 추첨권이 남아있으면 안 된다.
+
 ## 알려진 보류
 
 - Auth 계정 생성과 비밀번호 재설정 흐름.
 - BBB 사진 base64를 Supabase Storage로 이동.
 - `legacy_import_refs` 세부 연결 기록.
-- `Collection`, `UserDashboard`, `MissionProgress`와 Supabase projection의 mismatch 검증 쿼리.
+- 정규 테이블을 실제 앱 API로 연결하는 작업.

@@ -7,7 +7,7 @@
 - [x] 원본 row 보관용 감사 테이블 migration 작성.
 - [x] Sheet export 방식 확정.
 - [x] import 스크립트 실행 방식 확정.
-- [ ] DEV 검증 쿼리 작성.
+- [x] DEV 검증 쿼리 작성.
 - [ ] PROD 전환 runbook 최종 잠금.
 
 ## DEV
@@ -17,8 +17,8 @@
 - [x] DEV export JSON dry-run 확인.
 - [x] DEV Sheet 전체 row를 `legacy_sheet_rows`에 적재.
 - [x] DEV 정규 테이블 변환 dry-run 확인.
-- [ ] DEV `Users`를 `profiles`로 이관.
-- [ ] DEV 설정, Events, 도메인 시트, 추첨권 이관.
+- [x] DEV `Users`를 `profiles`로 이관.
+- [x] DEV 설정, Events, 도메인 시트, 추첨권 이관.
 - [ ] DEV Supabase Auth 계정 생성 전략 확정.
 - [ ] DEV 현재 상태 테이블 재계산.
 - [ ] DEV 원본 projection과 Supabase 결과 비교.

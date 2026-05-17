@@ -41,3 +41,5 @@
 - DEV export의 `missingSheets`는 빈 배열로 확인됐고, `legacy_sheet_rows` 적재도 정상 완료됐다.
 - 다음 변환 스크립트는 Auth 계정 생성과 사진 Storage 업로드를 제외한다. 1차 목표는 `profiles`, 설정, Events, 도메인 현재 상태 테이블을 채워 Supabase 구조 검증을 가능하게 하는 것이다.
 - `import_normalized_data.mjs --dry-run` 결과 DEV 기준 target count가 생성됐고, `TabSettings`의 `qt`, `pilgrim` 중복 row 2개만 warning으로 잡혔다. 같은 key는 마지막 row 기준으로 이관한다.
+- 사용자가 정규 테이블 apply 후 `migration_issues`가 `qt`, `pilgrim` 2개뿐임을 확인했다.
+- DEV 검증 SQL은 `supabase/verification/20260517_dev_import_checks.sql`에 둔다. row count, 예상 밖 issue, Collection/UserDashboard/MissionProgress projection, 유저별 활성 추첨권, 추첨권 제외 유저의 활성 추첨권 잔존 여부를 확인한다.
