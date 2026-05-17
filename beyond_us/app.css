@@ -1945,6 +1945,7 @@
       font-weight: 700;
       border-radius: 12px;
       margin-bottom: 8px !important;
+      position: relative;
     }
     .drawer-util-row {
       display: grid;
