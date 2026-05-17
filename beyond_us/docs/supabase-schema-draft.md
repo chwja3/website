@@ -12,6 +12,10 @@
 | `profiles` | 앱 유저 기본 정보 | `id`, `auth_user_id`, `participant_no`, `login_id`, `display_name`, `name`, `birth_date`, `gender`, `parish`, `role`, `account_status`, `is_dev`, `is_test`, `raffle_excluded`, `created_at`, `last_login_at`, `deleted_at`, `admin_note` |
 | `profile_private_notes` | 민감하거나 운영진 전용 메모 | `profile_id`, `note`, `created_by`, `created_at` |
 
+- `profiles.login_id`는 대소문자를 구분하는 `text`다.
+- Supabase Auth email은 실제 이메일이 아니라 `u_<sha256(trim(login_id))>@auth.beyond-us.local` 형식의 내부 synthetic email을 사용한다.
+- 기존 Sheet 계정은 `password_migration_required=true`로 이관한 뒤 사용자 재설정 흐름에서 새 Auth 비밀번호를 설정한다.
+
 ## 수련회 운영 정보
 
 | table | 역할 | 주요 컬럼 |

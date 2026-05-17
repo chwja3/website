@@ -12,16 +12,16 @@
 | `userStatus` | 유저 전체 상태 조회 | `get_user_status` RPC로 대체 |
 | `userStatusLite` | 유저 경량 상태 조회 | `get_user_status_lite` 또는 `get_user_status` 옵션으로 대체 |
 | `getHoldPray` | H&P 목록과 내 추측 상태 조회 | `get_hold_pray`로 대체 |
-| `findNickname` | 이름과 교구로 아이디 찾기 | 보안상 공개 API 폐기 권장. 관리자 또는 Auth recovery로 대체 |
+| `findNickname` | 이름과 교구로 아이디 찾기 | rate limit이 있는 `find_login_id_by_profile` Edge Function으로 제한 유지 |
 | `getPublicCollection` | 다른 유저 컬렉션 조회 | `get_public_collection`으로 대체 |
 | `getTrades` | 내 교환 목록 조회 | `get_trades`로 대체 |
 | `getNotices` | 공지 조회 | `get_notices`로 대체 |
 | `getInquiries` | 개발자 문의 조회 | `get_inquiries`로 대체 |
 | `getBBB` | BBB, 천로역정, 매칭 상태 조회 | `get_bbb_status`로 대체 |
 | `getBBBMessages` | BBB 메시지 조회 | `get_bbb_messages`로 대체 |
-| `register` | 가입 | Supabase Auth sign up과 `profiles` insert로 대체 |
-| `login` | 로그인과 세션 발급 | Supabase Auth sign in으로 대체 |
-| `resetPassword` | 사용자 비밀번호 재설정 | Supabase Auth password reset 또는 관리자 reset로 대체 |
+| `register` | 가입 | `auth_register_profile` Edge Function과 Supabase Auth Admin 생성으로 대체 |
+| `login` | 로그인과 세션 발급 | synthetic email 기반 Supabase Auth sign in으로 대체 |
+| `resetPassword` | 사용자 비밀번호 재설정 | `reset_password_by_profile` Edge Function과 Supabase Auth Admin 갱신으로 대체 |
 | `submit` | 사전미션 제출과 카드팩 지급 | `submit_pre_mission`로 대체 |
 | `drawCard` | 일반 카드팩 개봉 | `draw_card_pack`로 대체 |
 | `drawSpecialCard` | 특별 카드팩 개봉 | `draw_card_pack`의 pack type으로 통합 |
@@ -45,7 +45,7 @@
 
 | action | 현재 의미 | Supabase 전환 후 방향 |
 |---|---|---|
-| `adminLogin` | 관리자 비밀번호 로그인 | Supabase Auth role 기반 로그인으로 폐기 |
+| `adminLogin` | 관리자 비밀번호 로그인 | Supabase Auth 로그인 후 `profiles.role` 확인으로 대체 |
 | `getUsers` | 유저 목록 조회 | `admin_get_users`로 대체 |
 | `adminGetRaffleAttendance` | 앱 가입자, 참석, 추첨권 제외 조회 | `admin_get_participants`로 대체 |
 | `adminDeactivateUser` | 유저 비활성화 | `admin_set_user_status`로 대체 |
@@ -55,7 +55,7 @@
 | `setCardReceivedQty` | 실물 카드 수령 수량 관리 | `admin_set_physical_card_receipt`로 대체 |
 | `getTicketStats` | 뽑기권 집계 | view 또는 `admin_get_inventory_stats`로 대체 |
 | `getCardStats` | 카드 집계 | view 또는 `admin_get_card_stats`로 대체 |
-| `adminResetPassword` | 유저 비밀번호 초기화 | Supabase Auth admin reset로 대체 |
+| `adminResetPassword` | 유저 비밀번호 초기화 | `admin_reset_password` Edge Function과 Supabase Auth Admin 갱신으로 대체 |
 | `getCurrentWeek` | 현재 주차 조회 | `app_settings` 조회로 대체 |
 | `setCurrentWeek` | 현재 주차 변경 | `admin_set_app_setting`로 대체 |
 | `getMissionConfig` | 사전미션 설정 조회 | `mission_weeks`, `mission_items` 조회로 대체 |

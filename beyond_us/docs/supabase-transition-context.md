@@ -15,6 +15,11 @@
 - 첫 migration은 `beyond_us/supabase/migrations/20260517000100_initial_schema.sql`에 작성했다.
 - 첫 migration은 핵심 테이블, enum, 기본 seed, 인덱스, RLS 활성화까지 포함한다.
 - 테이블과 주요 컬럼 설명은 `beyond_us/supabase/migrations/20260517000200_schema_comments.sql`에서 `COMMENT ON`으로 별도 관리한다.
+- Auth 전환 방식은 `beyond_us/docs/supabase-auth-strategy.md`에 정리했다.
+- 사용자 화면은 아이디와 비밀번호 입력을 유지하되, 내부적으로는 `sha256(trim(login_id))` 기반 synthetic email로 Supabase Auth email/password 로그인을 사용한다.
+- `profiles.login_id`는 대소문자를 구분하는 `text`로 고정한다. 이를 위해 `beyond_us/supabase/migrations/20260517000300_auth_login_id_policy.sql`을 추가했다.
+- 관리자 로그인은 `ADMIN_PASSWORD` 공유 방식에서 Supabase Auth 계정과 `profiles.role` 기반 권한 확인으로 전환한다.
+- 기존 Sheet 비밀번호 해시는 Supabase Auth로 직접 변환하지 않고, 이관 계정은 `password_migration_required=true` 상태에서 사용자 재설정 흐름으로 새 비밀번호를 설정하게 한다.
 - 실제 접근 정책은 다음 RLS migration에서 작성한다. 따라서 이 migration만 적용하면 service role 외 클라이언트 접근은 아직 막혀 있는 상태가 정상이다.
 
 ## 주요 리스크

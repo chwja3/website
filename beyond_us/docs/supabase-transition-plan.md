@@ -12,6 +12,8 @@ Google Sheet와 GAS 기반의 데이터 저장, 집계, 서버 로직을 Supabas
 - `events`는 원장으로 유지하고, `user_cards`, `user_inventory`, `user_summary`는 빠른 조회용 현재 상태 테이블로 둔다.
 - 사진과 PDF 같은 파일은 Postgres 셀에 base64로 넣지 않고 Supabase Storage에 저장한다.
 - 비밀번호는 별도 컬럼에 저장하지 않고 Supabase Auth로 이전한다.
+- 사용자는 계속 아이디와 비밀번호로 로그인하지만, 내부 Auth 식별자는 `login_id`에서 만든 synthetic email을 사용한다.
+- `login_id`는 대소문자를 구분한다.
 
 ## 1차 범위
 
@@ -24,10 +26,11 @@ Google Sheet와 GAS 기반의 데이터 저장, 집계, 서버 로직을 Supabas
 
 1. Supabase 프로젝트 생성과 Auth 정책 확정.
 2. `profiles`, `events`, `user_inventory`, `user_cards`, `raffle_tickets`부터 migration 작성.
-3. Storage bucket 생성.
-4. `get_user_status`, `submit_mission`, `draw_card_pack`부터 RPC 또는 Edge Function 구현.
-5. `app.js`에 GAS와 Supabase를 교체 가능한 `apiClient` 계층 추가.
-6. DEV에서 Supabase API만 연결해 기능 검증.
-7. Sheet 데이터를 Supabase로 이관.
-8. 관리자 기능을 Supabase 기준으로 전환.
-9. PROD 전환 전 GAS와 Sheet는 읽기 전용 백업으로 유지.
+3. Auth 가입, 로그인, 비밀번호 재설정 Edge Function을 작성한다.
+4. Storage bucket 생성.
+5. `get_user_status`, `submit_mission`, `draw_card_pack`부터 RPC 또는 Edge Function 구현.
+6. `app.js`에 GAS와 Supabase를 교체 가능한 `apiClient` 계층 추가.
+7. DEV에서 Supabase API만 연결해 기능 검증.
+8. Sheet 데이터를 Supabase로 이관.
+9. 관리자 기능을 Supabase 기준으로 전환.
+10. PROD 전환 전 GAS와 Sheet는 읽기 전용 백업으로 유지.

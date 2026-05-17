@@ -8,9 +8,10 @@
 
 | 기존 GAS action | 새 API | 방식 | 주 테이블 |
 |---|---|---|---|
-| `register` | `auth_register_profile` | Edge Function 또는 Auth plus RPC | `auth.users`, `profiles` |
-| `login` | Supabase Auth sign in | supabase-js | `auth.users`, `profiles` |
-| `resetPassword` | `request_password_reset` 또는 admin reset | Auth | `auth.users` |
+| `register` | `auth_register_profile` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events`, `raffle_tickets` |
+| `login` | Supabase Auth sign in with synthetic email | supabase-js | `auth.users`, `profiles` |
+| `resetPassword` | `reset_password_by_profile` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events` |
+| `findNickname` | `find_login_id_by_profile` | Edge Function | `profiles` |
 | `dashboard` | `get_app_bootstrap` | RPC | `app_settings`, `tab_settings`, `notices`, `mission_weeks` |
 | `userStatus`, `userStatusLite` | `get_user_status` | RPC | `profiles`, `user_inventory`, `user_cards`, `mission_progress`, `raffle_tickets` |
 | `submit` | `submit_pre_mission` | RPC | `mission_submissions`, `events`, `user_inventory`, `mission_progress` |
@@ -41,13 +42,13 @@
 
 | 기존 GAS action | 새 API | 방식 | 주 테이블 |
 |---|---|---|---|
-| `adminLogin` | Supabase Auth admin role | Auth | `auth.users`, `profiles` |
+| `adminLogin` | Supabase Auth admin role | Auth plus role check | `auth.users`, `profiles` |
 | `getUsers` | `admin_get_users` | RPC | `profiles`, `group_members`, `retreat_attendance`, `user_summary` |
 | `adminGetRaffleAttendance` | `admin_get_participants` | RPC | `profiles`, `retreat_attendance`, `raffle_tickets` |
 | `adminDeactivateUser`, `adminRestoreUser` | `admin_set_user_status` | RPC | `profiles`, `events` |
 | `adminSetRaffleAttendance` | `admin_set_attendance` | RPC | `retreat_attendance`, `events` |
 | `adminSetRaffleExcluded` | `admin_set_raffle_excluded` | RPC | `profiles`, `raffle_tickets`, `events` |
-| `adminResetPassword` | Supabase Admin reset | Edge Function | `auth.users` |
+| `adminResetPassword` | `admin_reset_password` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events` |
 | `getCurrentWeek`, `setCurrentWeek` | `admin_get_app_settings`, `admin_set_app_setting` | RPC | `app_settings` |
 | `getMissionConfig`, `setMissionConfig` | `admin_get_mission_config`, `admin_set_mission_config` | RPC | `mission_weeks`, `mission_items` |
 | `getTabSettings`, `setTabSettings` | `admin_get_tab_settings`, `admin_set_tab_settings` | RPC | `tab_settings` |
