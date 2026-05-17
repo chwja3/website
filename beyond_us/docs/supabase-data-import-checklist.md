@@ -6,14 +6,15 @@
 - [x] DEV 선검증 후 PROD 일괄 전환 순서 확정.
 - [x] 원본 row 보관용 감사 테이블 migration 작성.
 - [x] Sheet export 방식 확정.
-- [ ] import 스크립트 실행 방식 확정.
+- [x] import 스크립트 실행 방식 확정.
 - [ ] DEV 검증 쿼리 작성.
 - [ ] PROD 전환 runbook 최종 잠금.
 
 ## DEV
 
 - [x] DEV Supabase에 `001`부터 최신 migration까지 적용.
-- [ ] DEV GAS에서 `exportSupabaseMigrationJsonDev` 실행.
+- [x] DEV GAS에서 `exportSupabaseMigrationJsonDev` 실행.
+- [ ] DEV export JSON dry-run 확인.
 - [ ] DEV Sheet 전체 row를 `legacy_sheet_rows`에 적재.
 - [ ] DEV `Users`를 Auth 계정과 `profiles`로 이관.
 - [ ] DEV 설정, Events, 도메인 시트, 추첨권 이관.

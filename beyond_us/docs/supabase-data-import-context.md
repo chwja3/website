@@ -35,4 +35,6 @@
 - Sheet export는 Apps Script JSON export 함수로 확정했다. 헤더 이름과 row number를 같이 보존할 수 있고, 한글 CSV 깨짐 문제를 피할 수 있기 때문이다.
 - DEV에서는 `exportSupabaseMigrationJsonDev`, PROD에서는 `exportSupabaseMigrationJsonProd`를 실행한다.
 - export 함수는 Google Drive에 `beyond_us_supabase_export_<env>_YYYYMMDD_HHMMSS.json` 파일을 생성하며 Sheet 데이터는 수정하지 않는다.
-- import 스크립트는 `tools/supabase_import` 아래에 Node 또는 Python으로 두는 방향이 좋다.
+- import 스크립트는 `tools/supabase_import/import_legacy_rows.mjs`에 Node로 둔다.
+- 첫 import 스크립트는 정규 테이블 변환이 아니라 `migration_batches`와 `legacy_sheet_rows` 적재까지만 담당한다.
+- Supabase URL과 service role key는 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`로만 받는다.

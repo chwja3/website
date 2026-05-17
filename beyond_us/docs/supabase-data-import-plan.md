@@ -49,16 +49,17 @@
 
 1. DEV Supabase에 모든 migration을 적용한다.
 2. DEV GAS에서 `exportSupabaseMigrationJsonDev`를 실행해 Drive JSON 파일을 만든다.
-3. DEV JSON export 파일을 import 스크립트에 넣어 모든 대상 시트 row를 `legacy_sheet_rows`에 적재한다.
-4. `Users`부터 `profiles`와 Auth 계정을 만든다.
-5. 설정 시트 `AppSettings`, `MissionDefinitions`, `TabSettings`, `BBBSettings`를 이관한다.
-6. `Events`를 이관한다.
-7. 도메인 시트 `HoldPray`, `HPGuesses`, `BBB`, `BBBMessages`, `BBBPhotos`, `Trades`, `CardReceived`, `Notices`, `Inquiries`를 이관한다.
-8. `RaffleTickets`를 번호 단위로 이관한다.
-9. Events와 도메인 상태를 기준으로 `user_cards`, `user_inventory`, `user_summary`, `mission_progress`를 재계산한다.
-10. `Collection`, `UserDashboard`, `MissionProgress` 원본과 Supabase 재계산 결과를 비교한다.
-11. `migration_issues`가 error 없이 끝나는지 확인한다.
-12. DEV 앱을 Supabase API에 연결해 로그인, 미션, 카드팩, H&P, BBB, 천로역정, 추첨권, 관리자 화면을 검증한다.
+3. DEV JSON export 파일을 로컬에 내려받고 `import_legacy_rows.mjs --dry-run`으로 row count를 확인한다.
+4. DEV JSON export 파일을 `import_legacy_rows.mjs --apply`에 넣어 모든 대상 시트 row를 `legacy_sheet_rows`에 적재한다.
+5. `Users`부터 `profiles`와 Auth 계정을 만든다.
+6. 설정 시트 `AppSettings`, `MissionDefinitions`, `TabSettings`, `BBBSettings`를 이관한다.
+7. `Events`를 이관한다.
+8. 도메인 시트 `HoldPray`, `HPGuesses`, `BBB`, `BBBMessages`, `BBBPhotos`, `Trades`, `CardReceived`, `Notices`, `Inquiries`를 이관한다.
+9. `RaffleTickets`를 번호 단위로 이관한다.
+10. Events와 도메인 상태를 기준으로 `user_cards`, `user_inventory`, `user_summary`, `mission_progress`를 재계산한다.
+11. `Collection`, `UserDashboard`, `MissionProgress` 원본과 Supabase 재계산 결과를 비교한다.
+12. `migration_issues`가 error 없이 끝나는지 확인한다.
+13. DEV 앱을 Supabase API에 연결해 로그인, 미션, 카드팩, H&P, BBB, 천로역정, 추첨권, 관리자 화면을 검증한다.
 
 ## PROD 한 번에 작업할 순서
 
