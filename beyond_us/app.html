@@ -910,6 +910,21 @@
 
             <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
+              <!-- 통일된 Coming Soon 인트로 (모든 항목 잠겨있을 때만 노출) -->
+              <div id="bbbAllComingSoon" style="display:none;background:var(--bg);border-radius:16px;padding:56px 28px 52px;text-align:center;">
+                <div style="font-size:38px;line-height:1;margin-bottom:22px;">🤫</div>
+                <p style="font-size:15px;line-height:1.9;color:var(--text);margin:0 auto 24px;font-weight:600;max-width:280px;">
+                  여기에 페이지에 대한 한두 문장 설명을 적어주세요.<br>
+                  (이 문구는 직접 수정하실 예정)
+                </p>
+                <div style="display:inline-block;padding:5px 14px;border-radius:999px;background:var(--primary-soft);font-size:11px;font-weight:800;color:var(--primary);letter-spacing:0.08em;">
+                  COMING SOON
+                </div>
+              </div>
+
+              <!-- 상세 박스들 (어느 하나라도 오픈되면 보임) -->
+              <div id="bbbDetailWrap" style="display:flex;flex-direction:column;gap:12px;">
+
               <!-- 케어버디 -->
               <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1036,6 +1051,8 @@
                   <p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">아직 받은 메시지가 없어요.</p>
                 </div>
               </div>
+
+              </div> <!-- /#bbbDetailWrap -->
 
             </div>
 
