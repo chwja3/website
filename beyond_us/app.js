@@ -14,7 +14,7 @@
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
-    const SUPABASE_AUTH_MODE = SUPABASE_ANON_KEY ? 'shadow' : 'off'; // off | shadow | primary
+    const SUPABASE_AUTH_MODE = IS_DEV_ENV && SUPABASE_ANON_KEY ? 'shadow' : 'off'; // off | shadow | primary
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
@@ -59,7 +59,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518i';
+    const APP_VERSION = '20260518j';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -825,12 +825,20 @@
       return authResult;
     }
 
-    async function promptLegacyUpgradeIfNeeded(loginId, password) {
+    async function promptLegacyUpgradeIfNeeded(loginId, password, gasLoginData) {
       if (!isSupabaseAuthConfigured() || !loginId || !password) return false;
       try {
         const probe = await callLegacyPasswordUpgrade(loginId, password, '');
         if (needsLegacyPasswordReset(probe)) {
-          showLegacyPasswordUpgrade(loginId, password);
+          showLegacyPasswordUpgrade(loginId, password, gasLoginData);
+          return true;
+        }
+        if (probe && probe.error === 'already_migrated') {
+          showAuth('login');
+          const statusEl = document.getElementById('loginStatus');
+          if (statusEl) {
+            statusEl.textContent = '이미 비밀번호 업데이트가 완료된 계정이에요. 새 비밀번호로 Supabase 로그인을 확인해주세요.';
+          }
           return true;
         }
       } catch (error) {
@@ -839,8 +847,8 @@
       return false;
     }
 
-    function showLegacyPasswordUpgrade(nickname, password) {
-      pendingLegacyPasswordUpgrade = { nickname, password };
+    function showLegacyPasswordUpgrade(nickname, password, gasLoginData) {
+      pendingLegacyPasswordUpgrade = { nickname, password, gasLoginData: gasLoginData || null };
       const nameEl = document.getElementById('legacyUpgradeNicknameDisplay');
       const pwEl = document.getElementById('legacyNewPassword');
       const confirmEl = document.getElementById('legacyNewPasswordConfirm');
@@ -888,6 +896,20 @@
       localStorage.setItem('beyondus_parish',   parish);
       currentNickname = nickname;
       currentParish   = parish;
+    }
+
+    function enterWithGasLoginData(nickname, data) {
+      saveAuth(nickname, data.sessionToken || '', data.parish || '');
+      localStorage.setItem('beyondus_is_staff', String(data.isStaff === true));
+      localStorage.setItem('beyondus_is_dev', String(data.isDev === true));
+      localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
+      updateUserBadge();
+      if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
+        showApp();
+        syncInitialData().catch(() => {});
+      } else {
+        showComingSoon();
+      }
     }
 
     /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
@@ -1058,21 +1080,11 @@
               console.warn('[DIAG] Supabase shadow login failed', error);
               return { ok: false, error: 'shadow_login_failed' };
             });
-            if (!authResult.ok && await promptLegacyUpgradeIfNeeded(nickname, password)) {
+            if (!authResult.ok && await promptLegacyUpgradeIfNeeded(nickname, password, data)) {
               return;
             }
           }
-          saveAuth(nickname, data.sessionToken || '', data.parish || '');
-          localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
-          localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
-          localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
-          updateUserBadge();
-          if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
-            showApp();
-            syncInitialData().catch(() => {});
-          } else {
-            showComingSoon();
-          }
+          enterWithGasLoginData(nickname, data);
         } else if (data.error === 'not_found') {
           stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
         } else if (data.error === 'wrong_password') {
@@ -1124,19 +1136,24 @@
         );
         if (data.ok) {
           const authResult = await trySupabaseLogin(pendingLegacyPasswordUpgrade.nickname, newPassword);
+          const gasLoginData = pendingLegacyPasswordUpgrade.gasLoginData;
+          const nickname = pendingLegacyPasswordUpgrade.nickname;
           if (isSupabaseAuthConfigured() && !authResult.ok) {
             stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호는 업데이트됐지만 로그인 확인에 실패했어요. 새 비밀번호로 다시 로그인해주세요.');
             statusEl.className = 'auth-status success';
           } else {
-            stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
+            stopAnimDots(dotsTimerLegacy, statusEl, gasLoginData ? '비밀번호가 업데이트됐어요. 앱으로 들어갑니다.' : '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
             statusEl.className = 'auth-status success';
           }
-          const nickname = pendingLegacyPasswordUpgrade.nickname;
           pendingLegacyPasswordUpgrade = null;
           document.getElementById('loginNickname').value = nickname || '';
           document.getElementById('loginPassword').value = '';
           document.getElementById('legacyNewPassword').value = '';
           document.getElementById('legacyNewPasswordConfirm').value = '';
+          if (gasLoginData) {
+            setTimeout(() => enterWithGasLoginData(nickname, gasLoginData), 800);
+            return;
+          }
           setTimeout(() => {
             switchAuthPane('login');
             const loginPwEl = document.getElementById('loginPassword');

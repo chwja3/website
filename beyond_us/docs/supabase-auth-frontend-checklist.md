@@ -14,6 +14,9 @@
 - [x] Supabase publishable key 확정 후 `SUPABASE_ANON_KEY` 반영.
 - [x] shadow mode에서 Supabase 로그인 실패 시 legacy 비밀번호 업데이트 pane 표시.
 - [x] legacy 업데이트 필요 시 앱 진입 전 auth pane이 보이도록 순서 조정.
+- [x] 비밀번호 업데이트 성공 후 보관한 GAS sessionToken으로 앱 진입.
+- [x] Supabase shadow mode를 DEV 환경으로 제한.
+- [x] 이미 승격된 계정의 기존 4자리 로그인에 안내 표시.
 - [ ] 앱 데이터 API 전환 후 `SUPABASE_AUTH_MODE`를 `primary`로 전환.
 - [ ] Supabase 로그인 성공 후 기존 GAS sessionToken 의존 기능 대체.
 - [ ] 실제 DEV 배포 후 모바일 로그인 modal 확인.
