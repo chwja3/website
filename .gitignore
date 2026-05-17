@@ -8,3 +8,7 @@ Apps_Script
 !.dev.vars.example
 .env*
 !.env.example
+
+# local PDF extraction outputs
+.codex-pdf-tools/
+beyond_us/data/qt/

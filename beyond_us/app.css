@@ -1911,6 +1911,13 @@
       background: #ef4444; display: none; flex-shrink: 0;
     }
     .drawer-notice-dot.visible { display: block; }
+    .drawer-status-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      margin-left: auto; flex-shrink: 0;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.75);
+    }
+    .drawer-status-dot.is-open { background: #22c55e; }
+    .drawer-status-dot.is-closed { background: #ef4444; }
     .drawer-utility {
       padding: 10px 16px 6px;
       border-top: 1px solid var(--line);
