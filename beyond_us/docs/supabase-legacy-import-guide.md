@@ -32,6 +32,8 @@ $env:SUPABASE_SERVICE_ROLE_KEY="Supabase service role key"
 node "beyond_us\tools\supabase_import\import_legacy_rows.mjs" --file "C:\path\to\beyond_us_supabase_export_dev_YYYYMMDD_HHMMSS.json" --apply
 ```
 
+`SUPABASE_URL`에는 보통 `https://프로젝트-ref.supabase.co` 형태의 Project URL을 넣는다. Supabase 화면에서 `https://프로젝트-ref.supabase.co/rest/v1` 형태의 Data API URL을 복사해도 importer가 Project URL로 정규화한다.
+
 성공하면 출력에 `batchId`, `imported`, `chunks`가 표시된다.
 
 ## Supabase 확인 쿼리

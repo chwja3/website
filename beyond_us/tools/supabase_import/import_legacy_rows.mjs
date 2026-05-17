@@ -138,11 +138,29 @@ function summarizeExport(data, rows) {
 }
 
 function getSupabaseConfig() {
-  const url = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const url = normalizeSupabaseUrl(process.env.SUPABASE_URL);
   const serviceRoleKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '');
   if (!url) throw new Error('Missing SUPABASE_URL');
   if (!serviceRoleKey) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
   return { url, serviceRoleKey };
+}
+
+function normalizeSupabaseUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error('Invalid SUPABASE_URL. Use the project URL like https://<project-ref>.supabase.co');
+  }
+
+  url.pathname = url.pathname.replace(/\/rest\/v1\/?$/i, '');
+  url.pathname = url.pathname.replace(/\/+$/, '');
+  url.search = '';
+  url.hash = '';
+  return url.toString().replace(/\/+$/, '');
 }
 
 async function supabaseFetch(config, endpoint, options = {}) {
