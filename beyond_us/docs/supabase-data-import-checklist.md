@@ -19,7 +19,9 @@
 - [x] DEV 정규 테이블 변환 dry-run 확인.
 - [x] DEV `Users`를 `profiles`로 이관.
 - [x] DEV 설정, Events, 도메인 시트, 추첨권 이관.
-- [ ] DEV Supabase Auth 계정 생성 전략 확정.
+- [x] DEV Supabase Auth 계정 생성 도구 작성.
+- [ ] DEV Supabase Auth 계정 생성 실행.
+- [ ] DEV 비밀번호 재설정 Edge Function 작성.
 - [ ] DEV 현재 상태 테이블 재계산.
 - [ ] DEV 원본 projection과 Supabase 결과 비교.
 - [ ] DEV 앱을 Supabase API로 연결해 기능 검증.

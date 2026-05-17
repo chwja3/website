@@ -328,3 +328,22 @@ where profiles.raffle_excluded = true
   and tickets.active = true
 group by profiles.login_id, profiles.name, profiles.parish
 order by profiles.login_id;
+
+-- 12. Auth 사용자 연결 상태를 확인한다.
+select
+  count(*)::integer as profiles,
+  count(auth_user_id)::integer as linked_profiles,
+  (count(*) - count(auth_user_id))::integer as missing_auth_links
+from public.profiles;
+
+select
+  participant_no,
+  login_id,
+  name,
+  role,
+  account_status,
+  password_migration_required
+from public.profiles
+where auth_user_id is null
+order by participant_no
+limit 20;

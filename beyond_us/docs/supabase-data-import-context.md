@@ -43,3 +43,5 @@
 - `import_normalized_data.mjs --dry-run` 결과 DEV 기준 target count가 생성됐고, `TabSettings`의 `qt`, `pilgrim` 중복 row 2개만 warning으로 잡혔다. 같은 key는 마지막 row 기준으로 이관한다.
 - 사용자가 정규 테이블 apply 후 `migration_issues`가 `qt`, `pilgrim` 2개뿐임을 확인했다.
 - DEV 검증 SQL은 `supabase/verification/20260517_dev_import_checks.sql`에 둔다. row count, 예상 밖 issue, Collection/UserDashboard/MissionProgress projection, 유저별 활성 추첨권, 추첨권 제외 유저의 활성 추첨권 잔존 여부를 확인한다.
+- Auth 사용자 생성 도구는 `tools/supabase_import/create_auth_users.mjs`에 둔다. 기존 비밀번호 해시는 가져오지 않고, synthetic email과 랜덤 임시 비밀번호로 Auth 사용자를 만든 뒤 `profiles.auth_user_id`를 연결한다.
+- Auth 사용자 생성은 처음에 `--login-id`로 개발자 계정 1명만 apply해서 검증한 뒤 전체 실행한다.
