@@ -14,10 +14,12 @@
 
 - [x] DEV Supabase에 `001`부터 최신 migration까지 적용.
 - [x] DEV GAS에서 `exportSupabaseMigrationJsonDev` 실행.
-- [ ] DEV export JSON dry-run 확인.
-- [ ] DEV Sheet 전체 row를 `legacy_sheet_rows`에 적재.
-- [ ] DEV `Users`를 Auth 계정과 `profiles`로 이관.
+- [x] DEV export JSON dry-run 확인.
+- [x] DEV Sheet 전체 row를 `legacy_sheet_rows`에 적재.
+- [x] DEV 정규 테이블 변환 dry-run 확인.
+- [ ] DEV `Users`를 `profiles`로 이관.
 - [ ] DEV 설정, Events, 도메인 시트, 추첨권 이관.
+- [ ] DEV Supabase Auth 계정 생성 전략 확정.
 - [ ] DEV 현재 상태 테이블 재계산.
 - [ ] DEV 원본 projection과 Supabase 결과 비교.
 - [ ] DEV 앱을 Supabase API로 연결해 기능 검증.

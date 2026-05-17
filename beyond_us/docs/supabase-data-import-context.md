@@ -38,3 +38,6 @@
 - import 스크립트는 `tools/supabase_import/import_legacy_rows.mjs`에 Node로 둔다.
 - 첫 import 스크립트는 정규 테이블 변환이 아니라 `migration_batches`와 `legacy_sheet_rows` 적재까지만 담당한다.
 - Supabase URL과 service role key는 환경변수 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`로만 받는다.
+- DEV export의 `missingSheets`는 빈 배열로 확인됐고, `legacy_sheet_rows` 적재도 정상 완료됐다.
+- 다음 변환 스크립트는 Auth 계정 생성과 사진 Storage 업로드를 제외한다. 1차 목표는 `profiles`, 설정, Events, 도메인 현재 상태 테이블을 채워 Supabase 구조 검증을 가능하게 하는 것이다.
+- `import_normalized_data.mjs --dry-run` 결과 DEV 기준 target count가 생성됐고, `TabSettings`의 `qt`, `pilgrim` 중복 row 2개만 warning으로 잡혔다. 같은 key는 마지막 row 기준으로 이관한다.
