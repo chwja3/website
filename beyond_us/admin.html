@@ -775,6 +775,11 @@
     const API_BASE  = IS_DEV_ENV
       ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
+    const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
+    const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
+    const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
+    const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
@@ -1562,11 +1567,74 @@
     function escHtml(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-    function get(params) {
+    function getSupabaseAccessToken() {
+      return localStorage.getItem('beyondus_supabase_access_token') || '';
+    }
+    function canUseSupabaseAdmin() {
+      return IS_DEV_ENV && !!SUPABASE_PROJECT_URL && !!SUPABASE_ANON_KEY && !!getSupabaseAccessToken();
+    }
+    function supabasePhotoUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw.startsWith('data:') || /^https?:\/\//i.test(raw)) return raw;
+      return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    }
+    function normalizeSupabaseAdminResponse(data) {
+      const next = Object.assign({}, data || {});
+      if (Array.isArray(next.photos)) {
+        next.photos = next.photos.map(item => Object.assign({}, item, {
+          photoBase64: supabasePhotoUrl(item && item.photoBase64),
+        }));
+      }
+      if (Array.isArray(next.notices)) {
+        next.notices = next.notices.map(item => Object.assign({}, item, {
+          rowIndex: String(item && (item.rowIndex || item.id || '')),
+        }));
+      }
+      return next;
+    }
+    async function callSupabaseAdmin(action, payload) {
+      const token = getSupabaseAccessToken();
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/admin_dispatch`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_action: action, p_payload: payload || {} }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && data.error) || `admin_${action}_failed`);
+        err.response = data;
+        throw err;
+      }
+      return normalizeSupabaseAdminResponse(data);
+    }
+    function shouldUseSupabaseAdmin(body) {
+      if (!body || !body.action || body.action === 'adminLogin') return false;
+      if (body.imageFiles && body.imageFiles.length) return false;
+      return canUseSupabaseAdmin();
+    }
+    async function get(params) {
+      if (shouldUseSupabaseAdmin(params)) {
+        try {
+          return await callSupabaseAdmin(params.action, params);
+        } catch(e) {
+          console.warn('[DIAG] Supabase admin get failed, falling back to GAS', params && params.action, e);
+        }
+      }
       const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
       return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
     }
-    function post(body) {
+    async function post(body) {
+      if (shouldUseSupabaseAdmin(body)) {
+        try {
+          return await callSupabaseAdmin(body.action, body);
+        } catch(e) {
+          console.warn('[DIAG] Supabase admin post failed, falling back to GAS', body && body.action, e);
+        }
+      }
       return fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1574,6 +1642,7 @@
       }).then(r => r.json());
     }
     function esc(s) { return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+    function jsArg(s) { return JSON.stringify(String(s || '')).replace(/</g, '\\u003c'); }
     function formatDate(v) {
       if (!v) return '-';
       const d = new Date(v);
@@ -1836,8 +1905,8 @@
             <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button class="btn btn-ghost btn-sm" onclick="startInlineEdit(${n.rowIndex})">수정</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteNotice(${n.rowIndex})">삭제</button>
+            <button class="btn btn-ghost btn-sm" onclick="startInlineEdit(${jsArg(n.rowIndex)})">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteNotice(${jsArg(n.rowIndex)})">삭제</button>
           </div>
         </div>`;
     }
@@ -1848,8 +1917,8 @@
         <textarea id="inlineContent_${n.rowIndex}" class="input" rows="4" style="resize:vertical; font-family:inherit; line-height:1.6; margin-bottom:6px;">${esc(n.content)}</textarea>
         <div class="status" id="inlineStatus_${n.rowIndex}"></div>
         <div style="display:flex; gap:8px; margin-top:4px;">
-          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="cancelInlineEdit(${n.rowIndex})">취소</button>
-          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveInlineEdit(${n.rowIndex})">저장</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="cancelInlineEdit(${jsArg(n.rowIndex)})">취소</button>
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveInlineEdit(${jsArg(n.rowIndex)})">저장</button>
         </div>`;
     }
 

@@ -18,6 +18,8 @@
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
+    const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
+    const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     const SUPABASE_DATA_READ_MODE = getSupabaseDataReadMode(); // off | read
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
@@ -72,7 +74,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518m';
+    const APP_VERSION = '20260518n';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -577,10 +579,10 @@
         const wk = getWeekKey();
         const nick = localStorage.getItem('beyondus_nickname') || '';
         const [res] = await Promise.all([
-          fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          apiClient.getHoldPray(wk),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
-        const d = await res.json();
+        const d = res;
         const previewContent = d.ok && d.cards && d.cards[0] && d.cards[0].content;
         if (previewContent) {
           el.textContent = previewContent;
@@ -930,6 +932,71 @@
       return data;
     }
 
+    function supabasePhotoUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw.startsWith('data:') || /^https?:\/\//i.test(raw)) return raw;
+      return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    }
+
+    function normalizeMissionPhotoUrls(data) {
+      const next = Object.assign({}, data || {});
+      if (next.myPhoto) next.myPhoto = supabasePhotoUrl(next.myPhoto);
+      if (next.myPhotoM2) next.myPhotoM2 = supabasePhotoUrl(next.myPhotoM2);
+      if (Array.isArray(next.myPhotoM3)) next.myPhotoM3 = next.myPhotoM3.map(src => src ? supabasePhotoUrl(src) : null);
+      if (Array.isArray(next.photos)) {
+        next.photos = next.photos.map(item => Object.assign({}, item, {
+          photoBase64: supabasePhotoUrl(item && item.photoBase64),
+        }));
+      }
+      return next;
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const raw = String(dataUrl || '');
+      const parts = raw.split(',');
+      if (parts.length < 2) throw new Error('invalid_photo_data');
+      const meta = parts[0] || '';
+      const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+      const bin = atob(parts.slice(1).join(','));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+
+    function safeStoragePathPart(value) {
+      return String(value || '')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'user';
+    }
+
+    async function uploadSupabaseMissionPhoto(dataUrl, missionType) {
+      const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_auth_required');
+      const blob = dataUrlToBlob(dataUrl);
+      const ext = blob.type === 'image/png' ? 'png' : (blob.type === 'image/webp' ? 'webp' : 'jpg');
+      const path = [
+        safeStoragePathPart(currentNickname),
+        safeStoragePathPart(missionType || 'mission'),
+        `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
+      ].join('/');
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${path}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': blob.type || 'image/jpeg',
+          'x-upsert': 'true',
+        },
+        body: blob,
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(detail || 'photo_upload_failed');
+      }
+      return path;
+    }
+
     async function fetchGasDashboard(options) {
       const opts = options || {};
       const forceParam = opts.force === true ? '&force=1' : '';
@@ -1193,6 +1260,98 @@
           }
         }
         return fetchGasPostAction('guessBBBSecret', { userId: currentNickname, guess });
+      },
+      async getBBB(nickname) {
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            const data = await callSupabaseRpc('get_bbb_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
+            return normalizeMissionPhotoUrls(data);
+          } catch(e) {
+            console.warn('[DIAG] Supabase BBB status failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasGetAction('getBBB', { userId: nickname || currentNickname });
+      },
+      async uploadMissionPhoto(dataUrl, missionType) {
+        const body = { userId: currentNickname, photo: dataUrl, missionType };
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            const path = await uploadSupabaseMissionPhoto(dataUrl, missionType);
+            const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
+            const data = await callSupabaseRpc('submit_mission_photo', {
+              p_login_id: currentNickname,
+              p_mission_type: missionType || 'm1',
+              p_storage_path: path,
+              p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
+            }, { allowOkFalse: true });
+            return normalizeMissionPhotoUrls(data);
+          } catch(e) {
+            console.warn('[DIAG] Supabase photo upload failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('uploadBBBPhoto', body);
+      },
+      async deleteMissionPhoto(missionType) {
+        const body = { userId: currentNickname, missionType };
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
+            const data = await callSupabaseRpc('delete_mission_photo', {
+              p_login_id: currentNickname,
+              p_mission_type: missionType || 'm1',
+              p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
+            }, { allowOkFalse: true });
+            return normalizeMissionPhotoUrls(data);
+          } catch(e) {
+            console.warn('[DIAG] Supabase photo delete failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('deleteBBBPhoto', body);
+      },
+      async getHoldPray(weekKey) {
+        const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('get_hold_pray', {
+              p_login_id: nick,
+              p_week_key: weekKey || '',
+            }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase H&P read failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasGetAction('getHoldPray', { weekKey: weekKey || '', nickname: nick });
+      },
+      async submitHoldPrayGuess(weekKey, cardIndex, guess) {
+        const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('submit_hold_pray_guess', {
+              p_login_id: nick,
+              p_week_key: weekKey || '',
+              p_card_index: Number(cardIndex) || 0,
+              p_guess: guess || '',
+            }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase H&P guess failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('submitHoldPrayGuess', { weekKey, guess, nickname: nick, cardIndex });
+      },
+      async postHpHint(weekKey, cardIndex) {
+        const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('post_hold_pray_hint', {
+              p_login_id: nick,
+              p_week_key: weekKey || '',
+              p_card_index: Number(cardIndex) || 0,
+            }, { allowOkFalse: true });
+          } catch(e) {
+            console.warn('[DIAG] Supabase H&P hint failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasPostAction('postHpHint', { nickname: nick, weekKey, cardIndex });
       },
     };
 
@@ -4407,12 +4566,7 @@
       let dotsTimer = null;
       if (statusEl) { dotsTimer = animDots(statusEl, '삭제 중'); statusEl.style.color = 'var(--sub)'; statusEl.style.fontWeight = '500'; }
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname })),
-          redirect: 'follow'
-        }).then(r => r.json());
+        const res = await apiClient.deleteMissionPhoto('m1');
         if (res.ok) {
           const img = document.getElementById('bbbPhotoImg');
           img.src = ''; img.style.display = 'none';
@@ -4475,8 +4629,7 @@
       }
 
       try {
-        const nonce = Date.now();
-        const bbbRes = await fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json());
+        const bbbRes = await apiClient.getBBB(nickname);
         if (!isActiveAccount(nickname)) return;
 
         document.getElementById('bbbLoading').style.display = 'none';
@@ -4572,13 +4725,7 @@
           label.style.pointerEvents = 'none';
           try {
             const base64 = await _compressImage(file, 400, 0.55);
-            const REDIRECT = await fetch(API_BASE, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm1' })),
-              redirect: 'follow'
-            });
-            const res = await REDIRECT.json();
+            const res = await apiClient.uploadMissionPhoto(base64, 'm1');
             if (res.ok) {
               _bbbShowPhoto(base64);
               stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 카드팩이 지급돼요.' : '✓ 제출 완료');
@@ -4664,12 +4811,7 @@
       closeBbbM2Modal();
       try {
         const nickname = localStorage.getItem('beyondus_nickname') || '';
-        const res = await fetch(API_BASE, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm2' })),
-          redirect: 'follow'
-        });
-        const data = await res.json();
+        const data = await apiClient.deleteMissionPhoto('m2');
         if (data.ok) {
           const img = document.getElementById('bbbM2Img');
           img.src = ''; img.style.display = 'none';
@@ -4697,7 +4839,7 @@
         try {
           const nickname = localStorage.getItem('beyondus_nickname') || '';
           const base64 = await _compressImage(file, 400, 0.55);
-          const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm2' })), redirect: 'follow' })).json();
+          const res = await apiClient.uploadMissionPhoto(base64, 'm2');
           if (res.ok) {
             _bbbShowM2Photo(base64);
             stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 카드팩이 지급돼요.' : '✓ 제출 완료');
@@ -4780,7 +4922,7 @@
       try {
         const nickname = localStorage.getItem('beyondus_nickname') || '';
         const base64 = await _compressImage(file, 400, 0.55);
-        const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm3_' + spotIdx })), redirect: 'follow' })).json();
+        const res = await apiClient.uploadMissionPhoto(base64, 'm3_' + spotIdx);
         if (res.ok) {
           _bbbData = _bbbData || {};
           _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
@@ -4813,7 +4955,7 @@
       const dotsTimer = animDots(statusEl, '삭제 중');
       try {
         const nickname = localStorage.getItem('beyondus_nickname') || '';
-        const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm3_' + spotIdx })), redirect: 'follow' })).json();
+        const res = await apiClient.deleteMissionPhoto('m3_' + spotIdx);
         if (res.ok) {
           if (_bbbData && _bbbData.myPhotoM3) _bbbData.myPhotoM3[spotIdx] = null;
           _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded, (_bbbData && _bbbData.m3AssignedSpots) || []);
@@ -5068,10 +5210,10 @@
 
       try {
         const [res] = await Promise.all([
-          fetch(`${API_BASE}?action=getHoldPray&weekKey=&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          apiClient.getHoldPray(''),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
-        const data = await res.json();
+        const data = res;
         if (!data.ok) throw new Error(data.error || 'error');
         if (!isActiveAccount(nick)) return;
         localStorage.setItem(hpCacheKey, JSON.stringify(data));
@@ -5287,12 +5429,7 @@
       if (result) result.style.display = 'none';
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'submitHoldPrayGuess', weekKey: _hpWeekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '', cardIndex: cardIdx }))
-        });
-        const data = await res.json();
+        const data = await apiClient.submitHoldPrayGuess(_hpWeekKey, cardIdx, guess);
         if (data.correct) {
           _hpCorrectMap[cardIdx] = guess;
           localStorage.setItem(hpCorrectStorageKey(_hpWeekKey, cardIdx), guess);
@@ -5332,12 +5469,7 @@
     async function hpHintInquiry(cardIdx) {
       const nick = localStorage.getItem('beyondus_nickname') || '';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'postHpHint', nickname: nick, weekKey: _hpWeekKey, cardIndex: cardIdx }))
-        });
-        const data = await res.json();
+        const data = await apiClient.postHpHint(_hpWeekKey, cardIdx);
         if (data.ok) {
           localStorage.setItem(hpHintStorageKey(_hpWeekKey, cardIdx), data.id || 'submitted');
           renderHpCard(cardIdx);
