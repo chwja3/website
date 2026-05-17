@@ -15,4 +15,7 @@
 - [ ] RLS 정책 migration 작성.
 - [ ] 핵심 RPC migration 작성.
 - [ ] DEV용 Supabase 프로젝트 연결.
+- [x] 기존 Sheet 데이터 이관 계획 작성.
+- [x] 이관 감사 테이블 migration 작성.
+- [ ] 기존 Sheet 데이터 export 방식 확정.
 - [ ] 기존 Sheet 데이터 이관 스크립트 작성.

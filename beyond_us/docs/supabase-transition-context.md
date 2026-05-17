@@ -20,6 +20,9 @@
 - `profiles.login_id`는 대소문자를 구분하는 `text`로 고정한다. 이를 위해 `beyond_us/supabase/migrations/20260517000300_auth_login_id_policy.sql`을 추가했다.
 - 관리자 로그인은 `ADMIN_PASSWORD` 공유 방식에서 Supabase Auth 계정과 `profiles.role` 기반 권한 확인으로 전환한다.
 - 기존 Sheet 비밀번호 해시는 Supabase Auth로 직접 변환하지 않고, 이관 계정은 `password_migration_required=true` 상태에서 사용자 재설정 흐름으로 새 비밀번호를 설정하게 한다.
+- 기존 Sheet 데이터와 로그 이관 순서는 `beyond_us/docs/supabase-data-import-plan.md`에 분리했다.
+- Google Sheet 원본 row는 `legacy_sheet_rows`에 보관하고, 변환 대상과 연결은 `legacy_import_refs`에 남긴다. 감사 테이블은 `beyond_us/supabase/migrations/20260517000400_import_audit_tables.sql`에서 만든다.
+- DEV Sheet를 먼저 이관해 검증한 뒤, PROD는 서버 점검 상태에서 같은 절차를 한 번에 수행한다.
 - 실제 접근 정책은 다음 RLS migration에서 작성한다. 따라서 이 migration만 적용하면 service role 외 클라이언트 접근은 아직 막혀 있는 상태가 정상이다.
 
 ## 주요 리스크
