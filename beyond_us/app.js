@@ -59,7 +59,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518g';
+    const APP_VERSION = '20260518h';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -825,6 +825,20 @@
       return authResult;
     }
 
+    async function promptLegacyUpgradeIfNeeded(loginId, password) {
+      if (!isSupabaseAuthConfigured() || !loginId || !password) return false;
+      try {
+        const probe = await callLegacyPasswordUpgrade(loginId, password, '');
+        if (needsLegacyPasswordReset(probe)) {
+          showLegacyPasswordUpgrade(loginId, password);
+          return true;
+        }
+      } catch (error) {
+        console.warn('[DIAG] legacy password probe failed', error);
+      }
+      return false;
+    }
+
     function showLegacyPasswordUpgrade(nickname, password) {
       pendingLegacyPasswordUpgrade = { nickname, password };
       const nameEl = document.getElementById('legacyUpgradeNicknameDisplay');
@@ -1051,7 +1065,16 @@
             showComingSoon();
           }
           if (isSupabaseShadowAuth()) {
-            trySupabaseLogin(nickname, password).catch(() => {});
+            trySupabaseLogin(nickname, password)
+              .then((authResult) => {
+                if (!authResult.ok) {
+                  return promptLegacyUpgradeIfNeeded(nickname, password);
+                }
+                return false;
+              })
+              .catch((error) => {
+                console.warn('[DIAG] Supabase shadow login failed', error);
+              });
           }
         } else if (data.error === 'not_found') {
           stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
