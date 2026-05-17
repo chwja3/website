@@ -91,6 +91,15 @@
 | `notice_reads` | 공지 읽음 상태 | `notice_id`, `profile_id`, `read_at` |
 | `inquiries` | 개발자 문의 | `id`, `profile_id`, `content`, `reply`, `reply_by`, `replied_at`, `status`, `created_at`, `updated_at` |
 
+## 이관 감사
+
+| table | 역할 | 주요 컬럼 |
+|---|---|---|
+| `migration_batches` | DEV/PROD Sheet 이관 실행 단위 | `id`, `source_environment`, `source_snapshot_label`, `status`, `row_counts`, `created_at` |
+| `legacy_sheet_rows` | 원본 Sheet row 보관 | `batch_id`, `source_environment`, `sheet_name`, `row_number`, `row_key`, `source_hash`, `row_payload` |
+| `legacy_import_refs` | 원본 row와 Supabase 변환 row 연결 | `legacy_row_id`, `target_table`, `target_pk`, `target_event_type`, `transform_note` |
+| `migration_issues` | 이관 중 발견한 충돌과 검증 실패 | `batch_id`, `severity`, `issue_code`, `message`, `payload`, `resolved` |
+
 ## Storage bucket
 
 | bucket | 용도 |
