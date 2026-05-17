@@ -146,6 +146,7 @@ where migrated_at is not null
 
 ## 보류 작업
 
-- Supabase Auth `signInWithPassword` 연결.
+- Supabase anon key 반영 후 shadow mode 실배포 테스트.
+- 앱 데이터 API 전환 후 Supabase Auth primary mode 전환.
 - admin에서 사용자별 `password_migration_required` 상태 확인 표시.
 - PROD 전환 후 legacy migration 기간 종료 시 `legacy_auth_hashes` 제거 또는 장기 비활성화.

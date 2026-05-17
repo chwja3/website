@@ -16,4 +16,6 @@
 2. 로그인 시 `weak_password_needs_reset` 계열 오류를 받으면 기존 아이디와 기존 비밀번호를 임시 state에 보관하고 pane을 연다.
 3. 사용자가 새 비밀번호와 확인값을 입력하면 `legacy-password-upgrade` Edge Function에 `loginId`, `password`, `newPassword`를 전송한다.
 4. 승격 성공 후 기존 비밀번호 state를 지우고 로그인 pane으로 되돌린다.
-5. 실제 Supabase Auth sign-in 연결은 anon key와 API endpoint 전환이 끝난 뒤 별도 작업으로 처리한다.
+5. Supabase Auth sign-in helper는 먼저 넣되, 기본은 `SUPABASE_AUTH_MODE=off`로 둔다.
+6. anon key를 채우면 기본 `shadow` 모드로 GAS 로그인 성공 후 Supabase 세션 저장만 시도한다.
+7. 앱 데이터 API까지 Supabase로 전환된 뒤 `primary` 모드로 바꾼다.

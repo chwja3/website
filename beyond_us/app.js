@@ -13,6 +13,9 @@
       ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
+    const SUPABASE_ANON_KEY = '';
+    const SUPABASE_AUTH_MODE = SUPABASE_ANON_KEY ? 'shadow' : 'off'; // off | shadow | primary
+    const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
@@ -43,11 +46,20 @@
         body: JSON.stringify(withSession(body))
       }).then(r => r.json());
     }
+    function isSupabaseAuthConfigured() {
+      return Boolean(SUPABASE_PROJECT_URL && SUPABASE_ANON_KEY && SUPABASE_AUTH_MODE !== 'off');
+    }
+    function isSupabasePrimaryAuth() {
+      return isSupabaseAuthConfigured() && SUPABASE_AUTH_MODE === 'primary';
+    }
+    function isSupabaseShadowAuth() {
+      return isSupabaseAuthConfigured() && SUPABASE_AUTH_MODE === 'shadow';
+    }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518a';
+    const APP_VERSION = '20260518b';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -757,6 +769,62 @@
       return data && LEGACY_PASSWORD_RESET_ERRORS.has(data.error);
     }
 
+    async function sha256Hex(value) {
+      const bytes = new TextEncoder().encode(String(value));
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function syntheticAuthEmail(loginId) {
+      const hash = await sha256Hex(String(loginId || '').trim());
+      return `u_${hash}@${SYNTHETIC_AUTH_EMAIL_DOMAIN}`;
+    }
+
+    async function signInWithSupabasePassword(loginId, password) {
+      if (!isSupabaseAuthConfigured()) {
+        return { ok: false, error: 'supabase_auth_disabled' };
+      }
+      const email = await syntheticAuthEmail(loginId);
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: data.error_code || data.error || 'supabase_auth_failed',
+          message: data.msg || data.message || '',
+          status: res.status,
+        };
+      }
+      return { ok: true, data, email };
+    }
+
+    function saveSupabaseSession(loginId, authResult) {
+      if (!authResult || !authResult.data) return;
+      const data = authResult.data;
+      localStorage.setItem('beyondus_supabase_login_id', loginId || '');
+      localStorage.setItem('beyondus_supabase_user_id', (data.user && data.user.id) || '');
+      localStorage.setItem('beyondus_supabase_access_token', data.access_token || '');
+      localStorage.setItem('beyondus_supabase_refresh_token', data.refresh_token || '');
+      localStorage.setItem('beyondus_supabase_expires_at', String(data.expires_at || ''));
+    }
+
+    async function trySupabaseLogin(loginId, password) {
+      if (!isSupabaseAuthConfigured()) return { ok: false, skipped: true };
+      const authResult = await signInWithSupabasePassword(loginId, password);
+      if (authResult.ok) saveSupabaseSession(loginId, authResult);
+      return authResult;
+    }
+
     function showLegacyPasswordUpgrade(nickname, password) {
       pendingLegacyPasswordUpgrade = { nickname, password };
       const nameEl = document.getElementById('legacyUpgradeNicknameDisplay');
@@ -948,6 +1016,21 @@
       const dotsTimerLogin = animDots(statusEl, '로그인 중');
 
       try {
+        if (isSupabasePrimaryAuth()) {
+          const authResult = await trySupabaseLogin(nickname, password);
+          if (authResult.ok) {
+            stopAnimDots(dotsTimerLogin, statusEl, 'Supabase 로그인은 완료됐어요. 앱 데이터 API 전환 후 진입할 수 있어요.');
+            statusEl.className = 'auth-status success';
+            return;
+          }
+          const legacyProbe = await callLegacyPasswordUpgrade(nickname, password, '');
+          if (needsLegacyPasswordReset(legacyProbe)) {
+            stopAnimDots(dotsTimerLogin, statusEl, '');
+            showLegacyPasswordUpgrade(nickname, password);
+            return;
+          }
+        }
+
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -966,6 +1049,9 @@
             syncInitialData().catch(() => {});
           } else {
             showComingSoon();
+          }
+          if (isSupabaseShadowAuth()) {
+            trySupabaseLogin(nickname, password).catch(() => {});
           }
         } else if (data.error === 'not_found') {
           stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
@@ -1017,8 +1103,14 @@
           newPassword
         );
         if (data.ok) {
-          stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
-          statusEl.className = 'auth-status success';
+          const authResult = await trySupabaseLogin(pendingLegacyPasswordUpgrade.nickname, newPassword);
+          if (isSupabaseAuthConfigured() && !authResult.ok) {
+            stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호는 업데이트됐지만 로그인 확인에 실패했어요. 새 비밀번호로 다시 로그인해주세요.');
+            statusEl.className = 'auth-status success';
+          } else {
+            stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
+            statusEl.className = 'auth-status success';
+          }
           const nickname = pendingLegacyPasswordUpgrade.nickname;
           pendingLegacyPasswordUpgrade = null;
           document.getElementById('loginNickname').value = nickname || '';
