@@ -22,3 +22,5 @@
 - [x] 기존 Sheet 정규 테이블 변환 스크립트 작성.
 - [x] DEV 사용자 앱용 `dashboard`, `userStatus` 읽기 RPC 작성.
 - [x] `app.js`에 Supabase 우선, GAS fallback API client 연결.
+- [x] DEV 사용자 앱용 `submit_pre_mission` 쓰기 RPC 작성.
+- [x] 사전미션 제출을 Supabase 우선, GAS fallback으로 연결.

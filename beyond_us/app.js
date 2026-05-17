@@ -72,7 +72,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518k';
+    const APP_VERSION = '20260518l';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -949,6 +949,16 @@
       return res.json();
     }
 
+    async function fetchGasSubmitMission(payload) {
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(withSession(Object.assign({ action: 'submit' }, payload || {})))
+      });
+      if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
+      return res.json();
+    }
+
     const apiClient = {
       async getDashboard(options) {
         if (canUseSupabaseDataRead(false)) {
@@ -974,6 +984,23 @@
           }
         }
         return fetchGasUserStatus(opts);
+      },
+      async submitMission(payload) {
+        const body = payload || {};
+        if (canUseSupabaseDataRead(true)) {
+          try {
+            return await callSupabaseRpc('submit_pre_mission', {
+              p_login_id: body.userId || currentNickname || '',
+              p_week_key: body.weekKey || getWeekKey(),
+              p_date_key: body.dateKey || getTodayKey(),
+              p_items: body.items || [],
+              p_request_id: body.requestId || '',
+            });
+          } catch(e) {
+            console.warn('[DIAG] Supabase submit failed, falling back to GAS', e);
+          }
+        }
+        return fetchGasSubmitMission(body);
       },
     };
 
@@ -3530,13 +3557,14 @@
       refreshBtn.disabled = true;
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checkedScore, requestId: submitRequestId }))
+        const saved = await apiClient.submitMission({
+          items: checked,
+          userId: currentNickname || '',
+          weekKey: getWeekKey(),
+          dateKey: getTodayKey(),
+          score: checkedScore,
+          requestId: submitRequestId
         });
-        if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
-        const saved = await res.json();
         if (saved && saved.ok === false) throw new Error(saved.error || saved.message || '체크 저장에 실패했습니다.');
         const savedItems = Array.isArray(saved?.savedItems) ? saved.savedItems : checked;
         const savedIndices = Array.isArray(saved?.savedIndices) ? saved.savedIndices : savedItems.map(item => lastConfigData?.items?.indexOf(item)).filter(i => i >= 0);

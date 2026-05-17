@@ -27,6 +27,7 @@
 - 2026-05-18. DEV Sheet 데이터는 Supabase 정규 테이블로 가져오는 도구와 검증 쿼리가 준비되어 있지만, 앱과 admin의 실제 읽기/쓰기는 아직 GAS `API_BASE`를 사용한다.
 - 2026-05-18. 첫 API 전환은 사용자 앱의 `dashboard`, `userStatus` 읽기부터 진행한다. RPC가 실패하거나 Supabase 세션이 없으면 기존 GAS로 fallback해 DEV 앱이 깨지지 않게 한다.
 - 2026-05-18. `dashboard`, `userStatus` Supabase 읽기 RPC를 추가했다. 아직 쓰기 action은 GAS에 남아 있으므로 DEV 앱 기본값은 GAS이고, `?supabaseData=1` 또는 `localStorage.beyondus_supabase_data_read=1` 상태에서만 Supabase 읽기를 먼저 시도한다.
+- 2026-05-18. 첫 쓰기 전환으로 `submit_pre_mission` RPC를 추가했다. `?supabaseData=1` 상태에서 사전미션 제출은 Supabase를 먼저 호출하고, 실패하면 기존 GAS `submit`으로 fallback한다. RPC는 클라이언트 score를 신뢰하지 않고 `mission_items`의 활성 항목과 점수를 기준으로 저장 항목, 저장 인덱스, 새 점수, 주차 누적 점수를 다시 계산한다.
 
 ## 주요 리스크
 
