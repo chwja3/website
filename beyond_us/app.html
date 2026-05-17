@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260516e" />
+  <link rel="stylesheet" href="app.css?v=20260518g" />
 </head>
 <body>
 
@@ -340,7 +340,7 @@
       <div class="menu-btn-wrap">
         <button id="drawerToggle" class="top-bar-menu-btn">☰</button>
         <span id="noticeDot" class="notice-dot"></span>
-        <span id="tradeMenuDot" class="notice-dot" style="background:#e05a5a;right:2px;top:2px;"></span>
+        <span id="tradeMenuDot" class="notice-dot"></span>
       </div>
       <img src="images/hc_logo_png1.png" alt="홈" onclick="switchSection('mission')" style="height:30px; width:auto; margin-left:-6px; cursor:pointer;" />
       <span style="flex:1;"></span>
@@ -366,7 +366,7 @@
         <li class="drawer-item" data-section="chat" style="display:none;"><span class="drawer-label">채팅방</span></li>
       </ul>
       <div class="drawer-utility">
-        <button type="button" class="drawer-item drawer-util-main" data-section="collection"><span class="drawer-label">카드 컬렉션</span><span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;position:absolute;right:14px;top:50%;transform:translateY(-50%);flex-shrink:0;"></span></button>
+        <button type="button" class="drawer-item drawer-util-main" data-section="collection"><span class="drawer-label">카드 컬렉션<span id="drawerTradeDot" style="display:none;width:7px;height:7px;background:#e05a5a;border-radius:50%;position:absolute;left:calc(100% + 6px);top:50%;transform:translateY(-50%);"></span></span></button>
         <div class="drawer-util-row">
           <button type="button" class="drawer-item drawer-util-link" data-section="faq"><span class="drawer-label">QnA</span></button>
           <button type="button" class="drawer-item drawer-util-link" data-section="inquiry"><span class="drawer-label">개발자 문의</span></button>
@@ -922,6 +922,21 @@
 
             <div id="bbbContent" style="display:none;flex-direction:column;gap:12px;">
 
+              <!-- 통일된 Coming Soon 인트로 (모든 항목 잠겨있을 때만 노출) -->
+              <div id="bbbAllComingSoon" style="display:none;background:var(--bg);border-radius:16px;padding:56px 28px 52px;text-align:center;">
+                <div style="font-size:38px;line-height:1;margin-bottom:22px;">🤫</div>
+                <p style="font-size:15px;line-height:1.9;color:var(--text);margin:0 auto 24px;font-weight:600;max-width:280px;">
+                  여기에 페이지에 대한 한두 문장 설명을 적어주세요.<br>
+                  (이 문구는 직접 수정하실 예정)
+                </p>
+                <div style="display:inline-block;padding:5px 14px;border-radius:999px;background:var(--primary-soft);font-size:11px;font-weight:800;color:var(--primary);letter-spacing:0.08em;">
+                  COMING SOON
+                </div>
+              </div>
+
+              <!-- 상세 박스들 (어느 하나라도 오픈되면 보임) -->
+              <div id="bbbDetailWrap" style="display:flex;flex-direction:column;gap:12px;">
+
               <!-- 케어버디 -->
               <div style="background:#e4e4e4;border-radius:14px;padding:18px 20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -1049,6 +1064,8 @@
                 </div>
               </div>
 
+              </div> <!-- /#bbbDetailWrap -->
+
             </div>
 
             <div id="bbbNoMatch" style="display:none;text-align:center;padding:24px 0 8px;">
@@ -1119,7 +1136,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260518c" defer></script>
+  <script src="app.js?v=20260518g" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

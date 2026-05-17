@@ -95,6 +95,8 @@
     .tab-status-option { display:flex; align-items:center; gap:4px; padding:6px 9px; border-radius:999px; font-size:12px; font-weight:800; cursor:pointer; color:var(--sub); white-space:nowrap; }
     .tab-status-option input { position:absolute; opacity:0; pointer-events:none; }
     .tab-status-option:has(input:checked) { color:var(--text); background:#fff; box-shadow:0 1px 4px rgba(44,36,23,.08); }
+    .tab-status-option.status-hidden:has(input:checked) { color:#475569; background:#e2e8f0; }
+    .tab-status-option.status-coming:has(input:checked) { color:#991b1b; background:#fee2e2; }
     .tab-status-option.status-open:has(input:checked) { color:#166534; background:#dcfce7; }
     .tab-status-option.status-closed:has(input:checked) { color:#991b1b; background:#fee2e2; }
     @media (max-width: 680px) {
@@ -577,10 +579,10 @@
           <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 실행 후 결과가 표시됩니다.</p></div>
         </div>
 
-        <!-- 섹션별 오픈/커밍순 설정 -->
+        <!-- 섹션 오픈 설정 -->
         <div class="card" style="margin-top:16px;">
           <h2 class="card-title" style="margin:0 0 4px;">섹션 오픈 설정</h2>
-          <p style="font-size:12px;color:var(--sub);margin:0 0 16px;">OFF 시 Coming Soon 박스가 표시돼요. 텍스트 첫 줄/둘째 줄로 나뉘어 표시됩니다.</p>
+          <p style="font-size:12px;color:var(--sub);margin:0 0 16px;">OFF 시 Coming Soon 커버가 표시돼요.</p>
           <div id="bbbSectionRows" style="display:flex;flex-direction:column;gap:12px;"></div>
           <div id="bbbSectionSaveStatus" style="font-size:12px;color:var(--sub);margin-top:8px;min-height:16px;"></div>
           <button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="saveBBBSections()">저장</button>
@@ -731,7 +733,7 @@
       <div id="tab-tabtoggle" class="tab-panel">
         <div class="card">
           <h2 class="card-title">유저 앱 탭 관리</h2>
-          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">표시를 끄면 앱 메뉴에서 숨겨져요. 상태는 유저 앱 메뉴에서 초록/빨강 점으로 보여요.</p>
+          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;"><strong>메뉴 숨김</strong>: 햄버거에서 안 보임 / <strong>곧 오픈</strong>: 메뉴엔 보이지만 '곧 오픈' 칩 표시 (B.B.B는 페이지 커버) / <strong>오픈</strong>: 정상 사용 가능</p>
 
           <div id="tabSettingsList" class="tab-settings-list">
             <p style="font-size:13px;color:var(--sub);margin:0;">불러오는 중...</p>
@@ -1725,9 +1727,11 @@
       }
       listEl.innerHTML = list.map(item => {
         const key = String(item.key || '').trim();
-        const checkboxId = TAB_SETTING_ID_MAP[key] || `toggleTab_${key}`;
-        const radioName = `tabStatus_${key}`;
+        const radioName = `tabState_${key}`;
         const status = normalizeAdminTabStatus(item.status);
+        const enabled = item.enabled !== false;
+        // 3상태: hidden(메뉴 숨김) / coming(곧 오픈) / open(오픈)
+        const state = !enabled ? 'hidden' : (status === 'open' ? 'open' : 'coming');
         const meta = key === 'specialPack'
           ? '부가 기능 · 사전미션 카드팩 영역'
           : '유저 앱 메뉴 탭';
@@ -1738,18 +1742,18 @@
               <span class="tab-setting-meta">${esc(meta)}</span>
             </div>
             <div class="tab-setting-controls">
-              <label class="tab-visible-toggle">
-                <input type="checkbox" id="${esc(checkboxId)}" class="tab-enabled-input" ${item.enabled !== false ? 'checked' : ''} />
-                표시
-              </label>
               <div class="tab-status-group">
-                <label class="tab-status-option status-open">
-                  <input type="radio" name="${esc(radioName)}" value="open" ${status === 'open' ? 'checked' : ''} />
-                  ${TAB_STATUS_LABELS.open}
+                <label class="tab-status-option status-hidden">
+                  <input type="radio" name="${esc(radioName)}" value="hidden" ${state === 'hidden' ? 'checked' : ''} />
+                  메뉴 숨김
                 </label>
-                <label class="tab-status-option status-closed">
-                  <input type="radio" name="${esc(radioName)}" value="closed" ${status === 'closed' ? 'checked' : ''} />
-                  ${TAB_STATUS_LABELS.closed}
+                <label class="tab-status-option status-coming">
+                  <input type="radio" name="${esc(radioName)}" value="coming" ${state === 'coming' ? 'checked' : ''} />
+                  곧 오픈
+                </label>
+                <label class="tab-status-option status-open">
+                  <input type="radio" name="${esc(radioName)}" value="open" ${state === 'open' ? 'checked' : ''} />
+                  오픈
                 </label>
               </div>
             </div>
@@ -1761,8 +1765,9 @@
     function collectTabSettingsItems() {
       return Array.from(document.querySelectorAll('#tabSettingsList .tab-setting-row')).map(row => {
         const key = row.dataset.tabKey;
-        const enabled = row.querySelector('.tab-enabled-input')?.checked === true;
-        const status = row.querySelector(`input[name="tabStatus_${key}"]:checked`)?.value || 'closed';
+        const state = row.querySelector(`input[name="tabState_${key}"]:checked`)?.value || 'hidden';
+        const enabled = state !== 'hidden';
+        const status  = state === 'open' ? 'open' : 'closed';
         return { key, enabled, status };
       });
     }
@@ -1785,10 +1790,17 @@
       statusEl.textContent = '저장 중...';
       statusEl.className = 'status';
       try {
+        // 'secret' 탭 상태가 B.B.B 페이지 cover (careBuddy/secretBuddy/m1/m2/msgOpen)도 함께 제어
+        const tabItems = collectTabSettingsItems();
+        const secretItem = tabItems.find(i => i.key === 'secret');
+        const secretOpen = secretItem ? secretItem.status === 'open' : false;
+        const bbbSections = {};
+        BBB_GROUP_KEYS.forEach(k => { bbbSections[k] = { open: secretOpen }; });
         const res = await post({
           action: 'setTabSettings',
           adminPw,
-          tabItems: collectTabSettingsItems()
+          tabItems,
+          bbbSections,
         });
         if (res.ok) {
           statusEl.className = 'status ok';
@@ -2473,68 +2485,44 @@
       finally { btn.disabled = false; btn.textContent = '🎲 매칭 실행'; }
     }
 
-    /* ── BBB 섹션 오픈 설정 ── */
-    const BBB_SECTION_LABELS = {
-      careBuddy:   'CARE BUDDY',
-      m1:          'MISSION 1 (사진 찍기)',
-      m2:          'MISSION 2 (기도 인증)',
-      m3:          'MISSION 3 (천로역정 맵)',
-      secretBuddy: 'SECRET BUDDY',
-      msgOpen:     '익명 메시지 세트',
-    };
-    const BBB_SECTION_DESCS = {
-      msgOpen: 'To. CARE BUDDY (메시지 보내기)<br>+ from. SECRET BUDDY (받은 메시지함)',
-    };
-    const BBB_SECTION_HAS_CS_TEXT = new Set(['careBuddy', 'm1', 'm2', 'm3', 'secretBuddy']);
+    /* ── 섹션 오픈 설정 (천로역정만 — B.B.B 미션은 탭 활성화 'secret' 상태가 제어) ── */
+    const BBB_GROUP_KEYS = ['careBuddy', 'secretBuddy', 'm1', 'm2', 'msgOpen'];
+    const PILGRIM_KEYS   = ['m3'];
     let _bbbSectionsData = {};
 
     function renderBBBSectionRows(sections) {
       _bbbSectionsData = sections;
       const container = document.getElementById('bbbSectionRows');
       if (!container) return;
-      container.innerHTML = Object.entries(BBB_SECTION_LABELS).map(([key, label]) => {
-        const sec       = sections[key] || { open: false, text: '' };
-        const hasCSText = BBB_SECTION_HAS_CS_TEXT.has(key);
-        const desc      = BBB_SECTION_DESCS[key] || '';
-        const toggle    = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
-              <span id="bbbSecLabel_${key}" style="font-size:12px;font-weight:700;color:${sec.open ? '#4ade80' : '#f87171'};">${sec.open ? '🟢 오픈' : '🔴 잠금'}</span>
-              <input type="checkbox" id="bbbSecToggle_${key}" ${sec.open ? 'checked' : ''} onchange="onBBBSectionToggle('${key}')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
-            </label>`;
-        return `<div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;${hasCSText ? 'margin-bottom:10px;' : ''}">
+      const pilgrimOn = PILGRIM_KEYS.every(k => sections[k] && sections[k].open);
+      container.innerHTML = `
+        <div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
             <div style="flex:1;min-width:0;margin-right:12px;">
-              <div style="font-size:14px;font-weight:700;">${label}</div>
-              ${desc ? `<div style="font-size:11px;color:var(--sub);margin-top:3px;">${desc}</div>` : ''}
+              <div style="font-size:14px;font-weight:700;">천로역정</div>
+              <div style="font-size:11px;color:var(--sub);margin-top:3px;">MISSION 3 (필그림하우스 맵)</div>
             </div>
-            ${toggle}
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
+              <span id="bbbSecLabel_pilgrim" style="font-size:12px;font-weight:700;color:${pilgrimOn ? '#4ade80' : '#f87171'};">${pilgrimOn ? '🟢 오픈' : '🔴 잠금'}</span>
+              <input type="checkbox" id="bbbSecToggle_pilgrim" ${pilgrimOn ? 'checked' : ''} onchange="onBBBSectionToggle('pilgrim')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
+            </label>
           </div>
-          ${hasCSText ? `<div id="bbbSecCSWrap_${key}" style="display:${sec.open ? 'none' : ''};">
-            <p style="font-size:11px;color:var(--sub);margin:0 0 6px;">Coming Soon 텍스트 (줄바꿈으로 2줄 분리)</p>
-            <textarea id="bbbSecText_${key}" rows="2" style="width:100%;box-sizing:border-box;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);resize:none;font-family:inherit;outline:none;">${escHtml(sec.text || '')}</textarea>
-          </div>` : ''}
         </div>`;
-      }).join('');
     }
 
-    function onBBBSectionToggle(key) {
-      const checked = document.getElementById('bbbSecToggle_' + key).checked;
-      const label   = document.getElementById('bbbSecLabel_'  + key);
-      const csWrap  = document.getElementById('bbbSecCSWrap_' + key);
+    function onBBBSectionToggle(id) {
+      const checked = document.getElementById('bbbSecToggle_' + id).checked;
+      const label   = document.getElementById('bbbSecLabel_'  + id);
       label.textContent = checked ? '🟢 오픈' : '🔴 잠금';
       label.style.color = checked ? '#4ade80' : '#f87171';
-      if (csWrap) csWrap.style.display = checked ? 'none' : '';
     }
 
     async function saveBBBSections() {
+      const pilgrimOn = document.getElementById('bbbSecToggle_pilgrim')?.checked === true;
       const sections = {};
-      Object.keys(BBB_SECTION_LABELS).forEach(key => {
-        const toggle = document.getElementById('bbbSecToggle_' + key);
-        const entry  = { open: toggle ? toggle.checked : false };
-        if (BBB_SECTION_HAS_CS_TEXT.has(key)) {
-          const textEl = document.getElementById('bbbSecText_' + key);
-          entry.text = textEl ? textEl.value : '';
-        }
-        sections[key] = entry;
+      PILGRIM_KEYS.forEach(k => {
+        const prev = _bbbSectionsData[k] || {};
+        sections[k] = { ...prev, open: pilgrimOn };
       });
       const statusEl = document.getElementById('bbbSectionSaveStatus');
       statusEl.textContent = '저장 중...';

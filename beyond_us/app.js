@@ -59,7 +59,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518c';
+    const APP_VERSION = '20260518g';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -4191,6 +4191,13 @@
           }
         });
 
+        // 모든 BBB 서브섹션이 잠겨있으면 Coming Soon 커버 (기존 박스는 DOM에 그대로, 가려둠)
+        const _bbbAllLocked = ['careBuddy','secretBuddy','m1','m2'].every(k => !(_bbbSections[k] && _bbbSections[k].open));
+        const _bbbIntro  = document.getElementById('bbbAllComingSoon');
+        const _bbbDetail = document.getElementById('bbbDetailWrap');
+        if (_bbbIntro)  _bbbIntro.style.display  = _bbbAllLocked ? '' : 'none';
+        if (_bbbDetail) _bbbDetail.style.display = _bbbAllLocked ? 'none' : 'flex';
+
         // 메시지 보내기/받기 창 — 어드민 토글 기준 (스태프는 항상 오픈)
         const _msgOpen = _bbbSections.msgOpen?.open || _isDev;
         document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
@@ -4509,13 +4516,11 @@
         const h12 = hh % 12 || 12;
         return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
       }
-      // 받은 메시지 = 왼쪽 정렬 (시크릿버디 → 나)
+      // 받은 메시지 = 박스 양끝까지, 날짜는 우하단
       function _bubble(m) {
-        return `<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">
-          <div style="max-width:80%;background:var(--primary-soft);border-radius:12px 12px 12px 2px;padding:10px 13px;">
-            <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
-            <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
-          </div>
+        return `<div style="background:var(--primary-soft);border-radius:12px;padding:10px 13px;margin-bottom:6px;">
+          <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
         </div>`;
       }
       const latest = messages[messages.length - 1];
