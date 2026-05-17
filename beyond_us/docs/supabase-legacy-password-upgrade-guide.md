@@ -146,6 +146,6 @@ where migrated_at is not null
 
 ## 보류 작업
 
-- `app.js` 로그인 계층에 legacy upgrade 호출 추가.
+- Supabase Auth `signInWithPassword` 연결.
 - admin에서 사용자별 `password_migration_required` 상태 확인 표시.
 - PROD 전환 후 legacy migration 기간 종료 시 `legacy_auth_hashes` 제거 또는 장기 비활성화.

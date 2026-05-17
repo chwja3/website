@@ -12,6 +12,13 @@
     const API_BASE = IS_DEV_ENV
       ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
+    const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
+    const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
+    const LEGACY_PASSWORD_RESET_ERRORS = new Set([
+      'weak_password_needs_reset',
+      'password_migration_required',
+      'legacy_password_reset_required',
+    ]);
 
     const AUTHLESS_ACTIONS = new Set(['login', 'register', 'resetPassword', 'adminLogin']);
     function getSessionToken() {
@@ -40,7 +47,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260517c';
+    const APP_VERSION = '20260518a';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -730,18 +737,61 @@
       updateInquiryLoginUI();
     }
 
+    let pendingLegacyPasswordUpgrade = null;
+
     /* ════ Auth 패인 전환 ════ */
     function switchAuthPane(pane) {
-      ['register', 'login', 'reset', 'findNickname'].forEach(p => {
+      ['register', 'login', 'legacyUpgrade', 'reset', 'findNickname'].forEach(p => {
         document.getElementById(p + 'Pane').classList.add('hidden');
       });
       document.getElementById(pane + 'Pane').classList.remove('hidden');
-      ['registerStatus', 'loginStatus', 'resetStatus', 'findNicknameStatus'].forEach(id => {
+      ['registerStatus', 'loginStatus', 'legacyUpgradeStatus', 'resetStatus', 'findNicknameStatus'].forEach(id => {
         const el = document.getElementById(id);
         el.textContent = '';
         el.className = 'auth-status';
       });
       document.getElementById('resetDuplicates').style.display = 'none';
+    }
+
+    function needsLegacyPasswordReset(data) {
+      return data && LEGACY_PASSWORD_RESET_ERRORS.has(data.error);
+    }
+
+    function showLegacyPasswordUpgrade(nickname, password) {
+      pendingLegacyPasswordUpgrade = { nickname, password };
+      const nameEl = document.getElementById('legacyUpgradeNicknameDisplay');
+      const pwEl = document.getElementById('legacyNewPassword');
+      const confirmEl = document.getElementById('legacyNewPasswordConfirm');
+      if (nameEl) nameEl.textContent = nickname ? `${nickname} 계정의 비밀번호를 업데이트해요.` : '';
+      if (pwEl) pwEl.value = '';
+      if (confirmEl) confirmEl.value = '';
+      switchAuthPane('legacyUpgrade');
+      const statusEl = document.getElementById('legacyUpgradeStatus');
+      if (statusEl) {
+        statusEl.textContent = '기존 비밀번호 확인이 완료됐어요. 새 비밀번호를 설정해주세요.';
+        statusEl.className = 'auth-status success';
+      }
+      if (pwEl) setTimeout(() => pwEl.focus(), 100);
+    }
+
+    function cancelLegacyPasswordUpgrade() {
+      pendingLegacyPasswordUpgrade = null;
+      const pwEl = document.getElementById('legacyNewPassword');
+      const confirmEl = document.getElementById('legacyNewPasswordConfirm');
+      if (pwEl) pwEl.value = '';
+      if (confirmEl) confirmEl.value = '';
+      switchAuthPane('login');
+    }
+
+    async function callLegacyPasswordUpgrade(loginId, password, newPassword) {
+      const res = await fetch(LEGACY_PASSWORD_UPGRADE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginId, password, newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && !data.error) data.error = 'request_failed';
+      return data;
     }
 
     function saveAuth(nickname, sessionToken, parish) {
@@ -921,11 +971,76 @@
           stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
         } else if (data.error === 'wrong_password') {
           stopAnimDots(dotsTimerLogin, statusEl, '비밀번호가 틀렸어요.');
+        } else if (needsLegacyPasswordReset(data)) {
+          stopAnimDots(dotsTimerLogin, statusEl, '');
+          showLegacyPasswordUpgrade(nickname, password);
         } else {
           stopAnimDots(dotsTimerLogin, statusEl, '오류가 발생했어요.');
         }
       } catch(e) {
         stopAnimDots(dotsTimerLogin, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('legacyUpgradeBtn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('legacyUpgradeStatus');
+      const btn = document.getElementById('legacyUpgradeBtn');
+      const newPassword = document.getElementById('legacyNewPassword').value;
+      const confirmPassword = document.getElementById('legacyNewPasswordConfirm').value;
+
+      statusEl.className = 'auth-status';
+      if (!pendingLegacyPasswordUpgrade) {
+        statusEl.textContent = '로그인 화면에서 다시 시도해주세요.';
+        return;
+      }
+      if (!newPassword || !confirmPassword) {
+        statusEl.textContent = '새 비밀번호를 모두 입력해주세요.';
+        return;
+      }
+      if (newPassword.length < 6) {
+        statusEl.textContent = '새 비밀번호는 6자 이상이어야 해요.';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        statusEl.textContent = '새 비밀번호가 서로 달라요.';
+        return;
+      }
+
+      btn.disabled = true;
+      const dotsTimerLegacy = animDots(statusEl, '업데이트 중');
+      try {
+        const data = await callLegacyPasswordUpgrade(
+          pendingLegacyPasswordUpgrade.nickname,
+          pendingLegacyPasswordUpgrade.password,
+          newPassword
+        );
+        if (data.ok) {
+          stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
+          statusEl.className = 'auth-status success';
+          const nickname = pendingLegacyPasswordUpgrade.nickname;
+          pendingLegacyPasswordUpgrade = null;
+          document.getElementById('loginNickname').value = nickname || '';
+          document.getElementById('loginPassword').value = '';
+          document.getElementById('legacyNewPassword').value = '';
+          document.getElementById('legacyNewPasswordConfirm').value = '';
+          setTimeout(() => {
+            switchAuthPane('login');
+            const loginPwEl = document.getElementById('loginPassword');
+            if (loginPwEl) loginPwEl.focus();
+          }, 1200);
+        } else if (data.error === 'invalid_credentials') {
+          stopAnimDots(dotsTimerLegacy, statusEl, '기존 비밀번호 확인에 실패했어요. 로그인부터 다시 시도해주세요.');
+        } else if (data.error === 'temporarily_locked') {
+          stopAnimDots(dotsTimerLegacy, statusEl, '시도가 많아 잠시 잠겼어요. 10분 뒤 다시 시도해주세요.');
+        } else if (data.error === 'invalid_new_password' || data.error === 'weak_password_needs_reset') {
+          stopAnimDots(dotsTimerLegacy, statusEl, '새 비밀번호는 6자 이상이어야 해요.');
+        } else {
+          stopAnimDots(dotsTimerLegacy, statusEl, '업데이트에 실패했어요. 잠시 후 다시 시도해주세요.');
+        }
+      } catch(e) {
+        stopAnimDots(dotsTimerLegacy, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
       } finally {
         btn.disabled = false;
       }
@@ -1023,7 +1138,7 @@
     });
 
     /* Enter 키 처리 */
-    [['regPassword', 'registerBtn'], ['loginPassword', 'loginBtn'], ['resetPassword', 'resetBtn']].forEach(([inputId, btnId]) => {
+    [['regPassword', 'registerBtn'], ['loginPassword', 'loginBtn'], ['legacyNewPassword', 'legacyUpgradeBtn'], ['legacyNewPasswordConfirm', 'legacyUpgradeBtn'], ['resetPassword', 'resetBtn']].forEach(([inputId, btnId]) => {
       document.getElementById(inputId).addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById(btnId).click();
       });

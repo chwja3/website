@@ -163,6 +163,18 @@
         </p>
       </div>
 
+      <!-- Supabase 전환용 비밀번호 업데이트 -->
+      <div id="legacyUpgradePane" class="hidden">
+        <h2 class="modal-title">비밀번호 업데이트</h2>
+        <p class="modal-desc">보안 업데이트로 비밀번호를 6자 이상으로 다시 설정해주세요.</p>
+        <p class="auth-notice" id="legacyUpgradeNicknameDisplay" style="text-align:center;"></p>
+        <input type="password" id="legacyNewPassword" class="modal-input" placeholder="새 비밀번호 (6자 이상)" maxlength="40" autocomplete="new-password" />
+        <input type="password" id="legacyNewPasswordConfirm" class="modal-input" placeholder="새 비밀번호 확인" maxlength="40" autocomplete="new-password" />
+        <div class="auth-status" id="legacyUpgradeStatus"></div>
+        <button class="btn btn-primary modal-btn" id="legacyUpgradeBtn">비밀번호 업데이트</button>
+        <p class="auth-switch"><button class="auth-link" onclick="cancelLegacyPasswordUpgrade()">← 로그인으로 돌아가기</button></p>
+      </div>
+
       <!-- 닉네임 찾기 -->
       <div id="findNicknamePane" class="hidden">
         <h2 class="modal-title">닉네임 찾기</h2>
@@ -1107,7 +1119,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260516e" defer></script>
+  <script src="app.js?v=20260518a" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
