@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = requiredEnv('SUPABASE_URL');
-    const serviceRoleKey = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+    const serviceRoleKey = getSupabaseServiceRoleKey();
     const pepper = requiredEnv('LEGACY_PASSWORD_PEPPER');
     const supabase = createClient(supabaseUrl, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -216,6 +216,19 @@ function requiredEnv(key: string): string {
   const value = Deno.env.get(key);
   if (!value) throw new Error(`Missing env: ${key}`);
   return value;
+}
+
+function getSupabaseServiceRoleKey(): string {
+  const legacyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (legacyKey) return legacyKey;
+
+  const secretKeys = Deno.env.get('SUPABASE_SECRET_KEYS');
+  if (secretKeys) {
+    const parsed = JSON.parse(secretKeys) as Record<string, string>;
+    if (parsed.default) return parsed.default;
+  }
+
+  throw new Error('Missing Supabase service role secret');
 }
 
 function text(value: unknown): string {

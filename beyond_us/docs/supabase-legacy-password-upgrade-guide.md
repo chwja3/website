@@ -46,11 +46,11 @@ Supabase Dashboard 또는 CLI에서 `legacy-password-upgrade` 함수에 아래 s
 
 ```text
 LEGACY_PASSWORD_PEPPER=<GAS Script Properties의 PASSWORD_PEPPER>
-SUPABASE_URL=<Supabase Project URL>
-SUPABASE_SERVICE_ROLE_KEY=<service role key>
 ```
 
 값은 절대 문서나 채팅에 남기지 않는다.
+
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_SECRET_KEYS`는 Supabase Edge Function에 기본으로 제공되는 reserved secret이다. Dashboard에서 직접 추가하려고 하면 `Name must not start with the SUPABASE_ prefix` 오류가 난다. 따라서 직접 추가하지 않는다.
 
 ## 4. Edge Function 배포
 
