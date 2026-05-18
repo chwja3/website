@@ -9,75 +9,28 @@
     const IS_DEV_ENV = isDevEnvironment();
     const RAFFLE_PREVIEW_MODE = IS_DEV_ENV && new URLSearchParams(location.search).get('rafflePreview') === '1';
 
-    const API_BASE = IS_DEV_ENV
-      ? ''
-      : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
-    const SUPABASE_AUTH_MODE = IS_DEV_ENV && SUPABASE_ANON_KEY ? 'primary' : 'off'; // off | shadow | primary
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const APP_AUTH_URL = `${SUPABASE_PROJECT_URL}/functions/v1/app-auth`;
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
-    const SUPABASE_DATA_READ_MODE = getSupabaseDataReadMode(); // off | read
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'password_migration_required',
       'legacy_password_reset_required',
     ]);
 
-    const AUTHLESS_ACTIONS = new Set(['login', 'register', 'resetPassword', 'adminLogin']);
-    function getSessionToken() {
-      return localStorage.getItem('beyondus_session_token') || '';
-    }
-    function withSession(body) {
-      const payload = Object.assign({}, body);
-      if (!payload.adminPw && !AUTHLESS_ACTIONS.has(payload.action) && !payload.sessionToken) {
-        const token = getSessionToken();
-        if (token) payload.sessionToken = token;
-      }
-      return payload;
-    }
-    function sessionParam() {
-      const token = getSessionToken();
-      return token ? `&sessionToken=${encodeURIComponent(token)}` : '';
-    }
-    function canUseGasApi() {
-      return !IS_DEV_ENV && !!API_BASE;
-    }
-    function assertGasApiAllowed(action) {
-      if (!canUseGasApi()) {
-        throw new Error(`dev_gas_disabled:${action || 'unknown'}`);
-      }
-    }
     function isSupabaseAuthConfigured() {
-      return Boolean(SUPABASE_PROJECT_URL && SUPABASE_ANON_KEY && SUPABASE_AUTH_MODE !== 'off');
-    }
-    function isSupabasePrimaryAuth() {
-      return isSupabaseAuthConfigured() && SUPABASE_AUTH_MODE === 'primary';
-    }
-    function isSupabaseShadowAuth() {
-      return isSupabaseAuthConfigured() && SUPABASE_AUTH_MODE === 'shadow';
-    }
-    function getSupabaseDataReadMode() {
-      if (!IS_DEV_ENV || !SUPABASE_PROJECT_URL || !SUPABASE_ANON_KEY) return 'off';
-      try {
-        const flag = new URLSearchParams(location.search).get('supabaseData');
-        if (flag === '1' || flag === 'read') localStorage.setItem('beyondus_supabase_data_read', 'read');
-        if (flag === '0' || flag === 'off') localStorage.removeItem('beyondus_supabase_data_read');
-        localStorage.setItem('beyondus_supabase_data_read', 'read');
-        return 'read';
-      } catch(e) {
-        return 'read';
-      }
+      return Boolean(SUPABASE_PROJECT_URL && SUPABASE_ANON_KEY);
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518aa';
+    const APP_VERSION = '20260518ab';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -891,30 +844,8 @@
       return authResult;
     }
 
-    async function promptLegacyUpgradeIfNeeded(loginId, password, gasLoginData) {
-      if (!isSupabaseAuthConfigured() || !loginId || !password) return false;
-      try {
-        const probe = await callLegacyPasswordUpgrade(loginId, password, '');
-        if (needsLegacyPasswordReset(probe)) {
-          showLegacyPasswordUpgrade(loginId, password, gasLoginData);
-          return true;
-        }
-        if (probe && probe.error === 'already_migrated') {
-          showAuth('login');
-          const statusEl = document.getElementById('loginStatus');
-          if (statusEl) {
-            statusEl.textContent = '이미 비밀번호 업데이트가 완료된 계정이에요. 새 비밀번호로 Supabase 로그인을 확인해주세요.';
-          }
-          return true;
-        }
-      } catch (error) {
-        console.warn('[DIAG] legacy password probe failed', error);
-      }
-      return false;
-    }
-
-    function showLegacyPasswordUpgrade(nickname, password, gasLoginData) {
-      pendingLegacyPasswordUpgrade = { nickname, password, gasLoginData: gasLoginData || null };
+    function showLegacyPasswordUpgrade(nickname, password) {
+      pendingLegacyPasswordUpgrade = { nickname, password };
       const nameEl = document.getElementById('legacyUpgradeNicknameDisplay');
       const pwEl = document.getElementById('legacyNewPassword');
       const confirmEl = document.getElementById('legacyNewPasswordConfirm');
@@ -955,7 +886,7 @@
     }
 
     function getRequiredPasswordLength() {
-      return isSupabasePrimaryAuth() ? 6 : 4;
+      return 6;
     }
 
     async function callAppAuth(action, payload, options) {
@@ -974,12 +905,6 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok && !data.error) data.error = 'request_failed';
       return data;
-    }
-
-    function canUseSupabaseDataRead(requireAuth) {
-      if (SUPABASE_DATA_READ_MODE !== 'read') return false;
-      if (requireAuth === false) return true;
-      return !!getSupabaseAccessToken();
     }
 
     async function callSupabaseRpc(functionName, args, options) {
@@ -1084,419 +1009,148 @@
       return path;
     }
 
-    async function fetchGasDashboard(options) {
-      assertGasApiAllowed('dashboard');
-      const opts = options || {};
-      const forceParam = opts.force === true ? '&force=1' : '';
-      const res = await fetch(`${API_BASE}?action=dashboard${forceParam}&t=${Date.now()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
-      return res.json();
-    }
-
-    async function fetchGasUserStatus(options) {
-      assertGasApiAllowed('userStatus');
-      const opts = options || {};
-      const action = opts.full === true ? 'userStatus' : 'userStatusLite';
-      const res = await fetch(
-        `${API_BASE}?action=${action}&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
-        { cache: 'no-store' }
-      );
-      if (!res.ok) throw new Error('user_status_failed');
-      return res.json();
-    }
-
-    async function fetchGasSubmitMission(payload) {
-      assertGasApiAllowed('submit');
-      const res = await fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(withSession(Object.assign({ action: 'submit' }, payload || {})))
-      });
-      if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
-      return res.json();
-    }
-
-    function buildGasQuery(action, params) {
-      assertGasApiAllowed(action);
-      const search = new URLSearchParams();
-      search.set('action', action);
-      Object.entries(params || {}).forEach(([key, value]) => {
-        if (value === undefined || value === null || value === '') return;
-        search.set(key, String(value));
-      });
-      search.set('t', String(Date.now()));
-      const token = getSessionToken();
-      if (token && !search.has('sessionToken')) search.set('sessionToken', token);
-      return `${API_BASE}?${search.toString()}`;
-    }
-
-    async function fetchGasGetAction(action, params) {
-      const res = await fetch(buildGasQuery(action, params), { cache: 'no-store' });
-      if (!res.ok) throw new Error(`${action}_failed`);
-      return res.json();
-    }
-
-    async function fetchGasPostAction(action, payload) {
-      assertGasApiAllowed(action);
-      const res = await fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(withSession(Object.assign({ action }, payload || {})))
-      });
-      if (!res.ok) throw new Error(`${action}_failed`);
-      return res.json();
-    }
-
     const apiClient = {
       async getDashboard(options) {
-        if (canUseSupabaseDataRead(false)) {
-          try {
-            return await callSupabaseRpc('get_app_bootstrap', {}, { requireAuth: false });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase dashboard read failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasDashboard(options);
+        return callSupabaseRpc('get_app_bootstrap', {}, { requireAuth: false });
       },
       async getUserStatus(options) {
         const opts = options || {};
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('get_user_status', {
-              p_login_id: currentNickname,
-              p_week_key: getWeekKey(),
-              p_lite: opts.full !== true,
-            });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase userStatus read failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasUserStatus(opts);
+        return callSupabaseRpc('get_user_status', {
+          p_login_id: currentNickname,
+          p_week_key: getWeekKey(),
+          p_lite: opts.full !== true,
+        });
       },
       async submitMission(payload) {
         const body = payload || {};
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('submit_pre_mission', {
-              p_login_id: body.userId || currentNickname || '',
-              p_week_key: body.weekKey || getWeekKey(),
-              p_date_key: body.dateKey || getTodayKey(),
-              p_items: body.items || [],
-              p_request_id: body.requestId || '',
-            });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase submit failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasSubmitMission(body);
+        return callSupabaseRpc('submit_pre_mission', {
+          p_login_id: body.userId || currentNickname || '',
+          p_week_key: body.weekKey || getWeekKey(),
+          p_date_key: body.dateKey || getTodayKey(),
+          p_items: body.items || [],
+          p_request_id: body.requestId || '',
+        });
       },
       async drawCardPack(payload) {
         const body = payload || {};
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('draw_card_pack', {
-              p_login_id: body.userId || currentNickname || '',
-              p_week_key: body.weekKey || getWeekKey(),
-              p_pack_type: body.packType || 'normal',
-              p_request_id: body.requestId || '',
-              p_test_mode: body.testMode === true,
-            }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase draw failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction(body.action || (body.packType === 'special' ? 'drawSpecialCard' : 'drawCard'), body);
+        return callSupabaseRpc('draw_card_pack', {
+          p_login_id: body.userId || currentNickname || '',
+          p_week_key: body.weekKey || getWeekKey(),
+          p_pack_type: body.packType || 'normal',
+          p_request_id: body.requestId || '',
+          p_test_mode: body.testMode === true,
+        }, { allowOkFalse: true });
       },
       async getPublicCollection(nickname) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('get_public_collection', { p_login_id: nickname }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase public collection failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasGetAction('getPublicCollection', { userId: nickname });
+        return callSupabaseRpc('get_public_collection', { p_login_id: nickname }, { allowOkFalse: true });
       },
       async getTrades() {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('get_user_trades', { p_login_id: currentNickname }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase trades read failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasGetAction('getTrades', { userId: currentNickname });
+        return callSupabaseRpc('get_user_trades', { p_login_id: currentNickname }, { allowOkFalse: true });
       },
       async requestTrade(payload) {
         const body = payload || {};
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('request_trade', {
-              p_login_id: currentNickname,
-              p_target_login_id: body.targetNickname || '',
-              p_requester_card_id: Number(body.requesterCardId) || 0,
-              p_target_card_id: Number(body.targetCardId) || 0,
-            }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase trade request failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('requestTrade', Object.assign({ nickname: currentNickname }, body));
+        return callSupabaseRpc('request_trade', {
+          p_login_id: currentNickname,
+          p_target_login_id: body.targetNickname || '',
+          p_requester_card_id: Number(body.requesterCardId) || 0,
+          p_target_card_id: Number(body.targetCardId) || 0,
+        }, { allowOkFalse: true });
       },
       async acceptTrade(tradeId) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('accept_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase trade accept failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('acceptTrade', { tradeId, nickname: currentNickname });
+        return callSupabaseRpc('accept_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
       },
       async rejectTrade(tradeId) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('reject_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase trade reject failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('rejectTrade', { tradeId, nickname: currentNickname });
+        return callSupabaseRpc('reject_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
       },
       async cancelTrade(tradeId) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('cancel_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase trade cancel failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('cancelTrade', { tradeId, nickname: currentNickname });
+        return callSupabaseRpc('cancel_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
       },
       async prayForTrade(tradeId) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('pray_for_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase trade prayer failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('prayForTrade', { tradeId, nickname: currentNickname });
+        return callSupabaseRpc('pray_for_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
       },
       async getInquiries() {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('get_my_inquiries', { p_login_id: currentNickname }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase inquiries read failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasGetAction('getInquiries', { nickname: currentNickname });
+        return callSupabaseRpc('get_my_inquiries', { p_login_id: currentNickname }, { allowOkFalse: true });
       },
       async postInquiry(content) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('create_inquiry', { p_login_id: currentNickname, p_content: content }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase inquiry create failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('postInquiry', { nickname: currentNickname, content });
+        return callSupabaseRpc('create_inquiry', { p_login_id: currentNickname, p_content: content }, { allowOkFalse: true });
       },
       async editInquiry(id, content) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('update_inquiry', { p_login_id: currentNickname, p_id: id, p_content: content }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase inquiry update failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('editInquiry', { nickname: currentNickname, id, content });
+        return callSupabaseRpc('update_inquiry', { p_login_id: currentNickname, p_id: id, p_content: content }, { allowOkFalse: true });
       },
       async deleteInquiry(id) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase inquiry delete failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('deleteInquiry', { nickname: currentNickname, id });
+        return callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
       },
       async getBBBMessages(nickname, forceRefresh) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase BBB messages read failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasGetAction('getBBBMessages', { userId: nickname || currentNickname, force: forceRefresh ? 1 : '' });
+        return callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
       },
       async sendBBBMessage(message) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('send_bbb_message', { p_login_id: currentNickname, p_message: message }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase BBB message send failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('sendBBBMessage', { userId: currentNickname, message });
+        return callSupabaseRpc('send_bbb_message', { p_login_id: currentNickname, p_message: message }, { allowOkFalse: true });
       },
       async guessBBBSecret(guess) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('guess_bbb_secret', { p_login_id: currentNickname, p_guess: guess }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase BBB secret guess failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('guessBBBSecret', { userId: currentNickname, guess });
+        return callSupabaseRpc('guess_bbb_secret', { p_login_id: currentNickname, p_guess: guess }, { allowOkFalse: true });
       },
       async getBBB(nickname) {
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            const data = await callSupabaseRpc('get_bbb_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
-            return normalizeMissionPhotoUrls(data);
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase BBB status failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasGetAction('getBBB', { userId: nickname || currentNickname });
+        const data = await callSupabaseRpc('get_bbb_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
       },
       async uploadMissionPhoto(dataUrl, missionType) {
-        const body = { userId: currentNickname, photo: dataUrl, missionType };
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            const path = await uploadSupabaseMissionPhoto(dataUrl, missionType);
-            const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
-            const data = await callSupabaseRpc('submit_mission_photo', {
-              p_login_id: currentNickname,
-              p_mission_type: missionType || 'm1',
-              p_storage_path: path,
-              p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
-            }, { allowOkFalse: true });
-            return normalizeMissionPhotoUrls(data);
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase photo upload failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('uploadBBBPhoto', body);
+        const path = await uploadSupabaseMissionPhoto(dataUrl, missionType);
+        const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
+        const data = await callSupabaseRpc('submit_mission_photo', {
+          p_login_id: currentNickname,
+          p_mission_type: missionType || 'm1',
+          p_storage_path: path,
+          p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
+        }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
       },
       async deleteMissionPhoto(missionType) {
-        const body = { userId: currentNickname, missionType };
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
-            const data = await callSupabaseRpc('delete_mission_photo', {
-              p_login_id: currentNickname,
-              p_mission_type: missionType || 'm1',
-              p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
-            }, { allowOkFalse: true });
-            return normalizeMissionPhotoUrls(data);
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase photo delete failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('deleteBBBPhoto', body);
+        const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
+        const data = await callSupabaseRpc('delete_mission_photo', {
+          p_login_id: currentNickname,
+          p_mission_type: missionType || 'm1',
+          p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
+        }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
       },
       async getHoldPray(weekKey) {
         const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('get_hold_pray', {
-              p_login_id: nick,
-              p_week_key: weekKey || '',
-            }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase H&P read failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasGetAction('getHoldPray', { weekKey: weekKey || '', nickname: nick });
+        return callSupabaseRpc('get_hold_pray', {
+          p_login_id: nick,
+          p_week_key: weekKey || '',
+        }, { allowOkFalse: true });
       },
       async submitHoldPrayGuess(weekKey, cardIndex, guess) {
         const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('submit_hold_pray_guess', {
-              p_login_id: nick,
-              p_week_key: weekKey || '',
-              p_card_index: Number(cardIndex) || 0,
-              p_guess: guess || '',
-            }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase H&P guess failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('submitHoldPrayGuess', { weekKey, guess, nickname: nick, cardIndex });
+        return callSupabaseRpc('submit_hold_pray_guess', {
+          p_login_id: nick,
+          p_week_key: weekKey || '',
+          p_card_index: Number(cardIndex) || 0,
+          p_guess: guess || '',
+        }, { allowOkFalse: true });
       },
       async postHpHint(weekKey, cardIndex) {
         const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
-        if (canUseSupabaseDataRead(true)) {
-          try {
-            return await callSupabaseRpc('post_hold_pray_hint', {
-              p_login_id: nick,
-              p_week_key: weekKey || '',
-              p_card_index: Number(cardIndex) || 0,
-            }, { allowOkFalse: true });
-          } catch(e) {
-            if (!canUseGasApi()) throw e;
-            console.warn('[DIAG] Supabase H&P hint failed, using PROD GAS fallback', e);
-          }
-        }
-        return fetchGasPostAction('postHpHint', { nickname: nick, weekKey, cardIndex });
+        return callSupabaseRpc('post_hold_pray_hint', {
+          p_login_id: nick,
+          p_week_key: weekKey || '',
+          p_card_index: Number(cardIndex) || 0,
+        }, { allowOkFalse: true });
       },
     };
 
-    function saveAuth(nickname, sessionToken, parish) {
+    function saveAuth(nickname, parish) {
       const prev = localStorage.getItem('beyondus_nickname');
       if (prev && prev !== nickname) {
         clearAccountScopedLocalState();
         resetAccountScopedState({ clearDom: true });
       }
       localStorage.setItem('beyondus_nickname', nickname);
-      if (sessionToken) localStorage.setItem('beyondus_session_token', sessionToken);
+      localStorage.removeItem('beyondus_session_token');
       localStorage.removeItem('beyondus_password');
       localStorage.setItem('beyondus_parish',   parish);
       currentNickname = nickname;
       currentParish   = parish;
-    }
-
-    function enterWithGasLoginData(nickname, data) {
-      saveAuth(nickname, data.sessionToken || '', data.parish || '');
-      localStorage.setItem('beyondus_is_staff', String(data.isStaff === true));
-      localStorage.setItem('beyondus_is_dev', String(data.isDev === true));
-      localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
-      updateUserBadge();
-      if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
-        showApp();
-        syncInitialData().catch(() => {});
-      } else {
-        showComingSoon();
-      }
     }
 
     async function enterWithSupabaseLoginData(nickname, authData, sessionData) {
@@ -1518,8 +1172,7 @@
       const isStaff = profile.isStaff === true || role === 'admin' || role === 'dev' || isDev;
       const appOpenDate = profile.appOpenDate || localStorage.getItem('beyondus_app_open_date') || '';
 
-      localStorage.removeItem('beyondus_session_token');
-      saveAuth(resolvedNickname, '', parish);
+      saveAuth(resolvedNickname, parish);
       localStorage.setItem('beyondus_is_staff', String(isStaff));
       localStorage.setItem('beyondus_is_dev', String(isDev));
       localStorage.setItem('beyondus_app_open_date', appOpenDate);
@@ -1533,17 +1186,17 @@
       }
     }
 
-    /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
+    /* 자동 로그인 — Supabase 세션 복원 */
     async function autoLogin() {
       console.warn('[DIAG] autoLogin() called at', new Date().toISOString());
       const savedNickname = localStorage.getItem('beyondus_nickname');
-      const savedToken    = localStorage.getItem('beyondus_session_token');
-      const savedPassword = localStorage.getItem('beyondus_password'); // 구버전 캐시 1회 마이그레이션용
       const savedParish   = localStorage.getItem('beyondus_parish');
       const hasStoredSupabaseSession = hasSupabaseStoredSession();
 
-      if (!savedNickname || (!savedToken && !savedPassword && !hasStoredSupabaseSession)) {
-        showAuth('register');
+      if (!savedNickname || !hasStoredSupabaseSession) {
+        localStorage.removeItem('beyondus_session_token');
+        localStorage.removeItem('beyondus_password');
+        showAuth(savedNickname ? 'login' : 'register');
         renderDrawSection();
         return;
       }
@@ -1559,74 +1212,25 @@
       if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
       hideSplash();
 
-      if (isSupabasePrimaryAuth() && hasStoredSupabaseSession) {
-        try {
-          const sessionResult = await ensureSupabaseSession();
-          if (!sessionResult.ok) throw new Error(sessionResult.error || 'supabase_session_expired');
-          const profile = await callAppAuth('session', {}, { requireAuth: true });
-          if (!profile.ok) throw new Error(profile.error || 'supabase_session_profile_failed');
-          saveAuth(profile.nickname || savedNickname, '', profile.parish || savedParish || '');
-          localStorage.setItem('beyondus_is_staff', String(profile.isStaff === true));
-          localStorage.setItem('beyondus_is_dev', String(profile.isDev === true));
-          localStorage.setItem('beyondus_app_open_date', profile.appOpenDate || '');
-          updateUserBadge();
-          syncInitialData({ silent: true }).catch(() => {});
-        } catch(e) {
-          console.warn('[DIAG] Supabase autoLogin auth-fail', e);
-          clearSupabaseSession();
-          localStorage.removeItem('beyondus_session_token');
-          localStorage.removeItem('beyondus_password');
-          currentNickname = null;
-          currentParish = null;
-          showAuth('login');
-        }
-        return;
-      }
-
-      syncInitialData({ silent: true }).catch(() => {});
-
-      // 백그라운드에서 서버 검증 (세션 갱신 포함)
-      if (!canUseGasApi()) return;
       try {
-        const res  = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(savedToken
-            ? { action: 'login', nickname: savedNickname, sessionToken: savedToken }
-            : { action: 'login', nickname: savedNickname, password: savedPassword })
-        });
-        const data = await res.json();
-        if (!data.ok) {
-          // GAS 일시 오류(ok:false+message)는 무시하고 캐시 유지
-          // 명확한 인증 실패(잘못된 토큰·없는 닉네임)일 때만 로그아웃
-          const isAuthFail = data.error === 'wrong_password' || data.error === 'not_found';
-          if (isAuthFail) {
-            console.warn('[DIAG] autoLogin auth-fail. response=', data, 'savedNickname=', savedNickname, 'hadToken=', !!savedToken);
-            // 부드러운 클리어: 인증 키만 제거, 닉네임/교구/캐시는 유지
-            // (다중 기기 핑퐁으로 일시적 토큰 무효화가 발생해도 사용자 데이터는 보존)
-            localStorage.removeItem('beyondus_session_token');
-            localStorage.removeItem('beyondus_password');
-            currentNickname = null;
-            currentParish   = null;
-            showAuth('login');
-            // 닉네임 자동 입력 — 비번만 다시 치면 됨
-            const loginNickEl = document.getElementById('loginNickname');
-            if (loginNickEl && savedNickname) {
-              loginNickEl.value = savedNickname;
-              const loginPwEl = document.getElementById('loginPassword');
-              if (loginPwEl) setTimeout(() => loginPwEl.focus(), 100);
-            }
-          } else {
-            console.warn('[DIAG] autoLogin server returned ok:false but not auth-fail. ignoring. response=', data);
-          }
-        } else {
-          saveAuth(savedNickname, data.sessionToken || savedToken || '', data.parish || savedParish || '');
-          localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
-          localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
-          localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
-        }
+        const sessionResult = await ensureSupabaseSession();
+        if (!sessionResult.ok) throw new Error(sessionResult.error || 'supabase_session_expired');
+        const profile = await callAppAuth('session', {}, { requireAuth: true });
+        if (!profile.ok) throw new Error(profile.error || 'supabase_session_profile_failed');
+        saveAuth(profile.nickname || savedNickname, profile.parish || savedParish || '');
+        localStorage.setItem('beyondus_is_staff', String(profile.isStaff === true));
+        localStorage.setItem('beyondus_is_dev', String(profile.isDev === true));
+        localStorage.setItem('beyondus_app_open_date', profile.appOpenDate || '');
+        updateUserBadge();
+        syncInitialData({ silent: true }).catch(() => {});
       } catch(e) {
-        console.warn('[DIAG] autoLogin network/parse error (cache 유지)', e);
+        console.warn('[DIAG] Supabase autoLogin auth-fail', e);
+        clearSupabaseSession();
+        localStorage.removeItem('beyondus_session_token');
+        localStorage.removeItem('beyondus_password');
+        currentNickname = null;
+        currentParish = null;
+        showAuth('login');
       }
     }
 
@@ -1655,47 +1259,16 @@
       const dotsTimerReg = animDots(statusEl, '가입 중');
 
       try {
-        if (isSupabasePrimaryAuth()) {
-          const data = await callAppAuth('register', { name, parish, nickname, password });
-          if (data.ok) {
-            const authResult = await trySupabaseLogin(nickname, password);
-            if (!authResult.ok) throw new Error(authResult.error || 'supabase_login_after_register_failed');
-            stopAnimDots(dotsTimerReg, statusEl, '');
-            await enterWithSupabaseLoginData(nickname, authResult.data, data);
-          } else if (data.error === 'duplicate') {
-            stopAnimDots(dotsTimerReg, statusEl, '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.');
-          } else if (data.error === 'invalid_password') {
-            stopAnimDots(dotsTimerReg, statusEl, `비밀번호는 ${data.minPasswordLength || minPasswordLength}자 이상이어야 해요.`);
-          } else {
-            stopAnimDots(dotsTimerReg, statusEl, '오류가 발생했어요. 다시 시도해주세요.');
-          }
-          return;
-        }
-
-        assertGasApiAllowed('register');
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'register', name, parish, nickname, password })
-        });
-        const data = await res.json();
+        const data = await callAppAuth('register', { name, parish, nickname, password });
         if (data.ok) {
+          const authResult = await trySupabaseLogin(nickname, password);
+          if (!authResult.ok) throw new Error(authResult.error || 'supabase_login_after_register_failed');
           stopAnimDots(dotsTimerReg, statusEl, '');
-          const registeredParish = data.parish || parish;
-          const isStaff = data.isStaff === true;
-          const appOpenDate = data.appOpenDate || '';
-          saveAuth(nickname, data.sessionToken || '', registeredParish);
-          localStorage.setItem('beyondus_is_staff', String(isStaff));
-          localStorage.setItem('beyondus_is_dev',   String(data.isDev === true));
-          localStorage.setItem('beyondus_app_open_date', appOpenDate);
-          updateUserBadge();
-          if (shouldEnterApp(isStaff, appOpenDate)) {
-            showApp(); syncInitialData().catch(() => {});
-          } else {
-            showComingSoon();
-          }
+          await enterWithSupabaseLoginData(nickname, authResult.data, data);
         } else if (data.error === 'duplicate') {
           stopAnimDots(dotsTimerReg, statusEl, '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.');
+        } else if (data.error === 'invalid_password') {
+          stopAnimDots(dotsTimerReg, statusEl, `비밀번호는 ${data.minPasswordLength || minPasswordLength}자 이상이어야 해요.`);
         } else {
           stopAnimDots(dotsTimerReg, statusEl, '오류가 발생했어요. 다시 시도해주세요.');
         }
@@ -1719,57 +1292,24 @@
       const dotsTimerLogin = animDots(statusEl, '로그인 중');
 
       try {
-        if (isSupabasePrimaryAuth()) {
-          const authResult = await trySupabaseLogin(nickname, password);
-          if (authResult.ok) {
-            const profile = await callAppAuth('session', {}, { requireAuth: true });
-            stopAnimDots(dotsTimerLogin, statusEl, '');
-            await enterWithSupabaseLoginData(nickname, authResult.data, profile);
-            return;
-          }
-          const legacyProbe = await callLegacyPasswordUpgrade(nickname, password, '');
-          if (needsLegacyPasswordReset(legacyProbe)) {
-            stopAnimDots(dotsTimerLogin, statusEl, '');
-            showLegacyPasswordUpgrade(nickname, password);
-            return;
-          }
-          if (legacyProbe && legacyProbe.error === 'already_migrated') {
-            stopAnimDots(dotsTimerLogin, statusEl, '이미 비밀번호 업데이트가 완료된 계정이에요. 새 비밀번호로 로그인해주세요.');
-            return;
-          }
-          stopAnimDots(dotsTimerLogin, statusEl, '닉네임 또는 비밀번호를 다시 확인해주세요.');
+        const authResult = await trySupabaseLogin(nickname, password);
+        if (authResult.ok) {
+          const profile = await callAppAuth('session', {}, { requireAuth: true });
+          stopAnimDots(dotsTimerLogin, statusEl, '');
+          await enterWithSupabaseLoginData(nickname, authResult.data, profile);
           return;
         }
-
-        assertGasApiAllowed('login');
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'login', nickname, password })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          stopAnimDots(dotsTimerLogin, statusEl, '');
-          if (isSupabaseShadowAuth()) {
-            const authResult = await trySupabaseLogin(nickname, password).catch((error) => {
-              console.warn('[DIAG] Supabase shadow login failed', error);
-              return { ok: false, error: 'shadow_login_failed' };
-            });
-            if (!authResult.ok && await promptLegacyUpgradeIfNeeded(nickname, password, data)) {
-              return;
-            }
-          }
-          enterWithGasLoginData(nickname, data);
-        } else if (data.error === 'not_found') {
-          stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
-        } else if (data.error === 'wrong_password') {
-          stopAnimDots(dotsTimerLogin, statusEl, '비밀번호가 틀렸어요.');
-        } else if (needsLegacyPasswordReset(data)) {
+        const legacyProbe = await callLegacyPasswordUpgrade(nickname, password, '');
+        if (needsLegacyPasswordReset(legacyProbe)) {
           stopAnimDots(dotsTimerLogin, statusEl, '');
           showLegacyPasswordUpgrade(nickname, password);
-        } else {
-          stopAnimDots(dotsTimerLogin, statusEl, '오류가 발생했어요.');
+          return;
         }
+        if (legacyProbe && legacyProbe.error === 'already_migrated') {
+          stopAnimDots(dotsTimerLogin, statusEl, '이미 비밀번호 업데이트가 완료된 계정이에요. 새 비밀번호로 로그인해주세요.');
+          return;
+        }
+        stopAnimDots(dotsTimerLogin, statusEl, '닉네임 또는 비밀번호를 다시 확인해주세요.');
       } catch(e) {
         stopAnimDots(dotsTimerLogin, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
       } finally {
@@ -1811,13 +1351,12 @@
         );
         if (data.ok) {
           const authResult = await trySupabaseLogin(pendingLegacyPasswordUpgrade.nickname, newPassword);
-          const gasLoginData = pendingLegacyPasswordUpgrade.gasLoginData;
           const nickname = pendingLegacyPasswordUpgrade.nickname;
           if (isSupabaseAuthConfigured() && !authResult.ok) {
             stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호는 업데이트됐지만 로그인 확인에 실패했어요. 새 비밀번호로 다시 로그인해주세요.');
             statusEl.className = 'auth-status success';
           } else {
-            stopAnimDots(dotsTimerLegacy, statusEl, gasLoginData ? '비밀번호가 업데이트됐어요. 앱으로 들어갑니다.' : '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
+            stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
             statusEl.className = 'auth-status success';
           }
           pendingLegacyPasswordUpgrade = null;
@@ -1825,13 +1364,9 @@
           document.getElementById('loginPassword').value = '';
           document.getElementById('legacyNewPassword').value = '';
           document.getElementById('legacyNewPasswordConfirm').value = '';
-          if (isSupabasePrimaryAuth() && authResult.ok) {
+          if (authResult.ok) {
             const profile = await callAppAuth('session', {}, { requireAuth: true });
             setTimeout(() => enterWithSupabaseLoginData(nickname, authResult.data, profile), 800);
-            return;
-          }
-          if (gasLoginData) {
-            setTimeout(() => enterWithGasLoginData(nickname, gasLoginData), 800);
             return;
           }
           setTimeout(() => {
@@ -1868,43 +1403,12 @@
       const dotsTimerReset = animDots(statusEl, '확인 중');
 
       try {
-        if (isSupabasePrimaryAuth()) {
-          const data = await callAppAuth('resetPassword', { nickname, name, parish, newPassword });
-          if (data.ok) {
-            stopAnimDots(dotsTimerReset, statusEl, '비밀번호가 변경됐어요! 로그인해주세요.');
-            statusEl.className = 'auth-status success';
-            document.getElementById('resetDuplicates').style.display = 'none';
-            clearSupabaseSession();
-            setTimeout(() => switchAuthPane('login'), 1500);
-          } else if (data.duplicates) {
-            stopAnimDots(dotsTimerReset, statusEl, '');
-            const dupWrap = document.getElementById('resetDuplicates');
-            const dupList = document.getElementById('resetDuplicateList');
-            dupList.innerHTML = data.duplicates.map(n =>
-              `<button class="btn btn-secondary" style="flex:none;font-size:13px;padding:6px 14px;" onclick="doResetPassword('${escHtml(n)}')">${escHtml(n)}</button>`
-            ).join('');
-            dupWrap.style.display = 'block';
-          } else if (data.error === 'not_found') {
-            stopAnimDots(dotsTimerReset, statusEl, '입력한 정보와 일치하는 계정이 없어요.');
-          } else if (data.error === 'invalid_password') {
-            stopAnimDots(dotsTimerReset, statusEl, `비밀번호는 ${data.minPasswordLength || getRequiredPasswordLength()}자 이상이어야 해요.`);
-          } else {
-            stopAnimDots(dotsTimerReset, statusEl, '오류가 발생했어요.');
-          }
-          return;
-        }
-
-        assertGasApiAllowed('resetPassword');
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'resetPassword', nickname, name, parish, newPassword })
-        });
-        const data = await res.json();
+        const data = await callAppAuth('resetPassword', { nickname, name, parish, newPassword });
         if (data.ok) {
           stopAnimDots(dotsTimerReset, statusEl, '비밀번호가 변경됐어요! 로그인해주세요.');
           statusEl.className = 'auth-status success';
           document.getElementById('resetDuplicates').style.display = 'none';
+          clearSupabaseSession();
           setTimeout(() => switchAuthPane('login'), 1500);
         } else if (data.duplicates) {
           stopAnimDots(dotsTimerReset, statusEl, '');
@@ -1916,6 +1420,8 @@
           dupWrap.style.display = 'block';
         } else if (data.error === 'not_found') {
           stopAnimDots(dotsTimerReset, statusEl, '입력한 정보와 일치하는 계정이 없어요.');
+        } else if (data.error === 'invalid_password') {
+          stopAnimDots(dotsTimerReset, statusEl, `비밀번호는 ${data.minPasswordLength || getRequiredPasswordLength()}자 이상이어야 해요.`);
         } else {
           stopAnimDots(dotsTimerReset, statusEl, '오류가 발생했어요.');
         }
@@ -1958,21 +1464,7 @@
       const dotsTimerFind = animDots(statusEl, '찾는 중');
 
       try {
-        if (isSupabasePrimaryAuth()) {
-          const data = await callAppAuth('findNickname', { name, parish });
-          if (data.ok && data.nicknames && data.nicknames.length) {
-            stopAnimDots(dotsTimerFind, statusEl, '');
-            statusEl.className = 'auth-status success';
-            statusEl.innerHTML = `찾았어요! 닉네임: <strong>${data.nicknames.map(n => escHtml(n)).join(', ')}</strong>`;
-          } else {
-            stopAnimDots(dotsTimerFind, statusEl, '일치하는 계정을 찾지 못했어요. 이름·소속을 다시 확인해주세요.');
-          }
-          return;
-        }
-
-        assertGasApiAllowed('findNickname');
-        const res = await fetch(`${API_BASE}?action=findNickname&name=${encodeURIComponent(name)}&parish=${encodeURIComponent(parish)}&t=${Date.now()}`, { cache: 'no-store' });
-        const data = await res.json();
+        const data = await callAppAuth('findNickname', { name, parish });
         if (data.ok && data.nicknames && data.nicknames.length) {
           stopAnimDots(dotsTimerFind, statusEl, '');
           statusEl.className = 'auth-status success';
@@ -3046,7 +2538,7 @@
     /* ════ 뽑기 오버레이 (GSAP 시네마틱) ════ */
     let drawState = 'idle';
     let drawResult = null;
-    let drawIsNew = true;   // 신규(true) vs 중복(false) — GAS isNew 필드 반영
+    let drawIsNew = true;   // 신규(true) vs 중복(false)
     let revealClickEnabled = false;
     let isFlipping = false;
     let loadingDotsTimer = null;
@@ -3480,7 +2972,7 @@
         playSfx('packOpen');
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
-        // GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
+        // Supabase Storage와 RPC를 통해 저장
         var cardPromise = startDrawCardRequest();
         cardPromise.then(function(result) {
           if (!drawOverlayActive) return;
@@ -4452,17 +3944,11 @@
         updateNoticeDot();
       }
       try {
-        let res;
-        if (canUseSupabaseDataRead(false)) {
-          res = await callSupabaseRpc('get_notices', {}, { requireAuth: false });
-          if (Array.isArray(res.notices)) {
-            res.notices = res.notices.map(n => Object.assign({}, n, {
-              imageUrl: normalizeNoticeImageUrl(n && n.imageUrl),
-            }));
-          }
-        } else {
-          assertGasApiAllowed('getNotices');
-          res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        const res = await callSupabaseRpc('get_notices', {}, { requireAuth: false });
+        if (Array.isArray(res.notices)) {
+          res.notices = res.notices.map(n => Object.assign({}, n, {
+            imageUrl: normalizeNoticeImageUrl(n && n.imageUrl),
+          }));
         }
         if (!res.ok || !res.notices?.length) {
           cachedNotices = [];

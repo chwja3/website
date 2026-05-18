@@ -791,9 +791,6 @@
     }
 
     const IS_DEV_ENV = isDevEnvironment();
-    const API_BASE  = IS_DEV_ENV
-      ? ''
-      : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
@@ -801,7 +798,6 @@
     const ADMIN_RESET_PASSWORD_URL = `${SUPABASE_PROJECT_URL}/functions/v1/admin-reset-password`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
-    const SUPABASE_NOTICE_ACTIONS = new Set(['postNotice', 'editNotice', 'deleteNotice']);
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'invalid_new_password',
@@ -840,14 +836,6 @@
       'adminGetBBB',
     ]);
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
-    function canUseGasAdminApi() {
-      return !IS_DEV_ENV && !!API_BASE;
-    }
-    function assertGasAdminAllowed(action) {
-      if (!canUseGasAdminApi()) {
-        throw new Error(`dev_gas_disabled:${action || 'unknown'}`);
-      }
-    }
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
@@ -1665,9 +1653,7 @@
 
     async function loadCardStats() {
       try {
-        const res = canUseSupabaseAdmin()
-          ? await callSupabaseAdminRpc('admin_card_stats')
-          : await get({ action: 'getCardStats', adminPw });
+        const res = await callSupabaseAdminRpc('admin_card_stats');
         if (!res.ok) return;
 
         document.getElementById('cardTotalDraws').textContent = res.totalDraws;
@@ -1905,44 +1891,20 @@
       sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
       return normalizeSupabaseAdminResponse(data);
     }
-    function shouldUseSupabaseAdmin(body) {
-      if (!body || !body.action || body.action === 'adminLogin') return false;
-      if (SUPABASE_NOTICE_ACTIONS.has(body.action)) return false;
-      if (!SUPABASE_ADMIN_ACTIONS.has(body.action)) return false;
-      if (body.imageFiles && body.imageFiles.length) return false;
-      return canUseSupabaseAdmin();
-    }
     function requireSupabaseAdminSession() {
       if (!canUseSupabaseAdmin()) throw new Error('supabase_admin_session_required');
     }
     async function get(params) {
-      if (shouldUseSupabaseAdmin(params)) {
-        try {
-          return await callSupabaseAdmin(params.action, params);
-        } catch(e) {
-          if (!canUseGasAdminApi()) throw e;
-          console.warn('[DIAG] Supabase admin get failed, using PROD GAS fallback', params && params.action, e);
-        }
-      }
-      assertGasAdminAllowed(params && params.action);
-      const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-      return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+      if (!params || !params.action) throw new Error('missing_admin_action');
+      if (!SUPABASE_ADMIN_ACTIONS.has(params.action)) throw new Error(`unsupported_admin_action:${params.action}`);
+      requireSupabaseAdminSession();
+      return callSupabaseAdmin(params.action, params);
     }
     async function post(body) {
-      if (shouldUseSupabaseAdmin(body)) {
-        try {
-          return await callSupabaseAdmin(body.action, body);
-        } catch(e) {
-          if (!canUseGasAdminApi()) throw e;
-          console.warn('[DIAG] Supabase admin post failed, using PROD GAS fallback', body && body.action, e);
-        }
-      }
-      assertGasAdminAllowed(body && body.action);
-      return fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(body)
-      }).then(r => r.json());
+      if (!body || !body.action) throw new Error('missing_admin_action');
+      if (!SUPABASE_ADMIN_ACTIONS.has(body.action)) throw new Error(`unsupported_admin_action:${body.action}`);
+      requireSupabaseAdminSession();
+      return callSupabaseAdmin(body.action, body);
     }
     function esc(s) { return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
     function jsArg(s) { return JSON.stringify(String(s || '')).replace(/</g, '\\u003c'); }
@@ -3428,11 +3390,6 @@
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
     if (savedLoginId) document.getElementById('adminLoginIdInput').value = savedLoginId;
-    const saved = sessionStorage.getItem('adminPw');
-    if (saved && sessionStorage.getItem('adminMode') === 'legacy') {
-      document.getElementById('adminPwInput').value = saved;
-      doAdminLogin();
-    }
   </script>
 </body>
 </html>
