@@ -36,3 +36,7 @@
 - [x] 상태 테이블 변경 후 `user_summary`가 자동 refresh되도록 trigger migration을 추가한다.
 - [x] 카드 보유 수 감소 시 추첨권 조건이 해제되면 해당 조건 추첨권을 회수하도록 동기화를 보강한다.
 - [ ] DEV Supabase SQL Editor에서 `20260518001100_operational_summary_refresh.sql`을 실행한다.
+- [x] 운영자가 Table Editor에서 닉네임과 이름을 바로 볼 수 있도록 `ops_*` view migration을 추가한다.
+- [x] admin `Events 관리`와 `시스템 상태`를 `Events·시스템` 탭으로 통합한다.
+- [x] Supabase 운영에서 사용하지 않는 Sheet 전환 도구 UI와 JS 함수를 제거한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518001200_ops_readable_views.sql`을 실행한다.

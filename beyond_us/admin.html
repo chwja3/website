@@ -246,8 +246,7 @@
       <div class="drawer-section-label">개발자</div>
       <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
       <button class="drawer-item" data-panel="bbb">B.B.B 미션</button>
-      <button class="drawer-item" data-panel="events">Events 관리</button>
-      <button class="drawer-item" data-panel="system">시스템 상태</button>
+      <button class="drawer-item" data-panel="events">Events·시스템</button>
       <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
     </nav>
 
@@ -612,7 +611,7 @@
 
       </div>
 
-      <!-- Events 관리 탭 -->
+      <!-- Events·시스템 탭 -->
       <div id="tab-events" class="tab-panel">
 
         <div class="card">
@@ -651,14 +650,9 @@
             </div>
             <button class="btn btn-primary" id="rebuildEventsDashboardBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="runRebuildEventDerivedViews()">재계산</button>
           </div>
-          <input type="number" id="eventDashboardRows" class="input" min="1" max="1000" value="300" placeholder="UserDashboard row 수" />
+          <input type="number" id="eventDashboardRows" class="input" min="1" max="1000" value="300" placeholder="검사·재계산 사용자 수" />
           <div id="rebuildEventsDashboardStatus" class="status"></div>
         </div>
-
-      </div>
-
-      <!-- 시스템 상태 -->
-      <div id="tab-system" class="tab-panel">
 
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
@@ -675,23 +669,10 @@
             <div class="stat-card"><div class="stat-label">Elapsed</div><div class="stat-value" id="systemElapsed">-</div></div>
           </div>
           <div id="systemHealthStatus" class="status"></div>
-        </div>
-
-        <div class="card">
-          <h2 class="card-title">Sheet 전환 도구</h2>
-          <p style="font-size:12px;color:var(--sub);margin:0 0 12px;">Supabase 전환 이후 새 운영에서는 사용하지 않는 이전 도구입니다.</p>
-          <input type="number" id="cutoverDashboardRows" class="input" min="1" max="1000" value="250" placeholder="UserDashboard row 수" />
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button class="btn btn-secondary" id="cutoverDryRunBtn" onclick="runProdCutoverDryRun()">Dry-run</button>
-            <button class="btn btn-danger" id="cutoverApplyBtn" onclick="runProdCutoverApply()">Apply</button>
-          </div>
-          <input type="text" id="cutoverConfirmInput" class="input" placeholder="APPLY_PROD_CUTOVER" />
-          <div id="cutoverStatus" class="status"></div>
-        </div>
-
-        <div class="card">
-          <h2 class="card-title">결과</h2>
-          <pre id="systemResultJson" style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow:auto;">-</pre>
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:var(--sub);">상세 결과</summary>
+            <pre id="systemResultJson" style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow:auto;">-</pre>
+          </details>
         </div>
 
       </div>
@@ -3084,7 +3065,7 @@
           callSupabaseAdminRpc('admin_card_stats'),
           callSupabaseAdmin('getUsers', {}),
           callSupabaseAdmin('getTabSettings', {}),
-          callSupabaseAdminRpc('admin_audit_user_state', { p_limit: getCutoverRowLimit() }),
+          callSupabaseAdminRpc('admin_audit_user_state', { p_limit: getEventAuditRowLimit() }),
         ]);
         const checks = {
           dashboard: settledCheck(dashboard),
@@ -3110,62 +3091,6 @@
       }
     }
 
-    async function runProdCutoverDryRun() {
-      const btn = document.getElementById('cutoverDryRunBtn');
-      const statusEl = document.getElementById('cutoverStatus');
-      btn.disabled = true;
-      statusEl.textContent = 'Supabase 전환 이후 사용하지 않는 도구입니다.';
-      statusEl.className = 'status';
-      try {
-        const res = {
-          ok: false,
-          deprecated: true,
-          source: 'supabase',
-          error: 'sheet_cutover_deprecated',
-          message: 'Sheet cutover dry-run은 Supabase 전환 이후 새 운영에서 사용하지 않습니다.',
-        };
-        renderSystemStatus(res);
-        statusEl.textContent = '이전 Sheet 전환 도구라 실행하지 않았습니다.';
-      } catch(e) {
-        statusEl.textContent = '연결 오류';
-        statusEl.className = 'status';
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    async function runProdCutoverApply() {
-      const confirmText = document.getElementById('cutoverConfirmInput').value.trim();
-      const statusEl = document.getElementById('cutoverStatus');
-      if (confirmText !== 'APPLY_PROD_CUTOVER') {
-        statusEl.textContent = '확인 문자열을 입력해 주세요.';
-        statusEl.className = 'status';
-        return;
-      }
-
-      const btn = document.getElementById('cutoverApplyBtn');
-      btn.disabled = true;
-      statusEl.textContent = 'Supabase 전환 이후 사용하지 않는 도구입니다.';
-      statusEl.className = 'status';
-      try {
-        const res = {
-          ok: false,
-          deprecated: true,
-          source: 'supabase',
-          error: 'sheet_cutover_deprecated',
-          message: 'Sheet cutover apply는 Supabase 전환 이후 새 운영에서 사용하지 않습니다.',
-        };
-        renderSystemStatus(res);
-        setSystemResult(res);
-        statusEl.textContent = '이전 Sheet 전환 도구라 실행하지 않았습니다.';
-      } catch(e) {
-        statusEl.textContent = '연결 오류';
-        statusEl.className = 'status';
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
     function settledCheck(result) {
       if (result.status === 'fulfilled') {
         const value = result.value || {};
@@ -3177,9 +3102,9 @@
       };
     }
 
-    function getCutoverRowLimit() {
-      const input = document.getElementById('cutoverDashboardRows');
-      return Math.max(Number(input && input.value) || 250, 1);
+    function getEventAuditRowLimit() {
+      const input = document.getElementById('eventDashboardRows');
+      return Math.max(Number(input && input.value) || 300, 1);
     }
 
     function renderSystemStatus(res) {
