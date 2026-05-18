@@ -8,10 +8,10 @@
 
 | 기존 GAS action | 새 API | 방식 | 주 테이블 |
 |---|---|---|---|
-| `register` | `auth_register_profile` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events`, `raffle_tickets` |
+| `register` | `app-auth` action `register` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events`, `raffle_tickets` |
 | `login` | Supabase Auth sign in with synthetic email | supabase-js | `auth.users`, `profiles` |
-| `resetPassword` | `reset_password_by_profile` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events` |
-| `findNickname` | `find_login_id_by_profile` | Edge Function | `profiles` |
+| `resetPassword` | `app-auth` action `resetPassword` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events` |
+| `findNickname` | `app-auth` action `findNickname` | Edge Function | `profiles` |
 | `dashboard` | `get_app_bootstrap` | RPC | `app_settings`, `tab_settings`, `notices`, `mission_weeks` |
 | `userStatus`, `userStatusLite` | `get_user_status` | RPC | `profiles`, `user_inventory`, `user_cards`, `mission_progress`, `raffle_tickets` |
 | `submit` | `submit_pre_mission` | RPC | `mission_submissions`, `events`, `user_inventory`, `mission_progress` |

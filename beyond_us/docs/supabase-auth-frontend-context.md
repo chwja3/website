@@ -11,9 +11,11 @@
 - 2026-05-18. 첫 보강에서는 `showApp()` 이후에 shadow probe가 실행되어 auth pane은 바뀌어도 화면에 보이지 않았다. GAS 로그인 성공 직후 앱 진입 전에 shadow login과 legacy probe를 먼저 실행하고, 업데이트가 필요하면 `showApp()`으로 넘어가지 않도록 순서를 바꿨다.
 - 2026-05-18. 업데이트가 필요한 계정은 기존 4자리로 GAS 로그인 성공 시 받은 sessionToken을 보관했다가, 새 비밀번호 업데이트와 Supabase login 성공 후 그 GAS sessionToken으로 앱에 진입한다. 아직 앱 데이터 API가 GAS 기반이므로, 새 비밀번호만으로는 GAS 로그인이 되지 않는 과도기 문제를 피하기 위함이다.
 - 2026-05-18. `SUPABASE_AUTH_MODE`는 DEV 환경에서만 shadow로 켜지도록 제한했다. PROD에 이 코드가 들어가도 Supabase 전환 전에는 기존 GAS 로그인 흐름에 영향을 주지 않는다.
+- 2026-05-18. DEV 앱을 Supabase primary auth와 Supabase data read 기본값으로 전환했다. 로그인 성공 시 `app-auth` Edge Function의 `session` action으로 현재 `profiles` 정보를 확인하고, 기존 GAS `sessionToken` 없이 `showApp()`과 `syncInitialData()`로 진입한다. 회원가입, 닉네임 찾기, 사용자 비밀번호 재설정은 DEV primary mode에서 `app-auth` Edge Function을 사용한다. PROD는 여전히 `SUPABASE_AUTH_MODE=off`라 기존 GAS 경로를 사용한다.
 - 2026-05-18. `legacy-password-upgrade`가 409 `already_migrated`를 반환하면 해당 계정은 이미 Supabase 비밀번호 설정이 끝난 상태다. 이 경우 기존 4자리로 다시 업데이트할 수 없으므로 DEV에서는 앱 진입을 막고 새 비밀번호 사용 안내를 표시한다.
 
 ## 남은 연결
 
-- Supabase publishable key는 반영됐다. shadow mode DEV 배포 후 아직 승격되지 않은 4자리 계정은 새 비밀번호 업데이트 pane이 뜨는지, 업데이트 후 Supabase session 저장과 GAS 세션 기반 앱 진입이 함께 되는지 확인한다.
-- Supabase Auth 로그인 후 앱 내부 데이터 API도 Supabase Edge Function 또는 PostgREST/RPC로 바뀌어야 한다.
+- `app-auth` Edge Function을 DEV Supabase에 배포해야 primary auth 경로가 실제 동작한다.
+- 아직 승격되지 않은 4자리 계정은 로그인 시 새 비밀번호 업데이트 pane이 뜨는지, 업데이트 후 Supabase session 기반 앱 진입이 되는지 확인한다.
+- 앱 기능별 Supabase RPC 실패 시 남아있는 GAS fallback은 DEV primary 회귀 테스트 후 제거한다.

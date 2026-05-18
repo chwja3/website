@@ -14,9 +14,10 @@
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
-    const SUPABASE_AUTH_MODE = IS_DEV_ENV && SUPABASE_ANON_KEY ? 'shadow' : 'off'; // off | shadow | primary
+    const SUPABASE_AUTH_MODE = IS_DEV_ENV && SUPABASE_ANON_KEY ? 'primary' : 'off'; // off | shadow | primary
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
+    const APP_AUTH_URL = `${SUPABASE_PROJECT_URL}/functions/v1/app-auth`;
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
@@ -63,18 +64,20 @@
       if (!IS_DEV_ENV || !SUPABASE_PROJECT_URL || !SUPABASE_ANON_KEY) return 'off';
       try {
         const flag = new URLSearchParams(location.search).get('supabaseData');
-        if (flag === '1') localStorage.setItem('beyondus_supabase_data_read', '1');
-        if (flag === '0') localStorage.removeItem('beyondus_supabase_data_read');
-        return localStorage.getItem('beyondus_supabase_data_read') === '1' ? 'read' : 'off';
+        if (flag === '1' || flag === 'read') localStorage.setItem('beyondus_supabase_data_read', 'read');
+        if (flag === '0' || flag === 'off') localStorage.setItem('beyondus_supabase_data_read', 'off');
+        const saved = localStorage.getItem('beyondus_supabase_data_read');
+        if (saved === 'off') return 'off';
+        return 'read';
       } catch(e) {
-        return 'off';
+        return 'read';
       }
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518v';
+    const APP_VERSION = '20260518w';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -833,6 +836,58 @@
       localStorage.setItem('beyondus_supabase_expires_at', String(data.expires_at || ''));
     }
 
+    function getSupabaseRefreshToken() {
+      return localStorage.getItem('beyondus_supabase_refresh_token') || '';
+    }
+
+    function getSupabaseExpiresAt() {
+      return Number(localStorage.getItem('beyondus_supabase_expires_at') || '0') || 0;
+    }
+
+    function hasSupabaseStoredSession() {
+      return isSupabaseAuthConfigured() && Boolean(getSupabaseAccessToken() || getSupabaseRefreshToken());
+    }
+
+    function clearSupabaseSession() {
+      [
+        'beyondus_supabase_login_id',
+        'beyondus_supabase_user_id',
+        'beyondus_supabase_access_token',
+        'beyondus_supabase_refresh_token',
+        'beyondus_supabase_expires_at',
+      ].forEach(key => localStorage.removeItem(key));
+    }
+
+    async function refreshSupabaseSession() {
+      const refreshToken = getSupabaseRefreshToken();
+      if (!refreshToken) return { ok: false, error: 'missing_refresh_token' };
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error_code || data.error || 'refresh_failed', status: res.status };
+      }
+      saveSupabaseSession(localStorage.getItem('beyondus_nickname') || '', { data });
+      return { ok: true, data };
+    }
+
+    async function ensureSupabaseSession() {
+      if (!isSupabaseAuthConfigured()) return { ok: false, error: 'supabase_auth_disabled' };
+      const accessToken = getSupabaseAccessToken();
+      const expiresAt = getSupabaseExpiresAt();
+      if (accessToken && (!expiresAt || Date.now() < (expiresAt - 60) * 1000)) {
+        return { ok: true };
+      }
+      return refreshSupabaseSession();
+    }
+
     async function trySupabaseLogin(loginId, password) {
       if (!isSupabaseAuthConfigured()) return { ok: false, skipped: true };
       const authResult = await signInWithSupabasePassword(loginId, password);
@@ -901,6 +956,28 @@
 
     function getSupabaseAccessToken() {
       return localStorage.getItem('beyondus_supabase_access_token') || '';
+    }
+
+    function getRequiredPasswordLength() {
+      return isSupabasePrimaryAuth() ? 6 : 4;
+    }
+
+    async function callAppAuth(action, payload, options) {
+      const opts = options || {};
+      const headers = { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+      if (opts.requireAuth === true) {
+        const token = getSupabaseAccessToken();
+        if (!token) throw new Error('supabase_auth_required');
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const res = await fetch(APP_AUTH_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(Object.assign({ action }, payload || {})),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && !data.error) data.error = 'request_failed';
+      return data;
     }
 
     function canUseSupabaseDataRead(requireAuth) {
@@ -1397,6 +1474,40 @@
       }
     }
 
+    async function enterWithSupabaseLoginData(nickname, authData, sessionData) {
+      let profile = sessionData && sessionData.ok ? sessionData : null;
+      if (!profile) {
+        profile = await callAppAuth('session', {}, { requireAuth: true });
+      }
+      if (!profile || !profile.ok) {
+        throw new Error((profile && profile.error) || 'supabase_session_profile_failed');
+      }
+
+      const user = (authData && authData.user) || {};
+      const meta = user.user_metadata || {};
+      const appMeta = user.app_metadata || {};
+      const role = profile.role || appMeta.role || meta.role || 'user';
+      const resolvedNickname = profile.nickname || nickname || meta.login_id || '';
+      const parish = profile.parish || meta.parish || '';
+      const isDev = profile.isDev === true || role === 'dev';
+      const isStaff = profile.isStaff === true || role === 'admin' || role === 'dev' || isDev;
+      const appOpenDate = profile.appOpenDate || localStorage.getItem('beyondus_app_open_date') || '';
+
+      localStorage.removeItem('beyondus_session_token');
+      saveAuth(resolvedNickname, '', parish);
+      localStorage.setItem('beyondus_is_staff', String(isStaff));
+      localStorage.setItem('beyondus_is_dev', String(isDev));
+      localStorage.setItem('beyondus_app_open_date', appOpenDate);
+      updateUserBadge();
+
+      if (shouldEnterApp(isStaff, appOpenDate)) {
+        showApp();
+        syncInitialData().catch(() => {});
+      } else {
+        showComingSoon();
+      }
+    }
+
     /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
     async function autoLogin() {
       console.warn('[DIAG] autoLogin() called at', new Date().toISOString());
@@ -1404,8 +1515,9 @@
       const savedToken    = localStorage.getItem('beyondus_session_token');
       const savedPassword = localStorage.getItem('beyondus_password'); // 구버전 캐시 1회 마이그레이션용
       const savedParish   = localStorage.getItem('beyondus_parish');
+      const hasStoredSupabaseSession = hasSupabaseStoredSession();
 
-      if (!savedNickname || (!savedToken && !savedPassword)) {
+      if (!savedNickname || (!savedToken && !savedPassword && !hasStoredSupabaseSession)) {
         showAuth('register');
         renderDrawSection();
         return;
@@ -1421,6 +1533,31 @@
       const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
       if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
       hideSplash();
+
+      if (isSupabasePrimaryAuth() && hasStoredSupabaseSession) {
+        try {
+          const sessionResult = await ensureSupabaseSession();
+          if (!sessionResult.ok) throw new Error(sessionResult.error || 'supabase_session_expired');
+          const profile = await callAppAuth('session', {}, { requireAuth: true });
+          if (!profile.ok) throw new Error(profile.error || 'supabase_session_profile_failed');
+          saveAuth(profile.nickname || savedNickname, '', profile.parish || savedParish || '');
+          localStorage.setItem('beyondus_is_staff', String(profile.isStaff === true));
+          localStorage.setItem('beyondus_is_dev', String(profile.isDev === true));
+          localStorage.setItem('beyondus_app_open_date', profile.appOpenDate || '');
+          updateUserBadge();
+          syncInitialData({ silent: true }).catch(() => {});
+        } catch(e) {
+          console.warn('[DIAG] Supabase autoLogin auth-fail', e);
+          clearSupabaseSession();
+          localStorage.removeItem('beyondus_session_token');
+          localStorage.removeItem('beyondus_password');
+          currentNickname = null;
+          currentParish = null;
+          showAuth('login');
+        }
+        return;
+      }
+
       syncInitialData({ silent: true }).catch(() => {});
 
       // 백그라운드에서 서버 검증 (세션 갱신 포함)
@@ -1484,13 +1621,31 @@
         statusEl.textContent = '모든 항목을 입력해주세요.'; return;
       }
       if (nickname.length < 2) { statusEl.textContent = '닉네임은 2자 이상이어야 해요.'; return; }
-      if (password.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+      const minPasswordLength = getRequiredPasswordLength();
+      if (password.length < minPasswordLength) { statusEl.textContent = `비밀번호는 ${minPasswordLength}자 이상이어야 해요.`; return; }
 
       const btn = document.getElementById('registerBtn');
       btn.disabled = true;
       const dotsTimerReg = animDots(statusEl, '가입 중');
 
       try {
+        if (isSupabasePrimaryAuth()) {
+          const data = await callAppAuth('register', { name, parish, nickname, password });
+          if (data.ok) {
+            const authResult = await trySupabaseLogin(nickname, password);
+            if (!authResult.ok) throw new Error(authResult.error || 'supabase_login_after_register_failed');
+            stopAnimDots(dotsTimerReg, statusEl, '');
+            await enterWithSupabaseLoginData(nickname, authResult.data, data);
+          } else if (data.error === 'duplicate') {
+            stopAnimDots(dotsTimerReg, statusEl, '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.');
+          } else if (data.error === 'invalid_password') {
+            stopAnimDots(dotsTimerReg, statusEl, `비밀번호는 ${data.minPasswordLength || minPasswordLength}자 이상이어야 해요.`);
+          } else {
+            stopAnimDots(dotsTimerReg, statusEl, '오류가 발생했어요. 다시 시도해주세요.');
+          }
+          return;
+        }
+
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1540,8 +1695,9 @@
         if (isSupabasePrimaryAuth()) {
           const authResult = await trySupabaseLogin(nickname, password);
           if (authResult.ok) {
-            stopAnimDots(dotsTimerLogin, statusEl, 'Supabase 로그인은 완료됐어요. 앱 데이터 API 전환 후 진입할 수 있어요.');
-            statusEl.className = 'auth-status success';
+            const profile = await callAppAuth('session', {}, { requireAuth: true });
+            stopAnimDots(dotsTimerLogin, statusEl, '');
+            await enterWithSupabaseLoginData(nickname, authResult.data, profile);
             return;
           }
           const legacyProbe = await callLegacyPasswordUpgrade(nickname, password, '');
@@ -1550,6 +1706,12 @@
             showLegacyPasswordUpgrade(nickname, password);
             return;
           }
+          if (legacyProbe && legacyProbe.error === 'already_migrated') {
+            stopAnimDots(dotsTimerLogin, statusEl, '이미 비밀번호 업데이트가 완료된 계정이에요. 새 비밀번호로 로그인해주세요.');
+            return;
+          }
+          stopAnimDots(dotsTimerLogin, statusEl, '닉네임 또는 비밀번호를 다시 확인해주세요.');
+          return;
         }
 
         const res = await fetch(API_BASE, {
@@ -1635,6 +1797,11 @@
           document.getElementById('loginPassword').value = '';
           document.getElementById('legacyNewPassword').value = '';
           document.getElementById('legacyNewPasswordConfirm').value = '';
+          if (isSupabasePrimaryAuth() && authResult.ok) {
+            const profile = await callAppAuth('session', {}, { requireAuth: true });
+            setTimeout(() => enterWithSupabaseLoginData(nickname, authResult.data, profile), 800);
+            return;
+          }
           if (gasLoginData) {
             setTimeout(() => enterWithGasLoginData(nickname, gasLoginData), 800);
             return;
@@ -1673,6 +1840,32 @@
       const dotsTimerReset = animDots(statusEl, '확인 중');
 
       try {
+        if (isSupabasePrimaryAuth()) {
+          const data = await callAppAuth('resetPassword', { nickname, name, parish, newPassword });
+          if (data.ok) {
+            stopAnimDots(dotsTimerReset, statusEl, '비밀번호가 변경됐어요! 로그인해주세요.');
+            statusEl.className = 'auth-status success';
+            document.getElementById('resetDuplicates').style.display = 'none';
+            clearSupabaseSession();
+            setTimeout(() => switchAuthPane('login'), 1500);
+          } else if (data.duplicates) {
+            stopAnimDots(dotsTimerReset, statusEl, '');
+            const dupWrap = document.getElementById('resetDuplicates');
+            const dupList = document.getElementById('resetDuplicateList');
+            dupList.innerHTML = data.duplicates.map(n =>
+              `<button class="btn btn-secondary" style="flex:none;font-size:13px;padding:6px 14px;" onclick="doResetPassword('${escHtml(n)}')">${escHtml(n)}</button>`
+            ).join('');
+            dupWrap.style.display = 'block';
+          } else if (data.error === 'not_found') {
+            stopAnimDots(dotsTimerReset, statusEl, '입력한 정보와 일치하는 계정이 없어요.');
+          } else if (data.error === 'invalid_password') {
+            stopAnimDots(dotsTimerReset, statusEl, `비밀번호는 ${data.minPasswordLength || getRequiredPasswordLength()}자 이상이어야 해요.`);
+          } else {
+            stopAnimDots(dotsTimerReset, statusEl, '오류가 발생했어요.');
+          }
+          return;
+        }
+
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1716,7 +1909,8 @@
       if (!name || !parish || !newPassword) {
         statusEl.textContent = '모든 항목을 입력해주세요.'; return;
       }
-      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+      const minPasswordLength = getRequiredPasswordLength();
+      if (newPassword.length < minPasswordLength) { statusEl.textContent = `비밀번호는 ${minPasswordLength}자 이상이어야 해요.`; return; }
 
       doResetPassword('');
     });
@@ -1735,6 +1929,18 @@
       const dotsTimerFind = animDots(statusEl, '찾는 중');
 
       try {
+        if (isSupabasePrimaryAuth()) {
+          const data = await callAppAuth('findNickname', { name, parish });
+          if (data.ok && data.nicknames && data.nicknames.length) {
+            stopAnimDots(dotsTimerFind, statusEl, '');
+            statusEl.className = 'auth-status success';
+            statusEl.innerHTML = `찾았어요! 닉네임: <strong>${data.nicknames.map(n => escHtml(n)).join(', ')}</strong>`;
+          } else {
+            stopAnimDots(dotsTimerFind, statusEl, '일치하는 계정을 찾지 못했어요. 이름·소속을 다시 확인해주세요.');
+          }
+          return;
+        }
+
         const res = await fetch(`${API_BASE}?action=findNickname&name=${encodeURIComponent(name)}&parish=${encodeURIComponent(parish)}&t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
         if (data.ok && data.nicknames && data.nicknames.length) {

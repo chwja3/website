@@ -1,2 +1,5 @@
 [functions.legacy-password-upgrade]
 verify_jwt = false
+
+[functions.app-auth]
+verify_jwt = false

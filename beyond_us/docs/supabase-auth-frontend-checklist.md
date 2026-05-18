@@ -17,6 +17,9 @@
 - [x] 비밀번호 업데이트 성공 후 보관한 GAS sessionToken으로 앱 진입.
 - [x] Supabase shadow mode를 DEV 환경으로 제한.
 - [x] 이미 승격된 계정의 기존 4자리 로그인에 안내 표시.
-- [ ] 앱 데이터 API 전환 후 `SUPABASE_AUTH_MODE`를 `primary`로 전환.
-- [ ] Supabase 로그인 성공 후 기존 GAS sessionToken 의존 기능 대체.
+- [x] 앱 데이터 API 전환 후 DEV에서 `SUPABASE_AUTH_MODE`를 `primary`로 전환.
+- [x] Supabase 로그인 성공 후 기존 GAS sessionToken 없이 앱에 진입하게 한다.
+- [x] DEV에서 Supabase data read를 기본값으로 전환한다.
+- [x] 회원가입, 비밀번호 재설정, 닉네임 찾기를 `app-auth` Edge Function 경로로 연결한다.
+- [ ] Supabase Edge Function `app-auth`를 DEV에 배포한다.
 - [ ] 실제 DEV 배포 후 모바일 로그인 modal 확인.
