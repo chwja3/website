@@ -214,7 +214,8 @@
       <div class="gate-emoji">🔐</div>
       <h2 class="gate-title">어드민</h2>
       <p id="gate-desc-env" class="gate-desc">Beyond Us 관리자 페이지</p>
-      <input type="password" id="adminPwInput" class="input" placeholder="비밀번호" />
+      <input type="text" id="adminLoginIdInput" class="input" placeholder="관리자 닉네임" autocomplete="username" />
+      <input type="password" id="adminPwInput" class="input" placeholder="계정 비밀번호" autocomplete="current-password" style="margin-top:8px;" />
       <div class="status" id="gateStatus"></div>
       <button class="btn btn-primary" id="gateBtn" style="margin-top:8px;">입장</button>
     </div>
@@ -792,6 +793,36 @@
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     const SUPABASE_NOTICE_ACTIONS = new Set(['postNotice', 'editNotice', 'deleteNotice']);
+    const SUPABASE_ADMIN_ACTIONS = new Set([
+      'getUsers',
+      'dashboard',
+      'getCurrentWeek',
+      'setCurrentWeek',
+      'getMissionConfig',
+      'setMissionConfig',
+      'getTabSettings',
+      'setTabSettings',
+      'getNotices',
+      'postNotice',
+      'editNotice',
+      'deleteNotice',
+      'getInquiries',
+      'replyInquiry',
+      'deleteInquiry',
+      'adminGetBBBPhotoApprovals',
+      'adminApproveBBBPhoto',
+      'adminRejectBBBPhoto',
+      'adminGetRaffleAttendance',
+      'adminSetRaffleAttendance',
+      'adminSetRaffleExcluded',
+      'adminDeactivateUser',
+      'adminRestoreUser',
+      'adminGetRaffleTickets',
+      'adminFindRaffleTicket',
+      'getTicketStats',
+      'adminGetBBB',
+    ]);
+    const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
@@ -816,11 +847,93 @@
     if (IS_DEV_ENV) {
       document.getElementById('devBanner').style.display = 'block';
       document.getElementById('devBannerSpacer').style.display = 'block';
-      document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 시트 사용 중</span>';
+      document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 데이터 사용 중</span>';
     }
 
     /* ── 로그인 ── */
+    async function sha256Hex(value) {
+      const bytes = new TextEncoder().encode(String(value));
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest))
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function syntheticAuthEmail(loginId) {
+      const hash = await sha256Hex(String(loginId || '').trim());
+      return `u_${hash}@${SYNTHETIC_AUTH_EMAIL_DOMAIN}`;
+    }
+
+    async function signInWithSupabasePassword(loginId, password) {
+      const email = await syntheticAuthEmail(loginId);
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error_code || data.error || 'supabase_auth_failed');
+        err.response = data;
+        err.status = res.status;
+        throw err;
+      }
+      return { data, email };
+    }
+
+    function saveSupabaseAdminSession(loginId, authResult) {
+      const data = authResult && authResult.data;
+      if (!data) return;
+      localStorage.setItem('beyondus_supabase_login_id', loginId || '');
+      localStorage.setItem('beyondus_supabase_user_id', (data.user && data.user.id) || '');
+      localStorage.setItem('beyondus_supabase_access_token', data.access_token || '');
+      localStorage.setItem('beyondus_supabase_refresh_token', data.refresh_token || '');
+      localStorage.setItem('beyondus_supabase_expires_at', String(data.expires_at || ''));
+      sessionStorage.removeItem('beyondus_supabase_admin_disabled');
+    }
+
+    function clearSupabaseAdminSessionHint() {
+      sessionStorage.removeItem('beyondus_supabase_admin_ok');
+      sessionStorage.removeItem('beyondus_supabase_admin_disabled');
+      sessionStorage.removeItem('adminMode');
+    }
+
+    function enterAdminPanel(options) {
+      const opts = options || {};
+      adminPw = opts.adminPw || '';
+      if (opts.mode) sessionStorage.setItem('adminMode', opts.mode);
+      if (opts.loginId) sessionStorage.setItem('adminLoginId', opts.loginId);
+      if (opts.adminPw) sessionStorage.setItem('adminPw', opts.adminPw);
+      document.getElementById('authGate').style.display  = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+      loadUsers();
+      loadCheckin();
+      loadCurrentWeek();
+      loadTabSettings();
+      loadAdminNotices();
+    }
+
+    async function doSupabaseAdminLogin(loginId, password) {
+      clearSupabaseAdminSessionHint();
+      const authResult = await signInWithSupabasePassword(loginId, password);
+      saveSupabaseAdminSession(loginId, authResult);
+      await callSupabaseAdmin('getUsers', { action: 'getUsers' });
+      enterAdminPanel({ mode: 'supabase', loginId });
+    }
+
+    async function doLegacyAdminLogin(password) {
+      const res = await post({ action: 'adminLogin', password });
+      if (!res.ok) return false;
+      enterAdminPanel({ mode: 'legacy', adminPw: password });
+      return true;
+    }
+
     async function doAdminLogin() {
+      const loginId = document.getElementById('adminLoginIdInput').value.trim();
       const pw = document.getElementById('adminPwInput').value;
       const statusEl = document.getElementById('gateStatus');
       const btn = document.getElementById('gateBtn');
@@ -831,28 +944,30 @@
       statusEl.className = 'status';
 
       try {
-        const res  = await post({ action: 'adminLogin', password: pw });
-        if (res.ok) {
-          adminPw = pw;
-          sessionStorage.setItem('adminPw', pw);
-          document.getElementById('authGate').style.display  = 'none';
-          document.getElementById('adminPanel').style.display = 'block';
-          loadUsers();
-          loadCheckin();
-          loadCurrentWeek();
-          loadTabSettings();
-          loadAdminNotices();
+        if (loginId) {
+          statusEl.textContent = 'Supabase 관리자 권한 확인 중...';
+          await doSupabaseAdminLogin(loginId, pw);
         } else {
-          statusEl.textContent = '비밀번호가 틀렸어요.';
+          const ok = await doLegacyAdminLogin(pw);
+          if (!ok) statusEl.textContent = '비밀번호가 틀렸어요.';
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
+        if (e.status === 401 || e.message === 'admin_required') {
+          statusEl.textContent = '관리자 권한이 없는 계정이에요.';
+        } else if (e.status === 400 || e.message === 'invalid_grant') {
+          statusEl.textContent = '닉네임 또는 비밀번호를 확인해주세요.';
+        } else {
+          statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
+        }
       } finally {
         btn.disabled = false;
       }
     }
 
     document.getElementById('gateBtn').addEventListener('click', doAdminLogin);
+    document.getElementById('adminLoginIdInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doAdminLogin();
+    });
     document.getElementById('adminPwInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') doAdminLogin();
     });
@@ -1650,7 +1765,7 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || (data && data.ok === false)) {
-        const err = new Error((data && data.error) || `rpc_${functionName}_failed`);
+        const err = new Error((data && (data.error || data.message)) || `rpc_${functionName}_failed`);
         err.response = data;
         throw err;
       }
@@ -1670,7 +1785,7 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || (data && data.ok === false)) {
-        const err = new Error((data && data.error) || `admin_${action}_failed`);
+        const err = new Error((data && (data.error || data.message)) || `admin_${action}_failed`);
         err.response = data;
         err.status = res.status;
         if (res.status === 401) markSupabaseAdminUnauthorized();
@@ -1693,7 +1808,7 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || (data && data.ok === false)) {
-        const err = new Error((data && data.error) || `admin_${functionName}_failed`);
+        const err = new Error((data && (data.error || data.message)) || `admin_${functionName}_failed`);
         err.response = data;
         err.status = res.status;
         if (res.status === 401) markSupabaseAdminUnauthorized();
@@ -1705,6 +1820,7 @@
     function shouldUseSupabaseAdmin(body) {
       if (!body || !body.action || body.action === 'adminLogin') return false;
       if (SUPABASE_NOTICE_ACTIONS.has(body.action)) return false;
+      if (!SUPABASE_ADMIN_ACTIONS.has(body.action)) return false;
       if (body.imageFiles && body.imageFiles.length) return false;
       return canUseSupabaseAdmin();
     }
@@ -3098,8 +3214,10 @@
     document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
 
     /* ── 세션 복원 ── */
+    const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
+    if (savedLoginId) document.getElementById('adminLoginIdInput').value = savedLoginId;
     const saved = sessionStorage.getItem('adminPw');
-    if (saved) {
+    if (saved && sessionStorage.getItem('adminMode') === 'legacy') {
       document.getElementById('adminPwInput').value = saved;
       doAdminLogin();
     }
