@@ -413,6 +413,17 @@
         </div>
 
         <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div>
+              <h2 class="card-title" style="margin:0 0 4px;">추첨권 정합성 보정</h2>
+              <p style="font-size:12px;color:var(--sub);margin:0;">앱 가입, 카드 3종, 5종, 10종 조건을 다시 계산해서 누락된 추첨권을 자동 생성하고 발급 제외 유저는 회수해요.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="syncRafflePolicyBtn" style="min-width:128px;">누락 검사/보정</button>
+          </div>
+          <div id="syncRafflePolicyStatus" style="font-size:13px;color:var(--sub);margin-top:12px;">필요할 때만 실행해주세요.</div>
+        </div>
+
+        <div class="card">
           <h2 class="card-title" style="margin:0 0 4px;">🎟️ 추첨권 번호 검색</h2>
           <p style="font-size:12px;color:var(--sub);margin:0 0 14px;">실물 추첨권에 적힌 번호를 입력하면 발급된 유저 정보가 표시돼요.</p>
           <div style="display:grid;grid-template-columns:minmax(0,1fr) 72px;gap:8px;margin-bottom:14px;">
@@ -1611,6 +1622,25 @@
       }
       return normalizeSupabaseAdminResponse(data);
     }
+    async function callSupabaseAdminRpc(functionName, payload) {
+      const token = getSupabaseAccessToken();
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && data.error) || `admin_${functionName}_failed`);
+        err.response = data;
+        throw err;
+      }
+      return normalizeSupabaseAdminResponse(data);
+    }
     function shouldUseSupabaseAdmin(body) {
       if (!body || !body.action || body.action === 'adminLogin') return false;
       if (body.imageFiles && body.imageFiles.length) return false;
@@ -2270,11 +2300,13 @@
       const btn = document.getElementById('raffleSearchBtn');
       const input = document.getElementById('raffleSearchInput');
       const refreshBtn = document.getElementById('refreshRaffleTicketsBtn');
+      const syncBtn = document.getElementById('syncRafflePolicyBtn');
       const filterInput = document.getElementById('raffleTicketFilterInput');
       const moreBtn = document.getElementById('raffleTicketMoreBtn');
       if (btn) btn.addEventListener('click', adminSearchRaffleTicket);
       if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') adminSearchRaffleTicket(); });
       if (refreshBtn) refreshBtn.addEventListener('click', () => loadRaffleTickets({ resetLimit: true }));
+      if (syncBtn) syncBtn.addEventListener('click', syncRafflePolicy);
       if (filterInput) filterInput.addEventListener('input', scheduleRaffleTicketLoad);
       if (moreBtn) {
         moreBtn.addEventListener('click', () => {
@@ -2287,6 +2319,33 @@
     function scheduleRaffleTicketLoad() {
       clearTimeout(_raffleTicketSearchTimer);
       _raffleTicketSearchTimer = setTimeout(() => loadRaffleTickets({ resetLimit: true }), 250);
+    }
+
+    async function syncRafflePolicy() {
+      const btn = document.getElementById('syncRafflePolicyBtn');
+      const statusEl = document.getElementById('syncRafflePolicyStatus');
+      if (!btn || !statusEl) return;
+      if (!canUseSupabaseAdmin()) {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = 'Supabase 관리자 세션이 필요해요. 먼저 다시 로그인해주세요.';
+        return;
+      }
+
+      btn.disabled = true;
+      statusEl.style.color = 'var(--sub)';
+      statusEl.textContent = '추첨권 정책을 다시 계산하는 중...';
+      try {
+        const res = await callSupabaseAdminRpc('admin_backfill_raffle_tickets');
+        statusEl.style.color = 'var(--primary)';
+        statusEl.textContent = `보정 완료. 확인 ${fmtCount(res.checked || 0)}명, 현재 발급 ${fmtCount(res.activeCount || 0)}장, 발급 제외 ${fmtCount(res.excludedCount || 0)}명.`;
+        await loadRaffleTickets({ resetLimit: true });
+      } catch(e) {
+        console.warn('[DIAG] raffle backfill failed', e);
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = `보정 실패. ${e.message || 'server_error'}`;
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     function updateRaffleTicketMoreButton(meta) {

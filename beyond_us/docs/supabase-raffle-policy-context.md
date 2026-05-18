@@ -9,3 +9,5 @@
 발급 제외 유저나 비활성 유저는 `bu_sync_profile_raffle_tickets()`가 활성 추첨권을 모두 회수한다. 회수된 번호는 `active=false` 상태로 돌아가며, 다음 발급 시 가장 낮은 회수 번호부터 재사용한다.
 
 기존 이관 데이터는 트리거가 과거 행을 자동으로 다시 훑지 않기 때문에 `backfill_raffle_tickets()`를 DEV와 PROD에서 각각 한 번 실행해야 한다.
+
+2026-05-18. admin 추첨권 번호 탭에 `누락 검사/보정` 버튼을 추가했다. 이 버튼은 관리자 세션으로 `admin_backfill_raffle_tickets()` RPC를 호출하고, 내부에서 기존 `backfill_raffle_tickets()`를 실행한다. 일반 사용자에게 보정 RPC를 직접 열지 않기 위해 `admin_backfill_raffle_tickets()`는 `bu_admin_profile()`을 먼저 통과해야 한다.
