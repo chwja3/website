@@ -55,7 +55,7 @@
 | `setCardReceivedQty` | 실물 카드 수령 수량 관리 | `admin_set_physical_card_receipt`로 대체 |
 | `getTicketStats` | 뽑기권 집계 | view 또는 `admin_get_inventory_stats`로 대체 |
 | `getCardStats` | 카드 집계 | view 또는 `admin_get_card_stats`로 대체 |
-| `adminResetPassword` | 유저 비밀번호 초기화 | `admin_reset_password` Edge Function과 Supabase Auth Admin 갱신으로 대체 |
+| `adminResetPassword` | 유저 비밀번호 초기화 | `admin-reset-password` Edge Function과 Supabase Auth Admin 갱신으로 대체 |
 | `getCurrentWeek` | 현재 주차 조회 | `app_settings` 조회로 대체 |
 | `setCurrentWeek` | 현재 주차 변경 | `admin_set_app_setting`로 대체 |
 | `getMissionConfig` | 사전미션 설정 조회 | `mission_weeks`, `mission_items` 조회로 대체 |
@@ -74,8 +74,8 @@
 | `adminGetBBB` | BBB 매칭 전체 조회 | `admin_get_bbb_assignments`로 대체 |
 | `adminSetupBBBMatching` | 기존 TF 기준 자동 매칭 | 기능 의미상 폐기. 조별, 티어 기반 매칭으로 재설계 |
 | `adminWriteBBBRows` | BBB 매칭 행 직접 쓰기 | `admin_import_bbb_assignments`로 대체 |
-| `adminCreateCardEvent` | 카드 지급, 회수 이벤트 생성 | `admin_adjust_card`로 대체 |
-| `adminRebuildEventDerivedViews` | Events 기준 파생 테이블 재계산 | Supabase job 또는 admin rebuild RPC로 대체 |
+| `adminCreateCardEvent` | 카드 지급, 회수 이벤트 생성 | `admin_adjust_card` RPC로 대체 완료 |
+| `adminRebuildEventDerivedViews` | 파생 상태 재계산 | `admin_rebuild_user_state` RPC로 대체 완료 |
 | `prodCutoverHealthCheck` | PROD cutover 상태 확인 | Supabase 전환 후 폐기 |
 | `prodCutoverDryRun` | Sheet 구조 변경 dry run | Supabase 전환 후 폐기 |
 | `prodCutoverApply` | Sheet 구조 변경 apply | Supabase 전환 후 폐기 |

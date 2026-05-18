@@ -584,11 +584,11 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div>
               <h2 class="card-title" style="margin:0;">B.B.B. 매칭</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">TF(isStaff=TRUE) 인원을 랜덤 원형 순환 매칭합니다.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">조별, 티어 기반 매칭 재설계 전까지 기존 랜덤 매칭 실행은 중지합니다.</p>
             </div>
-            <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="runBBBMatching()">🎲 매칭 실행</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="runBBBMatching()">매칭 준비중</button>
           </div>
-          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 실행 후 결과가 표시됩니다.</p></div>
+          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">조별, 티어 기반 매칭 재설계 후 결과가 표시됩니다.</p></div>
         </div>
 
         <!-- 섹션 오픈 설정 -->
@@ -664,21 +664,22 @@
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
             <div>
               <h2 class="card-title" style="margin:0;">시스템 상태</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">PROD 전환 전후 상태 확인과 최종 반영 실행.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">Supabase 전환 이후 운영 상태 확인.</p>
             </div>
             <button class="btn btn-secondary" id="systemHealthBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="loadSystemStatus()">상태 확인</button>
           </div>
           <div class="stats-grid">
             <div class="stat-card"><div class="stat-label">전체 상태</div><div class="stat-value" id="systemOverall">-</div></div>
-            <div class="stat-card"><div class="stat-label">Projection mismatch</div><div class="stat-value" id="systemMismatch">-</div></div>
-            <div class="stat-card"><div class="stat-label">Legacy visible</div><div class="stat-value" id="systemLegacyVisible">-</div></div>
+            <div class="stat-card"><div class="stat-label">대시보드</div><div class="stat-value" id="systemMismatch">-</div></div>
+            <div class="stat-card"><div class="stat-label">카드 현황</div><div class="stat-value" id="systemLegacyVisible">-</div></div>
             <div class="stat-card"><div class="stat-label">Elapsed</div><div class="stat-value" id="systemElapsed">-</div></div>
           </div>
           <div id="systemHealthStatus" class="status"></div>
         </div>
 
         <div class="card">
-          <h2 class="card-title">PROD 전환 실행</h2>
+          <h2 class="card-title">Sheet 전환 도구</h2>
+          <p style="font-size:12px;color:var(--sub);margin:0 0 12px;">Supabase 전환 이후 새 운영에서는 사용하지 않는 이전 도구입니다.</p>
           <input type="number" id="cutoverDashboardRows" class="input" min="1" max="1000" value="250" placeholder="UserDashboard row 수" />
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <button class="btn btn-secondary" id="cutoverDryRunBtn" onclick="runProdCutoverDryRun()">Dry-run</button>
@@ -764,7 +765,7 @@
     <div class="modal-box">
       <h3 class="modal-title">비밀번호 초기화</h3>
       <p class="modal-desc" id="resetModalDesc"></p>
-      <input type="text" id="newPwInput" class="input" placeholder="새 비밀번호 (4자 이상)" />
+      <input type="text" id="newPwInput" class="input" placeholder="새 비밀번호 (6자 이상)" />
       <div class="status" id="resetModalStatus"></div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button class="btn btn-ghost" style="flex:1;" id="resetCancelBtn">취소</button>
@@ -791,6 +792,7 @@
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
+    const ADMIN_RESET_PASSWORD_URL = `${SUPABASE_PROJECT_URL}/functions/v1/admin-reset-password`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     const SUPABASE_NOTICE_ACTIONS = new Set(['postNotice', 'editNotice', 'deleteNotice']);
@@ -1701,14 +1703,15 @@
     document.getElementById('resetConfirmBtn').addEventListener('click', async () => {
       const newPw = document.getElementById('newPwInput').value.trim();
       const statusEl = document.getElementById('resetModalStatus');
-      if (!newPw || newPw.length < 4) { statusEl.textContent = '4자 이상 입력해주세요.'; return; }
+      if (!newPw || newPw.length < 6) { statusEl.textContent = '6자 이상 입력해주세요.'; return; }
 
       const btn = document.getElementById('resetConfirmBtn');
       btn.disabled = true;
       statusEl.textContent = '처리 중...';
 
       try {
-        const res = await post({ action: 'adminResetPassword', adminPw, nickname: targetNickname, newPassword: newPw });
+        requireSupabaseAdminSession();
+        const res = await callAdminResetPassword({ nickname: targetNickname, newPassword: newPw });
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = '초기화 완료!';
@@ -1846,6 +1849,29 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || (data && data.ok === false)) {
         const err = new Error((data && (data.error || data.message)) || `admin_${functionName}_failed`);
+        err.response = data;
+        err.status = res.status;
+        if (res.status === 401) markSupabaseAdminUnauthorized();
+        throw err;
+      }
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
+      return normalizeSupabaseAdminResponse(data);
+    }
+    async function callAdminResetPassword(payload) {
+      const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_admin_session_required');
+      const res = await fetch(ADMIN_RESET_PASSWORD_URL, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && (data.error || data.message)) || 'admin_reset_password_failed');
         err.response = data;
         err.status = res.status;
         if (res.status === 401) markSupabaseAdminUnauthorized();
@@ -2877,11 +2903,11 @@
         // 섹션 오픈 설정 로드
         if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
 
-        // 매칭 테이블 — 버디 관계는 시트에서 확인
+        // 매칭 테이블
         const matches = res.matches || [];
         matchEl.innerHTML = matches.length
-          ? '<p style="font-size:13px;color:var(--sub);margin:0;">매칭 완료. 버디 관계 상세는 BBB 시트에서 확인하세요.</p>'
-          : '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 매칭 실행 버튼을 눌러주세요.</p>';
+          ? '<p style="font-size:13px;color:var(--sub);margin:0;">Supabase에 저장된 매칭 내역이 있습니다. 조별, 티어 기반 재설계 전까지 새 매칭 실행은 중지합니다.</p>'
+          : '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 조별, 티어 기반 매칭 재설계 후 다시 연결합니다.</p>';
 
         // 메시지 로그
         const messages = res.messages || [];
@@ -2913,17 +2939,7 @@
     }
 
     async function runBBBMatching() {
-      if (!confirm('TF(isStaff=TRUE) 인원을 랜덤 매칭합니다.\n기존 매칭이 있으면 초기화됩니다. 진행할까요?')) return;
-      const btn = document.querySelector('[onclick="runBBBMatching()"]');
-      btn.disabled = true; btn.textContent = '매칭 중...';
-      try {
-        const res = await post({ action: 'adminSetupBBBMatching', adminPw });
-        if (!res.ok) { alert('매칭 실패: ' + (res.error || '알 수 없는 오류')); return; }
-        alert(`✅ 매칭 완료! ${res.matched}명 매칭됨\n\n` +
-          res.pairs.map(p => `${p.from} → ${p.careBuddy}`).join('\n'));
-        loadAdminBBB();
-      } catch(e) { alert('연결 오류'); }
-      finally { btn.disabled = false; btn.textContent = '🎲 매칭 실행'; }
+      alert('기존 랜덤 매칭은 중지했습니다. 조별, 티어 기반 BBB 매칭 재설계 때 Supabase 기준으로 다시 연결합니다.');
     }
 
     /* ── 섹션 오픈 설정 (천로역정만 — B.B.B 미션은 탭 활성화 'secret' 상태가 제어) ── */
@@ -3002,14 +3018,13 @@
       statusEl.textContent = '처리 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({
-          action: 'adminCreateCardEvent',
-          adminPw,
-          eventMode: mode,
-          userId,
-          cardId,
-          amount,
-          reason,
+        requireSupabaseAdminSession();
+        const res = await callSupabaseAdminRpc('admin_adjust_card', {
+          p_login_id: userId,
+          p_card_id: cardId,
+          p_amount: amount,
+          p_mode: mode,
+          p_reason: reason,
         });
         if (res.ok) {
           const count = res.collection && res.collection[cardId] ? res.collection[cardId] : 0;
@@ -3028,19 +3043,20 @@
     }
 
     async function runRebuildEventDerivedViews() {
-      if (!confirm('Events 기준으로 Collection, MissionProgress, UserDashboard를 다시 계산합니다.\n진행할까요?')) return;
+      if (!confirm('Supabase 기준으로 사용자 요약, 카드 현황, 추첨권 상태를 다시 계산합니다.\n진행할까요?')) return;
       const btn = document.getElementById('rebuildEventsDashboardBtn');
       const statusEl = document.getElementById('rebuildEventsDashboardStatus');
       const rowLimit = Number(document.getElementById('eventDashboardRows').value) || 300;
       btn.disabled = true;
       btn.textContent = '재계산 중...';
-      statusEl.textContent = 'Events 기준 projection을 다시 만드는 중입니다.';
+      statusEl.textContent = 'Supabase 파생 상태를 다시 맞추는 중입니다.';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'adminRebuildEventDerivedViews', adminPw, rowLimit });
+        requireSupabaseAdminSession();
+        const res = await callSupabaseAdminRpc('admin_rebuild_user_state', { p_row_limit: rowLimit });
         if (res.ok) {
           const missionProgress = Number(res.missionProgressRebuilt) || 0;
-          statusEl.textContent = `완료. Collection ${res.collectionRebuilt || 0}명, MissionProgress ${missionProgress}행, UserDashboard ${res.dashboardRows || 0}행. 대시보드를 새로고침했습니다.`;
+          statusEl.textContent = `완료. 사용자 ${res.collectionRebuilt || 0}명, MissionProgress ${missionProgress}행, 요약 ${res.dashboardRows || 0}행을 새로고침했습니다.`;
           statusEl.className = 'status ok';
           await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin()]);
         } else {
@@ -3061,7 +3077,26 @@
       statusEl.textContent = '확인 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'prodCutoverHealthCheck', adminPw, rowLimit: getCutoverRowLimit() });
+        const startedAt = performance.now();
+        requireSupabaseAdminSession();
+        const [dashboard, cards, users, settings] = await Promise.allSettled([
+          callSupabaseAdminRpc('admin_dashboard_summary', { p_force: true }),
+          callSupabaseAdminRpc('admin_card_stats'),
+          callSupabaseAdmin('getUsers', {}),
+          callSupabaseAdmin('getTabSettings', {}),
+        ]);
+        const checks = {
+          dashboard: settledCheck(dashboard),
+          cards: settledCheck(cards),
+          users: settledCheck(users),
+          settings: settledCheck(settings),
+        };
+        const res = {
+          ok: Object.values(checks).every(item => item.ok),
+          source: 'supabase',
+          checks,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        };
         renderSystemStatus(res);
         statusEl.textContent = res.ok ? '정상' : '확인 필요';
         statusEl.className = res.ok ? 'status ok' : 'status';
@@ -3077,17 +3112,18 @@
       const btn = document.getElementById('cutoverDryRunBtn');
       const statusEl = document.getElementById('cutoverStatus');
       btn.disabled = true;
-      statusEl.textContent = 'Dry-run 실행 중...';
+      statusEl.textContent = 'Supabase 전환 이후 사용하지 않는 도구입니다.';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'prodCutoverDryRun', adminPw, rowLimit: getCutoverRowLimit() });
-        const statusResult = res.steps && res.steps.sheetStatus
-          ? { ok: res.ok, sheets: res.steps.sheetStatus.result, elapsedMs: res.elapsedMs }
-          : res;
-        renderSystemStatus(statusResult);
-        setSystemResult(res);
-        statusEl.textContent = res.ok ? 'Dry-run 정상' : 'Dry-run 확인 필요';
-        statusEl.className = res.ok ? 'status ok' : 'status';
+        const res = {
+          ok: false,
+          deprecated: true,
+          source: 'supabase',
+          error: 'sheet_cutover_deprecated',
+          message: 'Sheet cutover dry-run은 Supabase 전환 이후 새 운영에서 사용하지 않습니다.',
+        };
+        renderSystemStatus(res);
+        statusEl.textContent = '이전 Sheet 전환 도구라 실행하지 않았습니다.';
       } catch(e) {
         statusEl.textContent = '연결 오류';
         statusEl.className = 'status';
@@ -3104,30 +3140,39 @@
         statusEl.className = 'status';
         return;
       }
-      if (!confirm('PROD 전환 apply를 실행할까요? 백업 후 마이그레이션과 대시보드 재계산을 진행합니다.')) return;
 
       const btn = document.getElementById('cutoverApplyBtn');
       btn.disabled = true;
-      statusEl.textContent = 'Apply 실행 중...';
+      statusEl.textContent = 'Supabase 전환 이후 사용하지 않는 도구입니다.';
       statusEl.className = 'status';
       try {
-        const res = await post({
-          action: 'prodCutoverApply',
-          adminPw,
-          rowLimit: getCutoverRowLimit(),
-          confirm: confirmText,
-        });
-        const health = res.steps && res.steps.healthCheck ? res.steps.healthCheck.result : res;
-        renderSystemStatus(health);
+        const res = {
+          ok: false,
+          deprecated: true,
+          source: 'supabase',
+          error: 'sheet_cutover_deprecated',
+          message: 'Sheet cutover apply는 Supabase 전환 이후 새 운영에서 사용하지 않습니다.',
+        };
+        renderSystemStatus(res);
         setSystemResult(res);
-        statusEl.textContent = res.ok ? 'Apply 완료' : 'Apply 확인 필요';
-        statusEl.className = res.ok ? 'status ok' : 'status';
+        statusEl.textContent = '이전 Sheet 전환 도구라 실행하지 않았습니다.';
       } catch(e) {
         statusEl.textContent = '연결 오류';
         statusEl.className = 'status';
       } finally {
         btn.disabled = false;
       }
+    }
+
+    function settledCheck(result) {
+      if (result.status === 'fulfilled') {
+        const value = result.value || {};
+        return { ok: value.ok !== false, source: value.source || 'supabase' };
+      }
+      return {
+        ok: false,
+        error: result.reason && result.reason.message ? result.reason.message : 'failed',
+      };
     }
 
     function getCutoverRowLimit() {
@@ -3137,12 +3182,10 @@
 
     function renderSystemStatus(res) {
       const result = res || {};
-      const phase2E = result.phase2E || {};
-      const projection = phase2E.projection || {};
-      const sheets = result.sheets || {};
+      const checks = result.checks || {};
       document.getElementById('systemOverall').textContent = result.ok ? 'OK' : 'CHECK';
-      document.getElementById('systemMismatch').textContent = projection.mismatchCount === undefined ? '-' : projection.mismatchCount;
-      document.getElementById('systemLegacyVisible').textContent = Array.isArray(sheets.visibleLegacySheets) ? sheets.visibleLegacySheets.length : '-';
+      document.getElementById('systemMismatch').textContent = checks.dashboard ? (checks.dashboard.ok ? 'OK' : 'CHECK') : '-';
+      document.getElementById('systemLegacyVisible').textContent = checks.cards ? (checks.cards.ok ? 'OK' : 'CHECK') : '-';
       document.getElementById('systemElapsed').textContent = result.elapsedMs === undefined ? '-' : result.elapsedMs + 'ms';
       setSystemResult(result);
     }

@@ -25,4 +25,10 @@
 - [ ] 사용자 앱 `?supabaseData=1` 상태에서 새 공지가 보이는지 확인한다.
 - [ ] staff 체크된 계정의 앱 아이디와 비밀번호로 로그인되는지 확인한다.
 - [ ] 일반 유저 계정으로 admin 로그인이 거부되는지 확인한다.
-- [ ] `adminResetPassword`, `adminCreateCardEvent`, `adminRebuildEventDerivedViews` 등 남은 action을 순차 전환한다.
+- [x] `adminCreateCardEvent`를 Supabase `admin_adjust_card` RPC로 전환한다.
+- [x] `adminRebuildEventDerivedViews`를 Supabase `admin_rebuild_user_state` RPC로 전환한다.
+- [x] `adminResetPassword`를 Supabase Edge Function으로 전환한다.
+- [x] Sheet cutover용 `prodCutover*`와 기존 `adminSetupBBBMatching`은 폐기 후보로 남긴다.
+- [ ] DEV Supabase SQL Editor에서 `20260518001000_admin_card_adjust_rebuild.sql`을 실행한다.
+- [ ] Supabase Edge Function `admin-reset-password`를 배포한다.
+- [ ] admin 카드 추가, 카드 삭제, 파생 상태 재계산, 비밀번호 초기화를 DEV에서 확인한다.

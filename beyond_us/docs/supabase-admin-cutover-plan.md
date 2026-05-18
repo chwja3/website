@@ -19,3 +19,6 @@ admin 화면에서 운영자가 변경한 데이터가 Google Sheet가 아니라
 - Supabase 관리자 세션이 없을 때 공지 쓰기가 GAS로 빠지지 않고 명시적 오류를 낸다.
 - admin 로그인은 staff로 체크된 사람의 앱 아이디와 비밀번호로 Supabase Auth에 로그인한다.
 - 로그인한 Supabase Auth 유저가 `profiles.role in ('admin','dev')` 또는 `is_dev=true` 조건을 통과해야 admin 화면에 들어간다. Sheet 이관 시 `Users.isStaff=true`는 `profiles.role='admin'`으로 변환된다.
+- 카드 수동 지급과 회수는 Supabase `user_cards`, `events`, `user_summary`에 반영된다.
+- 파생 상태 재계산은 Supabase 테이블 기준으로 `user_summary`와 추첨권 정책 상태를 갱신한다.
+- 관리자 비밀번호 초기화는 Supabase Auth Admin API로 처리되고 GAS로 쓰지 않는다.

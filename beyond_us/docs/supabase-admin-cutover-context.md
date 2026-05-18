@@ -19,3 +19,7 @@ admin 쓰기 RPC는 Supabase access token이 있어야 호출할 수 있다. 기
 2026-05-18. staff 계정 로그인 전환 뒤 admin 대시보드와 실물 카드 수령에서 누락이 확인됐다. 원인은 `dashboard` action이 사용자 앱용 `get_app_bootstrap()`을 반환해서 admin 화면이 기대하는 교구별, 주차별 summary 필드가 비어 있었고, `setCardReceivedQty`가 프론트의 Supabase admin action 허용 목록에서 빠져 GAS fallback으로 내려갔기 때문이다. `admin_dashboard_summary()`와 `admin_card_stats()` RPC를 추가하고, 실물 카드 수령 쓰기는 기존 `admin_dispatch('setCardReceivedQty')`로 보내도록 연결했다. 공지 이미지 업로드는 SVG처럼 Storage 업로드에서 400이 날 수 있는 입력을 PNG로 rasterize한 뒤 업로드하도록 보강했다.
 
 2026-05-18. admin 교구 참여 현황은 참여자가 있는 교구만 점수순으로 내려오면 운영자가 비교하기 어렵다. `admin_dashboard_summary()`를 다시 갱신해 이번 주 및 주차별 교구 참여 기록 모두 `1청`, `2청`, `3청`, `4청`, `VIP`, `교회학교/목양교구` 축을 먼저 고정하고, 참여자가 0명이어도 빈 카드와 빈 상세 표가 보이도록 했다. 기타 교구가 실제로 있으면 고정 축 아래에 추가로 붙인다.
+
+2026-05-18. 남은 GAS 의존을 다시 분류했다. 운영 기능으로 계속 필요한 것은 유저 비밀번호 초기화, 카드 수동 지급과 회수, Supabase 파생 상태 재계산이다. Sheet cutover용 `prodCutoverDryRun`, `prodCutoverApply`, `prodCutoverHealthCheck`는 Supabase 전환 후 새 DB 운영에는 의미가 없으므로 옮기지 않고 폐기 후보로 둔다. 기존 `adminSetupBBBMatching`도 무작위 매칭 방식이라 조별, 티어 기반 BBB 매칭 재설계 때 새로 구현한다.
+
+2026-05-18. `admin_adjust_card` RPC를 추가해 admin 카드 추가와 삭제가 `user_cards`, `events`, `user_summary`를 직접 갱신하게 했다. `admin_rebuild_user_state` RPC는 현재 Supabase 테이블 기준으로 활성 유저의 `user_summary`와 추첨권 정책 상태를 다시 맞춘다. 비밀번호 초기화는 `admin-reset-password` Edge Function으로 분리했다. 이 함수는 staff admin의 Supabase access token을 검증한 뒤 대상 유저의 Supabase Auth 비밀번호를 Auth Admin API로 변경한다. admin 시스템 상태 패널은 더 이상 Sheet cutover GAS를 호출하지 않고 Supabase RPC 상태만 확인한다.

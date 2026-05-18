@@ -49,7 +49,7 @@
 | `adminDeactivateUser`, `adminRestoreUser` | `admin_set_user_status` | RPC | `profiles`, `events` |
 | `adminSetRaffleAttendance` | `admin_set_attendance` | RPC | `retreat_attendance`, `events` |
 | `adminSetRaffleExcluded` | `admin_set_raffle_excluded` | RPC | `profiles`, `raffle_tickets`, `events` |
-| `adminResetPassword` | `admin_reset_password` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events` |
+| `adminResetPassword` | `admin-reset-password` | Edge Function plus Auth Admin | `auth.users`, `profiles`, `events` |
 | `getCurrentWeek`, `setCurrentWeek` | `admin_get_app_settings`, `admin_set_app_setting` | RPC | `app_settings` |
 | `getMissionConfig`, `setMissionConfig` | `admin_get_mission_config`, `admin_set_mission_config` | RPC | `mission_weeks`, `mission_items` |
 | `getTabSettings`, `setTabSettings` | `admin_get_tab_settings`, `admin_set_tab_settings` | RPC | `tab_settings` |
@@ -63,7 +63,7 @@
 | `adminGetRaffleTickets` | `admin_get_raffle_tickets` | RPC | `raffle_tickets`, `profiles` |
 | `getCardStats`, `setCardReceivedQty` | `admin_card_stats`, `admin_dispatch('setCardReceivedQty')` | RPC | `user_cards`, `physical_card_receipts`, `profiles` |
 | `adminCreateCardEvent` | `admin_adjust_card` | RPC | `events`, `user_cards` |
-| `adminRebuildEventDerivedViews` | `admin_rebuild_user_state` | RPC or scheduled job | `events`, `user_inventory`, `user_cards`, `user_summary` |
+| `adminRebuildEventDerivedViews` | `admin_rebuild_user_state` | RPC | `user_inventory`, `user_cards`, `user_summary`, `raffle_tickets` |
 | `replyInquiry` | `admin_reply_inquiry` | RPC | `inquiries` |
 
 ## 앱 코드 초안
