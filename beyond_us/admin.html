@@ -1291,7 +1291,11 @@
       tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       deletedTbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
-        const res = await get({ action: 'adminGetRaffleAttendance', adminPw, query, limit: _attendanceLimit, offset: 0 });
+        const res = await callSupabaseAdminRpc('admin_get_raffle_attendance', {
+          p_query: query,
+          p_limit: _attendanceLimit,
+          p_offset: 0,
+        });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         _raffleAttendanceUsers = res.users || [];
         _deletedAttendanceUsers = res.deletedUsers || [];

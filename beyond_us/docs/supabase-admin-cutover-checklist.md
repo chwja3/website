@@ -42,3 +42,5 @@
 - [ ] DEV Supabase SQL Editor에서 `20260518001200_ops_readable_views.sql`을 실행한다.
 - [x] admin 개발자 메뉴에 전체 Event 로그 조회 탭을 추가한다.
 - [ ] DEV Supabase SQL Editor에서 `20260518001300_admin_event_logs.sql`을 실행한다.
+- [x] admin 앱 가입자 목록을 교구/이름순으로 정렬하는 RPC와 프론트 연결을 추가한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518001400_admin_attendance_sorted.sql`을 실행한다.
