@@ -74,7 +74,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518n';
+    const APP_VERSION = '20260518o';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -949,6 +949,16 @@
         }));
       }
       return next;
+    }
+
+    function normalizeNoticeImageUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return JSON.stringify(parsed.map(src => supabasePhotoUrl(src)));
+      } catch(e) {}
+      return supabasePhotoUrl(raw);
     }
 
     function dataUrlToBlob(dataUrl) {
@@ -4202,7 +4212,17 @@
         updateNoticeDot();
       }
       try {
-        const res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        let res;
+        if (canUseSupabaseDataRead(false)) {
+          res = await callSupabaseRpc('get_notices', {}, { requireAuth: false });
+          if (Array.isArray(res.notices)) {
+            res.notices = res.notices.map(n => Object.assign({}, n, {
+              imageUrl: normalizeNoticeImageUrl(n && n.imageUrl),
+            }));
+          }
+        } else {
+          res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        }
         if (!res.ok || !res.notices?.length) {
           cachedNotices = [];
           localStorage.removeItem(noticeCacheKey);

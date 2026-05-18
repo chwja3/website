@@ -791,6 +791,7 @@
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
+    const SUPABASE_NOTICE_ACTIONS = new Set(['postNotice', 'editNotice', 'deleteNotice']);
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
@@ -1582,12 +1583,21 @@
       return localStorage.getItem('beyondus_supabase_access_token') || '';
     }
     function canUseSupabaseAdmin() {
-      return IS_DEV_ENV && !!SUPABASE_PROJECT_URL && !!SUPABASE_ANON_KEY && !!getSupabaseAccessToken();
+      return !!SUPABASE_PROJECT_URL && !!SUPABASE_ANON_KEY && !!getSupabaseAccessToken();
     }
     function supabasePhotoUrl(value) {
       const raw = String(value || '').trim();
       if (!raw || raw.startsWith('data:') || /^https?:\/\//i.test(raw)) return raw;
       return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    }
+    function normalizeNoticeImageUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return JSON.stringify(parsed.map(src => supabasePhotoUrl(src)));
+      } catch(e) {}
+      return supabasePhotoUrl(raw);
     }
     function normalizeSupabaseAdminResponse(data) {
       const next = Object.assign({}, data || {});
@@ -1599,12 +1609,32 @@
       if (Array.isArray(next.notices)) {
         next.notices = next.notices.map(item => Object.assign({}, item, {
           rowIndex: String(item && (item.rowIndex || item.id || '')),
+          imageUrl: normalizeNoticeImageUrl(item && item.imageUrl),
         }));
       }
       return next;
     }
+    async function callSupabasePublicRpc(functionName, payload) {
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && data.error) || `rpc_${functionName}_failed`);
+        err.response = data;
+        throw err;
+      }
+      return normalizeSupabaseAdminResponse(data);
+    }
     async function callSupabaseAdmin(action, payload) {
       const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_admin_session_required');
       const res = await fetch(`${SUPABASE_REST_URL}/rpc/admin_dispatch`, {
         method: 'POST',
         headers: {
@@ -1624,6 +1654,7 @@
     }
     async function callSupabaseAdminRpc(functionName, payload) {
       const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_admin_session_required');
       const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
         method: 'POST',
         headers: {
@@ -1643,8 +1674,12 @@
     }
     function shouldUseSupabaseAdmin(body) {
       if (!body || !body.action || body.action === 'adminLogin') return false;
+      if (SUPABASE_NOTICE_ACTIONS.has(body.action)) return false;
       if (body.imageFiles && body.imageFiles.length) return false;
       return canUseSupabaseAdmin();
+    }
+    function requireSupabaseAdminSession() {
+      if (!canUseSupabaseAdmin()) throw new Error('supabase_admin_session_required');
     }
     async function get(params) {
       if (shouldUseSupabaseAdmin(params)) {
@@ -1995,7 +2030,7 @@
       if (!title || !content) { statusEl.textContent = '제목과 내용을 입력해주세요.'; return; }
       statusEl.textContent = '저장 중...';
       try {
-        const res = await post({ action: 'editNotice', adminPw, rowIndex, title, content });
+        const res = await callSupabaseAdmin('editNotice', { action: 'editNotice', adminPw, rowIndex, title, content });
         if (res.ok) {
           item.dataset.title   = title;
           item.dataset.content = content;
@@ -2004,14 +2039,14 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        statusEl.textContent = e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : '연결 오류';
       }
     }
 
     async function loadAdminNotices() {
       const list = document.getElementById('noticeAdminList');
       try {
-        const res = await get({ action: 'getNotices' });
+        const res = await callSupabasePublicRpc('get_notices');
         if (!res.ok || !res.notices.length) {
           cachedAdminNotices = [];
           list.innerHTML = '<p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">등록된 공지사항이 없어요.</p>';
@@ -2039,9 +2074,9 @@
       if (el) el.remove();
       cachedAdminNotices = cachedAdminNotices.filter(n => n.rowIndex !== rowIndex);
       try {
-        const res = await post({ action: 'deleteNotice', adminPw, rowIndex });
+        const res = await callSupabaseAdmin('deleteNotice', { action: 'deleteNotice', adminPw, rowIndex });
         if (!res.ok) { alert('삭제 실패: ' + (res.error || '')); loadAdminNotices(); }
-      } catch(e) { alert('연결 오류'); loadAdminNotices(); }
+      } catch(e) { alert(e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : '연결 오류'); loadAdminNotices(); }
     }
 
     // Drive 공유 URL → img 태그 직링크 변환
@@ -2094,6 +2129,53 @@
       });
     }
 
+    function base64ToBlob(base64, mime) {
+      const bin = atob(String(base64 || ''));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime || 'image/jpeg' });
+    }
+
+    function safeStoragePathPart(value) {
+      return String(value || '')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'file';
+    }
+
+    async function uploadSupabaseNoticeImage(file, index) {
+      requireSupabaseAdminSession();
+      const token = getSupabaseAccessToken();
+      const blob = base64ToBlob(file.base64, file.mime);
+      const ext = blob.type === 'image/png' ? 'png' : (blob.type === 'image/webp' ? 'webp' : 'jpg');
+      const namePart = safeStoragePathPart(file.name || `notice_${index + 1}`);
+      const path = `notices/${Date.now()}_${index}_${Math.random().toString(36).slice(2)}_${namePart}.${ext}`;
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${path}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': blob.type || 'image/jpeg',
+          'x-upsert': 'true',
+        },
+        body: blob,
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(detail || 'notice_image_upload_failed');
+      }
+      return path;
+    }
+
+    async function uploadSupabaseNoticeImages(files) {
+      const list = Array.isArray(files) ? files : [];
+      const paths = [];
+      for (let i = 0; i < list.length; i++) {
+        paths.push(await uploadSupabaseNoticeImage(list[i], i));
+      }
+      return paths;
+    }
+
     document.getElementById('noticeImageFile').addEventListener('change', function() {
       handleImageFiles(this.files);
     });
@@ -2120,14 +2202,18 @@
 
       const payload = { action: 'postNotice', adminPw, title, content };
       if (_pendingFiles.length) {
-        statusEl.textContent = `Drive에 이미지 ${_pendingFiles.length}장 업로드 중...`;
-        payload.imageFiles = _pendingFiles.map(f => ({ base64: f.base64, mime: f.mime }));
+        statusEl.textContent = `Supabase Storage에 이미지 ${_pendingFiles.length}장 업로드 중...`;
       } else {
         statusEl.textContent = '등록 중...';
       }
 
       try {
-        const res = await post(payload);
+        requireSupabaseAdminSession();
+        if (_pendingFiles.length) {
+          const imagePaths = await uploadSupabaseNoticeImages(_pendingFiles);
+          payload.imageUrl = JSON.stringify(imagePaths);
+        }
+        const res = await callSupabaseAdmin('postNotice', payload);
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = _pendingFiles.length ? `이미지 ${_pendingFiles.length}장 업로드 + 등록 완료!` : '등록되었어요!';
@@ -2137,13 +2223,14 @@
           loadAdminNotices();
         } else if (res.error === 'drive_upload_failed') {
           statusEl.className = 'status error';
-          statusEl.textContent = 'Drive 업로드 실패: ' + (res.detail || 'GAS DriveApp 권한 미승인');
+          statusEl.textContent = '이미지 업로드 실패: ' + (res.detail || 'Storage 권한 확인 필요');
         } else {
           statusEl.className = 'status error';
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status error';
+        statusEl.textContent = e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요. 앱에서 관리자 계정으로 로그인한 뒤 다시 시도해주세요.' : '연결 오류';
       } finally {
         btn.disabled = false;
       }
