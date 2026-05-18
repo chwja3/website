@@ -28,6 +28,8 @@ admin 쓰기 RPC는 Supabase access token이 있어야 호출할 수 있다. 기
 
 2026-05-18. Supabase Table Editor 운영 가독성을 위해 `20260518001200_ops_readable_views.sql`을 추가했다. 원본 테이블에 `login_id`를 복제하지 않고 `ops_*` view에서 `profiles`를 join해 닉네임, 이름, 교구를 바로 보여준다. 시간 컬럼이 있는 view는 최신 행이 위에 오도록 정렬한다. admin에서는 별도 `시스템 상태` 메뉴를 제거하고 `Events·시스템` 탭 안에 상태 확인을 통합했다. Supabase 운영에서 더 이상 의미가 없는 Sheet 전환 도구와 관련 JS 함수는 제거했다.
 
+2026-05-18. DEV 앱과 admin에서는 GAS fallback을 차단했다. DEV `API_BASE`는 빈 문자열이며, Supabase 실패 시 GAS로 내려가지 않고 원래 오류를 드러낸다. PROD/main 전환 전까지 PROD GAS fallback 코드는 보존하되 DEV 런타임에서는 사용할 수 없다.
+
 2026-05-18. admin 개발자 메뉴에 `Event 로그` 탭을 추가했다. `20260518001300_admin_event_logs.sql`이 staff 권한을 확인하는 `admin_event_logs` RPC를 제공하고, admin은 이 RPC로 최신순 이벤트 로그를 읽는다. 조회 UI는 이벤트 타입 필터, 닉네임/이름/ref/request 검색, 표시 개수 제한, payload 펼쳐보기를 제공한다.
 
 2026-05-18. admin `앱 가입자` 탭의 목록 정렬을 생성일순에서 교구/이름순으로 바꾸기 위해 `20260518001400_admin_attendance_sorted.sql`을 추가했다. 기존 `admin_dispatch('adminGetRaffleAttendance')`는 서버에서 `created_at desc`로 limit을 먼저 적용하므로, 새 RPC `admin_get_raffle_attendance`가 교구 고정 순서와 이름순 정렬을 적용한 뒤 limit을 적용한다.

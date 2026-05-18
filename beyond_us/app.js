@@ -10,7 +10,7 @@
     const RAFFLE_PREVIEW_MODE = IS_DEV_ENV && new URLSearchParams(location.search).get('rafflePreview') === '1';
 
     const API_BASE = IS_DEV_ENV
-      ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
+      ? ''
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
@@ -44,12 +44,13 @@
       const token = getSessionToken();
       return token ? `&sessionToken=${encodeURIComponent(token)}` : '';
     }
-    function post(body) {
-      return fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(withSession(body))
-      }).then(r => r.json());
+    function canUseGasApi() {
+      return !IS_DEV_ENV && !!API_BASE;
+    }
+    function assertGasApiAllowed(action) {
+      if (!canUseGasApi()) {
+        throw new Error(`dev_gas_disabled:${action || 'unknown'}`);
+      }
     }
     function isSupabaseAuthConfigured() {
       return Boolean(SUPABASE_PROJECT_URL && SUPABASE_ANON_KEY && SUPABASE_AUTH_MODE !== 'off');
@@ -65,9 +66,8 @@
       try {
         const flag = new URLSearchParams(location.search).get('supabaseData');
         if (flag === '1' || flag === 'read') localStorage.setItem('beyondus_supabase_data_read', 'read');
-        if (flag === '0' || flag === 'off') localStorage.setItem('beyondus_supabase_data_read', 'off');
-        const saved = localStorage.getItem('beyondus_supabase_data_read');
-        if (saved === 'off') return 'off';
+        if (flag === '0' || flag === 'off') localStorage.removeItem('beyondus_supabase_data_read');
+        localStorage.setItem('beyondus_supabase_data_read', 'read');
         return 'read';
       } catch(e) {
         return 'read';
@@ -77,7 +77,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518z';
+    const APP_VERSION = '20260518aa';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -347,11 +347,7 @@
       const btn = document.getElementById('devResetCardBtn');
       if (btn) { btn.disabled = true; btn.textContent = '초기화 중...'; }
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'devResetCards', userId: currentNickname })),
-        }).then(r => r.json());
+        const res = await callSupabaseRpc('dev_reset_my_cards', { p_login_id: currentNickname }, { allowOkFalse: true });
         if (!res.ok) {
           alert('초기화 실패: ' + (res.error || '알 수 없는 오류'));
           return;
@@ -1089,6 +1085,7 @@
     }
 
     async function fetchGasDashboard(options) {
+      assertGasApiAllowed('dashboard');
       const opts = options || {};
       const forceParam = opts.force === true ? '&force=1' : '';
       const res = await fetch(`${API_BASE}?action=dashboard${forceParam}&t=${Date.now()}`, { cache: 'no-store' });
@@ -1097,6 +1094,7 @@
     }
 
     async function fetchGasUserStatus(options) {
+      assertGasApiAllowed('userStatus');
       const opts = options || {};
       const action = opts.full === true ? 'userStatus' : 'userStatusLite';
       const res = await fetch(
@@ -1108,6 +1106,7 @@
     }
 
     async function fetchGasSubmitMission(payload) {
+      assertGasApiAllowed('submit');
       const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1118,6 +1117,7 @@
     }
 
     function buildGasQuery(action, params) {
+      assertGasApiAllowed(action);
       const search = new URLSearchParams();
       search.set('action', action);
       Object.entries(params || {}).forEach(([key, value]) => {
@@ -1137,6 +1137,7 @@
     }
 
     async function fetchGasPostAction(action, payload) {
+      assertGasApiAllowed(action);
       const res = await fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1152,7 +1153,8 @@
           try {
             return await callSupabaseRpc('get_app_bootstrap', {}, { requireAuth: false });
           } catch(e) {
-            console.warn('[DIAG] Supabase dashboard read failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase dashboard read failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasDashboard(options);
@@ -1167,7 +1169,8 @@
               p_lite: opts.full !== true,
             });
           } catch(e) {
-            console.warn('[DIAG] Supabase userStatus read failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase userStatus read failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasUserStatus(opts);
@@ -1184,7 +1187,8 @@
               p_request_id: body.requestId || '',
             });
           } catch(e) {
-            console.warn('[DIAG] Supabase submit failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase submit failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasSubmitMission(body);
@@ -1201,7 +1205,8 @@
               p_test_mode: body.testMode === true,
             }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase draw failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase draw failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction(body.action || (body.packType === 'special' ? 'drawSpecialCard' : 'drawCard'), body);
@@ -1211,7 +1216,8 @@
           try {
             return await callSupabaseRpc('get_public_collection', { p_login_id: nickname }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase public collection failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase public collection failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasGetAction('getPublicCollection', { userId: nickname });
@@ -1221,7 +1227,8 @@
           try {
             return await callSupabaseRpc('get_user_trades', { p_login_id: currentNickname }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase trades read failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase trades read failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasGetAction('getTrades', { userId: currentNickname });
@@ -1237,7 +1244,8 @@
               p_target_card_id: Number(body.targetCardId) || 0,
             }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase trade request failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase trade request failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('requestTrade', Object.assign({ nickname: currentNickname }, body));
@@ -1247,7 +1255,8 @@
           try {
             return await callSupabaseRpc('accept_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase trade accept failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase trade accept failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('acceptTrade', { tradeId, nickname: currentNickname });
@@ -1257,7 +1266,8 @@
           try {
             return await callSupabaseRpc('reject_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase trade reject failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase trade reject failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('rejectTrade', { tradeId, nickname: currentNickname });
@@ -1267,7 +1277,8 @@
           try {
             return await callSupabaseRpc('cancel_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase trade cancel failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase trade cancel failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('cancelTrade', { tradeId, nickname: currentNickname });
@@ -1277,7 +1288,8 @@
           try {
             return await callSupabaseRpc('pray_for_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase trade prayer failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase trade prayer failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('prayForTrade', { tradeId, nickname: currentNickname });
@@ -1287,7 +1299,8 @@
           try {
             return await callSupabaseRpc('get_my_inquiries', { p_login_id: currentNickname }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase inquiries read failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase inquiries read failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasGetAction('getInquiries', { nickname: currentNickname });
@@ -1297,7 +1310,8 @@
           try {
             return await callSupabaseRpc('create_inquiry', { p_login_id: currentNickname, p_content: content }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase inquiry create failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase inquiry create failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('postInquiry', { nickname: currentNickname, content });
@@ -1307,7 +1321,8 @@
           try {
             return await callSupabaseRpc('update_inquiry', { p_login_id: currentNickname, p_id: id, p_content: content }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase inquiry update failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase inquiry update failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('editInquiry', { nickname: currentNickname, id, content });
@@ -1317,7 +1332,8 @@
           try {
             return await callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase inquiry delete failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase inquiry delete failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('deleteInquiry', { nickname: currentNickname, id });
@@ -1327,7 +1343,8 @@
           try {
             return await callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase BBB messages read failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase BBB messages read failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasGetAction('getBBBMessages', { userId: nickname || currentNickname, force: forceRefresh ? 1 : '' });
@@ -1337,7 +1354,8 @@
           try {
             return await callSupabaseRpc('send_bbb_message', { p_login_id: currentNickname, p_message: message }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase BBB message send failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase BBB message send failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('sendBBBMessage', { userId: currentNickname, message });
@@ -1347,7 +1365,8 @@
           try {
             return await callSupabaseRpc('guess_bbb_secret', { p_login_id: currentNickname, p_guess: guess }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase BBB secret guess failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase BBB secret guess failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('guessBBBSecret', { userId: currentNickname, guess });
@@ -1358,7 +1377,8 @@
             const data = await callSupabaseRpc('get_bbb_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
             return normalizeMissionPhotoUrls(data);
           } catch(e) {
-            console.warn('[DIAG] Supabase BBB status failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase BBB status failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasGetAction('getBBB', { userId: nickname || currentNickname });
@@ -1377,7 +1397,8 @@
             }, { allowOkFalse: true });
             return normalizeMissionPhotoUrls(data);
           } catch(e) {
-            console.warn('[DIAG] Supabase photo upload failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase photo upload failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('uploadBBBPhoto', body);
@@ -1394,7 +1415,8 @@
             }, { allowOkFalse: true });
             return normalizeMissionPhotoUrls(data);
           } catch(e) {
-            console.warn('[DIAG] Supabase photo delete failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase photo delete failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('deleteBBBPhoto', body);
@@ -1408,7 +1430,8 @@
               p_week_key: weekKey || '',
             }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase H&P read failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase H&P read failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasGetAction('getHoldPray', { weekKey: weekKey || '', nickname: nick });
@@ -1424,7 +1447,8 @@
               p_guess: guess || '',
             }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase H&P guess failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase H&P guess failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('submitHoldPrayGuess', { weekKey, guess, nickname: nick, cardIndex });
@@ -1439,7 +1463,8 @@
               p_card_index: Number(cardIndex) || 0,
             }, { allowOkFalse: true });
           } catch(e) {
-            console.warn('[DIAG] Supabase H&P hint failed, falling back to GAS', e);
+            if (!canUseGasApi()) throw e;
+            console.warn('[DIAG] Supabase H&P hint failed, using PROD GAS fallback', e);
           }
         }
         return fetchGasPostAction('postHpHint', { nickname: nick, weekKey, cardIndex });
@@ -1561,6 +1586,7 @@
       syncInitialData({ silent: true }).catch(() => {});
 
       // 백그라운드에서 서버 검증 (세션 갱신 포함)
+      if (!canUseGasApi()) return;
       try {
         const res  = await fetch(API_BASE, {
           method: 'POST',
@@ -1646,6 +1672,7 @@
           return;
         }
 
+        assertGasApiAllowed('register');
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1714,6 +1741,7 @@
           return;
         }
 
+        assertGasApiAllowed('login');
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1866,6 +1894,7 @@
           return;
         }
 
+        assertGasApiAllowed('resetPassword');
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1941,6 +1970,7 @@
           return;
         }
 
+        assertGasApiAllowed('findNickname');
         const res = await fetch(`${API_BASE}?action=findNickname&name=${encodeURIComponent(name)}&parish=${encodeURIComponent(parish)}&t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
         if (data.ok && data.nicknames && data.nicknames.length) {
@@ -4431,6 +4461,7 @@
             }));
           }
         } else {
+          assertGasApiAllowed('getNotices');
           res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
         }
         if (!res.ok || !res.notices?.length) {

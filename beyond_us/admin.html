@@ -792,7 +792,7 @@
 
     const IS_DEV_ENV = isDevEnvironment();
     const API_BASE  = IS_DEV_ENV
-      ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
+      ? ''
       : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
@@ -840,6 +840,14 @@
       'adminGetBBB',
     ]);
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
+    function canUseGasAdminApi() {
+      return !IS_DEV_ENV && !!API_BASE;
+    }
+    function assertGasAdminAllowed(action) {
+      if (!canUseGasAdminApi()) {
+        throw new Error(`dev_gas_disabled:${action || 'unknown'}`);
+      }
+    }
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
@@ -1912,9 +1920,11 @@
         try {
           return await callSupabaseAdmin(params.action, params);
         } catch(e) {
-          console.warn('[DIAG] Supabase admin get failed, falling back to GAS', params && params.action, e);
+          if (!canUseGasAdminApi()) throw e;
+          console.warn('[DIAG] Supabase admin get failed, using PROD GAS fallback', params && params.action, e);
         }
       }
+      assertGasAdminAllowed(params && params.action);
       const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
       return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
     }
@@ -1923,9 +1933,11 @@
         try {
           return await callSupabaseAdmin(body.action, body);
         } catch(e) {
-          console.warn('[DIAG] Supabase admin post failed, falling back to GAS', body && body.action, e);
+          if (!canUseGasAdminApi()) throw e;
+          console.warn('[DIAG] Supabase admin post failed, using PROD GAS fallback', body && body.action, e);
         }
       }
+      assertGasAdminAllowed(body && body.action);
       return fetch(API_BASE, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },

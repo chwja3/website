@@ -15,9 +15,9 @@
 - [x] admin 카드 현황과 실물 카드 수령 저장을 Supabase 기준으로 연결한다.
 - [x] 공지 이미지 업로드에서 SVG 등 비표준 이미지 입력을 PNG로 변환해 업로드한다.
 - [x] admin 교구 참여 현황이 1청, 2청, 3청, 4청, VIP, 교회학교/목양교구 순서로 항상 보이도록 RPC를 갱신한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518000700_notice_read_rpc.sql`을 실행한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518000800_admin_dashboard_card_stats.sql`을 실행한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518000900_admin_parish_summary_axis.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518000700_notice_read_rpc.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518000800_admin_dashboard_card_stats.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518000900_admin_parish_summary_axis.sql`을 실행한다.
 - [ ] admin에서 이미지 포함 공지를 등록하고 `notices`, Storage를 확인한다.
 - [ ] admin 대시보드의 교구별 이번 주 참여, 주차별 항목 기록, 주차별 교구 참여 기록을 확인한다.
 - [ ] 이번 주 및 주차별 교구 참여 기록에서 1청, 2청, 3청, 4청, VIP, 교회학교/목양교구가 0명이어도 표시되는지 확인한다.
@@ -29,18 +29,20 @@
 - [x] `adminRebuildEventDerivedViews`를 Supabase `admin_rebuild_user_state` RPC로 전환한다.
 - [x] `adminResetPassword`를 Supabase Edge Function으로 전환한다.
 - [x] Sheet cutover용 `prodCutover*`와 기존 `adminSetupBBBMatching`은 폐기 후보로 남긴다.
-- [ ] DEV Supabase SQL Editor에서 `20260518001000_admin_card_adjust_rebuild.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518001000_admin_card_adjust_rebuild.sql`을 실행한다.
 - [ ] Supabase Edge Function `admin-reset-password`를 배포한다.
 - [ ] admin 카드 추가, 카드 삭제, 파생 상태 재계산, 비밀번호 초기화를 DEV에서 확인한다.
 - [x] admin 재계산 문구를 Events replay가 아니라 Supabase 파생 상태 재계산으로 정리한다.
 - [x] 상태 테이블 변경 후 `user_summary`가 자동 refresh되도록 trigger migration을 추가한다.
 - [x] 카드 보유 수 감소 시 추첨권 조건이 해제되면 해당 조건 추첨권을 회수하도록 동기화를 보강한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518001100_operational_summary_refresh.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518001100_operational_summary_refresh.sql`을 실행한다.
 - [x] 운영자가 Table Editor에서 닉네임과 이름을 바로 볼 수 있도록 `ops_*` view migration을 추가한다.
 - [x] admin `Events 관리`와 `시스템 상태`를 `Events·시스템` 탭으로 통합한다.
 - [x] Supabase 운영에서 사용하지 않는 Sheet 전환 도구 UI와 JS 함수를 제거한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518001200_ops_readable_views.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518001200_ops_readable_views.sql`을 실행한다.
 - [x] admin 개발자 메뉴에 전체 Event 로그 조회 탭을 추가한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518001300_admin_event_logs.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518001300_admin_event_logs.sql`을 실행한다.
 - [x] admin 앱 가입자 목록을 교구/이름순으로 정렬하는 RPC와 프론트 연결을 추가한다.
-- [ ] DEV Supabase SQL Editor에서 `20260518001400_admin_attendance_sorted.sql`을 실행한다.
+- [x] DEV Supabase SQL Editor에서 `20260518001400_admin_attendance_sorted.sql`을 실행한다.
+- [x] DEV 앱과 admin에서 GAS fallback을 차단한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518001500_dev_reset_cards.sql`을 실행한다.
