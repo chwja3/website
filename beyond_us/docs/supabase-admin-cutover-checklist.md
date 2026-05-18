@@ -14,10 +14,13 @@
 - [x] admin 대시보드 조회를 Supabase 전용 RPC로 분리한다.
 - [x] admin 카드 현황과 실물 카드 수령 저장을 Supabase 기준으로 연결한다.
 - [x] 공지 이미지 업로드에서 SVG 등 비표준 이미지 입력을 PNG로 변환해 업로드한다.
+- [x] admin 교구 참여 현황이 1청, 2청, 3청, 4청, VIP, 교회학교/목양교구 순서로 항상 보이도록 RPC를 갱신한다.
 - [ ] DEV Supabase SQL Editor에서 `20260518000700_notice_read_rpc.sql`을 실행한다.
 - [ ] DEV Supabase SQL Editor에서 `20260518000800_admin_dashboard_card_stats.sql`을 실행한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518000900_admin_parish_summary_axis.sql`을 실행한다.
 - [ ] admin에서 이미지 포함 공지를 등록하고 `notices`, Storage를 확인한다.
 - [ ] admin 대시보드의 교구별 이번 주 참여, 주차별 항목 기록, 주차별 교구 참여 기록을 확인한다.
+- [ ] 이번 주 및 주차별 교구 참여 기록에서 1청, 2청, 3청, 4청, VIP, 교회학교/목양교구가 0명이어도 표시되는지 확인한다.
 - [ ] 실물 카드 수령 체크가 `physical_card_receipts`에 반영되는지 확인한다.
 - [ ] 사용자 앱 `?supabaseData=1` 상태에서 새 공지가 보이는지 확인한다.
 - [ ] staff 체크된 계정의 앱 아이디와 비밀번호로 로그인되는지 확인한다.
