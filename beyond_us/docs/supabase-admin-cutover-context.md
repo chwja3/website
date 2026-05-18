@@ -9,3 +9,5 @@
 admin 쓰기 RPC는 Supabase access token이 있어야 호출할 수 있다. 기존 admin 비밀번호 로그인은 Supabase token을 만들지 않으므로, 공지 쓰기에서 token이 없으면 GAS로 fallback하지 않고 명시적으로 세션 필요 오류를 보여준다. admin 로그인 자체를 Supabase Auth 기반으로 바꾸는 것은 별도 작업이다.
 
 현재 `admin_dispatch`가 지원하지 않아 GAS에 남아있는 주요 action은 `adminLogin`, `adminResetPassword`, `getCardStats`, `adminSetupBBBMatching`, `adminCreateCardEvent`, `adminRebuildEventDerivedViews`, `prodCutoverHealthCheck`, `prodCutoverDryRun`, `prodCutoverApply`다. `prodCutover*`는 Sheet 전환용이므로 Supabase 최종 전환 뒤 폐기 후보이고, `adminSetupBBBMatching`은 조별, 티어 기반 BBB 매칭 재설계와 함께 다시 잡아야 한다.
+
+2026-05-18. admin 페이지에 일반 사용자 Supabase token이 남아 있으면 `admin_dispatch`가 401을 반환하고 GAS fallback으로 내려가는 문제가 있었다. access token 존재만으로 admin RPC를 시도하지 않고, DEV 계정 힌트나 `?supabaseAdmin=1` 명시 플래그가 있을 때만 Supabase admin 경로를 타도록 제한했다. 401이 한 번 발생하면 해당 페이지 세션에서는 Supabase admin 시도를 멈춘다.

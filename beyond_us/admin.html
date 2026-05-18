@@ -1582,8 +1582,32 @@
     function getSupabaseAccessToken() {
       return localStorage.getItem('beyondus_supabase_access_token') || '';
     }
+    function shouldForceSupabaseAdmin() {
+      try {
+        const flag = new URLSearchParams(location.search).get('supabaseAdmin');
+        if (flag === '1') {
+          localStorage.setItem('beyondus_supabase_admin_force', '1');
+          sessionStorage.removeItem('beyondus_supabase_admin_disabled');
+        }
+        if (flag === '0') localStorage.removeItem('beyondus_supabase_admin_force');
+      } catch(e) {}
+      return localStorage.getItem('beyondus_supabase_admin_force') === '1';
+    }
+    function hasSupabaseAdminHint() {
+      return sessionStorage.getItem('beyondus_supabase_admin_ok') === '1' ||
+        localStorage.getItem('beyondus_is_dev') === 'true' ||
+        shouldForceSupabaseAdmin();
+    }
+    function markSupabaseAdminUnauthorized() {
+      sessionStorage.removeItem('beyondus_supabase_admin_ok');
+      sessionStorage.setItem('beyondus_supabase_admin_disabled', '1');
+    }
     function canUseSupabaseAdmin() {
-      return !!SUPABASE_PROJECT_URL && !!SUPABASE_ANON_KEY && !!getSupabaseAccessToken();
+      return !!SUPABASE_PROJECT_URL &&
+        !!SUPABASE_ANON_KEY &&
+        !!getSupabaseAccessToken() &&
+        sessionStorage.getItem('beyondus_supabase_admin_disabled') !== '1' &&
+        hasSupabaseAdminHint();
     }
     function supabasePhotoUrl(value) {
       const raw = String(value || '').trim();
@@ -1648,8 +1672,11 @@
       if (!res.ok || (data && data.ok === false)) {
         const err = new Error((data && data.error) || `admin_${action}_failed`);
         err.response = data;
+        err.status = res.status;
+        if (res.status === 401) markSupabaseAdminUnauthorized();
         throw err;
       }
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
       return normalizeSupabaseAdminResponse(data);
     }
     async function callSupabaseAdminRpc(functionName, payload) {
@@ -1668,8 +1695,11 @@
       if (!res.ok || (data && data.ok === false)) {
         const err = new Error((data && data.error) || `admin_${functionName}_failed`);
         err.response = data;
+        err.status = res.status;
+        if (res.status === 401) markSupabaseAdminUnauthorized();
         throw err;
       }
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
       return normalizeSupabaseAdminResponse(data);
     }
     function shouldUseSupabaseAdmin(body) {
