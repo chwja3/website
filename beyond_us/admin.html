@@ -122,6 +122,8 @@
     .stat-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
     .stat-value { font-size: 26px; font-weight: 800; }
     .stat-chip-list { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; font-size:11px; color:var(--sub); line-height:1.25; }
+    .raffle-available-card { grid-column: 1 / -1; }
+    .raffle-available-card .stat-chip-list { max-height:136px; overflow:auto; padding-right:4px; align-content:flex-start; }
     .stat-chip-list .ticket-chip { display:inline-flex; align-items:center; padding:3px 7px; border-radius:999px; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:800; }
     .stat-chip-list .more-chip { color:var(--sub); font-weight:700; padding:3px 0; }
     .dashboard-pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
@@ -410,7 +412,7 @@
       <div id="tab-raffle" class="tab-panel">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">현재 발급</div><div class="stat-value" id="raffleActiveCount">-</div></div>
-          <div class="stat-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div><div class="stat-chip-list" id="raffleAvailableNumbers">-</div></div>
+          <div class="stat-card raffle-available-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div><div class="stat-chip-list" id="raffleAvailableNumbers">-</div></div>
         </div>
 
         <div class="card">
@@ -839,6 +841,7 @@
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
+    const PARISH_SORT_ORDER = ['1청', '2청', '3청', '4청', 'VIP', '교회학교', '목양교구'];
     const TAB_SETTING_ID_MAP = {
       holdpray: 'togglePrayer',
       secret: 'toggleSecret',
@@ -857,6 +860,18 @@
     let _raffleTicketSearchTimer = null;
     let _eventLogLoaded = false;
     let _eventLogTypes = [];
+
+    function parishSortIndex(parish) {
+      const idx = PARISH_SORT_ORDER.indexOf(String(parish || ''));
+      return idx >= 0 ? idx : PARISH_SORT_ORDER.length;
+    }
+
+    function compareUsersByParishName(a, b) {
+      const parishDiff = parishSortIndex(a && a.parish) - parishSortIndex(b && b.parish);
+      if (parishDiff) return parishDiff;
+      return String((a && a.name) || '').localeCompare(String((b && b.name) || ''), 'ko')
+        || String((a && a.nickname) || '').localeCompare(String((b && b.nickname) || ''), 'ko');
+    }
 
     /* ── DEV 환경 감지 ── */
     if (IS_DEV_ENV) {
@@ -1052,7 +1067,7 @@
         const res = await get({ action: 'getUsers', adminPw });
         if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">오류: ' + (res.error || '') + '</td></tr>'; return; }
 
-        const users = res.users;
+        const users = Array.isArray(res.users) ? [...res.users].sort(compareUsersByParishName) : [];
         // 통계
         document.getElementById('statTotal').textContent = users.length;
         ['1청','2청','3청','4청'].forEach((p, i) => {
@@ -1845,7 +1860,8 @@
       sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
       return normalizeSupabaseAdminResponse(data);
     }
-    async function callSupabaseAdminRpc(functionName, payload) {
+    async function callSupabaseAdminRpc(functionName, payload, options) {
+      const opts = options || {};
       const token = getSupabaseAccessToken();
       if (!token) throw new Error('supabase_admin_session_required');
       const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
@@ -1858,7 +1874,7 @@
         body: JSON.stringify(payload || {}),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || (data && data.ok === false)) {
+      if (!res.ok || (data && data.ok === false && !opts.allowOkFalse)) {
         const err = new Error((data && (data.error || data.message)) || `admin_${functionName}_failed`);
         err.response = data;
         err.status = res.status;
@@ -2715,11 +2731,7 @@
         el.innerHTML = '<span class="more-chip">없음</span>';
         return;
       }
-      const maxVisible = 24;
-      const shown = list.slice(0, maxVisible);
-      const extra = list.length - shown.length;
-      el.innerHTML = shown.map(no => `<span class="ticket-chip">#${esc(no)}</span>`).join('')
-        + (extra > 0 ? `<span class="more-chip">외 ${fmtCount(extra)}개</span>` : '');
+      el.innerHTML = list.map(no => `<span class="ticket-chip">#${esc(no)}</span>`).join('');
     }
 
     async function loadRaffleTickets(options) {
@@ -2733,7 +2745,11 @@
       renderRaffleAvailableNumbers(null);
       tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
-        const res = await get({ action: 'adminGetRaffleTickets', adminPw, query, limit: _raffleTicketLimit, offset: 0 });
+        const res = await callSupabaseAdminRpc('admin_get_raffle_tickets', {
+          p_query: query,
+          p_limit: _raffleTicketLimit,
+          p_offset: 0,
+        });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         document.getElementById('raffleActiveCount').textContent = res.activeCount || 0;
         document.getElementById('raffleAvailableCount').textContent = res.availableCount || 0;
@@ -3075,7 +3091,7 @@
           callSupabaseAdminRpc('admin_card_stats'),
           callSupabaseAdmin('getUsers', {}),
           callSupabaseAdmin('getTabSettings', {}),
-          callSupabaseAdminRpc('admin_audit_user_state', { p_limit: getEventAuditRowLimit() }),
+          callSupabaseAdminRpc('admin_audit_user_state', { p_limit: getEventAuditRowLimit() }, { allowOkFalse: true }),
         ]);
         const checks = {
           dashboard: settledCheck(dashboard),
@@ -3104,7 +3120,14 @@
     function settledCheck(result) {
       if (result.status === 'fulfilled') {
         const value = result.value || {};
-        return { ok: value.ok !== false, source: value.source || 'supabase' };
+        return {
+          ok: value.ok !== false,
+          source: value.source || 'supabase',
+          error: value.ok === false ? (value.error || '') : undefined,
+          mismatchCount: value.mismatchCount,
+          checkedLimit: value.checkedLimit,
+          mismatches: value.mismatches,
+        };
       }
       return {
         ok: false,
