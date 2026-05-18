@@ -79,7 +79,7 @@ u_<sha256(trim(login_id))>@auth.beyond-us.local
 ## 관리자 권한
 
 - 관리자와 개발자도 일반 Supabase Auth 계정으로 로그인한다.
-- 권한은 `profiles.role`과 `profiles.is_dev`로 판단한다.
+- 권한은 `profiles.role`과 `profiles.is_dev`로 판단한다. 기존 Sheet의 `Users.isStaff=true`는 이관 시 `profiles.role='admin'`으로 변환한다.
 - 프론트 admin 페이지에는 admin password를 저장하지 않는다.
 - admin 전용 RPC와 Edge Function은 매 호출마다 현재 JWT의 `auth.uid()`와 `profiles.role`을 확인한다.
 

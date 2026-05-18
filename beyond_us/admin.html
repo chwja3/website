@@ -214,8 +214,8 @@
       <div class="gate-emoji">🔐</div>
       <h2 class="gate-title">어드민</h2>
       <p id="gate-desc-env" class="gate-desc">Beyond Us 관리자 페이지</p>
-      <input type="text" id="adminLoginIdInput" class="input" placeholder="관리자 ID (비워두면 공용 admin)" autocomplete="username" />
-      <input type="password" id="adminPwInput" class="input" placeholder="관리자 비밀번호" autocomplete="current-password" style="margin-top:8px;" />
+      <input type="text" id="adminLoginIdInput" class="input" placeholder="Staff 아이디" autocomplete="username" />
+      <input type="password" id="adminPwInput" class="input" placeholder="Staff 비밀번호" autocomplete="current-password" style="margin-top:8px;" />
       <div class="status" id="gateStatus"></div>
       <button class="btn btn-primary" id="gateBtn" style="margin-top:8px;">입장</button>
     </div>
@@ -790,10 +790,16 @@
     const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
+    const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     const SUPABASE_NOTICE_ACTIONS = new Set(['postNotice', 'editNotice', 'deleteNotice']);
-    const ADMIN_SHARED_LOGIN_ID = 'admin';
+    const LEGACY_PASSWORD_RESET_ERRORS = new Set([
+      'weak_password_needs_reset',
+      'invalid_new_password',
+      'password_migration_required',
+      'legacy_password_reset_required',
+    ]);
     const SUPABASE_ADMIN_ACTIONS = new Set([
       'getUsers',
       'dashboard',
@@ -886,6 +892,21 @@
       return { data, email };
     }
 
+    function needsLegacyPasswordReset(data) {
+      return data && LEGACY_PASSWORD_RESET_ERRORS.has(data.error);
+    }
+
+    async function callLegacyPasswordUpgrade(loginId, password, newPassword) {
+      const res = await fetch(LEGACY_PASSWORD_UPGRADE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginId, password, newPassword: newPassword || '' })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && !data.error) data.error = 'request_failed';
+      return data;
+    }
+
     function saveSupabaseAdminSession(loginId, authResult) {
       const data = authResult && authResult.data;
       if (!data) return;
@@ -920,49 +941,48 @@
 
     async function doSupabaseAdminLogin(loginId, password) {
       clearSupabaseAdminSessionHint();
-      const authResult = await signInWithSupabasePassword(loginId, password);
+      let authResult;
+      try {
+        authResult = await signInWithSupabasePassword(loginId, password);
+      } catch(authError) {
+        if (authError.status !== 400 && authError.message !== 'invalid_grant') throw authError;
+        const upgrade = await callLegacyPasswordUpgrade(loginId, password, '');
+        if (upgrade.ok) {
+          authResult = await signInWithSupabasePassword(loginId, password);
+        } else if (needsLegacyPasswordReset(upgrade)) {
+          const err = new Error('staff_password_upgrade_required');
+          err.response = upgrade;
+          throw err;
+        } else {
+          throw authError;
+        }
+      }
       saveSupabaseAdminSession(loginId, authResult);
       await callSupabaseAdmin('getUsers', { action: 'getUsers' });
       enterAdminPanel({ mode: 'supabase', loginId });
     }
 
-    async function doLegacyAdminLogin(password) {
-      const res = await post({ action: 'adminLogin', password });
-      if (!res.ok) return false;
-      enterAdminPanel({ mode: 'legacy', adminPw: password });
-      return true;
-    }
-
     async function doAdminLogin() {
-      const rawLoginId = document.getElementById('adminLoginIdInput').value.trim();
-      const loginId = rawLoginId || ADMIN_SHARED_LOGIN_ID;
+      const loginId = document.getElementById('adminLoginIdInput').value.trim();
       const pw = document.getElementById('adminPwInput').value;
       const statusEl = document.getElementById('gateStatus');
       const btn = document.getElementById('gateBtn');
-      if (!pw) { statusEl.textContent = '관리자 비밀번호를 입력해주세요.'; return; }
+      if (!loginId || !pw) { statusEl.textContent = 'Staff 아이디와 비밀번호를 입력해주세요.'; return; }
 
       btn.disabled = true;
       statusEl.textContent = '확인 중...';
       statusEl.className = 'status';
 
       try {
-        try {
-          statusEl.textContent = rawLoginId
-            ? 'Supabase 관리자 권한 확인 중...'
-            : 'Supabase 공용 admin 계정 확인 중...';
-          await doSupabaseAdminLogin(loginId, pw);
-        } catch(authError) {
-          if (rawLoginId) throw authError;
-          const ok = await doLegacyAdminLogin(pw);
-          if (!ok) throw authError;
-        }
+        statusEl.textContent = 'Staff 권한 확인 중...';
+        await doSupabaseAdminLogin(loginId, pw);
       } catch(e) {
         if (e.status === 401 || e.message === 'admin_required') {
-          statusEl.textContent = '관리자 권한이 없는 계정이에요.';
+          statusEl.textContent = 'Staff 권한이 없는 계정이에요.';
+        } else if (e.message === 'staff_password_upgrade_required') {
+          statusEl.textContent = '이 계정은 먼저 앱에서 6자 이상 비밀번호로 업데이트해야 해요.';
         } else if (e.status === 400 || e.message === 'invalid_grant') {
-          statusEl.textContent = rawLoginId
-            ? '관리자 ID 또는 관리자 비밀번호를 확인해주세요.'
-            : '관리자 비밀번호를 확인해주세요.';
+          statusEl.textContent = 'Staff 아이디 또는 비밀번호를 확인해주세요.';
         } else {
           statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
         }
