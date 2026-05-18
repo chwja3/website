@@ -644,9 +644,9 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
             <div>
-              <h2 class="card-title" style="margin:0;">Events 기준 재계산</h2>
+              <h2 class="card-title" style="margin:0;">Supabase 파생 상태 재계산</h2>
               <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
-                Collection, MissionProgress, UserDashboard를 Events 기준으로 다시 만들고 대시보드를 새로고침합니다.
+                현재 Supabase 정본 테이블을 기준으로 사용자 요약, 카드 현황, 추첨권 상태를 다시 맞춥니다.
               </p>
             </div>
             <button class="btn btn-primary" id="rebuildEventsDashboardBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="runRebuildEventDerivedViews()">재계산</button>
@@ -1385,7 +1385,7 @@
     }
 
     async function restoreAttendanceUser(nickname, btn) {
-      if (!confirm(`${nickname} 유저를 복구할까요? Events 기준으로 컬렉션과 추첨권을 다시 계산합니다.`)) return;
+      if (!confirm(`${nickname} 유저를 복구할까요? 현재 Supabase 상태 기준으로 요약과 추첨권을 다시 계산합니다.`)) return;
       const statusEl = document.getElementById('attendanceStatus');
       btn.disabled = true;
       statusEl.textContent = '복구 중...';
@@ -3079,17 +3079,19 @@
       try {
         const startedAt = performance.now();
         requireSupabaseAdminSession();
-        const [dashboard, cards, users, settings] = await Promise.allSettled([
+        const [dashboard, cards, users, settings, audit] = await Promise.allSettled([
           callSupabaseAdminRpc('admin_dashboard_summary', { p_force: true }),
           callSupabaseAdminRpc('admin_card_stats'),
           callSupabaseAdmin('getUsers', {}),
           callSupabaseAdmin('getTabSettings', {}),
+          callSupabaseAdminRpc('admin_audit_user_state', { p_limit: getCutoverRowLimit() }),
         ]);
         const checks = {
           dashboard: settledCheck(dashboard),
           cards: settledCheck(cards),
           users: settledCheck(users),
           settings: settledCheck(settings),
+          audit: settledCheck(audit),
         };
         const res = {
           ok: Object.values(checks).every(item => item.ok),

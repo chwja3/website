@@ -32,3 +32,7 @@
 - [ ] DEV Supabase SQL Editor에서 `20260518001000_admin_card_adjust_rebuild.sql`을 실행한다.
 - [ ] Supabase Edge Function `admin-reset-password`를 배포한다.
 - [ ] admin 카드 추가, 카드 삭제, 파생 상태 재계산, 비밀번호 초기화를 DEV에서 확인한다.
+- [x] admin 재계산 문구를 Events replay가 아니라 Supabase 파생 상태 재계산으로 정리한다.
+- [x] 상태 테이블 변경 후 `user_summary`가 자동 refresh되도록 trigger migration을 추가한다.
+- [x] 카드 보유 수 감소 시 추첨권 조건이 해제되면 해당 조건 추첨권을 회수하도록 동기화를 보강한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518001100_operational_summary_refresh.sql`을 실행한다.

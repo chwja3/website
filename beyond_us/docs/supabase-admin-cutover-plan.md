@@ -22,3 +22,5 @@ admin 화면에서 운영자가 변경한 데이터가 Google Sheet가 아니라
 - 카드 수동 지급과 회수는 Supabase `user_cards`, `events`, `user_summary`에 반영된다.
 - 파생 상태 재계산은 Supabase 테이블 기준으로 `user_summary`와 추첨권 정책 상태를 갱신한다.
 - 관리자 비밀번호 초기화는 Supabase Auth Admin API로 처리되고 GAS로 쓰지 않는다.
+- 주요 정본 테이블 변경 후 `user_summary`가 trigger로 자동 refresh된다.
+- 카드 조건이 더 이상 충족되지 않으면 해당 조건 추첨권이 회수되고 번호가 재사용 가능 상태가 된다.
