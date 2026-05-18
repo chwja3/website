@@ -44,6 +44,7 @@
 |---|---|---|---|
 | `adminLogin` | Supabase Auth admin role | Auth plus role check | `auth.users`, `profiles` |
 | `getUsers` | `admin_get_users` | RPC | `profiles`, `group_members`, `retreat_attendance`, `user_summary` |
+| `dashboard` | `admin_dashboard_summary` | RPC | `mission_weeks`, `mission_items`, `mission_progress`, `profiles` |
 | `adminGetRaffleAttendance` | `admin_get_participants` | RPC | `profiles`, `retreat_attendance`, `raffle_tickets` |
 | `adminDeactivateUser`, `adminRestoreUser` | `admin_set_user_status` | RPC | `profiles`, `events` |
 | `adminSetRaffleAttendance` | `admin_set_attendance` | RPC | `retreat_attendance`, `events` |
@@ -60,7 +61,7 @@
 | `adminApproveBBBPhoto`, `adminRejectBBBPhoto` | `admin_review_photo_submission` | RPC | `mission_photo_submissions`, `events`, `user_inventory`, `user_cards` |
 | `adminFindRaffleTicket` | `admin_find_raffle_ticket` | RPC | `raffle_tickets`, `profiles` |
 | `adminGetRaffleTickets` | `admin_get_raffle_tickets` | RPC | `raffle_tickets`, `profiles` |
-| `setCardReceivedQty` | `admin_set_physical_card_receipt` | RPC | `physical_card_receipts`, `events` |
+| `getCardStats`, `setCardReceivedQty` | `admin_card_stats`, `admin_dispatch('setCardReceivedQty')` | RPC | `user_cards`, `physical_card_receipts`, `profiles` |
 | `adminCreateCardEvent` | `admin_adjust_card` | RPC | `events`, `user_cards` |
 | `adminRebuildEventDerivedViews` | `admin_rebuild_user_state` | RPC or scheduled job | `events`, `user_inventory`, `user_cards`, `user_summary` |
 | `replyInquiry` | `admin_reply_inquiry` | RPC | `inquiries` |

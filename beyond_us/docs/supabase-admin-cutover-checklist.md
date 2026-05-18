@@ -11,8 +11,14 @@
 - [x] admin 로그인 폼을 staff 아이디와 비밀번호 입력으로 정리한다.
 - [x] admin 로그인을 Supabase Auth password grant로 전환한다.
 - [x] Supabase admin RPC 권한 확인 후에만 admin 화면에 진입한다.
+- [x] admin 대시보드 조회를 Supabase 전용 RPC로 분리한다.
+- [x] admin 카드 현황과 실물 카드 수령 저장을 Supabase 기준으로 연결한다.
+- [x] 공지 이미지 업로드에서 SVG 등 비표준 이미지 입력을 PNG로 변환해 업로드한다.
 - [ ] DEV Supabase SQL Editor에서 `20260518000700_notice_read_rpc.sql`을 실행한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518000800_admin_dashboard_card_stats.sql`을 실행한다.
 - [ ] admin에서 이미지 포함 공지를 등록하고 `notices`, Storage를 확인한다.
+- [ ] admin 대시보드의 교구별 이번 주 참여, 주차별 항목 기록, 주차별 교구 참여 기록을 확인한다.
+- [ ] 실물 카드 수령 체크가 `physical_card_receipts`에 반영되는지 확인한다.
 - [ ] 사용자 앱 `?supabaseData=1` 상태에서 새 공지가 보이는지 확인한다.
 - [ ] staff 체크된 계정의 앱 아이디와 비밀번호로 로그인되는지 확인한다.
 - [ ] 일반 유저 계정으로 admin 로그인이 거부되는지 확인한다.

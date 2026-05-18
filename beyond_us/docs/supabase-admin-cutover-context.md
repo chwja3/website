@@ -15,3 +15,5 @@ admin 쓰기 RPC는 Supabase access token이 있어야 호출할 수 있다. 기
 2026-05-18. admin 로그인 폼을 Supabase Auth 기반으로 전환했다. 공용 관리자 비밀번호를 공유하지 않고, staff로 체크된 사람이 자기 앱 아이디와 비밀번호로 admin에 로그인한다. Sheet 이관 스크립트는 `Users.isStaff=true`를 `profiles.role='admin'`으로 변환하므로, 로그인 직후 `admin_dispatch('getUsers')`를 호출해 `bu_admin_profile()` 권한 검사를 통과한 경우에만 admin 화면에 진입한다. 아직 Supabase Auth 비밀번호 업그레이드를 하지 않은 staff 계정은 앱에서 6자 이상 비밀번호 업데이트를 먼저 해야 한다.
 
 2026-05-18. admin 프론트의 Supabase 경로는 `admin_dispatch`에 실제 구현된 action만 사용하도록 제한했다. 아직 GAS에 남은 기능을 Supabase로 보내면 unknown action과 legacy password fallback이 섞여 원인 파악이 어려워지기 때문이다.
+
+2026-05-18. staff 계정 로그인 전환 뒤 admin 대시보드와 실물 카드 수령에서 누락이 확인됐다. 원인은 `dashboard` action이 사용자 앱용 `get_app_bootstrap()`을 반환해서 admin 화면이 기대하는 교구별, 주차별 summary 필드가 비어 있었고, `setCardReceivedQty`가 프론트의 Supabase admin action 허용 목록에서 빠져 GAS fallback으로 내려갔기 때문이다. `admin_dashboard_summary()`와 `admin_card_stats()` RPC를 추가하고, 실물 카드 수령 쓰기는 기존 `admin_dispatch('setCardReceivedQty')`로 보내도록 연결했다. 공지 이미지 업로드는 SVG처럼 Storage 업로드에서 400이 날 수 있는 입력을 PNG로 rasterize한 뒤 업로드하도록 보강했다.

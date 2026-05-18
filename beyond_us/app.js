@@ -74,7 +74,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518s';
+    const APP_VERSION = '20260518t';
     const MAINTENANCE_MODE = false;
     if (MAINTENANCE_MODE && !IS_DEV_ENV) {
       if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -934,7 +934,11 @@
 
     function supabasePhotoUrl(value) {
       const raw = String(value || '').trim();
-      if (!raw || raw.startsWith('data:') || /^https?:\/\//i.test(raw)) return raw;
+      if (!raw || raw.startsWith('data:')) return raw;
+      if (raw.includes('/storage/v1/object/') && !raw.includes('/storage/v1/object/public/')) {
+        return raw.replace('/storage/v1/object/', '/storage/v1/object/public/');
+      }
+      if (/^https?:\/\//i.test(raw)) return raw;
       return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
     }
 
