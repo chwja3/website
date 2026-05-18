@@ -17,5 +17,5 @@ admin 화면에서 운영자가 변경한 데이터가 Google Sheet가 아니라
 - 공지 이미지가 `beyond-us-photos/notices/...` Storage 경로에 올라간다.
 - 사용자 앱이 Supabase read 모드에서 `get_notices()`로 공지를 읽는다.
 - Supabase 관리자 세션이 없을 때 공지 쓰기가 GAS로 빠지지 않고 명시적 오류를 낸다.
-- admin 로그인은 관리자 닉네임과 계정 비밀번호로 Supabase Auth에 로그인한다.
+- admin 로그인은 관리자 전용 비밀번호로 Supabase Auth에 로그인한다. 관리자 ID를 비워두면 공용 `admin` 계정을 사용한다.
 - 로그인한 Supabase Auth 유저가 `profiles.role in ('admin','dev')` 또는 `is_dev=true` 조건을 통과해야 admin 화면에 들어간다.

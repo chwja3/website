@@ -214,8 +214,8 @@
       <div class="gate-emoji">🔐</div>
       <h2 class="gate-title">어드민</h2>
       <p id="gate-desc-env" class="gate-desc">Beyond Us 관리자 페이지</p>
-      <input type="text" id="adminLoginIdInput" class="input" placeholder="관리자 닉네임" autocomplete="username" />
-      <input type="password" id="adminPwInput" class="input" placeholder="계정 비밀번호" autocomplete="current-password" style="margin-top:8px;" />
+      <input type="text" id="adminLoginIdInput" class="input" placeholder="관리자 ID (비워두면 공용 admin)" autocomplete="username" />
+      <input type="password" id="adminPwInput" class="input" placeholder="관리자 비밀번호" autocomplete="current-password" style="margin-top:8px;" />
       <div class="status" id="gateStatus"></div>
       <button class="btn btn-primary" id="gateBtn" style="margin-top:8px;">입장</button>
     </div>
@@ -793,6 +793,7 @@
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     const SUPABASE_NOTICE_ACTIONS = new Set(['postNotice', 'editNotice', 'deleteNotice']);
+    const ADMIN_SHARED_LOGIN_ID = 'admin';
     const SUPABASE_ADMIN_ACTIONS = new Set([
       'getUsers',
       'dashboard',
@@ -933,29 +934,35 @@
     }
 
     async function doAdminLogin() {
-      const loginId = document.getElementById('adminLoginIdInput').value.trim();
+      const rawLoginId = document.getElementById('adminLoginIdInput').value.trim();
+      const loginId = rawLoginId || ADMIN_SHARED_LOGIN_ID;
       const pw = document.getElementById('adminPwInput').value;
       const statusEl = document.getElementById('gateStatus');
       const btn = document.getElementById('gateBtn');
-      if (!pw) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
+      if (!pw) { statusEl.textContent = '관리자 비밀번호를 입력해주세요.'; return; }
 
       btn.disabled = true;
       statusEl.textContent = '확인 중...';
       statusEl.className = 'status';
 
       try {
-        if (loginId) {
-          statusEl.textContent = 'Supabase 관리자 권한 확인 중...';
+        try {
+          statusEl.textContent = rawLoginId
+            ? 'Supabase 관리자 권한 확인 중...'
+            : 'Supabase 공용 admin 계정 확인 중...';
           await doSupabaseAdminLogin(loginId, pw);
-        } else {
+        } catch(authError) {
+          if (rawLoginId) throw authError;
           const ok = await doLegacyAdminLogin(pw);
-          if (!ok) statusEl.textContent = '비밀번호가 틀렸어요.';
+          if (!ok) throw authError;
         }
       } catch(e) {
         if (e.status === 401 || e.message === 'admin_required') {
           statusEl.textContent = '관리자 권한이 없는 계정이에요.';
         } else if (e.status === 400 || e.message === 'invalid_grant') {
-          statusEl.textContent = '닉네임 또는 비밀번호를 확인해주세요.';
+          statusEl.textContent = rawLoginId
+            ? '관리자 ID 또는 관리자 비밀번호를 확인해주세요.'
+            : '관리자 비밀번호를 확인해주세요.';
         } else {
           statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
         }
