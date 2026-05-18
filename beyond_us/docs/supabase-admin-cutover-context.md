@@ -27,3 +27,5 @@ admin 쓰기 RPC는 Supabase access token이 있어야 호출할 수 있다. 기
 2026-05-18. 운영 안정성 기준을 `정본 테이블 + Events 감사 로그`로 확정했다. 앱과 admin의 평상시 읽기는 `user_cards`, `user_inventory`, `mission_progress`, `raffle_tickets`, `user_summary`를 기준으로 하고, `events`는 추적과 감사 로그로 남긴다. 이를 위해 `20260518001100_operational_summary_refresh.sql`을 추가했다. 이 migration은 `user_cards`, `mission_submissions`, `raffle_tickets`, `trades`, `events`, `profiles` 변경 후 `user_summary`를 자동 refresh하고, 카드 보유 조건이 깨졌을 때 `card_3`, `card_5`, `card_10` 추첨권을 회수해 번호 풀로 되돌린다.
 
 2026-05-18. Supabase Table Editor 운영 가독성을 위해 `20260518001200_ops_readable_views.sql`을 추가했다. 원본 테이블에 `login_id`를 복제하지 않고 `ops_*` view에서 `profiles`를 join해 닉네임, 이름, 교구를 바로 보여준다. 시간 컬럼이 있는 view는 최신 행이 위에 오도록 정렬한다. admin에서는 별도 `시스템 상태` 메뉴를 제거하고 `Events·시스템` 탭 안에 상태 확인을 통합했다. Supabase 운영에서 더 이상 의미가 없는 Sheet 전환 도구와 관련 JS 함수는 제거했다.
+
+2026-05-18. admin 개발자 메뉴에 `Event 로그` 탭을 추가했다. `20260518001300_admin_event_logs.sql`이 staff 권한을 확인하는 `admin_event_logs` RPC를 제공하고, admin은 이 RPC로 최신순 이벤트 로그를 읽는다. 조회 UI는 이벤트 타입 필터, 닉네임/이름/ref/request 검색, 표시 개수 제한, payload 펼쳐보기를 제공한다.

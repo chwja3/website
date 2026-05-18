@@ -247,6 +247,7 @@
       <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
       <button class="drawer-item" data-panel="bbb">B.B.B 미션</button>
       <button class="drawer-item" data-panel="events">Events·시스템</button>
+      <button class="drawer-item" data-panel="eventlog">Event 로그</button>
       <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
     </nav>
 
@@ -677,6 +678,30 @@
 
       </div>
 
+      <!-- Event 로그 탭 -->
+      <div id="tab-eventlog" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">전체 Event 로그</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">Supabase `events` 기준 최신 로그를 조회합니다.</p>
+            </div>
+            <button class="btn btn-secondary" id="eventLogRefreshBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="loadEventLogs(true)">새로고침</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:8px;">
+            <select id="eventLogTypeFilter" class="input">
+              <option value="">전체 이벤트</option>
+            </select>
+            <input type="text" id="eventLogSearchInput" class="input" placeholder="닉네임, 이름, ref, request 검색" />
+            <input type="number" id="eventLogLimitInput" class="input" min="1" max="1000" value="200" placeholder="표시 개수" />
+          </div>
+          <div class="status" id="eventLogStatus"></div>
+          <div id="eventLogList" class="table-wrap">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">탭을 열면 로그를 불러옵니다.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- ④ 탭 설정 -->
       <div id="tab-settings" class="tab-panel">
 
@@ -834,6 +859,8 @@
     let _attendanceSearchTimer = null;
     let _raffleTicketLimit = ADMIN_TABLE_INITIAL_LIMIT;
     let _raffleTicketSearchTimer = null;
+    let _eventLogLoaded = false;
+    let _eventLogTypes = [];
 
     /* ── DEV 환경 감지 ── */
     if (IS_DEV_ENV) {
@@ -1007,13 +1034,18 @@
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
-      if (panelId === 'system')  loadSystemStatus();
+      if (panelId === 'eventlog') loadEventLogs();
     }
     document.getElementById('menuBtn').addEventListener('click', openDrawer);
     document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
     document.querySelectorAll('.drawer-item').forEach(btn => {
       btn.addEventListener('click', () => switchPanel(btn.dataset.panel, btn.textContent.trim()));
+    });
+    document.getElementById('eventLogTypeFilter').addEventListener('change', () => loadEventLogs(true));
+    document.getElementById('eventLogLimitInput').addEventListener('change', () => loadEventLogs(true));
+    document.getElementById('eventLogSearchInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') loadEventLogs(true);
     });
 
     /* ── 유저 목록 ── */
@@ -3119,6 +3151,120 @@
 
     function setSystemResult(result) {
       document.getElementById('systemResultJson').textContent = JSON.stringify(result || {}, null, 2);
+    }
+
+    function getEventLogLimit() {
+      const input = document.getElementById('eventLogLimitInput');
+      return Math.max(1, Math.min(1000, Number(input && input.value) || 200));
+    }
+
+    function renderEventLogTypeOptions(types, selected) {
+      const select = document.getElementById('eventLogTypeFilter');
+      if (!select) return;
+      const nextTypes = Array.isArray(types) ? types.filter(Boolean) : [];
+      const same = JSON.stringify(nextTypes) === JSON.stringify(_eventLogTypes);
+      if (same && select.options.length > 1) return;
+      _eventLogTypes = nextTypes;
+      select.innerHTML = '<option value="">전체 이벤트</option>' + nextTypes.map(type => (
+        `<option value="${esc(type)}"${type === selected ? ' selected' : ''}>${esc(type)}</option>`
+      )).join('');
+      if (selected && nextTypes.includes(selected)) select.value = selected;
+    }
+
+    function formatEventPayload(payload) {
+      if (payload === null || payload === undefined) return '{}';
+      try {
+        return JSON.stringify(payload, null, 2);
+      } catch(e) {
+        return String(payload);
+      }
+    }
+
+    function renderEventLogs(events, limit) {
+      const listEl = document.getElementById('eventLogList');
+      const rows = Array.isArray(events) ? events : [];
+      if (!rows.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">조건에 맞는 Event 로그가 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>시각</th>
+              <th>유저</th>
+              <th>이벤트</th>
+              <th>Ref</th>
+              <th>수량</th>
+              <th>Source</th>
+              <th>Payload</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(ev => {
+              const userLabel = ev.loginId || ev.displayName || ev.name || '(system)';
+              const userMeta = [ev.name, ev.parish].filter(Boolean).join(' · ');
+              const refParts = [ev.weekKey, ev.refType, ev.refId].filter(Boolean).join(' · ');
+              const payloadText = formatEventPayload(ev.payload);
+              return `
+                <tr>
+                  <td style="white-space:nowrap;color:var(--sub);font-size:12px;">${esc(formatDateTime(ev.occurredAt || ev.createdAt))}</td>
+                  <td>
+                    <strong>${esc(userLabel)}</strong>
+                    <div style="font-size:11px;color:var(--sub);">${esc(userMeta || '-')}</div>
+                  </td>
+                  <td>
+                    <strong>${esc(ev.eventType)}</strong>
+                    <div style="font-size:11px;color:var(--sub);">${esc(ev.requestId || '')}</div>
+                  </td>
+                  <td style="font-size:12px;color:var(--sub);">${esc(refParts || '-')}</td>
+                  <td>${esc(ev.amount === undefined || ev.amount === null ? '-' : ev.amount)}</td>
+                  <td style="font-size:12px;color:var(--sub);">${esc(ev.source || '-')}</td>
+                  <td style="min-width:260px;">
+                    <details>
+                      <summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--sub);">보기</summary>
+                      <pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;line-height:1.4;max-height:220px;overflow:auto;">${esc(payloadText)}</pre>
+                    </details>
+                  </td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <p style="font-size:12px;color:var(--sub);margin-top:8px;">최신순 ${rows.length}건 표시 중입니다. 현재 limit은 ${esc(limit)}건입니다.</p>
+      `;
+    }
+
+    async function loadEventLogs(force) {
+      if (_eventLogLoaded && !force) return;
+      const btn = document.getElementById('eventLogRefreshBtn');
+      const statusEl = document.getElementById('eventLogStatus');
+      const listEl = document.getElementById('eventLogList');
+      const type = document.getElementById('eventLogTypeFilter').value;
+      const query = document.getElementById('eventLogSearchInput').value.trim();
+      const limit = getEventLogLimit();
+      if (btn) btn.disabled = true;
+      statusEl.textContent = '불러오는 중...';
+      statusEl.className = 'status';
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        requireSupabaseAdminSession();
+        const res = await callSupabaseAdminRpc('admin_event_logs', {
+          p_limit: limit,
+          p_event_type: type || null,
+          p_query: query || null,
+        });
+        renderEventLogTypeOptions(res.eventTypes || [], type);
+        renderEventLogs(res.events || [], res.limit || limit);
+        statusEl.textContent = `정상. ${Number((res.events || []).length) || 0}건을 불러왔습니다.`;
+        statusEl.className = 'status ok';
+        _eventLogLoaded = true;
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">Event 로그를 불러오지 못했어요.</p>';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     async function loadAdminInquiries() {

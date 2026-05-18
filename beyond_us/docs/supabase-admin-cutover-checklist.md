@@ -40,3 +40,5 @@
 - [x] admin `Events 관리`와 `시스템 상태`를 `Events·시스템` 탭으로 통합한다.
 - [x] Supabase 운영에서 사용하지 않는 Sheet 전환 도구 UI와 JS 함수를 제거한다.
 - [ ] DEV Supabase SQL Editor에서 `20260518001200_ops_readable_views.sql`을 실행한다.
+- [x] admin 개발자 메뉴에 전체 Event 로그 조회 탭을 추가한다.
+- [ ] DEV Supabase SQL Editor에서 `20260518001300_admin_event_logs.sql`을 실행한다.
