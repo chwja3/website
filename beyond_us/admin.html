@@ -239,7 +239,8 @@
       <button class="drawer-item active" data-panel="checkin">대시보드</button>
       <button class="drawer-item" data-panel="notice">공지</button>
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
-      <button class="drawer-item" data-panel="bbbphotos">BBB 사진 승인</button>
+      <button class="drawer-item" data-panel="bbbphotos">BBB/천로역정</button>
+      <button class="drawer-item" data-panel="hpholdpray">H&amp;P 현황</button>
       <button class="drawer-item" data-panel="raffle">추첨권 번호</button>
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
@@ -385,7 +386,7 @@
         </div>
       </div>
 
-      <!-- BBB 사진 승인 -->
+      <!-- BBB/천로역정 -->
       <div id="tab-bbbphotos" class="tab-panel">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">승인 대기</div><div class="stat-value" id="bbbPhotoPendingCount">-</div></div>
@@ -403,6 +404,20 @@
           </div>
           <input type="search" id="bbbPhotoApprovalSearch" placeholder="🔍 닉네임 또는 이름 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterBBBPhotoApprovals(this.value)" />
           <div id="bbbPhotoApprovalList">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">BBB/천로역정 운영 현황</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">케어버디, 시크릿버디, Mission 1/2 승인, 천로역정 배정 스팟과 완료 여부를 유저별로 확인합니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshBBBPilgrimStatusBtn" onclick="loadBBBPilgrimStatus()">새로고침</button>
+          </div>
+          <input type="search" id="bbbOpsSearch" placeholder="🔍 닉네임, 이름, 교구, 조 검색" class="input" style="margin-bottom:12px;" oninput="filterBBBPilgrimStatus(this.value)" />
+          <div id="bbbOpsStatusList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
           </div>
         </div>
@@ -566,14 +581,43 @@
       <div id="tab-inquiry" class="tab-panel">
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h2 class="card-title" style="margin:0;">개발자 문의</h2>
+            <div>
+              <h2 class="card-title" style="margin:0;">개발자 문의</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">문의는 기본적으로 닫혀 있습니다. 제목 줄을 눌러 내용을 확인하세요.</p>
+            </div>
             <button class="btn btn-ghost btn-sm" id="refreshInquiryAdminBtn">새로고침</button>
           </div>
+          <h3 style="font-size:13px;font-weight:900;margin:0 0 8px;color:var(--danger);">미답변 문의</h3>
           <div id="inquiryAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
         <div class="card">
-          <h2 class="card-title" style="margin-bottom:14px;">H&amp;P 힌트</h2>
-          <div id="hpHintAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+          <h2 class="card-title" style="margin-bottom:14px;">답변 완료 문의</h2>
+          <div id="inquiryDoneAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- H&P 현황 -->
+      <div id="tab-hpholdpray" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">조회 주차</div><div class="stat-value" id="hpAdminWeekLabel">-</div></div>
+          <div class="stat-card"><div class="stat-label">기도 작성</div><div class="stat-value" id="hpAdminPrayerCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">정답 유저</div><div class="stat-value" id="hpAdminCorrectUserCount">-</div></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">유저별 H&amp;P 현황</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 유저에게 노출되는 3장의 기도제목과 이름 맞히기 정답 여부를 확인합니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshHPStatusBtn" onclick="loadAdminHPStatus()">새로고침</button>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;margin-bottom:12px;">
+            <input type="search" id="hpStatusSearch" placeholder="🔍 닉네임, 이름, 교구 검색" class="input" style="margin-bottom:0;" oninput="filterAdminHPStatus(this.value)" />
+            <input type="text" id="hpStatusWeekInput" placeholder="주차 예: w2" class="input" style="margin-bottom:0;" />
+          </div>
+          <div id="hpStatusList">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">탭을 열면 불러옵니다.</p>
+          </div>
         </div>
       </div>
 
@@ -862,6 +906,10 @@
     let _raffleTicketSearchTimer = null;
     let _eventLogLoaded = false;
     let _eventLogTypes = [];
+    let _adminHpRows = [];
+    let _adminHpFilter = '';
+    let _bbbOpsRows = [];
+    let _bbbOpsFilter = '';
 
     function parishSortIndex(parish) {
       const idx = PARISH_SORT_ORDER.indexOf(String(parish || ''));
@@ -1070,7 +1118,8 @@
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'checkin') loadCheckin();
-      if (panelId === 'bbbphotos') loadBBBPhotoApprovals();
+      if (panelId === 'bbbphotos') { loadBBBPhotoApprovals(); loadBBBPilgrimStatus(); }
+      if (panelId === 'hpholdpray') loadAdminHPStatus();
       if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
@@ -1087,6 +1136,9 @@
     document.getElementById('eventLogLimitInput').addEventListener('change', () => loadEventLogs(true));
     document.getElementById('eventLogSearchInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') loadEventLogs(true);
+    });
+    document.getElementById('hpStatusWeekInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') loadAdminHPStatus();
     });
 
     /* ── 유저 목록 ── */
@@ -2847,6 +2899,125 @@
       }).join('');
     }
 
+    function filterBBBPilgrimStatus(value) {
+      _bbbOpsFilter = String(value || '').trim().toLowerCase();
+      renderBBBPilgrimStatus(_bbbOpsRows);
+    }
+
+    async function loadBBBPilgrimStatus() {
+      const listEl = document.getElementById('bbbOpsStatusList');
+      const btn = document.getElementById('refreshBBBPilgrimStatusBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (btn) btn.disabled = true;
+      try {
+        const res = await callSupabaseAdminRpc('admin_bbb_pilgrim_status');
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        _bbbOpsRows = res.rows || [];
+        renderBBBPilgrimStatus(_bbbOpsRows);
+      } catch(e) {
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">서버 연결 오류</p>';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function bbbStatusText(photo) {
+      const status = photo && photo.status;
+      if (!status) return '미제출';
+      if (status === 'approved') return photo.rewarded ? '승인·지급' : '승인';
+      if (status === 'rejected') return '거절';
+      return '대기';
+    }
+
+    function bbbStatusColor(photo) {
+      const status = photo && photo.status;
+      if (status === 'approved') return 'var(--success)';
+      if (status === 'rejected') return '#f59e0b';
+      if (status === 'pending') return 'var(--danger)';
+      return 'var(--sub)';
+    }
+
+    function renderOpsPhotoMini(photo, label) {
+      const src = photo && photo.storagePath ? supabasePhotoUrl(photo.storagePath) : '';
+      return `
+        <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);min-width:0;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+            <strong style="font-size:13px;">${esc(label)}</strong>
+            <span style="font-size:11px;font-weight:800;color:${bbbStatusColor(photo)};background:var(--primary-soft);border-radius:999px;padding:3px 8px;white-space:nowrap;">${bbbStatusText(photo)}</span>
+          </div>
+          ${src
+            ? `<button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;"><img src="${esc(src)}" alt="${esc(label)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);" /></button>`
+            : '<div style="height:82px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:12px;">사진 없음</div>'
+          }
+        </div>`;
+    }
+
+    function renderBBBPilgrimStatus(rows) {
+      const listEl = document.getElementById('bbbOpsStatusList');
+      if (!listEl) return;
+      const query = _bbbOpsFilter;
+      const filtered = query
+        ? rows.filter(row => [row.userId, row.name, row.displayName, row.parish, row.groupName, row.careBuddy?.name, row.secretBuddy?.name]
+            .some(v => String(v || '').toLowerCase().includes(query)))
+        : rows;
+      if (!filtered.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">표시할 유저가 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = filtered.map(row => {
+        const assigned = Array.isArray(row.pilgrimAssignedSpots) ? row.pilgrimAssignedSpots : [];
+        const completed = Array.isArray(row.pilgrimCompletedSpots) ? row.pilgrimCompletedSpots : [];
+        const spotPhotos = Array.isArray(row.pilgrimSpotPhotos) ? row.pilgrimSpotPhotos : [];
+        const m1Text = bbbStatusText(row.m1);
+        const m2Text = bbbStatusText(row.m2);
+        return `
+          <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div style="min-width:0;">
+                <div style="font-weight:900;font-size:14px;">${esc(row.userId)}${row.name ? ` · ${esc(row.name)}` : ''}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(row.parish || '-')} · ${row.groupName ? `${esc(row.groupName)} ` : ''}${row.tier ? `· ${esc(row.tier)}` : ''}</div>
+              </div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+                <span style="font-size:11px;font-weight:800;color:${bbbStatusColor(row.m1)};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">M1 ${esc(m1Text)}</span>
+                <span style="font-size:11px;font-weight:800;color:${bbbStatusColor(row.m2)};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">M2 ${esc(m2Text)}</span>
+                <span style="font-size:11px;font-weight:800;color:${row.pilgrimCompleted ? 'var(--success)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">천로 ${completed.length}/${assigned.length || 2}</span>
+              </div>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:10px;">
+                <div style="background:var(--primary-soft);border-radius:10px;padding:10px;">
+                  <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px;">매칭</div>
+                  <div style="font-size:13px;line-height:1.7;">케어버디: <strong>${esc(row.careBuddy?.name || row.careBuddy?.userId || '-')}</strong></div>
+                  <div style="font-size:13px;line-height:1.7;">시크릿버디: <strong>${esc(row.secretBuddy?.name || row.secretBuddy?.userId || '-')}</strong>${row.secretRevealed ? ' · 공개' : ''}</div>
+                </div>
+                <div style="background:var(--primary-soft);border-radius:10px;padding:10px;">
+                  <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px;">천로역정</div>
+                  <div style="font-size:13px;line-height:1.7;">배정 스팟: <strong>${assigned.length ? assigned.map(v => Number(v) + 1).join(', ') : '-'}</strong></div>
+                  <div style="font-size:13px;line-height:1.7;">성공 스팟: <strong>${completed.length ? completed.map(v => Number(v) + 1).join(', ') : '-'}</strong></div>
+                  <div style="font-size:13px;line-height:1.7;">MISSION 3: <strong>${row.pilgrimCompleted ? '완료' : '진행 중'}</strong></div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:10px;">
+                ${renderOpsPhotoMini(row.m1, 'MISSION 1')}
+                ${renderOpsPhotoMini(row.m2, 'MISSION 2')}
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${assigned.length
+                  ? assigned.map(v => {
+                      const n = Number(v);
+                      const done = completed.map(Number).includes(n);
+                      const photo = spotPhotos.find(p => Number(p.spotIndex) === n);
+                      return `<span title="${esc(photo?.storagePath || '')}" style="font-size:12px;font-weight:800;color:${done ? '#166534' : '#991b1b'};background:${done ? '#dcfce7' : '#fee2e2'};border-radius:999px;padding:5px 9px;">스팟 ${n + 1} ${done ? '성공' : '미완료'}</span>`;
+                    }).join('')
+                  : '<span style="font-size:12px;color:var(--sub);">천로역정 스팟 미배정</span>'
+                }
+              </div>
+            </div>
+          </details>`;
+      }).join('');
+    }
+
     function renderBBBPhotoApprovalSlot(item, label) {
       if (!item) {
         return `<div style="border:1px dashed var(--line);border-radius:8px;padding:10px;min-height:138px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;">${label}<br>미제출</div>`;
@@ -2924,6 +3095,85 @@
     function openBBBPhotoPreview(btn) {
       const img = btn.querySelector('img');
       if (img && img.src) window.open(img.src, '_blank');
+    }
+
+    /* ── H&P 운영 현황 ── */
+    function filterAdminHPStatus(value) {
+      _adminHpFilter = String(value || '').trim().toLowerCase();
+      renderAdminHPStatus(_adminHpRows);
+    }
+
+    async function loadAdminHPStatus() {
+      const listEl = document.getElementById('hpStatusList');
+      const btn = document.getElementById('refreshHPStatusBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (btn) btn.disabled = true;
+      try {
+        const weekKey = document.getElementById('hpStatusWeekInput')?.value || '';
+        const res = await callSupabaseAdminRpc('admin_hold_pray_status', { p_week_key: weekKey || null });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        _adminHpRows = res.rows || [];
+        document.getElementById('hpAdminWeekLabel').textContent = res.weekKey || '-';
+        document.getElementById('hpAdminPrayerCount').textContent = _adminHpRows.filter(row => row.ownPrayer).length;
+        document.getElementById('hpAdminCorrectUserCount').textContent = _adminHpRows.filter(row => Number(row.correctCount || 0) > 0).length;
+        renderAdminHPStatus(_adminHpRows);
+      } catch(e) {
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">서버 연결 오류</p>';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function renderAdminHPStatus(rows) {
+      const listEl = document.getElementById('hpStatusList');
+      if (!listEl) return;
+      const query = _adminHpFilter;
+      const filtered = query
+        ? rows.filter(row => [row.userId, row.name, row.displayName, row.parish, row.ownPrayer]
+            .some(v => String(v || '').toLowerCase().includes(query)))
+        : rows;
+      if (!filtered.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">표시할 유저가 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = filtered.map(row => {
+        const cards = Array.isArray(row.cards) ? row.cards : [];
+        const answered = Number(row.answeredCount || 0);
+        const correct = Number(row.correctCount || 0);
+        return `
+          <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div style="min-width:0;">
+                <div style="font-weight:900;font-size:14px;">${esc(row.userId)}${row.name ? ` · ${esc(row.name)}` : ''}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(row.parish || '-')}</div>
+              </div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+                <span style="font-size:11px;font-weight:800;color:${row.ownPrayer ? 'var(--success)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">기도 ${row.ownPrayer ? '작성' : '미작성'}</span>
+                <span style="font-size:11px;font-weight:800;color:${answered ? 'var(--primary)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">응답 ${answered}/${cards.length || 3}</span>
+                <span style="font-size:11px;font-weight:800;color:${correct ? 'var(--success)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">정답 ${correct}/${cards.length || 3}</span>
+              </div>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <div style="background:var(--primary-soft);border-radius:10px;padding:10px;margin-bottom:10px;">
+                <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px;">내 기도제목</div>
+                <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;">${row.ownPrayer ? esc(row.ownPrayer) : '<span style="color:var(--sub);">미작성</span>'}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${cards.length ? cards.map(card => `
+                  <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);">
+                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;">
+                      <strong style="font-size:13px;">카드 ${Number(card.cardIndex) + 1} · ${esc(card.ownerName || card.ownerUserId || '작성자 없음')}</strong>
+                      <span style="font-size:11px;font-weight:800;color:${card.correct ? 'var(--success)' : (card.guessedName ? 'var(--danger)' : 'var(--sub)')};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">${card.correct ? '정답' : (card.guessedName ? '오답' : '미응답')}</span>
+                    </div>
+                    <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin-bottom:6px;">${esc(card.content || '')}</div>
+                    <div style="font-size:12px;color:var(--sub);">입력: <strong style="color:var(--text);">${esc(card.guessedName || '-')}</strong>${card.answeredAt ? ` · ${formatDateTime(card.answeredAt)}` : ''}</div>
+                  </div>
+                `).join('') : '<p style="color:var(--sub);font-size:13px;padding:6px 0;">노출할 H&P 카드가 없어요.</p>'}
+              </div>
+            </div>
+          </details>`;
+      }).join('');
     }
 
     /* ── B.B.B. ── */
@@ -3300,16 +3550,16 @@
 
     async function loadAdminInquiries() {
       const listEl = document.getElementById('inquiryAdminList');
-      const hintListEl = document.getElementById('hpHintAdminList');
+      const doneListEl = document.getElementById('inquiryDoneAdminList');
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
-      hintListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      doneListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       try {
         const res = await get({ action: 'getInquiries', adminPw });
         if (!res.ok) throw new Error();
         renderAdminInquiries(res.inquiries);
       } catch(e) {
         listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
-        hintListEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+        doneListEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
       }
     }
 
@@ -3319,9 +3569,10 @@
 
     function renderAdminInquiries(inquiries) {
       const listEl = document.getElementById('inquiryAdminList');
-      const hintListEl = document.getElementById('hpHintAdminList');
-      renderAdminInquiryList(listEl, inquiries.filter(inq => !isHpHintInquiry(inq)), '개발자 문의가 없어요.');
-      renderAdminInquiryList(hintListEl, inquiries.filter(isHpHintInquiry), 'H&P 힌트 요청이 없어요.');
+      const doneListEl = document.getElementById('inquiryDoneAdminList');
+      const normal = inquiries.filter(inq => !isHpHintInquiry(inq));
+      renderAdminInquiryList(listEl, normal.filter(inq => !inq.reply), '미답변 문의가 없어요.');
+      renderAdminInquiryList(doneListEl, normal.filter(inq => !!inq.reply), '답변 완료된 문의가 없어요.');
     }
 
     function renderAdminInquiryList(listEl, inquiries, emptyText) {
@@ -3329,48 +3580,34 @@
         listEl.innerHTML = `<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">${emptyText}</p>`;
         return;
       }
-      listEl.innerHTML = inquiries.map(inq => {
-        const isHint = isHpHintInquiry(inq);
-        const hintAnswer = isHint ? (inq.content.match(/\| 정답: (.+)$/) || [])[1] : null;
-        const hintMeta   = isHint ? (inq.content.match(/주차: ([^,]+), 카드: (\d+)번/) || []) : [];
-        return `
-        <div id="inqAdmin_${inq.id}" style="padding:16px 0; border-bottom:1px solid var(--line);">
-
-          <!-- 문의 헤더: 닉네임/날짜 + 뱃지 + 삭제 -->
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:10px;">
-            <div style="flex:1;">
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-                ${isHint ? '<span style="font-size:10px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.15);border:1px solid rgba(200,160,60,0.35);border-radius:999px;padding:1px 7px;white-space:nowrap;">H&P 힌트</span>' : ''}
-                <span style="font-size:12px; color:var(--sub);">${esc(inq.nickname)} · ${formatDate(inq.createdAt)}</span>
-              </div>
-              ${isHint && hintMeta[1]
-                ? `<div style="font-size:13px;color:var(--sub);margin-bottom:6px;">${hintMeta[1]}주차 · ${hintMeta[2]}번 카드 힌트 요청</div>
-                   ${hintAnswer ? `<div style="font-size:13px;font-weight:700;color:#b8860b;background:rgba(200,160,60,0.12);border:1px solid rgba(200,160,60,0.3);border-radius:8px;padding:6px 12px;display:inline-block;margin-bottom:4px;">정답: ${esc(hintAnswer)}</div>` : ''}`
-                : `<div style="font-size:14px; font-weight:600; line-height:1.6;">${esc(inq.content)}</div>`
-              }
+      listEl.innerHTML = inquiries.map(inq => `
+        <details id="inqAdmin_${inq.id}" style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+          <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+            <div style="min-width:0;">
+              <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:560px;">${esc(inq.content)}</div>
+              <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(inq.nickname)}${inq.name ? ` · ${esc(inq.name)}` : ''} · ${formatDate(inq.createdAt)}</div>
             </div>
             <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
               ${!inq.reply ? '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>' : '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변완료</span>'}
-              <button class="btn btn-danger btn-sm" onclick="deleteAdminInquiry('${inq.id}')">삭제</button>
+            </div>
+          </summary>
+          <div style="padding:0 14px 14px;">
+            <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;">${esc(inq.content)}</div>
+            <div style="background:var(--primary-soft); border-radius:12px; padding:12px;">
+              <div style="font-size:11px; font-weight:700; color:var(--sub); margin-bottom:8px;">답변</div>
+              <textarea id="replyInput_${inq.id}" class="input" rows="3"
+                placeholder="${inq.reply ? '답변을 수정하세요...' : '답변을 작성하세요...'}"
+                style="width:100%; resize:vertical; font-family:inherit; line-height:1.6; margin-bottom:8px; font-size:14px; background:var(--card);"
+              >${esc(inq.reply || '')}</textarea>
+              <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px;">
+                <button class="btn btn-danger btn-sm" onclick="deleteAdminInquiry('${inq.id}')">문의 삭제</button>
+                ${inq.reply ? `<button class="btn btn-ghost btn-sm" onclick="deleteReply('${inq.id}')">답변삭제</button>` : ''}
+                <button class="btn btn-primary btn-sm" style="width:auto;" onclick="submitReply('${inq.id}')">${inq.reply ? '수정' : '저장'}</button>
+              </div>
+              <div id="replyStatus_${inq.id}" class="status" style="margin-top:6px; text-align:right;"></div>
             </div>
           </div>
-
-          <!-- 답변 영역 -->
-          <div style="background:var(--primary-soft); border-radius:12px; padding:12px;">
-            <div style="font-size:11px; font-weight:700; color:var(--sub); margin-bottom:8px;">💬 답변</div>
-            <textarea id="replyInput_${inq.id}" class="input" rows="3"
-              placeholder="${inq.reply ? '답변을 수정하세요...' : '답변을 작성하세요...'}"
-              style="width:100%; resize:vertical; font-family:inherit; line-height:1.6; margin-bottom:8px; font-size:14px; background:var(--card);"
-            >${esc(inq.reply || '')}</textarea>
-            <div style="display:flex; justify-content:flex-end; align-items:center; gap:8px;">
-              ${inq.reply ? `<button class="btn btn-ghost btn-sm" onclick="deleteReply('${inq.id}')">답변삭제</button>` : ''}
-              <button class="btn btn-primary btn-sm" style="width:auto;" onclick="submitReply('${inq.id}')">${inq.reply ? '수정' : '저장'}</button>
-            </div>
-            <div id="replyStatus_${inq.id}" class="status" style="margin-top:6px; text-align:right;"></div>
-          </div>
-
-        </div>`;
-      }).join('');
+        </details>`).join('');
     }
 
     async function submitReply(id) {
@@ -3383,7 +3620,7 @@
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = '저장됐어요!';
-          _updateInqSaveUI(id, reply);
+          setTimeout(loadAdminInquiries, 300);
         } else {
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
