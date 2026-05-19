@@ -58,7 +58,6 @@ declare
   v_week_key text := nullif(trim(coalesce(p_week_key, '')), '');
   v_cards jsonb := '[]'::jsonb;
   v_correct_map jsonb := '{}'::jsonb;
-  v_hint_replies jsonb := '{}'::jsonb;
   v_revision text := '';
   v_ticket_awarded boolean := false;
   v_ticket_idx integer := -1;
@@ -137,42 +136,6 @@ begin
       lower(coalesce(owner.display_name, ''))
     );
 
-  with eligible_cards as (
-    select
-      hp.*,
-      md5(v_profile.id::text || ':' || v_week_key || ':' || hp.id::text) as hp_sort_key
-    from public.hold_pray_entries hp
-    where hp.visible = true
-      and coalesce(hp.week_key, v_week_key) = v_week_key
-      and (hp.profile_id is null or hp.profile_id <> v_profile.id)
-  ),
-  picked_cards as (
-    select *
-    from eligible_cards
-    order by hp_sort_key, created_at, id
-    limit 3
-  ),
-  ordered_cards as (
-    select
-      row_number() over (order by hp_sort_key, created_at, id) - 1 as card_index,
-      id
-    from picked_cards
-  ),
-  latest_hints as (
-    select distinct on (h.card_index)
-      h.card_index,
-      h.hint_text
-    from public.hold_pray_hints h
-    join ordered_cards oc on oc.card_index = h.card_index and oc.id = h.hold_pray_entry_id
-    where h.profile_id = v_profile.id
-      and h.week_key = v_week_key
-      and h.hint_text <> 'requested'
-    order by h.card_index, h.created_at desc
-  )
-  select coalesce(jsonb_object_agg(card_index::text, hint_text), '{}'::jsonb)
-  into v_hint_replies
-  from latest_hints;
-
   select exists(
     select 1
     from public.events
@@ -202,7 +165,7 @@ begin
     'correctMap', coalesce(v_correct_map, '{}'::jsonb),
     'ticketAlreadyAwarded', coalesce(v_ticket_awarded, false),
     'ticketCardIdx', coalesce(v_ticket_idx, -1),
-    'hintReplies', coalesce(v_hint_replies, '{}'::jsonb)
+    'hintReplies', '{}'::jsonb
   );
 end;
 $$;

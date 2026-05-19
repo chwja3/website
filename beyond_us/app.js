@@ -30,7 +30,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260519h';
+    const APP_VERSION = '20260519i';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -5038,7 +5038,7 @@
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = hpCached.ticketAlreadyAwarded || false;
         _hpTicketCardIdx = hpCached.ticketCardIdx ?? -1;
-        _hpHintReplies = hpCached.hintReplies || {};
+        _hpHintReplies = {};
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem(hpCorrectStorageKey(_hpWeekKey, i, nick));
           if (saved) _hpCorrectMap[i] = saved;
@@ -5067,7 +5067,7 @@
         const data = res;
         if (!data.ok) throw new Error(data.error || 'error');
         if (!isActiveAccount(nick)) return;
-        localStorage.setItem(hpCacheKey, JSON.stringify({ ...data, clientVersion: APP_VERSION }));
+        localStorage.setItem(hpCacheKey, JSON.stringify({ ...data, clientVersion: APP_VERSION, hintReplies: {} }));
         const sameWeek = hpCacheValid && hpCached.weekKey === data.weekKey;
         const prevIdx = _hpCurrentIdx;
         _hpLoadedFor = nick;
@@ -5078,7 +5078,7 @@
         _hpCorrectMap = {};
         _hpTicketAlreadyAwarded = data.ticketAlreadyAwarded || false;
         _hpTicketCardIdx = data.ticketCardIdx ?? -1;
-        _hpHintReplies = data.hintReplies || {};
+        _hpHintReplies = {};
         _hpCards.forEach((_, i) => {
           const saved = localStorage.getItem(hpCorrectStorageKey(_hpWeekKey, i, nick));
           if (saved) _hpCorrectMap[i] = saved;
@@ -5323,13 +5323,6 @@
           const hintText = data.hintText || data.hint || '초성 정보가 없어요';
           _hpHintReplies[cardIdx] = hintText;
           localStorage.removeItem(hpHintStorageKey(_hpWeekKey, cardIdx));
-          const hpCacheKey = 'beyondus_cache_hp_' + nick;
-          const cached = JSON.parse(localStorage.getItem(hpCacheKey) || 'null');
-          if (cached && cached.ok && cached.weekKey === _hpWeekKey) {
-            cached.clientVersion = APP_VERSION;
-            cached.hintReplies = { ...(cached.hintReplies || {}), [cardIdx]: hintText };
-            localStorage.setItem(hpCacheKey, JSON.stringify(cached));
-          }
           renderHpCard(cardIdx);
         } else if (data.error === 'anonymous') {
           alert('익명 기도제목은 힌트를 볼 수 없어요.');
