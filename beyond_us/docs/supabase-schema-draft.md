@@ -9,7 +9,7 @@
 | table | 역할 | 주요 컬럼 |
 |---|---|---|
 | `auth.users` | Supabase Auth 기본 계정 | Supabase 관리 |
-| `profiles` | 앱 유저 기본 정보 | `id`, `auth_user_id`, `participant_no`, `login_id`, `display_name`, `name`, `birth_date`, `gender`, `parish`, `role`, `account_status`, `is_dev`, `is_test`, `raffle_excluded`, `created_at`, `last_login_at`, `deleted_at`, `admin_note` |
+| `profiles` | 앱 유저 기본 정보 | `id`, `auth_user_id`, `participant_no`, `login_id`, `display_name`, `name`, `name_initials`, `birth_date`, `gender`, `parish`, `role`, `account_status`, `is_dev`, `is_test`, `raffle_excluded`, `created_at`, `last_login_at`, `deleted_at`, `admin_note` |
 | `profile_private_notes` | 민감하거나 운영진 전용 메모 | `profile_id`, `note`, `created_by`, `created_at` |
 
 - `profiles.login_id`는 대소문자를 구분하는 `text`다.

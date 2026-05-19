@@ -3171,8 +3171,18 @@
       if (!listEl) return;
       const query = _adminHpFilter;
       const filtered = query
-        ? rows.filter(row => [row.userId, row.name, row.displayName, row.parish, row.ownPrayer]
-            .some(v => String(v || '').toLowerCase().includes(query)))
+        ? rows.filter(row => {
+            const cards = Array.isArray(row.cards) ? row.cards : [];
+            return [
+              row.userId,
+              row.name,
+              row.nameInitials,
+              row.displayName,
+              row.parish,
+              row.ownPrayer,
+              ...cards.flatMap(card => [card.ownerName, card.ownerInitials, card.ownerUserId])
+            ].some(v => String(v || '').toLowerCase().includes(query));
+          })
         : rows;
       if (!filtered.length) {
         listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">표시할 유저가 없어요.</p>';
@@ -3192,7 +3202,7 @@
             <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
               <div style="min-width:0;">
                 <div style="font-weight:900;font-size:14px;">${esc(row.userId)}${row.name ? ` · ${esc(row.name)}` : ''}</div>
-                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(row.parish || '-')}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(row.parish || '-')}${row.nameInitials ? ` · 초성 ${esc(row.nameInitials)}` : ''}</div>
               </div>
               <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
                 <span style="font-size:11px;font-weight:800;color:${row.ownPrayer ? 'var(--success)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">기도 ${row.ownPrayer ? '작성' : '미작성'}</span>
@@ -3210,7 +3220,7 @@
                 ${cards.length ? cards.map(card => `
                   <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);">
                     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;">
-                      <strong style="font-size:13px;">카드 ${Number(card.cardIndex) + 1} · ${esc(card.ownerName || card.ownerUserId || '작성자 없음')}</strong>
+                      <strong style="font-size:13px;">카드 ${Number(card.cardIndex) + 1} · ${esc(card.ownerName || card.ownerUserId || '작성자 없음')}${card.ownerInitials ? ` (${esc(card.ownerInitials)})` : ''}</strong>
                       <span style="font-size:11px;font-weight:800;color:${card.correct ? 'var(--success)' : (card.guessedName ? 'var(--danger)' : 'var(--sub)')};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">${card.correct ? '정답' : (card.guessedName ? '오답' : '미응답')}</span>
                     </div>
                     <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;margin-bottom:6px;">${esc(card.content || '')}</div>
