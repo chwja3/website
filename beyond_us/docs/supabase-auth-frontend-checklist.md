@@ -1,0 +1,25 @@
+# Supabase auth frontend 체크리스트
+
+- [x] 현재 앱 인증이 GAS sessionToken 기반임을 확인.
+- [x] Supabase legacy 비밀번호 업데이트 pane 추가.
+- [x] `weak_password_needs_reset` 응답에서 업데이트 pane으로 이동.
+- [x] 새 비밀번호 6자 이상 검증과 확인값 검증 추가.
+- [x] `legacy-password-upgrade` Edge Function 호출 helper 추가.
+- [x] 성공 후 로그인 pane 복귀 처리.
+- [x] 앱 버전과 script cache bust 값 갱신.
+- [x] Supabase Auth REST password login helper 추가.
+- [x] synthetic email 생성 규칙을 프론트에 반영.
+- [x] Supabase 세션 localStorage 저장 helper 추가.
+- [x] Supabase auth mode를 `off`, `shadow`, `primary`로 분리.
+- [x] Supabase publishable key 확정 후 `SUPABASE_ANON_KEY` 반영.
+- [x] shadow mode에서 Supabase 로그인 실패 시 legacy 비밀번호 업데이트 pane 표시.
+- [x] legacy 업데이트 필요 시 앱 진입 전 auth pane이 보이도록 순서 조정.
+- [x] 비밀번호 업데이트 성공 후 보관한 GAS sessionToken으로 앱 진입.
+- [x] Supabase shadow mode를 DEV 환경으로 제한.
+- [x] 이미 승격된 계정의 기존 4자리 로그인에 안내 표시.
+- [x] 앱 데이터 API 전환 후 DEV에서 `SUPABASE_AUTH_MODE`를 `primary`로 전환.
+- [x] Supabase 로그인 성공 후 기존 GAS sessionToken 없이 앱에 진입하게 한다.
+- [x] DEV에서 Supabase data read를 기본값으로 전환한다.
+- [x] 회원가입, 비밀번호 재설정, 닉네임 찾기를 `app-auth` Edge Function 경로로 연결한다.
+- [ ] Supabase Edge Function `app-auth`를 DEV에 배포한다.
+- [ ] 실제 DEV 배포 후 모바일 로그인 modal 확인.

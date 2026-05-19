@@ -1911,6 +1911,16 @@
       background: #ef4444; display: none; flex-shrink: 0;
     }
     .drawer-notice-dot.visible { display: block; }
+    .drawer-item.is-coming-soon { color: var(--line); }
+    .drawer-item.is-coming-soon::before { opacity: 0.5; }
+    .drawer-item.is-coming-soon:hover { background: rgba(0,0,0,0.03); }
+    .drawer-coming-soon-tag {
+      margin-left: auto; flex-shrink: 0;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 999px;
+      background: rgba(0,0,0,0.05); color: var(--sub);
+      letter-spacing: 0.2px;
+    }
     .drawer-utility {
       padding: 10px 16px 6px;
       border-top: 1px solid var(--line);
@@ -1935,6 +1945,10 @@
       font-weight: 700;
       border-radius: 12px;
       margin-bottom: 8px !important;
+    }
+    .drawer-util-main .drawer-label {
+      position: relative;
+      display: inline-block;
     }
     .drawer-util-row {
       display: grid;

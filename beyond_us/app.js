@@ -9,53 +9,30 @@
     const IS_DEV_ENV = isDevEnvironment();
     const RAFFLE_PREVIEW_MODE = IS_DEV_ENV && new URLSearchParams(location.search).get('rafflePreview') === '1';
 
-    const API_BASE = IS_DEV_ENV
-      ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
-      : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
+    const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
+    const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
+    const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
+    const APP_AUTH_URL = `${SUPABASE_PROJECT_URL}/functions/v1/app-auth`;
+    const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
+    const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
+    const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
+    const LEGACY_PASSWORD_RESET_ERRORS = new Set([
+      'weak_password_needs_reset',
+      'password_migration_required',
+      'legacy_password_reset_required',
+    ]);
 
-    const AUTHLESS_ACTIONS = new Set(['login', 'register', 'resetPassword', 'adminLogin']);
-    function getSessionToken() {
-      return localStorage.getItem('beyondus_session_token') || '';
-    }
-    function withSession(body) {
-      const payload = Object.assign({}, body);
-      if (!payload.adminPw && !AUTHLESS_ACTIONS.has(payload.action) && !payload.sessionToken) {
-        const token = getSessionToken();
-        if (token) payload.sessionToken = token;
-      }
-      return payload;
-    }
-    function sessionParam() {
-      const token = getSessionToken();
-      return token ? `&sessionToken=${encodeURIComponent(token)}` : '';
-    }
-    function post(body) {
-      return fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(withSession(body))
-      }).then(r => r.json());
+    function isSupabaseAuthConfigured() {
+      return Boolean(SUPABASE_PROJECT_URL && SUPABASE_ANON_KEY);
     }
 
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260515s';
-    const MAINTENANCE_MODE = false;
-    if (MAINTENANCE_MODE && !IS_DEV_ENV) {
-      if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-      document.addEventListener('DOMContentLoaded', () => {
-        document.body.innerHTML = `
-          <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:#faf6ef;color:#2c2417;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;">
-            <section style="max-width:420px;">
-              <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:128px;height:auto;margin-bottom:28px;" />
-              <h1 style="font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:850;">잠시 점검 중입니다.</h1>
-              <p style="font-size:15px;line-height:1.8;margin:0;color:#6f6254;">더 안정적인 운영을 위해 서버와 데이터를 정리하고 있어요.<br>작업이 끝나면 다시 열어둘게요.</p>
-            </section>
-          </main>`;
-      });
-      throw new Error('maintenance_mode');
-    }
+    const APP_VERSION = '20260519a';
+    const MAINTENANCE_MODE = true;
+    const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -310,11 +287,7 @@
       const btn = document.getElementById('devResetCardBtn');
       if (btn) { btn.disabled = true; btn.textContent = '초기화 중...'; }
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'devResetCards', userId: currentNickname })),
-        }).then(r => r.json());
+        const res = await callSupabaseRpc('dev_reset_my_cards', { p_login_id: currentNickname }, { allowOkFalse: true });
         if (!res.ok) {
           alert('초기화 실패: ' + (res.error || '알 수 없는 오류'));
           return;
@@ -379,6 +352,47 @@
       if (!appOpenDate) return false;
       return new Date().toISOString().slice(0, 10) >= appOpenDate;
     }
+
+    function isMaintenanceBlocked(nickname) {
+      if (!MAINTENANCE_MODE || IS_DEV_ENV) return false;
+      return !MAINTENANCE_ALLOWED_NICKNAMES.has(String(nickname || ''));
+    }
+
+    function showMaintenanceNotice() {
+      hideSplash();
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.add('hidden');
+      document.getElementById('comingSoonScreen').classList.add('hidden');
+
+      let screen = document.getElementById('maintenanceScreen');
+      if (!screen) {
+        screen = document.createElement('div');
+        screen.id = 'maintenanceScreen';
+        screen.innerHTML = `
+          <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:#faf6ef;color:#2c2417;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;">
+            <section style="max-width:430px;">
+              <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:126px;height:auto;margin-bottom:28px;" />
+              <p style="display:inline-flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:999px;background:#efe5d1;color:#7b4fa6;font-size:12px;font-weight:850;margin:0 0 14px;">20:00~21:00</p>
+              <h1 style="font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:850;">서버 이전 작업 중입니다.</h1>
+              <p style="font-size:15px;line-height:1.8;margin:0;color:#6f6254;">더욱 빨라지고 쾌적해진 beyond us를 기대해주세요!</p>
+              <button type="button" id="maintenanceSwitchAccountBtn" style="margin-top:24px;border:1px solid #d8cbb7;background:#fffaf2;color:#2c2417;border-radius:999px;padding:10px 16px;font-weight:800;cursor:pointer;">개발자 계정으로 로그인</button>
+            </section>
+          </main>`;
+        document.body.appendChild(screen);
+        screen.querySelector('#maintenanceSwitchAccountBtn').addEventListener('click', () => {
+          clearSupabaseSession();
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('beyondus_'))
+            .forEach(k => localStorage.removeItem(k));
+          currentNickname = null;
+          currentParish = null;
+          screen.classList.add('hidden');
+          showAuth('login');
+        });
+      }
+      screen.classList.remove('hidden');
+    }
+
     /* ── Coming Soon 캐러셀 ── */
     let _csIdx = 0;
     let _csTimer = null;
@@ -527,6 +541,7 @@
 
     function showComingSoon() {
       hideSplash();
+      document.getElementById('maintenanceScreen')?.classList.add('hidden');
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.remove('hidden');
@@ -545,10 +560,10 @@
         const wk = getWeekKey();
         const nick = localStorage.getItem('beyondus_nickname') || '';
         const [res] = await Promise.all([
-          fetch(`${API_BASE}?action=getHoldPray&weekKey=${encodeURIComponent(wk)}&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          apiClient.getHoldPray(wk),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
-        const d = await res.json();
+        const d = res;
         const previewContent = d.ok && d.cards && d.cards[0] && d.cards[0].content;
         if (previewContent) {
           el.textContent = previewContent;
@@ -567,6 +582,7 @@
     function showAuth(pane) {
       hideSplash();
       csStopAuto();
+      document.getElementById('maintenanceScreen')?.classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('appScreen').classList.add('hidden');
@@ -587,6 +603,11 @@
     }
 
     function showApp() {
+      if (isMaintenanceBlocked(currentNickname)) {
+        showMaintenanceNotice();
+        return;
+      }
+      document.getElementById('maintenanceScreen')?.classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
@@ -730,13 +751,15 @@
       updateInquiryLoginUI();
     }
 
+    let pendingLegacyPasswordUpgrade = null;
+
     /* ════ Auth 패인 전환 ════ */
     function switchAuthPane(pane) {
-      ['register', 'login', 'reset', 'findNickname'].forEach(p => {
+      ['register', 'login', 'legacyUpgrade', 'reset', 'findNickname'].forEach(p => {
         document.getElementById(p + 'Pane').classList.add('hidden');
       });
       document.getElementById(pane + 'Pane').classList.remove('hidden');
-      ['registerStatus', 'loginStatus', 'resetStatus', 'findNicknameStatus'].forEach(id => {
+      ['registerStatus', 'loginStatus', 'legacyUpgradeStatus', 'resetStatus', 'findNicknameStatus'].forEach(id => {
         const el = document.getElementById(id);
         el.textContent = '';
         el.className = 'auth-status';
@@ -744,30 +767,476 @@
       document.getElementById('resetDuplicates').style.display = 'none';
     }
 
-    function saveAuth(nickname, sessionToken, parish) {
+    function needsLegacyPasswordReset(data) {
+      return data && LEGACY_PASSWORD_RESET_ERRORS.has(data.error);
+    }
+
+    async function sha256Hex(value) {
+      const bytes = new TextEncoder().encode(String(value));
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function syntheticAuthEmail(loginId) {
+      const hash = await sha256Hex(String(loginId || '').trim());
+      return `u_${hash}@${SYNTHETIC_AUTH_EMAIL_DOMAIN}`;
+    }
+
+    async function signInWithSupabasePassword(loginId, password) {
+      if (!isSupabaseAuthConfigured()) {
+        return { ok: false, error: 'supabase_auth_disabled' };
+      }
+      const email = await syntheticAuthEmail(loginId);
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: data.error_code || data.error || 'supabase_auth_failed',
+          message: data.msg || data.message || '',
+          status: res.status,
+        };
+      }
+      return { ok: true, data, email };
+    }
+
+    function saveSupabaseSession(loginId, authResult) {
+      if (!authResult || !authResult.data) return;
+      const data = authResult.data;
+      localStorage.setItem('beyondus_supabase_login_id', loginId || '');
+      localStorage.setItem('beyondus_supabase_user_id', (data.user && data.user.id) || '');
+      localStorage.setItem('beyondus_supabase_access_token', data.access_token || '');
+      localStorage.setItem('beyondus_supabase_refresh_token', data.refresh_token || '');
+      localStorage.setItem('beyondus_supabase_expires_at', String(data.expires_at || ''));
+    }
+
+    function getSupabaseRefreshToken() {
+      return localStorage.getItem('beyondus_supabase_refresh_token') || '';
+    }
+
+    function getSupabaseExpiresAt() {
+      return Number(localStorage.getItem('beyondus_supabase_expires_at') || '0') || 0;
+    }
+
+    function hasSupabaseStoredSession() {
+      return isSupabaseAuthConfigured() && Boolean(getSupabaseAccessToken() || getSupabaseRefreshToken());
+    }
+
+    function clearSupabaseSession() {
+      [
+        'beyondus_supabase_login_id',
+        'beyondus_supabase_user_id',
+        'beyondus_supabase_access_token',
+        'beyondus_supabase_refresh_token',
+        'beyondus_supabase_expires_at',
+      ].forEach(key => localStorage.removeItem(key));
+    }
+
+    async function refreshSupabaseSession() {
+      const refreshToken = getSupabaseRefreshToken();
+      if (!refreshToken) return { ok: false, error: 'missing_refresh_token' };
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error_code || data.error || 'refresh_failed', status: res.status };
+      }
+      saveSupabaseSession(localStorage.getItem('beyondus_nickname') || '', { data });
+      return { ok: true, data };
+    }
+
+    async function ensureSupabaseSession() {
+      if (!isSupabaseAuthConfigured()) return { ok: false, error: 'supabase_auth_disabled' };
+      const accessToken = getSupabaseAccessToken();
+      const expiresAt = getSupabaseExpiresAt();
+      if (accessToken && (!expiresAt || Date.now() < (expiresAt - 60) * 1000)) {
+        return { ok: true };
+      }
+      return refreshSupabaseSession();
+    }
+
+    async function trySupabaseLogin(loginId, password) {
+      if (!isSupabaseAuthConfigured()) return { ok: false, skipped: true };
+      const authResult = await signInWithSupabasePassword(loginId, password);
+      if (authResult.ok) saveSupabaseSession(loginId, authResult);
+      return authResult;
+    }
+
+    function showLegacyPasswordUpgrade(nickname, password) {
+      pendingLegacyPasswordUpgrade = { nickname, password };
+      const nameEl = document.getElementById('legacyUpgradeNicknameDisplay');
+      const pwEl = document.getElementById('legacyNewPassword');
+      const confirmEl = document.getElementById('legacyNewPasswordConfirm');
+      if (nameEl) nameEl.textContent = nickname ? `${nickname} 계정의 비밀번호를 업데이트해요.` : '';
+      if (pwEl) pwEl.value = '';
+      if (confirmEl) confirmEl.value = '';
+      switchAuthPane('legacyUpgrade');
+      const statusEl = document.getElementById('legacyUpgradeStatus');
+      if (statusEl) {
+        statusEl.textContent = '기존 비밀번호 확인이 완료됐어요. 새 비밀번호를 설정해주세요.';
+        statusEl.className = 'auth-status success';
+      }
+      if (pwEl) setTimeout(() => pwEl.focus(), 100);
+    }
+
+    function cancelLegacyPasswordUpgrade() {
+      pendingLegacyPasswordUpgrade = null;
+      const pwEl = document.getElementById('legacyNewPassword');
+      const confirmEl = document.getElementById('legacyNewPasswordConfirm');
+      if (pwEl) pwEl.value = '';
+      if (confirmEl) confirmEl.value = '';
+      switchAuthPane('login');
+    }
+
+    async function callLegacyPasswordUpgrade(loginId, password, newPassword) {
+      const res = await fetch(LEGACY_PASSWORD_UPGRADE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginId, password, newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && !data.error) data.error = 'request_failed';
+      return data;
+    }
+
+    function getSupabaseAccessToken() {
+      return localStorage.getItem('beyondus_supabase_access_token') || '';
+    }
+
+    function getRequiredPasswordLength() {
+      return 6;
+    }
+
+    async function callAppAuth(action, payload, options) {
+      const opts = options || {};
+      const headers = { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+      if (opts.requireAuth === true) {
+        const token = getSupabaseAccessToken();
+        if (!token) throw new Error('supabase_auth_required');
+        headers.Authorization = `Bearer ${token}`;
+      }
+      const res = await fetch(APP_AUTH_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(Object.assign({ action }, payload || {})),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && !data.error) data.error = 'request_failed';
+      return data;
+    }
+
+    async function callSupabaseRpc(functionName, args, options) {
+      const opts = options || {};
+      const token = getSupabaseAccessToken();
+      if (opts.requireAuth !== false && !token) throw new Error('supabase_auth_required');
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token || SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(args || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false && opts.allowOkFalse !== true)) {
+        const error = new Error((data && (data.error || data.message)) || `supabase_rpc_${functionName}_failed`);
+        error.response = data;
+        error.status = res.status;
+        throw error;
+      }
+      return data;
+    }
+
+    function supabasePhotoUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw.startsWith('data:')) return raw;
+      if (raw.includes('/storage/v1/object/') && !raw.includes('/storage/v1/object/public/')) {
+        return raw.replace('/storage/v1/object/', '/storage/v1/object/public/');
+      }
+      if (/^https?:\/\//i.test(raw)) return raw;
+      return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    }
+
+    function normalizeMissionPhotoUrls(data) {
+      const next = Object.assign({}, data || {});
+      if (next.myPhoto) next.myPhoto = supabasePhotoUrl(next.myPhoto);
+      if (next.myPhotoM2) next.myPhotoM2 = supabasePhotoUrl(next.myPhotoM2);
+      if (Array.isArray(next.myPhotoM3)) next.myPhotoM3 = next.myPhotoM3.map(src => src ? supabasePhotoUrl(src) : null);
+      if (Array.isArray(next.photos)) {
+        next.photos = next.photos.map(item => Object.assign({}, item, {
+          photoBase64: supabasePhotoUrl(item && item.photoBase64),
+        }));
+      }
+      return next;
+    }
+
+    function normalizeNoticeImageUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return JSON.stringify(parsed.map(src => supabasePhotoUrl(src)));
+      } catch(e) {}
+      return supabasePhotoUrl(raw);
+    }
+
+    function dataUrlToBlob(dataUrl) {
+      const raw = String(dataUrl || '');
+      const parts = raw.split(',');
+      if (parts.length < 2) throw new Error('invalid_photo_data');
+      const meta = parts[0] || '';
+      const mime = (meta.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+      const bin = atob(parts.slice(1).join(','));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+
+    function safeStoragePathPart(value) {
+      return String(value || '')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'user';
+    }
+
+    async function uploadSupabaseMissionPhoto(dataUrl, missionType) {
+      const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_auth_required');
+      const blob = dataUrlToBlob(dataUrl);
+      const ext = blob.type === 'image/png' ? 'png' : (blob.type === 'image/webp' ? 'webp' : 'jpg');
+      const path = [
+        safeStoragePathPart(currentNickname),
+        safeStoragePathPart(missionType || 'mission'),
+        `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
+      ].join('/');
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${path}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': blob.type || 'image/jpeg',
+          'x-upsert': 'true',
+        },
+        body: blob,
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(detail || 'photo_upload_failed');
+      }
+      return path;
+    }
+
+    const apiClient = {
+      async getDashboard(options) {
+        return callSupabaseRpc('get_app_bootstrap', {}, { requireAuth: false });
+      },
+      async getUserStatus(options) {
+        const opts = options || {};
+        return callSupabaseRpc('get_user_status', {
+          p_login_id: currentNickname,
+          p_week_key: getWeekKey(),
+          p_lite: opts.full !== true,
+        });
+      },
+      async submitMission(payload) {
+        const body = payload || {};
+        return callSupabaseRpc('submit_pre_mission', {
+          p_login_id: body.userId || currentNickname || '',
+          p_week_key: body.weekKey || getWeekKey(),
+          p_date_key: body.dateKey || getTodayKey(),
+          p_items: body.items || [],
+          p_request_id: body.requestId || '',
+        });
+      },
+      async drawCardPack(payload) {
+        const body = payload || {};
+        return callSupabaseRpc('draw_card_pack', {
+          p_login_id: body.userId || currentNickname || '',
+          p_week_key: body.weekKey || getWeekKey(),
+          p_pack_type: body.packType || 'normal',
+          p_request_id: body.requestId || '',
+          p_test_mode: body.testMode === true,
+        }, { allowOkFalse: true });
+      },
+      async getPublicCollection(nickname) {
+        return callSupabaseRpc('get_public_collection', { p_login_id: nickname }, { allowOkFalse: true });
+      },
+      async getTrades() {
+        return callSupabaseRpc('get_user_trades', { p_login_id: currentNickname }, { allowOkFalse: true });
+      },
+      async requestTrade(payload) {
+        const body = payload || {};
+        return callSupabaseRpc('request_trade', {
+          p_login_id: currentNickname,
+          p_target_login_id: body.targetNickname || '',
+          p_requester_card_id: Number(body.requesterCardId) || 0,
+          p_target_card_id: Number(body.targetCardId) || 0,
+        }, { allowOkFalse: true });
+      },
+      async acceptTrade(tradeId) {
+        return callSupabaseRpc('accept_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+      },
+      async rejectTrade(tradeId) {
+        return callSupabaseRpc('reject_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+      },
+      async cancelTrade(tradeId) {
+        return callSupabaseRpc('cancel_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+      },
+      async prayForTrade(tradeId) {
+        return callSupabaseRpc('pray_for_trade', { p_login_id: currentNickname, p_trade_id: tradeId }, { allowOkFalse: true });
+      },
+      async getInquiries() {
+        return callSupabaseRpc('get_my_inquiries', { p_login_id: currentNickname }, { allowOkFalse: true });
+      },
+      async postInquiry(content) {
+        return callSupabaseRpc('create_inquiry', { p_login_id: currentNickname, p_content: content }, { allowOkFalse: true });
+      },
+      async editInquiry(id, content) {
+        return callSupabaseRpc('update_inquiry', { p_login_id: currentNickname, p_id: id, p_content: content }, { allowOkFalse: true });
+      },
+      async deleteInquiry(id) {
+        return callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
+      },
+      async getBBBMessages(nickname, forceRefresh) {
+        return callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
+      },
+      async sendBBBMessage(message) {
+        return callSupabaseRpc('send_bbb_message', { p_login_id: currentNickname, p_message: message }, { allowOkFalse: true });
+      },
+      async guessBBBSecret(guess) {
+        return callSupabaseRpc('guess_bbb_secret', { p_login_id: currentNickname, p_guess: guess }, { allowOkFalse: true });
+      },
+      async getBBB(nickname) {
+        const data = await callSupabaseRpc('get_bbb_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
+      },
+      async uploadMissionPhoto(dataUrl, missionType) {
+        const path = await uploadSupabaseMissionPhoto(dataUrl, missionType);
+        const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
+        const data = await callSupabaseRpc('submit_mission_photo', {
+          p_login_id: currentNickname,
+          p_mission_type: missionType || 'm1',
+          p_storage_path: path,
+          p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
+        }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
+      },
+      async deleteMissionPhoto(missionType) {
+        const spotMatch = String(missionType || '').match(/^m3_(\d+)$/);
+        const data = await callSupabaseRpc('delete_mission_photo', {
+          p_login_id: currentNickname,
+          p_mission_type: missionType || 'm1',
+          p_spot_index: spotMatch ? Number(spotMatch[1]) : null,
+        }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
+      },
+      async getHoldPray(weekKey) {
+        const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
+        return callSupabaseRpc('get_hold_pray', {
+          p_login_id: nick,
+          p_week_key: weekKey || '',
+        }, { allowOkFalse: true });
+      },
+      async submitHoldPrayGuess(weekKey, cardIndex, guess) {
+        const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
+        return callSupabaseRpc('submit_hold_pray_guess', {
+          p_login_id: nick,
+          p_week_key: weekKey || '',
+          p_card_index: Number(cardIndex) || 0,
+          p_guess: guess || '',
+        }, { allowOkFalse: true });
+      },
+      async postHpHint(weekKey, cardIndex) {
+        const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
+        return callSupabaseRpc('post_hold_pray_hint', {
+          p_login_id: nick,
+          p_week_key: weekKey || '',
+          p_card_index: Number(cardIndex) || 0,
+        }, { allowOkFalse: true });
+      },
+    };
+
+    function saveAuth(nickname, parish) {
       const prev = localStorage.getItem('beyondus_nickname');
       if (prev && prev !== nickname) {
         clearAccountScopedLocalState();
         resetAccountScopedState({ clearDom: true });
       }
       localStorage.setItem('beyondus_nickname', nickname);
-      if (sessionToken) localStorage.setItem('beyondus_session_token', sessionToken);
+      localStorage.removeItem('beyondus_session_token');
       localStorage.removeItem('beyondus_password');
       localStorage.setItem('beyondus_parish',   parish);
       currentNickname = nickname;
       currentParish   = parish;
     }
 
-    /* 자동 로그인 — 캐시 신뢰 방식 (즉시 진입, 백그라운드 검증) */
+    async function enterWithSupabaseLoginData(nickname, authData, sessionData) {
+      let profile = sessionData && sessionData.ok ? sessionData : null;
+      if (!profile) {
+        profile = await callAppAuth('session', {}, { requireAuth: true });
+      }
+      if (!profile || !profile.ok) {
+        throw new Error((profile && profile.error) || 'supabase_session_profile_failed');
+      }
+
+      const user = (authData && authData.user) || {};
+      const meta = user.user_metadata || {};
+      const appMeta = user.app_metadata || {};
+      const role = profile.role || appMeta.role || meta.role || 'user';
+      const resolvedNickname = profile.nickname || nickname || meta.login_id || '';
+      const parish = profile.parish || meta.parish || '';
+      const isDev = profile.isDev === true || role === 'dev';
+      const isStaff = profile.isStaff === true || role === 'admin' || role === 'dev' || isDev;
+      const appOpenDate = profile.appOpenDate || localStorage.getItem('beyondus_app_open_date') || '';
+
+      saveAuth(resolvedNickname, parish);
+      localStorage.setItem('beyondus_is_staff', String(isStaff));
+      localStorage.setItem('beyondus_is_dev', String(isDev));
+      localStorage.setItem('beyondus_app_open_date', appOpenDate);
+      updateUserBadge();
+
+      if (isMaintenanceBlocked(resolvedNickname)) {
+        showMaintenanceNotice();
+        return;
+      }
+
+      if (shouldEnterApp(isStaff, appOpenDate)) {
+        showApp();
+        syncInitialData().catch(() => {});
+      } else {
+        showComingSoon();
+      }
+    }
+
+    /* 자동 로그인 — Supabase 세션 복원 */
     async function autoLogin() {
       console.warn('[DIAG] autoLogin() called at', new Date().toISOString());
       const savedNickname = localStorage.getItem('beyondus_nickname');
-      const savedToken    = localStorage.getItem('beyondus_session_token');
-      const savedPassword = localStorage.getItem('beyondus_password'); // 구버전 캐시 1회 마이그레이션용
       const savedParish   = localStorage.getItem('beyondus_parish');
+      const hasStoredSupabaseSession = hasSupabaseStoredSession();
 
-      if (!savedNickname || (!savedToken && !savedPassword)) {
-        showAuth('register');
+      if (!savedNickname || !hasStoredSupabaseSession) {
+        localStorage.removeItem('beyondus_session_token');
+        localStorage.removeItem('beyondus_password');
+        showAuth(savedNickname ? 'login' : 'register');
         renderDrawSection();
         return;
       }
@@ -776,55 +1245,40 @@
       currentNickname = savedNickname;
       currentParish   = savedParish || '';
       updateUserBadge();
+      if (isMaintenanceBlocked(savedNickname)) {
+        showMaintenanceNotice();
+        return;
+      }
       showApp();
       const cachedConfig = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
       if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
       const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
       if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
       hideSplash();
-      syncInitialData({ silent: true }).catch(() => {});
 
-      // 백그라운드에서 서버 검증 (세션 갱신 포함)
       try {
-        const res  = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(savedToken
-            ? { action: 'login', nickname: savedNickname, sessionToken: savedToken }
-            : { action: 'login', nickname: savedNickname, password: savedPassword })
-        });
-        const data = await res.json();
-        if (!data.ok) {
-          // GAS 일시 오류(ok:false+message)는 무시하고 캐시 유지
-          // 명확한 인증 실패(잘못된 토큰·없는 닉네임)일 때만 로그아웃
-          const isAuthFail = data.error === 'wrong_password' || data.error === 'not_found';
-          if (isAuthFail) {
-            console.warn('[DIAG] autoLogin auth-fail. response=', data, 'savedNickname=', savedNickname, 'hadToken=', !!savedToken);
-            // 부드러운 클리어: 인증 키만 제거, 닉네임/교구/캐시는 유지
-            // (다중 기기 핑퐁으로 일시적 토큰 무효화가 발생해도 사용자 데이터는 보존)
-            localStorage.removeItem('beyondus_session_token');
-            localStorage.removeItem('beyondus_password');
-            currentNickname = null;
-            currentParish   = null;
-            showAuth('login');
-            // 닉네임 자동 입력 — 비번만 다시 치면 됨
-            const loginNickEl = document.getElementById('loginNickname');
-            if (loginNickEl && savedNickname) {
-              loginNickEl.value = savedNickname;
-              const loginPwEl = document.getElementById('loginPassword');
-              if (loginPwEl) setTimeout(() => loginPwEl.focus(), 100);
-            }
-          } else {
-            console.warn('[DIAG] autoLogin server returned ok:false but not auth-fail. ignoring. response=', data);
-          }
-        } else {
-          saveAuth(savedNickname, data.sessionToken || savedToken || '', data.parish || savedParish || '');
-          localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
-          localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
-          localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
+        const sessionResult = await ensureSupabaseSession();
+        if (!sessionResult.ok) throw new Error(sessionResult.error || 'supabase_session_expired');
+        const profile = await callAppAuth('session', {}, { requireAuth: true });
+        if (!profile.ok) throw new Error(profile.error || 'supabase_session_profile_failed');
+        saveAuth(profile.nickname || savedNickname, profile.parish || savedParish || '');
+        localStorage.setItem('beyondus_is_staff', String(profile.isStaff === true));
+        localStorage.setItem('beyondus_is_dev', String(profile.isDev === true));
+        localStorage.setItem('beyondus_app_open_date', profile.appOpenDate || '');
+        updateUserBadge();
+        if (isMaintenanceBlocked(profile.nickname || savedNickname)) {
+          showMaintenanceNotice();
+          return;
         }
+        syncInitialData({ silent: true }).catch(() => {});
       } catch(e) {
-        console.warn('[DIAG] autoLogin network/parse error (cache 유지)', e);
+        console.warn('[DIAG] Supabase autoLogin auth-fail', e);
+        clearSupabaseSession();
+        localStorage.removeItem('beyondus_session_token');
+        localStorage.removeItem('beyondus_password');
+        currentNickname = null;
+        currentParish = null;
+        showAuth('login');
       }
     }
 
@@ -845,36 +1299,24 @@
         statusEl.textContent = '모든 항목을 입력해주세요.'; return;
       }
       if (nickname.length < 2) { statusEl.textContent = '닉네임은 2자 이상이어야 해요.'; return; }
-      if (password.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+      const minPasswordLength = getRequiredPasswordLength();
+      if (password.length < minPasswordLength) { statusEl.textContent = `비밀번호는 ${minPasswordLength}자 이상이어야 해요.`; return; }
 
       const btn = document.getElementById('registerBtn');
       btn.disabled = true;
       const dotsTimerReg = animDots(statusEl, '가입 중');
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'register', name, parish, nickname, password })
-        });
-        const data = await res.json();
+        const data = await callAppAuth('register', { name, parish, nickname, password });
         if (data.ok) {
+          const authResult = await trySupabaseLogin(nickname, password);
+          if (!authResult.ok) throw new Error(authResult.error || 'supabase_login_after_register_failed');
           stopAnimDots(dotsTimerReg, statusEl, '');
-          const registeredParish = data.parish || parish;
-          const isStaff = data.isStaff === true;
-          const appOpenDate = data.appOpenDate || '';
-          saveAuth(nickname, data.sessionToken || '', registeredParish);
-          localStorage.setItem('beyondus_is_staff', String(isStaff));
-          localStorage.setItem('beyondus_is_dev',   String(data.isDev === true));
-          localStorage.setItem('beyondus_app_open_date', appOpenDate);
-          updateUserBadge();
-          if (shouldEnterApp(isStaff, appOpenDate)) {
-            showApp(); syncInitialData().catch(() => {});
-          } else {
-            showComingSoon();
-          }
+          await enterWithSupabaseLoginData(nickname, authResult.data, data);
         } else if (data.error === 'duplicate') {
           stopAnimDots(dotsTimerReg, statusEl, '이미 사용 중인 닉네임이에요. 다른 닉네임을 써주세요.');
+        } else if (data.error === 'invalid_password') {
+          stopAnimDots(dotsTimerReg, statusEl, `비밀번호는 ${data.minPasswordLength || minPasswordLength}자 이상이어야 해요.`);
         } else {
           stopAnimDots(dotsTimerReg, statusEl, '오류가 발생했어요. 다시 시도해주세요.');
         }
@@ -898,34 +1340,99 @@
       const dotsTimerLogin = animDots(statusEl, '로그인 중');
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'login', nickname, password })
-        });
-        const data = await res.json();
-        if (data.ok) {
+        const authResult = await trySupabaseLogin(nickname, password);
+        if (authResult.ok) {
+          const profile = await callAppAuth('session', {}, { requireAuth: true });
           stopAnimDots(dotsTimerLogin, statusEl, '');
-          saveAuth(nickname, data.sessionToken || '', data.parish || '');
-          localStorage.setItem('beyondus_is_staff',      String(data.isStaff === true));
-          localStorage.setItem('beyondus_is_dev',        String(data.isDev   === true));
-          localStorage.setItem('beyondus_app_open_date', data.appOpenDate || '');
-          updateUserBadge();
-          if (shouldEnterApp(data.isStaff, data.appOpenDate)) {
-            showApp();
-            syncInitialData().catch(() => {});
-          } else {
-            showComingSoon();
-          }
-        } else if (data.error === 'not_found') {
-          stopAnimDots(dotsTimerLogin, statusEl, '닉네임을 찾을 수 없어요.');
-        } else if (data.error === 'wrong_password') {
-          stopAnimDots(dotsTimerLogin, statusEl, '비밀번호가 틀렸어요.');
-        } else {
-          stopAnimDots(dotsTimerLogin, statusEl, '오류가 발생했어요.');
+          await enterWithSupabaseLoginData(nickname, authResult.data, profile);
+          return;
         }
+        const legacyProbe = await callLegacyPasswordUpgrade(nickname, password, '');
+        if (needsLegacyPasswordReset(legacyProbe)) {
+          stopAnimDots(dotsTimerLogin, statusEl, '');
+          showLegacyPasswordUpgrade(nickname, password);
+          return;
+        }
+        if (legacyProbe && legacyProbe.error === 'already_migrated') {
+          stopAnimDots(dotsTimerLogin, statusEl, '이미 비밀번호 업데이트가 완료된 계정이에요. 새 비밀번호로 로그인해주세요.');
+          return;
+        }
+        stopAnimDots(dotsTimerLogin, statusEl, '닉네임 또는 비밀번호를 다시 확인해주세요.');
       } catch(e) {
         stopAnimDots(dotsTimerLogin, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('legacyUpgradeBtn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('legacyUpgradeStatus');
+      const btn = document.getElementById('legacyUpgradeBtn');
+      const newPassword = document.getElementById('legacyNewPassword').value;
+      const confirmPassword = document.getElementById('legacyNewPasswordConfirm').value;
+
+      statusEl.className = 'auth-status';
+      if (!pendingLegacyPasswordUpgrade) {
+        statusEl.textContent = '로그인 화면에서 다시 시도해주세요.';
+        return;
+      }
+      if (!newPassword || !confirmPassword) {
+        statusEl.textContent = '새 비밀번호를 모두 입력해주세요.';
+        return;
+      }
+      if (newPassword.length < 6) {
+        statusEl.textContent = '새 비밀번호는 6자 이상이어야 해요.';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        statusEl.textContent = '새 비밀번호가 서로 달라요.';
+        return;
+      }
+
+      btn.disabled = true;
+      const dotsTimerLegacy = animDots(statusEl, '업데이트 중');
+      try {
+        const data = await callLegacyPasswordUpgrade(
+          pendingLegacyPasswordUpgrade.nickname,
+          pendingLegacyPasswordUpgrade.password,
+          newPassword
+        );
+        if (data.ok) {
+          const authResult = await trySupabaseLogin(pendingLegacyPasswordUpgrade.nickname, newPassword);
+          const nickname = pendingLegacyPasswordUpgrade.nickname;
+          if (isSupabaseAuthConfigured() && !authResult.ok) {
+            stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호는 업데이트됐지만 로그인 확인에 실패했어요. 새 비밀번호로 다시 로그인해주세요.');
+            statusEl.className = 'auth-status success';
+          } else {
+            stopAnimDots(dotsTimerLegacy, statusEl, '비밀번호가 업데이트됐어요. 새 비밀번호로 로그인해주세요.');
+            statusEl.className = 'auth-status success';
+          }
+          pendingLegacyPasswordUpgrade = null;
+          document.getElementById('loginNickname').value = nickname || '';
+          document.getElementById('loginPassword').value = '';
+          document.getElementById('legacyNewPassword').value = '';
+          document.getElementById('legacyNewPasswordConfirm').value = '';
+          if (authResult.ok) {
+            const profile = await callAppAuth('session', {}, { requireAuth: true });
+            setTimeout(() => enterWithSupabaseLoginData(nickname, authResult.data, profile), 800);
+            return;
+          }
+          setTimeout(() => {
+            switchAuthPane('login');
+            const loginPwEl = document.getElementById('loginPassword');
+            if (loginPwEl) loginPwEl.focus();
+          }, 1200);
+        } else if (data.error === 'invalid_credentials') {
+          stopAnimDots(dotsTimerLegacy, statusEl, '기존 비밀번호 확인에 실패했어요. 로그인부터 다시 시도해주세요.');
+        } else if (data.error === 'temporarily_locked') {
+          stopAnimDots(dotsTimerLegacy, statusEl, '시도가 많아 잠시 잠겼어요. 10분 뒤 다시 시도해주세요.');
+        } else if (data.error === 'invalid_new_password' || data.error === 'weak_password_needs_reset') {
+          stopAnimDots(dotsTimerLegacy, statusEl, '새 비밀번호는 6자 이상이어야 해요.');
+        } else {
+          stopAnimDots(dotsTimerLegacy, statusEl, '업데이트에 실패했어요. 잠시 후 다시 시도해주세요.');
+        }
+      } catch(e) {
+        stopAnimDots(dotsTimerLegacy, statusEl, '연결에 실패했어요. 잠시 후 다시 시도해주세요.');
       } finally {
         btn.disabled = false;
       }
@@ -944,16 +1451,12 @@
       const dotsTimerReset = animDots(statusEl, '확인 중');
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'resetPassword', nickname, name, parish, newPassword })
-        });
-        const data = await res.json();
+        const data = await callAppAuth('resetPassword', { nickname, name, parish, newPassword });
         if (data.ok) {
           stopAnimDots(dotsTimerReset, statusEl, '비밀번호가 변경됐어요! 로그인해주세요.');
           statusEl.className = 'auth-status success';
           document.getElementById('resetDuplicates').style.display = 'none';
+          clearSupabaseSession();
           setTimeout(() => switchAuthPane('login'), 1500);
         } else if (data.duplicates) {
           stopAnimDots(dotsTimerReset, statusEl, '');
@@ -965,6 +1468,8 @@
           dupWrap.style.display = 'block';
         } else if (data.error === 'not_found') {
           stopAnimDots(dotsTimerReset, statusEl, '입력한 정보와 일치하는 계정이 없어요.');
+        } else if (data.error === 'invalid_password') {
+          stopAnimDots(dotsTimerReset, statusEl, `비밀번호는 ${data.minPasswordLength || getRequiredPasswordLength()}자 이상이어야 해요.`);
         } else {
           stopAnimDots(dotsTimerReset, statusEl, '오류가 발생했어요.');
         }
@@ -987,7 +1492,8 @@
       if (!name || !parish || !newPassword) {
         statusEl.textContent = '모든 항목을 입력해주세요.'; return;
       }
-      if (newPassword.length < 4) { statusEl.textContent = '비밀번호는 4자 이상이어야 해요.'; return; }
+      const minPasswordLength = getRequiredPasswordLength();
+      if (newPassword.length < minPasswordLength) { statusEl.textContent = `비밀번호는 ${minPasswordLength}자 이상이어야 해요.`; return; }
 
       doResetPassword('');
     });
@@ -1006,8 +1512,7 @@
       const dotsTimerFind = animDots(statusEl, '찾는 중');
 
       try {
-        const res = await fetch(`${API_BASE}?action=findNickname&name=${encodeURIComponent(name)}&parish=${encodeURIComponent(parish)}&t=${Date.now()}`, { cache: 'no-store' });
-        const data = await res.json();
+        const data = await callAppAuth('findNickname', { name, parish });
         if (data.ok && data.nicknames && data.nicknames.length) {
           stopAnimDots(dotsTimerFind, statusEl, '');
           statusEl.className = 'auth-status success';
@@ -1023,7 +1528,7 @@
     });
 
     /* Enter 키 처리 */
-    [['regPassword', 'registerBtn'], ['loginPassword', 'loginBtn'], ['resetPassword', 'resetBtn']].forEach(([inputId, btnId]) => {
+    [['regPassword', 'registerBtn'], ['loginPassword', 'loginBtn'], ['legacyNewPassword', 'legacyUpgradeBtn'], ['legacyNewPasswordConfirm', 'legacyUpgradeBtn'], ['resetPassword', 'resetBtn']].forEach(([inputId, btnId]) => {
       document.getElementById(inputId).addEventListener('keydown', e => {
         if (e.key === 'Enter') document.getElementById(btnId).click();
       });
@@ -1539,7 +2044,7 @@
       if (nick === currentNickname) { el.textContent = '자기 자신과는 교환할 수 없어요.'; return; }
       const dotsTimerSearch = animDots(el, '검색 중');
       try {
-        const res = await fetch(`${API_BASE}?action=getPublicCollection&userId=${encodeURIComponent(nick)}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        const res = await apiClient.getPublicCollection(nick);
         if (!res.ok) { stopAnimDots(dotsTimerSearch, el, '찾을 수 없는 닉네임이에요.'); return; }
         const hasCards = Object.values(res.collection || {}).some(v => v >= 2);
         if (!hasCards) { stopAnimDots(dotsTimerSearch, el, `${nick}님은 교환 가능한 중복 카드가 없어요.`); return; }
@@ -1637,9 +2142,7 @@
       btn.disabled = true;
       const dotsTimerTrade = animDots(statusEl, '전송 중');
       try {
-        const res = await post({
-          action: 'requestTrade',
-          nickname: currentNickname,
+        const res = await apiClient.requestTrade({
           requesterCardId: _tradeMyCardId,
           targetNickname: _tradeTargetNickname,
           targetCardId: _tradeTheirCardId
@@ -1662,7 +2165,7 @@
       if (_loadTradesPromise) return _loadTradesPromise;
       _loadTradesPromise = (async () => {
       try {
-        const res = await fetch(`${API_BASE}?action=getTrades&userId=${encodeURIComponent(currentNickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        const res = await apiClient.getTrades();
         if (!res.ok) return;
         _cachedTrades = res;
         const all = [...(res.incoming || []), ...(res.outgoing || [])];
@@ -1739,7 +2242,7 @@
         btn.parentElement.replaceChild(label, btn);
       }
       try {
-        const res = await post({ action: 'prayForTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.prayForTrade(tradeId);
         if (res.ok) loadTrades();
         else alert(res.error || res.message || '오류가 발생했어요.');
       } catch(e) { alert('연결 오류: ' + e.message); }
@@ -1888,7 +2391,7 @@
     async function doTradeAccept(tradeId) {
       if (!confirm('교환을 수락할까요?')) return;
       try {
-        const res = await post({ action: 'acceptTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.acceptTrade(tradeId);
         if (res.ok) {
           // 수락한 사람은 새 카드 알림 불필요 — known에 미리 추가
           const ka = JSON.parse(localStorage.getItem('beyondus_known_accepts') || '[]');
@@ -1902,7 +2405,7 @@
     async function doTradeReject(tradeId) {
       if (!confirm('교환을 거절할까요?')) return;
       try {
-        const res = await post({ action: 'rejectTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.rejectTrade(tradeId);
         if (res.ok) loadTrades();
         else alert(res.error || '거절 실패');
       } catch(e) { alert('연결 오류'); }
@@ -1911,7 +2414,7 @@
     async function doTradeCancelTrade(tradeId) {
       if (!confirm('교환 신청을 취소할까요?')) return;
       try {
-        const res = await post({ action: 'cancelTrade', tradeId, nickname: currentNickname });
+        const res = await apiClient.cancelTrade(tradeId);
         if (res.ok) loadTrades();
         else alert(res.error || '취소 실패');
       } catch(e) { alert('연결 오류'); }
@@ -1985,13 +2488,7 @@
         }
       }
       try {
-        const action = opts.full === true ? 'userStatus' : 'userStatusLite';
-        const res = await fetch(
-          `${API_BASE}?action=${action}&userId=${encodeURIComponent(currentNickname)}&weekKey=${getWeekKey()}${sessionParam()}&t=${Date.now()}`,
-          { cache: 'no-store' }
-        );
-        if (!res.ok) throw new Error();
-        userStatus = mergeUserStatusResponse(await res.json());
+        userStatus = mergeUserStatusResponse(await apiClient.getUserStatus(opts));
         if (currentNickname) localStorage.setItem('beyondus_cache_userStatus_' + currentNickname, JSON.stringify(userStatus));
         // 서버 기준으로 이번 주 스탬프 동기화 (서버가 비어있으면 로컬도 지움)
         {
@@ -2089,7 +2586,7 @@
     /* ════ 뽑기 오버레이 (GSAP 시네마틱) ════ */
     let drawState = 'idle';
     let drawResult = null;
-    let drawIsNew = true;   // 신규(true) vs 중복(false) — GAS isNew 필드 반영
+    let drawIsNew = true;   // 신규(true) vs 중복(false)
     let revealClickEnabled = false;
     let isFlipping = false;
     let loadingDotsTimer = null;
@@ -2426,12 +2923,14 @@
     function startDrawCardRequest() {
       if (drawCardPromise) return drawCardPromise;
       var drawAction = drawPackType === 'special' ? 'drawSpecialCard' : 'drawCard';
-      drawCardPromise = fetch(API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(withSession({ action: drawAction, userId: currentNickname, weekKey: getWeekKey(), testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(), requestId: drawRequestId, packType: drawPackType }))
+      drawCardPromise = apiClient.drawCardPack({
+        action: drawAction,
+        userId: currentNickname,
+        weekKey: getWeekKey(),
+        testMode: drawPackType === 'normal' && isCurrentDeveloperAccount(),
+        requestId: drawRequestId,
+        packType: drawPackType
       })
-      .then(function(r) { return r.json(); })
       .catch(function() { return null; });
       return drawCardPromise;
     }
@@ -2521,7 +3020,7 @@
         playSfx('packOpen');
         gsap.set('#packLayer', { pointerEvents: 'none' });
 
-        // GAS 프로젝트의 SPREADSHEET_ID Property가 가리키는 시트에 기록
+        // Supabase Storage와 RPC를 통해 저장
         var cardPromise = startDrawCardRequest();
         cardPromise.then(function(result) {
           if (!drawOverlayActive) return;
@@ -2886,11 +3385,7 @@
         return _dashboardCacheData;
       }
       if (_dashboardPromise) return _dashboardPromise;
-      _dashboardPromise = fetch(`${API_BASE}?action=dashboard&t=${Date.now()}`, { cache: 'no-store' })
-        .then(res => {
-          if (!res.ok) throw new Error('현황을 불러오지 못했습니다.');
-          return res.json();
-        })
+      _dashboardPromise = apiClient.getDashboard(opts)
         .then(data => {
           _dashboardCacheData = data;
           _dashboardCacheAt = Date.now();
@@ -2902,29 +3397,59 @@
 
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
-      const { prayer, secret, qt, pilgrim } = data.tabSettings;
-      const prayerItem = document.querySelector('.drawer-item[data-section="prayer"]');
-      const secretItem = document.querySelector('.drawer-item[data-section="secret"]');
-      const qtItem = document.querySelector('.drawer-item[data-section="qt"]');
-      const pilgrimItem = document.querySelector('.drawer-item[data-section="pilgrim"]');
+      const settings = data.tabSettings;
+      const statuses = settings.statuses || {};
       const nextSpecialPackOpen = data.tabSettings.specialPack === true;
       const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
       specialPackOpen = nextSpecialPackOpen;
-      if (prayerItem) prayerItem.style.display = (prayer === false) ? 'none' : '';
-      if (qtItem) qtItem.style.display = (qt === false) ? 'none' : '';
+      const tabEnabled = {
+        notice: settings.notice !== false,
+        mission: settings.mission !== false,
+        prayer: settings.prayer !== false,
+        qt: settings.qt !== false,
+        secret: settings.secret !== false,
+        pilgrim: settings.pilgrim === true,
+        chat: settings.chat === true,
+        collection: settings.collection !== false,
+        faq: settings.faq !== false,
+        inquiry: settings.inquiry !== false,
+      };
+      Object.keys(tabEnabled).forEach(section => {
+        applyDrawerTabState(section, tabEnabled[section], statuses[section] || 'open');
+      });
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
-      if (secretItem) secretItem.style.display = (secret === false) ? 'none' : '';
-      if (pilgrimItem) pilgrimItem.style.display = (pilgrim === true) ? '' : 'none';
-      const hiddenCurrent =
-        (_currentSection === 'prayer'  && prayer === false) ||
-        (_currentSection === 'qt'      && qt === false) ||
-        (_currentSection === 'secret'  && secret === false) ||
-        (_currentSection === 'pilgrim' && pilgrim !== true);
-      if (hiddenCurrent) switchSection('mission');
+      if (tabEnabled[_currentSection] === false) switchSection(getFirstVisibleDrawerSection() || 'mission');
       if (specialPackChanged) {
         updateTicketBadge(userStatus);
         renderDrawSection();
       }
+    }
+
+    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21' };
+    function applyDrawerTabState(section, enabled, status) {
+      const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
+      if (!item) return;
+      item.style.display = enabled === false ? 'none' : '';
+      const legacyDot = item.querySelector('.drawer-status-dot');
+      if (legacyDot) legacyDot.remove();
+      const isComingSoon = status !== 'open';
+      item.classList.toggle('is-coming-soon', isComingSoon);
+      let tag = item.querySelector('.drawer-coming-soon-tag');
+      if (isComingSoon) {
+        if (!tag) {
+          tag = document.createElement('span');
+          tag.className = 'drawer-coming-soon-tag';
+          item.appendChild(tag);
+        }
+        tag.textContent = COMING_SOON_DATES[section] || 'Coming Soon';
+      } else if (tag) {
+        tag.remove();
+      }
+    }
+
+    function getFirstVisibleDrawerSection() {
+      const item = Array.from(document.querySelectorAll('.drawer-item[data-section]')).find(el => el.style.display !== 'none');
+      return item ? item.dataset.section : '';
     }
 
     function updateScoreProgress() {
@@ -3173,13 +3698,14 @@
       refreshBtn.disabled = true;
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'submit', items: checked, userId: currentNickname || '', weekKey: getWeekKey(), dateKey: getTodayKey(), score: checkedScore, requestId: submitRequestId }))
+        const saved = await apiClient.submitMission({
+          items: checked,
+          userId: currentNickname || '',
+          weekKey: getWeekKey(),
+          dateKey: getTodayKey(),
+          score: checkedScore,
+          requestId: submitRequestId
         });
-        if (!res.ok) throw new Error('체크 저장에 실패했습니다.');
-        const saved = await res.json();
         if (saved && saved.ok === false) throw new Error(saved.error || saved.message || '체크 저장에 실패했습니다.');
         const savedItems = Array.isArray(saved?.savedItems) ? saved.savedItems : checked;
         const savedIndices = Array.isArray(saved?.savedIndices) ? saved.savedIndices : savedItems.map(item => lastConfigData?.items?.indexOf(item)).filter(i => i >= 0);
@@ -3466,7 +3992,12 @@
         updateNoticeDot();
       }
       try {
-        const res = await fetch(`${API_BASE}?action=getNotices&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+        const res = await callSupabaseRpc('get_notices', {}, { requireAuth: false });
+        if (Array.isArray(res.notices)) {
+          res.notices = res.notices.map(n => Object.assign({}, n, {
+            imageUrl: normalizeNoticeImageUrl(n && n.imageUrl),
+          }));
+        }
         if (!res.ok || !res.notices?.length) {
           cachedNotices = [];
           localStorage.removeItem(noticeCacheKey);
@@ -3559,8 +4090,7 @@
       }
       list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
       try {
-        const res  = await fetch(`${API_BASE}?action=getInquiries&nickname=${encodeURIComponent(currentNickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' });
-        const data = await res.json();
+        const data = await apiClient.getInquiries();
         if (!data.ok) throw new Error();
         renderInquiries(data.inquiries);
       } catch(e) {
@@ -3632,12 +4162,7 @@
       const dotsTimer = animDots(statusEl, '삭제 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'deleteInquiry', nickname: currentNickname, id }))
-        });
-        const data = await res.json();
+        const data = await apiClient.deleteInquiry(id);
         if (data.ok) {
           stopAnimDots(dotsTimer, statusEl, '');
           loadInquiries();
@@ -3661,12 +4186,7 @@
       const dotsTimerSave = animDots(statusEl, '저장 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'editInquiry', nickname: currentNickname, id, content }))
-        });
-        const data = await res.json();
+        const data = await apiClient.editInquiry(id, content);
         if (data.ok) {
           stopAnimDots(dotsTimerSave, statusEl, '');
           loadInquiries();
@@ -3694,12 +4214,7 @@
       const dotsTimerPost = animDots(statusEl, '등록 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'postInquiry', nickname: currentNickname, content }))
-        });
-        const data = await res.json();
+        const data = await apiClient.postInquiry(content);
         if (data.ok) {
           input.value = '';
           stopAnimDots(dotsTimerPost, statusEl, '등록됐어요!');
@@ -3787,7 +4302,7 @@
       if (guessMsg) guessMsg.textContent = '';
       _resetPhotoBox('bbbPhotoImg', 'bbbPhotoModalImg', 'bbbPhotoPlaceholder', 'bbbPhotoPlaceholderText', 'bbbPhotoLabel', 'bbbPhotoStatus');
       _resetPhotoBox('bbbM2Img', 'bbbM2ModalImg', 'bbbM2Placeholder', 'bbbM2PlaceholderText', 'bbbM2Label', 'bbbM2Status');
-      _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
+      _bbbRenderM3Spots(_bbbEmptyM3Photos(), false, []);
       const msgList = document.getElementById('bbbMsgList');
       if (msgList) msgList.innerHTML = '';
       const sentList = document.getElementById('bbbSentMsgList');
@@ -3846,12 +4361,7 @@
       let dotsTimer = null;
       if (statusEl) { dotsTimer = animDots(statusEl, '삭제 중'); statusEl.style.color = 'var(--sub)'; statusEl.style.fontWeight = '500'; }
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname })),
-          redirect: 'follow'
-        }).then(r => r.json());
+        const res = await apiClient.deleteMissionPhoto('m1');
         if (res.ok) {
           const img = document.getElementById('bbbPhotoImg');
           img.src = ''; img.style.display = 'none';
@@ -3882,7 +4392,7 @@
       if (_bbbMessagesPromise) return _bbbMessagesPromise;
       _bbbMessagesPromise = (async () => {
         try {
-          const res = await fetch(`${API_BASE}?action=getBBBMessages&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+          const res = await apiClient.getBBBMessages(nickname, forceRefresh);
           if (!isActiveAccount(nickname)) return;
           _bbbMessagesLoadedFor = nickname;
           _bbbMessagesLastLoadedAt = Date.now();
@@ -3914,8 +4424,7 @@
       }
 
       try {
-        const nonce = Date.now();
-        const bbbRes = await fetch(`${API_BASE}?action=getBBB&userId=${encodeURIComponent(nickname)}${sessionParam()}&t=${nonce}`, { cache: 'no-store' }).then(r => r.json());
+        const bbbRes = await apiClient.getBBB(nickname);
         if (!isActiveAccount(nickname)) return;
 
         document.getElementById('bbbLoading').style.display = 'none';
@@ -3954,6 +4463,13 @@
           }
         });
 
+        // 모든 BBB 서브섹션이 잠겨있으면 Coming Soon 커버 (기존 박스는 DOM에 그대로, 가려둠)
+        const _bbbAllLocked = ['careBuddy','secretBuddy','m1','m2'].every(k => !(_bbbSections[k] && _bbbSections[k].open));
+        const _bbbIntro  = document.getElementById('bbbAllComingSoon');
+        const _bbbDetail = document.getElementById('bbbDetailWrap');
+        if (_bbbIntro)  _bbbIntro.style.display  = _bbbAllLocked ? '' : 'none';
+        if (_bbbDetail) _bbbDetail.style.display = _bbbAllLocked ? 'none' : 'flex';
+
         // 메시지 보내기/받기 창 — 어드민 토글 기준 (스태프는 항상 오픈)
         const _msgOpen = _bbbSections.msgOpen?.open || _isDev;
         document.getElementById('bbbMsgSendWrap').style.display  = _msgOpen ? '' : 'none';
@@ -3961,10 +4477,20 @@
 
         // 섹션 중 하나라도 잠금이면 bbbContent 표시 (매칭 없어도)
         const anyLocked = Object.values(_bbbSections).some(s => !s.open);
+        const m3Open = !!(_bbbSections.m3 && _bbbSections.m3.open);
         if (!bbbRes.ok) {
-          if (anyLocked || _isDev) {
+          if (anyLocked || _isDev || m3Open) {
             document.getElementById('bbbContent').style.display = 'flex';
-            if (_isDev) _bbbRenderM3Spots([null,null,null,null,null,null,null], false);
+            if (m3Open) {
+              ['bbbCareBuddyLive', 'bbbM1Live', 'bbbM2Live', 'bbbSecretLive'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+              });
+            }
+            if (_isDev || m3Open) {
+              _bbbData = bbbRes;
+              _bbbRenderM3Spots(bbbRes.myPhotoM3 || _bbbEmptyM3Photos(), bbbRes.m3Rewarded, bbbRes.m3AssignedSpots || []);
+            }
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
           }
@@ -3994,13 +4520,7 @@
           label.style.pointerEvents = 'none';
           try {
             const base64 = await _compressImage(file, 400, 0.55);
-            const REDIRECT = await fetch(API_BASE, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm1' })),
-              redirect: 'follow'
-            });
-            const res = await REDIRECT.json();
+            const res = await apiClient.uploadMissionPhoto(base64, 'm1');
             if (res.ok) {
               _bbbShowPhoto(base64);
               stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 카드팩이 지급돼요.' : '✓ 제출 완료');
@@ -4086,12 +4606,7 @@
       closeBbbM2Modal();
       try {
         const nickname = localStorage.getItem('beyondus_nickname') || '';
-        const res = await fetch(API_BASE, {
-          method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm2' })),
-          redirect: 'follow'
-        });
-        const data = await res.json();
+        const data = await apiClient.deleteMissionPhoto('m2');
         if (data.ok) {
           const img = document.getElementById('bbbM2Img');
           img.src = ''; img.style.display = 'none';
@@ -4119,7 +4634,7 @@
         try {
           const nickname = localStorage.getItem('beyondus_nickname') || '';
           const base64 = await _compressImage(file, 400, 0.55);
-          const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm2' })), redirect: 'follow' })).json();
+          const res = await apiClient.uploadMissionPhoto(base64, 'm2');
           if (res.ok) {
             _bbbShowM2Photo(base64);
             stopAnimDots(dotsTimer, statusEl, res.pendingApproval ? '사진 제출 완료. 운영진 확인 후 카드팩이 지급돼요.' : '✓ 제출 완료');
@@ -4143,34 +4658,56 @@
       { label: '천성',                 top: 44, left: 12 }, // #39
     ];
 
-    function _bbbRenderM3Spots(photos, m3Rewarded) {
+    function _bbbEmptyM3Photos() {
+      return [null, null, null, null, null, null, null];
+    }
+
+    function _bbbRenderM3Spots(photos, m3Rewarded, assignedSpots) {
       const container = document.getElementById('bbbM3Spots');
       if (!container) return;
+      const safePhotos = Array.isArray(photos) ? photos : _bbbEmptyM3Photos();
+      const assigned = Array.isArray(assignedSpots) ? assignedSpots : [];
+      const assignedMap = {};
+      assigned.forEach(idx => { assignedMap[Number(idx)] = true; });
       const SIZE = 46; // px
       container.innerHTML = BBB_M3_SPOTS.map((spot, i) => {
-        const src = photos[i];
-        const circleStyle = src
-          ? `border:1px solid rgba(255,255,255,0.7);box-shadow:0 2px 8px rgba(0,0,0,0.28);background:transparent;`
+        const src = safePhotos[i];
+        const isAssigned = assignedMap[i] === true;
+        const isCompleted = isAssigned && !!src;
+        const circleStyle = isCompleted
+          ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(116,181,142,0.22);background:rgba(116,181,142,0.78);color:#fff;`
+          : isAssigned
+          ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(216,111,116,0.22);background:rgba(216,111,116,0.78);color:#fff;`
           : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
+        const actionAttr = isAssigned
+          ? `onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}"`
+          : '';
+        const marker = isCompleted
+          ? `<span style="font-size:21px;color:#fff;font-weight:900;line-height:1;">✓</span>`
+          : isAssigned
+          ? `<span style="font-size:20px;color:#fff;font-weight:900;line-height:1;">+</span>`
+          : '';
         return `
-          <div style="position:absolute;top:${spot.top}%;left:${spot.left}%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:2;">
-            <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;${circleStyle}display:flex;align-items:center;justify-content:center;cursor:pointer;"
-                 onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}">
-              ${src ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;" />` : `<span style="font-size:20px;color:rgba(255,255,255,0.85);font-weight:300;line-height:1;">+</span>`}
+          <div style="position:absolute;top:${spot.top}%;left:${spot.left}%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2px;z-index:2;pointer-events:auto;">
+            <div style="width:${SIZE}px;height:${SIZE}px;border-radius:50%;overflow:hidden;${circleStyle}display:flex;align-items:center;justify-content:center;cursor:${isAssigned ? 'pointer' : 'default'};"
+                 ${actionAttr}>
+              ${marker}
             </div>
             <span style="font-size:9px;font-weight:700;color:#333;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:6px;white-space:nowrap;">${spot.label}</span>
             <input type="file" id="bbbM3Input${i}" accept="image/*" style="display:none;" onchange="bbbM3Upload(${i}, this)" />
           </div>`;
       }).join('');
-      const filled = photos.filter(Boolean).length;
+      const filled = assigned.filter(idx => !!safePhotos[Number(idx)]).length;
+      const required = assigned.length || 2;
       const statusEl = document.getElementById('bbbM3Status');
       if (statusEl) {
-        statusEl.textContent = m3Rewarded ? '✓ 카드팩 획득 완료' : filled > 0 ? `${filled}/7 완료` : '';
+        statusEl.textContent = m3Rewarded ? '✓ 레어 카드 획득 완료' : filled > 0 ? `${filled}/${required} 완료` : '';
         statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
       }
     }
     function _bbbInitMission3(bbbRes) {
-      _bbbRenderM3Spots(bbbRes.myPhotoM3 || [null,null,null,null,null,null,null], bbbRes.m3Rewarded);
+      const safeRes = bbbRes || {};
+      _bbbRenderM3Spots(safeRes.myPhotoM3 || _bbbEmptyM3Photos(), safeRes.m3Rewarded, safeRes.m3AssignedSpots || []);
     }
     async function bbbM3Upload(spotIdx, input) {
       const file = input.files[0];
@@ -4180,13 +4717,17 @@
       try {
         const nickname = localStorage.getItem('beyondus_nickname') || '';
         const base64 = await _compressImage(file, 400, 0.55);
-        const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'uploadBBBPhoto', userId: nickname, photo: base64, missionType: 'm3_' + spotIdx })), redirect: 'follow' })).json();
+        const res = await apiClient.uploadMissionPhoto(base64, 'm3_' + spotIdx);
         if (res.ok) {
-          if (_bbbData) { _bbbData.myPhotoM3 = _bbbData.myPhotoM3 || [null,null,null,null,null,null,null]; _bbbData.myPhotoM3[spotIdx] = base64; if (res.rewarded) _bbbData.m3Rewarded = true; }
-          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], res.rewarded || (_bbbData && _bbbData.m3Rewarded));
+          _bbbData = _bbbData || {};
+          _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
+          if (!Array.isArray(res.myPhotoM3)) _bbbData.myPhotoM3[spotIdx] = base64;
+          _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : (_bbbData.m3AssignedSpots || []);
+          if (res.rewarded || res.m3Rewarded) _bbbData.m3Rewarded = true;
+          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
           stopAnimDots(dotsTimer, statusEl, '');
           if (res.rewarded) { syncTicketBadgeFromServer(); }
-        } else { stopAnimDots(dotsTimer, statusEl, res.error || '업로드 실패'); }
+        } else { stopAnimDots(dotsTimer, statusEl, res.error === 'not_assigned_spot' ? '내 미션 스팟만 인증할 수 있어요.' : (res.error || '업로드 실패')); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
     }
     function openBbbM3Modal(spotIdx) {
@@ -4209,10 +4750,10 @@
       const dotsTimer = animDots(statusEl, '삭제 중');
       try {
         const nickname = localStorage.getItem('beyondus_nickname') || '';
-        const res = await (await fetch(API_BASE, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(withSession({ action: 'deleteBBBPhoto', userId: nickname, missionType: 'm3_' + spotIdx })), redirect: 'follow' })).json();
+        const res = await apiClient.deleteMissionPhoto('m3_' + spotIdx);
         if (res.ok) {
           if (_bbbData && _bbbData.myPhotoM3) _bbbData.myPhotoM3[spotIdx] = null;
-          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded);
+          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded, (_bbbData && _bbbData.m3AssignedSpots) || []);
           stopAnimDots(dotsTimer, statusEl, '');
         } else { stopAnimDots(dotsTimer, statusEl, '삭제 실패'); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류'); }
@@ -4236,13 +4777,11 @@
         const h12 = hh % 12 || 12;
         return `${yy}.${mo}.${dd} ${h12}:${mm} ${ampm}`;
       }
-      // 받은 메시지 = 왼쪽 정렬 (시크릿버디 → 나)
+      // 받은 메시지 = 박스 양끝까지, 날짜는 우하단
       function _bubble(m) {
-        return `<div style="display:flex;justify-content:flex-start;margin-bottom:6px;">
-          <div style="max-width:80%;background:var(--primary-soft);border-radius:12px 12px 12px 2px;padding:10px 13px;">
-            <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
-            <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
-          </div>
+        return `<div style="background:var(--primary-soft);border-radius:12px;padding:10px 13px;margin-bottom:6px;">
+          <p style="font-size:14px;color:var(--text);margin:0 0 4px;line-height:1.5;white-space:pre-wrap;">${escHtml(m.message)}</p>
+          <p style="font-size:10px;color:var(--sub);margin:0;text-align:right;">${_fmtBBBDate(m.createdAt)}</p>
         </div>`;
       }
       const latest = messages[messages.length - 1];
@@ -4298,7 +4837,7 @@
       msgEl.style.color = 'var(--sub)';
       const dotsTimer = animDots(msgEl, '확인 중');
       try {
-        const res = await post({ action: 'guessBBBSecret', userId: nickname, guess });
+        const res = await apiClient.guessBBBSecret(guess);
         if (res.error) { stopAnimDots(dotsTimer, msgEl, res.error); msgEl.style.color = '#f87171'; return; }
         if (res.correct) {
           const successMsg = res.rewarded
@@ -4335,7 +4874,7 @@
         '<span style="width:6px;height:6px;border-radius:50%;background:#faf6ef;display:inline-block;animation:splashDot 1.2s ease-in-out .4s infinite;"></span>' +
         '</span>';
       try {
-        const res = await post({ action: 'sendBBBMessage', userId: nickname, message });
+        const res = await apiClient.sendBBBMessage(message);
         if (res.error) { resultEl.style.color = '#f87171'; resultEl.textContent = res.error; return; }
         resultEl.style.color = '#4ade80';
         resultEl.textContent = '메시지를 보냈어요! 💌';
@@ -4466,10 +5005,10 @@
 
       try {
         const [res] = await Promise.all([
-          fetch(`${API_BASE}?action=getHoldPray&weekKey=&nickname=${encodeURIComponent(nick)}&t=${Date.now()}`),
+          apiClient.getHoldPray(''),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
-        const data = await res.json();
+        const data = res;
         if (!data.ok) throw new Error(data.error || 'error');
         if (!isActiveAccount(nick)) return;
         localStorage.setItem(hpCacheKey, JSON.stringify(data));
@@ -4685,12 +5224,7 @@
       if (result) result.style.display = 'none';
 
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'submitHoldPrayGuess', weekKey: _hpWeekKey, guess, nickname: localStorage.getItem('beyondus_nickname') || '', cardIndex: cardIdx }))
-        });
-        const data = await res.json();
+        const data = await apiClient.submitHoldPrayGuess(_hpWeekKey, cardIdx, guess);
         if (data.correct) {
           _hpCorrectMap[cardIdx] = guess;
           localStorage.setItem(hpCorrectStorageKey(_hpWeekKey, cardIdx), guess);
@@ -4730,12 +5264,7 @@
     async function hpHintInquiry(cardIdx) {
       const nick = localStorage.getItem('beyondus_nickname') || '';
       try {
-        const res = await fetch(API_BASE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(withSession({ action: 'postHpHint', nickname: nick, weekKey: _hpWeekKey, cardIndex: cardIdx }))
-        });
-        const data = await res.json();
+        const data = await apiClient.postHpHint(_hpWeekKey, cardIdx);
         if (data.ok) {
           localStorage.setItem(hpHintStorageKey(_hpWeekKey, cardIdx), data.id || 'submitted');
           renderHpCard(cardIdx);

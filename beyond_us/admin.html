@@ -82,6 +82,28 @@
     }
     .drawer-section-divider { height: 10px; border-bottom: 1px solid var(--line); background: #faf6ef; }
 
+    /* ── 유저 앱 탭 설정 ── */
+    .tab-settings-list { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+    .tab-setting-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; padding:14px 16px; background:var(--primary-soft); border:1px solid var(--line); border-radius:12px; }
+    .tab-setting-title { min-width:0; }
+    .tab-setting-label { display:block; font-size:15px; font-weight:800; color:var(--text); }
+    .tab-setting-meta { display:block; font-size:11px; color:var(--sub); margin-top:3px; }
+    .tab-setting-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end; }
+    .tab-visible-toggle { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:800; color:var(--sub); white-space:nowrap; }
+    .tab-visible-toggle input { width:18px; height:18px; accent-color:var(--primary); cursor:pointer; }
+    .tab-status-group { display:flex; gap:5px; padding:3px; border:1px solid var(--line); border-radius:999px; background:var(--card); }
+    .tab-status-option { display:flex; align-items:center; gap:4px; padding:6px 9px; border-radius:999px; font-size:12px; font-weight:800; cursor:pointer; color:var(--sub); white-space:nowrap; }
+    .tab-status-option input { position:absolute; opacity:0; pointer-events:none; }
+    .tab-status-option:has(input:checked) { color:var(--text); background:#fff; box-shadow:0 1px 4px rgba(44,36,23,.08); }
+    .tab-status-option.status-hidden:has(input:checked) { color:#475569; background:#f1f5f9; }
+    .tab-status-option.status-coming:has(input:checked) { color:#92400e; background:#fef3c7; }
+    .tab-status-option.status-open:has(input:checked) { color:#047857; background:#ecfdf5; }
+    .tab-status-option.status-closed:has(input:checked) { color:#92400e; background:#fef3c7; }
+    @media (max-width: 680px) {
+      .tab-setting-row { grid-template-columns:1fr; }
+      .tab-setting-controls { justify-content:flex-start; }
+    }
+
     /* ── 패널 ── */
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -100,6 +122,8 @@
     .stat-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
     .stat-value { font-size: 26px; font-weight: 800; }
     .stat-chip-list { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; font-size:11px; color:var(--sub); line-height:1.25; }
+    .raffle-available-card { grid-column: 1 / -1; }
+    .raffle-available-card .stat-chip-list { max-height:136px; overflow:auto; padding-right:4px; align-content:flex-start; }
     .stat-chip-list .ticket-chip { display:inline-flex; align-items:center; padding:3px 7px; border-radius:999px; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:800; }
     .stat-chip-list .more-chip { color:var(--sub); font-weight:700; padding:3px 0; }
     .dashboard-pill-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
@@ -192,7 +216,8 @@
       <div class="gate-emoji">🔐</div>
       <h2 class="gate-title">어드민</h2>
       <p id="gate-desc-env" class="gate-desc">Beyond Us 관리자 페이지</p>
-      <input type="password" id="adminPwInput" class="input" placeholder="비밀번호" />
+      <input type="text" id="adminLoginIdInput" class="input" placeholder="Staff 아이디" autocomplete="username" />
+      <input type="password" id="adminPwInput" class="input" placeholder="Staff 비밀번호" autocomplete="current-password" style="margin-top:8px;" />
       <div class="status" id="gateStatus"></div>
       <button class="btn btn-primary" id="gateBtn" style="margin-top:8px;">입장</button>
     </div>
@@ -223,8 +248,8 @@
       <div class="drawer-section-label">개발자</div>
       <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
       <button class="drawer-item" data-panel="bbb">B.B.B 미션</button>
-      <button class="drawer-item" data-panel="events">Events 관리</button>
-      <button class="drawer-item" data-panel="system">시스템 상태</button>
+      <button class="drawer-item" data-panel="events">Events·시스템</button>
+      <button class="drawer-item" data-panel="eventlog">Event 로그</button>
       <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
     </nav>
 
@@ -387,7 +412,18 @@
       <div id="tab-raffle" class="tab-panel">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">현재 발급</div><div class="stat-value" id="raffleActiveCount">-</div></div>
-          <div class="stat-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div><div class="stat-chip-list" id="raffleAvailableNumbers">-</div></div>
+          <div class="stat-card raffle-available-card"><div class="stat-label">회수된 번호</div><div class="stat-value" id="raffleAvailableCount">-</div><div class="stat-chip-list" id="raffleAvailableNumbers">-</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div>
+              <h2 class="card-title" style="margin:0 0 4px;">추첨권 정합성 보정</h2>
+              <p style="font-size:12px;color:var(--sub);margin:0;">앱 가입, 카드 3종, 5종, 10종 조건을 다시 계산해서 누락된 추첨권을 자동 생성하고 발급 제외 유저는 회수해요.</p>
+            </div>
+            <button class="btn btn-primary btn-sm" id="syncRafflePolicyBtn" style="min-width:128px;">누락 검사/보정</button>
+          </div>
+          <div id="syncRafflePolicyStatus" style="font-size:13px;color:var(--sub);margin-top:12px;">필요할 때만 실행해주세요.</div>
         </div>
 
         <div class="card">
@@ -550,17 +586,17 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div>
               <h2 class="card-title" style="margin:0;">B.B.B. 매칭</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">TF(isStaff=TRUE) 인원을 랜덤 원형 순환 매칭합니다.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">조별, 티어 기반 매칭 재설계 전까지 기존 랜덤 매칭 실행은 중지합니다.</p>
             </div>
-            <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="runBBBMatching()">🎲 매칭 실행</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="runBBBMatching()">매칭 준비중</button>
           </div>
-          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 실행 후 결과가 표시됩니다.</p></div>
+          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">조별, 티어 기반 매칭 재설계 후 결과가 표시됩니다.</p></div>
         </div>
 
-        <!-- 섹션별 오픈/커밍순 설정 -->
+        <!-- 섹션 오픈 설정 -->
         <div class="card" style="margin-top:16px;">
           <h2 class="card-title" style="margin:0 0 4px;">섹션 오픈 설정</h2>
-          <p style="font-size:12px;color:var(--sub);margin:0 0 16px;">OFF 시 Coming Soon 박스가 표시돼요. 텍스트 첫 줄/둘째 줄로 나뉘어 표시됩니다.</p>
+          <p style="font-size:12px;color:var(--sub);margin:0 0 16px;">OFF 시 Coming Soon 커버가 표시돼요.</p>
           <div id="bbbSectionRows" style="display:flex;flex-direction:column;gap:12px;"></div>
           <div id="bbbSectionSaveStatus" style="font-size:12px;color:var(--sub);margin-top:8px;min-height:16px;"></div>
           <button class="btn btn-primary" style="margin-top:10px;width:100%;" onclick="saveBBBSections()">저장</button>
@@ -578,7 +614,7 @@
 
       </div>
 
-      <!-- Events 관리 탭 -->
+      <!-- Events·시스템 탭 -->
       <div id="tab-events" class="tab-panel">
 
         <div class="card">
@@ -610,55 +646,62 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
             <div>
-              <h2 class="card-title" style="margin:0;">Events 기준 재계산</h2>
+              <h2 class="card-title" style="margin:0;">Supabase 파생 상태 재계산</h2>
               <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">
-                Collection, MissionProgress, UserDashboard를 Events 기준으로 다시 만들고 대시보드를 새로고침합니다.
+                현재 Supabase 정본 테이블을 기준으로 사용자 요약, 카드 현황, 추첨권 상태를 다시 맞춥니다.
               </p>
             </div>
             <button class="btn btn-primary" id="rebuildEventsDashboardBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="runRebuildEventDerivedViews()">재계산</button>
           </div>
-          <input type="number" id="eventDashboardRows" class="input" min="1" max="1000" value="300" placeholder="UserDashboard row 수" />
+          <input type="number" id="eventDashboardRows" class="input" min="1" max="1000" value="300" placeholder="검사·재계산 사용자 수" />
           <div id="rebuildEventsDashboardStatus" class="status"></div>
         </div>
-
-      </div>
-
-      <!-- 시스템 상태 -->
-      <div id="tab-system" class="tab-panel">
 
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
             <div>
               <h2 class="card-title" style="margin:0;">시스템 상태</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">PROD 전환 전후 상태 확인과 최종 반영 실행.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">Supabase 전환 이후 운영 상태 확인.</p>
             </div>
             <button class="btn btn-secondary" id="systemHealthBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="loadSystemStatus()">상태 확인</button>
           </div>
           <div class="stats-grid">
             <div class="stat-card"><div class="stat-label">전체 상태</div><div class="stat-value" id="systemOverall">-</div></div>
-            <div class="stat-card"><div class="stat-label">Projection mismatch</div><div class="stat-value" id="systemMismatch">-</div></div>
-            <div class="stat-card"><div class="stat-label">Legacy visible</div><div class="stat-value" id="systemLegacyVisible">-</div></div>
+            <div class="stat-card"><div class="stat-label">대시보드</div><div class="stat-value" id="systemMismatch">-</div></div>
+            <div class="stat-card"><div class="stat-label">카드 현황</div><div class="stat-value" id="systemLegacyVisible">-</div></div>
             <div class="stat-card"><div class="stat-label">Elapsed</div><div class="stat-value" id="systemElapsed">-</div></div>
           </div>
           <div id="systemHealthStatus" class="status"></div>
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer;font-size:13px;font-weight:800;color:var(--sub);">상세 결과</summary>
+            <pre id="systemResultJson" style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow:auto;">-</pre>
+          </details>
         </div>
 
+      </div>
+
+      <!-- Event 로그 탭 -->
+      <div id="tab-eventlog" class="tab-panel">
         <div class="card">
-          <h2 class="card-title">PROD 전환 실행</h2>
-          <input type="number" id="cutoverDashboardRows" class="input" min="1" max="1000" value="250" placeholder="UserDashboard row 수" />
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button class="btn btn-secondary" id="cutoverDryRunBtn" onclick="runProdCutoverDryRun()">Dry-run</button>
-            <button class="btn btn-danger" id="cutoverApplyBtn" onclick="runProdCutoverApply()">Apply</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">전체 Event 로그</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">Supabase `events` 기준 최신 로그를 조회합니다.</p>
+            </div>
+            <button class="btn btn-secondary" id="eventLogRefreshBtn" style="font-size:12px;padding:6px 14px;white-space:nowrap;" onclick="loadEventLogs(true)">새로고침</button>
           </div>
-          <input type="text" id="cutoverConfirmInput" class="input" placeholder="APPLY_PROD_CUTOVER" />
-          <div id="cutoverStatus" class="status"></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:8px;">
+            <select id="eventLogTypeFilter" class="input">
+              <option value="">전체 이벤트</option>
+            </select>
+            <input type="text" id="eventLogSearchInput" class="input" placeholder="닉네임, 이름, ref, request 검색" />
+            <input type="number" id="eventLogLimitInput" class="input" min="1" max="1000" value="200" placeholder="표시 개수" />
+          </div>
+          <div class="status" id="eventLogStatus"></div>
+          <div id="eventLogList" class="table-wrap">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">탭을 열면 로그를 불러옵니다.</p>
+          </div>
         </div>
-
-        <div class="card">
-          <h2 class="card-title">결과</h2>
-          <pre id="systemResultJson" style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;line-height:1.5;max-height:420px;overflow:auto;">-</pre>
-        </div>
-
       </div>
 
       <!-- ④ 탭 설정 -->
@@ -710,33 +753,11 @@
       <!-- 탭 활성화 패널 -->
       <div id="tab-tabtoggle" class="tab-panel">
         <div class="card">
-          <h2 class="card-title">메뉴 탭 활성화</h2>
-          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">비활성화하면 모든 사용자의 앱에서 해당 탭이 숨겨져요.</p>
+          <h2 class="card-title">유저 앱 탭 관리</h2>
+          <p style="font-size:13px; color:var(--sub); margin-bottom:20px;">숨김 → 메뉴에서 안 보임 · Coming Soon → 메뉴에 표시되지만 칩으로 안내 (B.B.B는 페이지 커버) · 오픈 → 정상 사용</p>
 
-          <div style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">Hold &amp; Pray</span>
-              <input type="checkbox" id="togglePrayer" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">B.B.B 미션</span>
-              <input type="checkbox" id="toggleSecret" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">Q.T. 말씀 묵상</span>
-              <input type="checkbox" id="toggleQt" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="font-size:15px; font-weight:700;">천로역정</span>
-              <input type="checkbox" id="togglePilgrim" style="width:20px; height:20px; accent-color:var(--primary); cursor:pointer;" />
-            </label>
-            <label style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; background:var(--primary-soft); border-radius:12px; cursor:pointer;">
-              <span style="min-width:0;">
-                <span style="display:block;font-size:15px;font-weight:700;">미보유 카드 지급권</span>
-                <span style="display:block;font-size:11px;color:var(--sub);margin-top:3px;">사전미션 카드팩 영역에 보라색 미보유 카드 지급 버튼 표시</span>
-              </span>
-              <input type="checkbox" id="toggleSpecialPack" style="width:20px; height:20px; accent-color:#8b5cf6; cursor:pointer; flex-shrink:0;" />
-            </label>
+          <div id="tabSettingsList" class="tab-settings-list">
+            <p style="font-size:13px;color:var(--sub);margin:0;">불러오는 중...</p>
           </div>
 
           <div class="status" id="settingsStatus"></div>
@@ -752,7 +773,7 @@
     <div class="modal-box">
       <h3 class="modal-title">비밀번호 초기화</h3>
       <p class="modal-desc" id="resetModalDesc"></p>
-      <input type="text" id="newPwInput" class="input" placeholder="새 비밀번호 (4자 이상)" />
+      <input type="text" id="newPwInput" class="input" placeholder="새 비밀번호 (6자 이상)" />
       <div class="status" id="resetModalStatus"></div>
       <div style="display:flex; gap:8px; margin-top:8px;">
         <button class="btn btn-ghost" style="flex:1;" id="resetCancelBtn">취소</button>
@@ -772,58 +793,261 @@
     }
 
     const IS_DEV_ENV = isDevEnvironment();
-    const API_BASE  = IS_DEV_ENV
-      ? 'https://script.google.com/macros/s/AKfycbx4C7oSZv7KLsDJeduJ51Hh3DMFXjibECfwUQsqGdoPOiMebKvqNGypcI0YRapxMJ_cQQ/exec' // DEV GAS
-      : 'https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec'; // PROD GAS
+    const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
+    const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
+    const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
+    const ADMIN_RESET_PASSWORD_URL = `${SUPABASE_PROJECT_URL}/functions/v1/admin-reset-password`;
+    const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
+    const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
+    const LEGACY_PASSWORD_RESET_ERRORS = new Set([
+      'weak_password_needs_reset',
+      'invalid_new_password',
+      'password_migration_required',
+      'legacy_password_reset_required',
+    ]);
+    const SUPABASE_ADMIN_ACTIONS = new Set([
+      'getUsers',
+      'dashboard',
+      'getCurrentWeek',
+      'setCurrentWeek',
+      'getMissionConfig',
+      'setMissionConfig',
+      'getTabSettings',
+      'setTabSettings',
+      'getNotices',
+      'postNotice',
+      'editNotice',
+      'deleteNotice',
+      'getInquiries',
+      'replyInquiry',
+      'deleteInquiry',
+      'adminGetBBBPhotoApprovals',
+      'adminApproveBBBPhoto',
+      'adminRejectBBBPhoto',
+      'adminGetRaffleAttendance',
+      'adminSetRaffleAttendance',
+      'adminSetRaffleExcluded',
+      'adminDeactivateUser',
+      'adminRestoreUser',
+      'adminGetRaffleTickets',
+      'adminFindRaffleTicket',
+      'setCardReceivedQty',
+      'getTicketStats',
+      'getAdminTrades',
+      'adminGetBBB',
+    ]);
+    const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
+    const MAINTENANCE_MODE = true;
+    const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
+    const PARISH_SORT_ORDER = ['1청', '2청', '3청', '4청', 'VIP', '교회학교', '목양교구'];
+    const TAB_SETTING_ID_MAP = {
+      holdpray: 'togglePrayer',
+      secret: 'toggleSecret',
+      qt: 'toggleQt',
+      pilgrim: 'togglePilgrim',
+      specialPack: 'toggleSpecialPack',
+      chat: 'toggleChat',
+    };
+    const TAB_STATUS_LABELS = {
+      open: '오픈',
+      closed: 'Coming Soon',
+    };
     let _attendanceLimit = ADMIN_TABLE_INITIAL_LIMIT;
     let _attendanceSearchTimer = null;
     let _raffleTicketLimit = ADMIN_TABLE_INITIAL_LIMIT;
     let _raffleTicketSearchTimer = null;
+    let _eventLogLoaded = false;
+    let _eventLogTypes = [];
+
+    function parishSortIndex(parish) {
+      const idx = PARISH_SORT_ORDER.indexOf(String(parish || ''));
+      return idx >= 0 ? idx : PARISH_SORT_ORDER.length;
+    }
+
+    function compareUsersByParishName(a, b) {
+      const parishDiff = parishSortIndex(a && a.parish) - parishSortIndex(b && b.parish);
+      if (parishDiff) return parishDiff;
+      return String((a && a.name) || '').localeCompare(String((b && b.name) || ''), 'ko')
+        || String((a && a.nickname) || '').localeCompare(String((b && b.nickname) || ''), 'ko');
+    }
+
+    function isMaintenanceBlockedLoginId(loginId) {
+      if (!MAINTENANCE_MODE || IS_DEV_ENV) return false;
+      return !MAINTENANCE_ALLOWED_NICKNAMES.has(String(loginId || ''));
+    }
+
+    function maintenanceMessageHtml() {
+      return '서버 이전 작업 중입니다.<br>더욱 빨라지고 쾌적해진 beyond us를 기대해주세요!<br><strong>20:00~21:00</strong>';
+    }
 
     /* ── DEV 환경 감지 ── */
     if (IS_DEV_ENV) {
       document.getElementById('devBanner').style.display = 'block';
       document.getElementById('devBannerSpacer').style.display = 'block';
-      document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 시트 사용 중</span>';
+      document.getElementById('gate-desc-env').innerHTML = 'Beyond Us 관리자 페이지<br><span style="color:#f59e0b; font-size:12px; font-weight:700;">⚠️ DEV 환경 — DEV 데이터 사용 중</span>';
     }
 
     /* ── 로그인 ── */
+    async function sha256Hex(value) {
+      const bytes = new TextEncoder().encode(String(value));
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return Array.from(new Uint8Array(digest))
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    async function syntheticAuthEmail(loginId) {
+      const hash = await sha256Hex(String(loginId || '').trim());
+      return `u_${hash}@${SYNTHETIC_AUTH_EMAIL_DOMAIN}`;
+    }
+
+    async function signInWithSupabasePassword(loginId, password) {
+      const email = await syntheticAuthEmail(loginId);
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error_code || data.error || 'supabase_auth_failed');
+        err.response = data;
+        err.status = res.status;
+        throw err;
+      }
+      return { data, email };
+    }
+
+    function needsLegacyPasswordReset(data) {
+      return data && LEGACY_PASSWORD_RESET_ERRORS.has(data.error);
+    }
+
+    async function callLegacyPasswordUpgrade(loginId, password, newPassword) {
+      const res = await fetch(LEGACY_PASSWORD_UPGRADE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ loginId, password, newPassword: newPassword || '' })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && !data.error) data.error = 'request_failed';
+      return data;
+    }
+
+    function saveSupabaseAdminSession(loginId, authResult) {
+      const data = authResult && authResult.data;
+      if (!data) return;
+      localStorage.setItem('beyondus_supabase_login_id', loginId || '');
+      localStorage.setItem('beyondus_supabase_user_id', (data.user && data.user.id) || '');
+      localStorage.setItem('beyondus_supabase_access_token', data.access_token || '');
+      localStorage.setItem('beyondus_supabase_refresh_token', data.refresh_token || '');
+      localStorage.setItem('beyondus_supabase_expires_at', String(data.expires_at || ''));
+      sessionStorage.removeItem('beyondus_supabase_admin_disabled');
+    }
+
+    function clearSupabaseAdminSessionHint() {
+      sessionStorage.removeItem('beyondus_supabase_admin_ok');
+      sessionStorage.removeItem('beyondus_supabase_admin_disabled');
+      sessionStorage.removeItem('adminMode');
+    }
+
+    function clearSupabaseAdminAuthStorage() {
+      [
+        'beyondus_supabase_login_id',
+        'beyondus_supabase_user_id',
+        'beyondus_supabase_access_token',
+        'beyondus_supabase_refresh_token',
+        'beyondus_supabase_expires_at',
+      ].forEach(key => localStorage.removeItem(key));
+      clearSupabaseAdminSessionHint();
+    }
+
+    function enterAdminPanel(options) {
+      const opts = options || {};
+      adminPw = opts.adminPw || '';
+      if (opts.mode) sessionStorage.setItem('adminMode', opts.mode);
+      if (opts.loginId) sessionStorage.setItem('adminLoginId', opts.loginId);
+      if (opts.adminPw) sessionStorage.setItem('adminPw', opts.adminPw);
+      document.getElementById('authGate').style.display  = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+      loadUsers();
+      loadCheckin();
+      loadCurrentWeek();
+      loadTabSettings();
+      loadAdminNotices();
+    }
+
+    async function doSupabaseAdminLogin(loginId, password) {
+      clearSupabaseAdminSessionHint();
+      let authResult;
+      try {
+        authResult = await signInWithSupabasePassword(loginId, password);
+      } catch(authError) {
+        if (authError.status !== 400 && authError.message !== 'invalid_grant') throw authError;
+        const upgrade = await callLegacyPasswordUpgrade(loginId, password, '');
+        if (upgrade.ok) {
+          authResult = await signInWithSupabasePassword(loginId, password);
+        } else if (needsLegacyPasswordReset(upgrade)) {
+          const err = new Error('staff_password_upgrade_required');
+          err.response = upgrade;
+          throw err;
+        } else {
+          throw authError;
+        }
+      }
+      saveSupabaseAdminSession(loginId, authResult);
+      if (isMaintenanceBlockedLoginId(loginId)) {
+        clearSupabaseAdminAuthStorage();
+        const err = new Error('maintenance_mode');
+        err.status = 503;
+        throw err;
+      }
+      await callSupabaseAdmin('getUsers', { action: 'getUsers' });
+      enterAdminPanel({ mode: 'supabase', loginId });
+    }
+
     async function doAdminLogin() {
+      const loginId = document.getElementById('adminLoginIdInput').value.trim();
       const pw = document.getElementById('adminPwInput').value;
       const statusEl = document.getElementById('gateStatus');
       const btn = document.getElementById('gateBtn');
-      if (!pw) { statusEl.textContent = '비밀번호를 입력해주세요.'; return; }
+      if (!loginId || !pw) { statusEl.textContent = 'Staff 아이디와 비밀번호를 입력해주세요.'; return; }
 
       btn.disabled = true;
       statusEl.textContent = '확인 중...';
       statusEl.className = 'status';
 
       try {
-        const res  = await post({ action: 'adminLogin', password: pw });
-        if (res.ok) {
-          adminPw = pw;
-          sessionStorage.setItem('adminPw', pw);
-          document.getElementById('authGate').style.display  = 'none';
-          document.getElementById('adminPanel').style.display = 'block';
-          loadUsers();
-          loadCheckin();
-          loadCurrentWeek();
-          loadTabSettings();
-          loadAdminNotices();
-        } else {
-          statusEl.textContent = '비밀번호가 틀렸어요.';
-        }
+        statusEl.textContent = 'Staff 권한 확인 중...';
+        await doSupabaseAdminLogin(loginId, pw);
       } catch(e) {
-        statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
+        if (e.status === 401 || e.message === 'admin_required') {
+          statusEl.textContent = 'Staff 권한이 없는 계정이에요.';
+        } else if (e.message === 'staff_password_upgrade_required') {
+          statusEl.textContent = '이 계정은 먼저 앱에서 6자 이상 비밀번호로 업데이트해야 해요.';
+        } else if (e.message === 'maintenance_mode') {
+          statusEl.innerHTML = maintenanceMessageHtml();
+        } else if (e.status === 400 || e.message === 'invalid_grant') {
+          statusEl.textContent = 'Staff 아이디 또는 비밀번호를 확인해주세요.';
+        } else {
+          statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
+        }
       } finally {
         btn.disabled = false;
       }
     }
 
     document.getElementById('gateBtn').addEventListener('click', doAdminLogin);
+    document.getElementById('adminLoginIdInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doAdminLogin();
+    });
     document.getElementById('adminPwInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') doAdminLogin();
     });
@@ -851,13 +1075,18 @@
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'bbb')     loadAdminBBB();
-      if (panelId === 'system')  loadSystemStatus();
+      if (panelId === 'eventlog') loadEventLogs();
     }
     document.getElementById('menuBtn').addEventListener('click', openDrawer);
     document.getElementById('drawerCloseBtn').addEventListener('click', closeDrawer);
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
     document.querySelectorAll('.drawer-item').forEach(btn => {
       btn.addEventListener('click', () => switchPanel(btn.dataset.panel, btn.textContent.trim()));
+    });
+    document.getElementById('eventLogTypeFilter').addEventListener('change', () => loadEventLogs(true));
+    document.getElementById('eventLogLimitInput').addEventListener('change', () => loadEventLogs(true));
+    document.getElementById('eventLogSearchInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') loadEventLogs(true);
     });
 
     /* ── 유저 목록 ── */
@@ -868,7 +1097,7 @@
         const res = await get({ action: 'getUsers', adminPw });
         if (!res.ok) { tbody.innerHTML = '<tr><td colspan="5">오류: ' + (res.error || '') + '</td></tr>'; return; }
 
-        const users = res.users;
+        const users = Array.isArray(res.users) ? [...res.users].sort(compareUsersByParishName) : [];
         // 통계
         document.getElementById('statTotal').textContent = users.length;
         ['1청','2청','3청','4청'].forEach((p, i) => {
@@ -1055,7 +1284,9 @@
     async function loadCheckin(options) {
       const opts = options || {};
       try {
-        const res = await get({ action: 'dashboard', adminPw, force: opts.force === true ? '1' : '', t: Date.now() });
+        const res = canUseSupabaseAdmin()
+          ? await callSupabaseAdminRpc('admin_dashboard_summary', { p_force: opts.force === true })
+          : await get({ action: 'dashboard', adminPw, force: opts.force === true ? '1' : '', t: Date.now() });
         if (!res.ok) throw new Error(res.error || 'dashboard_failed');
         document.getElementById('ciSubmission').textContent = fmtCount(res.submissionCount);
         document.getElementById('ciTotal').textContent      = fmtCount(res.totalCount);
@@ -1101,7 +1332,11 @@
       tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       deletedTbody.innerHTML = '<tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
-        const res = await get({ action: 'adminGetRaffleAttendance', adminPw, query, limit: _attendanceLimit, offset: 0 });
+        const res = await callSupabaseAdminRpc('admin_get_raffle_attendance', {
+          p_query: query,
+          p_limit: _attendanceLimit,
+          p_offset: 0,
+        });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         _raffleAttendanceUsers = res.users || [];
         _deletedAttendanceUsers = res.deletedUsers || [];
@@ -1208,7 +1443,7 @@
     }
 
     async function restoreAttendanceUser(nickname, btn) {
-      if (!confirm(`${nickname} 유저를 복구할까요? Events 기준으로 컬렉션과 추첨권을 다시 계산합니다.`)) return;
+      if (!confirm(`${nickname} 유저를 복구할까요? 현재 Supabase 상태 기준으로 요약과 추첨권을 다시 계산합니다.`)) return;
       const statusEl = document.getElementById('attendanceStatus');
       btn.disabled = true;
       statusEl.textContent = '복구 중...';
@@ -1463,7 +1698,7 @@
 
     async function loadCardStats() {
       try {
-        const res = await get({ action: 'getCardStats', adminPw });
+        const res = await callSupabaseAdminRpc('admin_card_stats');
         if (!res.ok) return;
 
         document.getElementById('cardTotalDraws').textContent = res.totalDraws;
@@ -1524,14 +1759,15 @@
     document.getElementById('resetConfirmBtn').addEventListener('click', async () => {
       const newPw = document.getElementById('newPwInput').value.trim();
       const statusEl = document.getElementById('resetModalStatus');
-      if (!newPw || newPw.length < 4) { statusEl.textContent = '4자 이상 입력해주세요.'; return; }
+      if (!newPw || newPw.length < 6) { statusEl.textContent = '6자 이상 입력해주세요.'; return; }
 
       const btn = document.getElementById('resetConfirmBtn');
       btn.disabled = true;
       statusEl.textContent = '처리 중...';
 
       try {
-        const res = await post({ action: 'adminResetPassword', adminPw, nickname: targetNickname, newPassword: newPw });
+        requireSupabaseAdminSession();
+        const res = await callAdminResetPassword({ nickname: targetNickname, newPassword: newPw });
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = '초기화 완료!';
@@ -1550,18 +1786,174 @@
     function escHtml(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-    function get(params) {
-      const qs = Object.entries(params).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-      return fetch(`${API_BASE}?${qs}&t=${Date.now()}`, { cache: 'no-store' }).then(r => r.json());
+    function getSupabaseAccessToken() {
+      return localStorage.getItem('beyondus_supabase_access_token') || '';
     }
-    function post(body) {
-      return fetch(API_BASE, {
+    function shouldForceSupabaseAdmin() {
+      try {
+        const flag = new URLSearchParams(location.search).get('supabaseAdmin');
+        if (flag === '1') {
+          localStorage.setItem('beyondus_supabase_admin_force', '1');
+          sessionStorage.removeItem('beyondus_supabase_admin_disabled');
+        }
+        if (flag === '0') localStorage.removeItem('beyondus_supabase_admin_force');
+      } catch(e) {}
+      return localStorage.getItem('beyondus_supabase_admin_force') === '1';
+    }
+    function hasSupabaseAdminHint() {
+      return sessionStorage.getItem('beyondus_supabase_admin_ok') === '1' ||
+        localStorage.getItem('beyondus_is_dev') === 'true' ||
+        shouldForceSupabaseAdmin();
+    }
+    function markSupabaseAdminUnauthorized() {
+      sessionStorage.removeItem('beyondus_supabase_admin_ok');
+      sessionStorage.setItem('beyondus_supabase_admin_disabled', '1');
+    }
+    function canUseSupabaseAdmin() {
+      return !!SUPABASE_PROJECT_URL &&
+        !!SUPABASE_ANON_KEY &&
+        !!getSupabaseAccessToken() &&
+        sessionStorage.getItem('beyondus_supabase_admin_disabled') !== '1' &&
+        hasSupabaseAdminHint();
+    }
+    function supabasePhotoUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw || raw.startsWith('data:')) return raw;
+      if (raw.includes('/storage/v1/object/') && !raw.includes('/storage/v1/object/public/')) {
+        return raw.replace('/storage/v1/object/', '/storage/v1/object/public/');
+      }
+      if (/^https?:\/\//i.test(raw)) return raw;
+      return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    }
+    function normalizeNoticeImageUrl(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return JSON.stringify(parsed.map(src => supabasePhotoUrl(src)));
+      } catch(e) {}
+      return supabasePhotoUrl(raw);
+    }
+    function normalizeSupabaseAdminResponse(data) {
+      const next = Object.assign({}, data || {});
+      if (Array.isArray(next.photos)) {
+        next.photos = next.photos.map(item => Object.assign({}, item, {
+          photoBase64: supabasePhotoUrl(item && item.photoBase64),
+        }));
+      }
+      if (Array.isArray(next.notices)) {
+        next.notices = next.notices.map(item => Object.assign({}, item, {
+          rowIndex: String(item && (item.rowIndex || item.id || '')),
+          imageUrl: normalizeNoticeImageUrl(item && item.imageUrl),
+        }));
+      }
+      return next;
+    }
+    async function callSupabasePublicRpc(functionName, payload) {
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(body)
-      }).then(r => r.json());
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && (data.error || data.message)) || `rpc_${functionName}_failed`);
+        err.response = data;
+        throw err;
+      }
+      return normalizeSupabaseAdminResponse(data);
+    }
+    async function callSupabaseAdmin(action, payload) {
+      const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_admin_session_required');
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/admin_dispatch`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_action: action, p_payload: payload || {} }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && (data.error || data.message)) || `admin_${action}_failed`);
+        err.response = data;
+        err.status = res.status;
+        if (res.status === 401) markSupabaseAdminUnauthorized();
+        throw err;
+      }
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
+      return normalizeSupabaseAdminResponse(data);
+    }
+    async function callSupabaseAdminRpc(functionName, payload, options) {
+      const opts = options || {};
+      const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_admin_session_required');
+      const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false && !opts.allowOkFalse)) {
+        const err = new Error((data && (data.error || data.message)) || `admin_${functionName}_failed`);
+        err.response = data;
+        err.status = res.status;
+        if (res.status === 401) markSupabaseAdminUnauthorized();
+        throw err;
+      }
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
+      return normalizeSupabaseAdminResponse(data);
+    }
+    async function callAdminResetPassword(payload) {
+      const token = getSupabaseAccessToken();
+      if (!token) throw new Error('supabase_admin_session_required');
+      const res = await fetch(ADMIN_RESET_PASSWORD_URL, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || (data && data.ok === false)) {
+        const err = new Error((data && (data.error || data.message)) || 'admin_reset_password_failed');
+        err.response = data;
+        err.status = res.status;
+        if (res.status === 401) markSupabaseAdminUnauthorized();
+        throw err;
+      }
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
+      return normalizeSupabaseAdminResponse(data);
+    }
+    function requireSupabaseAdminSession() {
+      if (!canUseSupabaseAdmin()) throw new Error('supabase_admin_session_required');
+    }
+    async function get(params) {
+      if (!params || !params.action) throw new Error('missing_admin_action');
+      if (!SUPABASE_ADMIN_ACTIONS.has(params.action)) throw new Error(`unsupported_admin_action:${params.action}`);
+      requireSupabaseAdminSession();
+      return callSupabaseAdmin(params.action, params);
+    }
+    async function post(body) {
+      if (!body || !body.action) throw new Error('missing_admin_action');
+      if (!SUPABASE_ADMIN_ACTIONS.has(body.action)) throw new Error(`unsupported_admin_action:${body.action}`);
+      requireSupabaseAdminSession();
+      return callSupabaseAdmin(body.action, body);
     }
     function esc(s) { return String(s || '').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+    function jsArg(s) { return JSON.stringify(String(s || '')).replace(/</g, '\\u003c'); }
     function formatDate(v) {
       if (!v) return '-';
       const d = new Date(v);
@@ -1701,17 +2093,74 @@
     });
 
     /* ── 탭 설정 ── */
+    function normalizeAdminTabStatus(status) {
+      return status === 'open' ? 'open' : 'closed';
+    }
+
+    function renderTabSettings(items) {
+      const listEl = document.getElementById('tabSettingsList');
+      if (!listEl) return;
+      const list = Array.isArray(items) ? items : [];
+      if (!list.length) {
+        listEl.innerHTML = '<p style="font-size:13px;color:var(--danger);margin:0;">탭 설정을 불러오지 못했어요.</p>';
+        return;
+      }
+      listEl.innerHTML = list.map(item => {
+        const key = String(item.key || '').trim();
+        const radioName = `tabState_${key}`;
+        const status = normalizeAdminTabStatus(item.status);
+        const enabled = item.enabled !== false;
+        // 3상태: hidden(숨김) / coming(Coming Soon) / open(오픈)
+        const state = !enabled ? 'hidden' : (status === 'open' ? 'open' : 'coming');
+        const meta = key === 'specialPack'
+          ? '부가 기능 · 사전미션 카드팩 영역'
+          : '유저 앱 메뉴 탭';
+        return `
+          <div class="tab-setting-row" data-tab-key="${esc(key)}">
+            <div class="tab-setting-title">
+              <span class="tab-setting-label">${esc(item.label || key)}</span>
+              <span class="tab-setting-meta">${esc(meta)}</span>
+            </div>
+            <div class="tab-setting-controls">
+              <div class="tab-status-group">
+                <label class="tab-status-option status-hidden">
+                  <input type="radio" name="${esc(radioName)}" value="hidden" ${state === 'hidden' ? 'checked' : ''} />
+                  숨김
+                </label>
+                <label class="tab-status-option status-coming">
+                  <input type="radio" name="${esc(radioName)}" value="coming" ${state === 'coming' ? 'checked' : ''} />
+                  Coming Soon
+                </label>
+                <label class="tab-status-option status-open">
+                  <input type="radio" name="${esc(radioName)}" value="open" ${state === 'open' ? 'checked' : ''} />
+                  오픈
+                </label>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function collectTabSettingsItems() {
+      return Array.from(document.querySelectorAll('#tabSettingsList .tab-setting-row')).map(row => {
+        const key = row.dataset.tabKey;
+        const state = row.querySelector(`input[name="tabState_${key}"]:checked`)?.value || 'hidden';
+        const enabled = state !== 'hidden';
+        const status  = state === 'open' ? 'open' : 'closed';
+        return { key, enabled, status };
+      });
+    }
+
     async function loadTabSettings() {
       try {
         const res = await get({ action: 'getTabSettings', adminPw });
         if (res.ok) {
-          document.getElementById('togglePrayer').checked = res.prayer !== false;
-          document.getElementById('toggleSecret').checked = res.secret !== false;
-          document.getElementById('toggleQt').checked = res.qt !== false;
-          document.getElementById('togglePilgrim').checked = res.pilgrim === true;
-          document.getElementById('toggleSpecialPack').checked = res.specialPack === true;
+          renderTabSettings(res.items || []);
         }
-      } catch(e) {}
+      } catch(e) {
+        renderTabSettings([]);
+      }
     }
 
     document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
@@ -1721,14 +2170,17 @@
       statusEl.textContent = '저장 중...';
       statusEl.className = 'status';
       try {
+        // 'secret' 탭 상태가 B.B.B 페이지 cover (careBuddy/secretBuddy/m1/m2/msgOpen)도 함께 제어
+        const tabItems = collectTabSettingsItems();
+        const secretItem = tabItems.find(i => i.key === 'secret');
+        const secretOpen = secretItem ? secretItem.status === 'open' : false;
+        const bbbSections = {};
+        BBB_GROUP_KEYS.forEach(k => { bbbSections[k] = { open: secretOpen }; });
         const res = await post({
           action: 'setTabSettings',
           adminPw,
-          prayer: document.getElementById('togglePrayer').checked,
-          secret: document.getElementById('toggleSecret').checked,
-          qt: document.getElementById('toggleQt').checked,
-          pilgrim: document.getElementById('togglePilgrim').checked,
-          specialPack: document.getElementById('toggleSpecialPack').checked
+          tabItems,
+          bbbSections,
         });
         if (res.ok) {
           statusEl.className = 'status ok';
@@ -1764,8 +2216,8 @@
             <div style="font-size:12px; color:var(--sub); margin-top:6px;">${formatDate(n.createdAt)}</div>
           </div>
           <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button class="btn btn-ghost btn-sm" onclick="startInlineEdit(${n.rowIndex})">수정</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteNotice(${n.rowIndex})">삭제</button>
+            <button class="btn btn-ghost btn-sm" onclick="startInlineEdit(${jsArg(n.rowIndex)})">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteNotice(${jsArg(n.rowIndex)})">삭제</button>
           </div>
         </div>`;
     }
@@ -1776,8 +2228,8 @@
         <textarea id="inlineContent_${n.rowIndex}" class="input" rows="4" style="resize:vertical; font-family:inherit; line-height:1.6; margin-bottom:6px;">${esc(n.content)}</textarea>
         <div class="status" id="inlineStatus_${n.rowIndex}"></div>
         <div style="display:flex; gap:8px; margin-top:4px;">
-          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="cancelInlineEdit(${n.rowIndex})">취소</button>
-          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveInlineEdit(${n.rowIndex})">저장</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="cancelInlineEdit(${jsArg(n.rowIndex)})">취소</button>
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveInlineEdit(${jsArg(n.rowIndex)})">저장</button>
         </div>`;
     }
 
@@ -1824,7 +2276,7 @@
       if (!title || !content) { statusEl.textContent = '제목과 내용을 입력해주세요.'; return; }
       statusEl.textContent = '저장 중...';
       try {
-        const res = await post({ action: 'editNotice', adminPw, rowIndex, title, content });
+        const res = await callSupabaseAdmin('editNotice', { action: 'editNotice', adminPw, rowIndex, title, content });
         if (res.ok) {
           item.dataset.title   = title;
           item.dataset.content = content;
@@ -1833,14 +2285,14 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        statusEl.textContent = e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : '연결 오류';
       }
     }
 
     async function loadAdminNotices() {
       const list = document.getElementById('noticeAdminList');
       try {
-        const res = await get({ action: 'getNotices' });
+        const res = await callSupabasePublicRpc('get_notices');
         if (!res.ok || !res.notices.length) {
           cachedAdminNotices = [];
           list.innerHTML = '<p style="color:var(--sub); font-size:14px; text-align:center; padding:12px 0;">등록된 공지사항이 없어요.</p>';
@@ -1868,9 +2320,9 @@
       if (el) el.remove();
       cachedAdminNotices = cachedAdminNotices.filter(n => n.rowIndex !== rowIndex);
       try {
-        const res = await post({ action: 'deleteNotice', adminPw, rowIndex });
+        const res = await callSupabaseAdmin('deleteNotice', { action: 'deleteNotice', adminPw, rowIndex });
         if (!res.ok) { alert('삭제 실패: ' + (res.error || '')); loadAdminNotices(); }
-      } catch(e) { alert('연결 오류'); loadAdminNotices(); }
+      } catch(e) { alert(e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : '연결 오류'); loadAdminNotices(); }
     }
 
     // Drive 공유 URL → img 태그 직링크 변환
@@ -1923,6 +2375,94 @@
       });
     }
 
+    function base64ToBlob(base64, mime) {
+      const bin = atob(String(base64 || ''));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime || 'image/jpeg' });
+    }
+
+    function extensionForMime(mime) {
+      if (mime === 'image/png') return 'png';
+      if (mime === 'image/webp') return 'webp';
+      if (mime === 'image/svg+xml') return 'svg';
+      return 'jpg';
+    }
+
+    function stripFileExtension(name) {
+      return String(name || '').replace(/\.[^.\\/]+$/, '');
+    }
+
+    function rasterizeImageDataUrl(dataUrl) {
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, image.naturalWidth || image.width || 1200);
+          canvas.height = Math.max(1, image.naturalHeight || image.height || 900);
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(image, 0, 0);
+          canvas.toBlob(blob => {
+            if (blob) resolve({ blob, ext: 'png' });
+            else reject(new Error('image_convert_failed'));
+          }, 'image/png');
+        };
+        image.onerror = () => reject(new Error('image_convert_failed'));
+        image.src = dataUrl;
+      });
+    }
+
+    async function noticeFileToUpload(file) {
+      const mime = String(file.mime || 'image/jpeg').toLowerCase();
+      if (mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/webp') {
+        return { blob: base64ToBlob(file.base64, mime), ext: extensionForMime(mime) };
+      }
+      return rasterizeImageDataUrl(file.dataUrl);
+    }
+
+    function safeStoragePathPart(value) {
+      return String(value || '')
+        .trim()
+        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'file';
+    }
+
+    async function uploadSupabaseNoticeImage(file, index) {
+      requireSupabaseAdminSession();
+      const token = getSupabaseAccessToken();
+      const upload = await noticeFileToUpload(file);
+      const blob = upload.blob;
+      const ext = upload.ext || extensionForMime(blob.type);
+      const namePart = safeStoragePathPart(stripFileExtension(file.name) || `notice_${index + 1}`);
+      const path = `notices/${Date.now()}_${index}_${Math.random().toString(36).slice(2)}_${namePart}.${ext}`;
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${path}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${token}`,
+          'Content-Type': blob.type || 'image/jpeg',
+          'x-upsert': 'true',
+        },
+        body: blob,
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error(detail || 'notice_image_upload_failed');
+      }
+      return path;
+    }
+
+    async function uploadSupabaseNoticeImages(files) {
+      const list = Array.isArray(files) ? files : [];
+      const paths = [];
+      for (let i = 0; i < list.length; i++) {
+        paths.push(await uploadSupabaseNoticeImage(list[i], i));
+      }
+      return paths;
+    }
+
     document.getElementById('noticeImageFile').addEventListener('change', function() {
       handleImageFiles(this.files);
     });
@@ -1949,14 +2489,18 @@
 
       const payload = { action: 'postNotice', adminPw, title, content };
       if (_pendingFiles.length) {
-        statusEl.textContent = `Drive에 이미지 ${_pendingFiles.length}장 업로드 중...`;
-        payload.imageFiles = _pendingFiles.map(f => ({ base64: f.base64, mime: f.mime }));
+        statusEl.textContent = `Supabase Storage에 이미지 ${_pendingFiles.length}장 업로드 중...`;
       } else {
         statusEl.textContent = '등록 중...';
       }
 
       try {
-        const res = await post(payload);
+        requireSupabaseAdminSession();
+        if (_pendingFiles.length) {
+          const imagePaths = await uploadSupabaseNoticeImages(_pendingFiles);
+          payload.imageUrl = JSON.stringify(imagePaths);
+        }
+        const res = await callSupabaseAdmin('postNotice', payload);
         if (res.ok) {
           statusEl.className = 'status ok';
           statusEl.textContent = _pendingFiles.length ? `이미지 ${_pendingFiles.length}장 업로드 + 등록 완료!` : '등록되었어요!';
@@ -1966,13 +2510,16 @@
           loadAdminNotices();
         } else if (res.error === 'drive_upload_failed') {
           statusEl.className = 'status error';
-          statusEl.textContent = 'Drive 업로드 실패: ' + (res.detail || 'GAS DriveApp 권한 미승인');
+          statusEl.textContent = '이미지 업로드 실패: ' + (res.detail || 'Storage 권한 확인 필요');
         } else {
           statusEl.className = 'status error';
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status error';
+        statusEl.textContent = e.message === 'supabase_admin_session_required'
+          ? 'Supabase 관리자 세션이 필요해요. Staff 계정으로 다시 로그인해주세요.'
+          : (e.message === 'image_convert_failed' ? '이미지를 변환할 수 없어요. JPG, PNG, WebP 파일로 다시 시도해주세요.' : `연결 오류: ${e.message || '알 수 없는 오류'}`);
       } finally {
         btn.disabled = false;
       }
@@ -2129,11 +2676,13 @@
       const btn = document.getElementById('raffleSearchBtn');
       const input = document.getElementById('raffleSearchInput');
       const refreshBtn = document.getElementById('refreshRaffleTicketsBtn');
+      const syncBtn = document.getElementById('syncRafflePolicyBtn');
       const filterInput = document.getElementById('raffleTicketFilterInput');
       const moreBtn = document.getElementById('raffleTicketMoreBtn');
       if (btn) btn.addEventListener('click', adminSearchRaffleTicket);
       if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') adminSearchRaffleTicket(); });
       if (refreshBtn) refreshBtn.addEventListener('click', () => loadRaffleTickets({ resetLimit: true }));
+      if (syncBtn) syncBtn.addEventListener('click', syncRafflePolicy);
       if (filterInput) filterInput.addEventListener('input', scheduleRaffleTicketLoad);
       if (moreBtn) {
         moreBtn.addEventListener('click', () => {
@@ -2146,6 +2695,33 @@
     function scheduleRaffleTicketLoad() {
       clearTimeout(_raffleTicketSearchTimer);
       _raffleTicketSearchTimer = setTimeout(() => loadRaffleTickets({ resetLimit: true }), 250);
+    }
+
+    async function syncRafflePolicy() {
+      const btn = document.getElementById('syncRafflePolicyBtn');
+      const statusEl = document.getElementById('syncRafflePolicyStatus');
+      if (!btn || !statusEl) return;
+      if (!canUseSupabaseAdmin()) {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = 'Supabase 관리자 세션이 필요해요. 먼저 다시 로그인해주세요.';
+        return;
+      }
+
+      btn.disabled = true;
+      statusEl.style.color = 'var(--sub)';
+      statusEl.textContent = '추첨권 정책을 다시 계산하는 중...';
+      try {
+        const res = await callSupabaseAdminRpc('admin_backfill_raffle_tickets');
+        statusEl.style.color = 'var(--primary)';
+        statusEl.textContent = `보정 완료. 확인 ${fmtCount(res.checked || 0)}명, 현재 발급 ${fmtCount(res.activeCount || 0)}장, 발급 제외 ${fmtCount(res.excludedCount || 0)}명.`;
+        await loadRaffleTickets({ resetLimit: true });
+      } catch(e) {
+        console.warn('[DIAG] raffle backfill failed', e);
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = `보정 실패. ${e.message || 'server_error'}`;
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     function updateRaffleTicketMoreButton(meta) {
@@ -2185,11 +2761,7 @@
         el.innerHTML = '<span class="more-chip">없음</span>';
         return;
       }
-      const maxVisible = 24;
-      const shown = list.slice(0, maxVisible);
-      const extra = list.length - shown.length;
-      el.innerHTML = shown.map(no => `<span class="ticket-chip">#${esc(no)}</span>`).join('')
-        + (extra > 0 ? `<span class="more-chip">외 ${fmtCount(extra)}개</span>` : '');
+      el.innerHTML = list.map(no => `<span class="ticket-chip">#${esc(no)}</span>`).join('');
     }
 
     async function loadRaffleTickets(options) {
@@ -2203,7 +2775,11 @@
       renderRaffleAvailableNumbers(null);
       tbody.innerHTML = '<tr><td colspan="6" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
       try {
-        const res = await get({ action: 'adminGetRaffleTickets', adminPw, query, limit: _raffleTicketLimit, offset: 0 });
+        const res = await callSupabaseAdminRpc('admin_get_raffle_tickets', {
+          p_query: query,
+          p_limit: _raffleTicketLimit,
+          p_offset: 0,
+        });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         document.getElementById('raffleActiveCount').textContent = res.activeCount || 0;
         document.getElementById('raffleAvailableCount').textContent = res.availableCount || 0;
@@ -2364,11 +2940,11 @@
         // 섹션 오픈 설정 로드
         if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
 
-        // 매칭 테이블 — 버디 관계는 시트에서 확인
+        // 매칭 테이블
         const matches = res.matches || [];
         matchEl.innerHTML = matches.length
-          ? '<p style="font-size:13px;color:var(--sub);margin:0;">매칭 완료. 버디 관계 상세는 BBB 시트에서 확인하세요.</p>'
-          : '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 매칭 실행 버튼을 눌러주세요.</p>';
+          ? '<p style="font-size:13px;color:var(--sub);margin:0;">Supabase에 저장된 매칭 내역이 있습니다. 조별, 티어 기반 재설계 전까지 새 매칭 실행은 중지합니다.</p>'
+          : '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 조별, 티어 기반 매칭 재설계 후 다시 연결합니다.</p>';
 
         // 메시지 로그
         const messages = res.messages || [];
@@ -2400,81 +2976,47 @@
     }
 
     async function runBBBMatching() {
-      if (!confirm('TF(isStaff=TRUE) 인원을 랜덤 매칭합니다.\n기존 매칭이 있으면 초기화됩니다. 진행할까요?')) return;
-      const btn = document.querySelector('[onclick="runBBBMatching()"]');
-      btn.disabled = true; btn.textContent = '매칭 중...';
-      try {
-        const res = await post({ action: 'adminSetupBBBMatching', adminPw });
-        if (!res.ok) { alert('매칭 실패: ' + (res.error || '알 수 없는 오류')); return; }
-        alert(`✅ 매칭 완료! ${res.matched}명 매칭됨\n\n` +
-          res.pairs.map(p => `${p.from} → ${p.careBuddy}`).join('\n'));
-        loadAdminBBB();
-      } catch(e) { alert('연결 오류'); }
-      finally { btn.disabled = false; btn.textContent = '🎲 매칭 실행'; }
+      alert('기존 랜덤 매칭은 중지했습니다. 조별, 티어 기반 BBB 매칭 재설계 때 Supabase 기준으로 다시 연결합니다.');
     }
 
-    /* ── BBB 섹션 오픈 설정 ── */
-    const BBB_SECTION_LABELS = {
-      careBuddy:   'CARE BUDDY',
-      m1:          'MISSION 1 (사진 찍기)',
-      m2:          'MISSION 2 (기도 인증)',
-      m3:          'MISSION 3 (천로역정 맵)',
-      secretBuddy: 'SECRET BUDDY',
-      msgOpen:     '익명 메시지 세트',
-    };
-    const BBB_SECTION_DESCS = {
-      msgOpen: 'To. CARE BUDDY (메시지 보내기)<br>+ from. SECRET BUDDY (받은 메시지함)',
-    };
-    const BBB_SECTION_HAS_CS_TEXT = new Set(['careBuddy', 'm1', 'm2', 'm3', 'secretBuddy']);
+    /* ── 섹션 오픈 설정 (천로역정만 — B.B.B 미션은 탭 활성화 'secret' 상태가 제어) ── */
+    const BBB_GROUP_KEYS = ['careBuddy', 'secretBuddy', 'm1', 'm2', 'msgOpen'];
+    const PILGRIM_KEYS   = ['m3'];
     let _bbbSectionsData = {};
 
     function renderBBBSectionRows(sections) {
       _bbbSectionsData = sections;
       const container = document.getElementById('bbbSectionRows');
       if (!container) return;
-      container.innerHTML = Object.entries(BBB_SECTION_LABELS).map(([key, label]) => {
-        const sec       = sections[key] || { open: false, text: '' };
-        const hasCSText = BBB_SECTION_HAS_CS_TEXT.has(key);
-        const desc      = BBB_SECTION_DESCS[key] || '';
-        const toggle    = `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex-shrink:0;">
-              <span id="bbbSecLabel_${key}" style="font-size:12px;font-weight:700;color:${sec.open ? '#4ade80' : '#f87171'};">${sec.open ? '🟢 오픈' : '🔴 잠금'}</span>
-              <input type="checkbox" id="bbbSecToggle_${key}" ${sec.open ? 'checked' : ''} onchange="onBBBSectionToggle('${key}')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
-            </label>`;
-        return `<div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;${hasCSText ? 'margin-bottom:10px;' : ''}">
+      const pilgrimOn = PILGRIM_KEYS.every(k => sections[k] && sections[k].open);
+      container.innerHTML = `
+        <div style="background:var(--primary-soft);border-radius:12px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
             <div style="flex:1;min-width:0;margin-right:12px;">
-              <div style="font-size:14px;font-weight:700;">${label}</div>
-              ${desc ? `<div style="font-size:11px;color:var(--sub);margin-top:3px;">${desc}</div>` : ''}
+              <div style="font-size:14px;font-weight:700;">천로역정</div>
+              <div style="font-size:11px;color:var(--sub);margin-top:3px;">MISSION 3 (필그림하우스 맵)</div>
             </div>
-            ${toggle}
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;">
+              <span id="bbbSecLabel_pilgrim" style="font-size:12px;font-weight:700;color:${pilgrimOn ? '#047857' : '#92400e'};">${pilgrimOn ? '오픈' : 'Coming Soon'}</span>
+              <input type="checkbox" id="bbbSecToggle_pilgrim" ${pilgrimOn ? 'checked' : ''} onchange="onBBBSectionToggle('pilgrim')" style="width:18px;height:18px;accent-color:var(--primary);cursor:pointer;" />
+            </label>
           </div>
-          ${hasCSText ? `<div id="bbbSecCSWrap_${key}" style="display:${sec.open ? 'none' : ''};">
-            <p style="font-size:11px;color:var(--sub);margin:0 0 6px;">Coming Soon 텍스트 (줄바꿈으로 2줄 분리)</p>
-            <textarea id="bbbSecText_${key}" rows="2" style="width:100%;box-sizing:border-box;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text);resize:none;font-family:inherit;outline:none;">${escHtml(sec.text || '')}</textarea>
-          </div>` : ''}
         </div>`;
-      }).join('');
     }
 
-    function onBBBSectionToggle(key) {
-      const checked = document.getElementById('bbbSecToggle_' + key).checked;
-      const label   = document.getElementById('bbbSecLabel_'  + key);
-      const csWrap  = document.getElementById('bbbSecCSWrap_' + key);
-      label.textContent = checked ? '🟢 오픈' : '🔴 잠금';
-      label.style.color = checked ? '#4ade80' : '#f87171';
-      if (csWrap) csWrap.style.display = checked ? 'none' : '';
+    function onBBBSectionToggle(id) {
+      const checked = document.getElementById('bbbSecToggle_' + id).checked;
+      const label   = document.getElementById('bbbSecLabel_'  + id);
+      label.textContent = checked ? '오픈' : 'Coming Soon';
+      label.style.color = checked ? '#047857' : '#92400e';
     }
 
     async function saveBBBSections() {
+      const pilgrimOn = document.getElementById('bbbSecToggle_pilgrim')?.checked === true;
       const sections = {};
-      Object.keys(BBB_SECTION_LABELS).forEach(key => {
-        const toggle = document.getElementById('bbbSecToggle_' + key);
-        const entry  = { open: toggle ? toggle.checked : false };
-        if (BBB_SECTION_HAS_CS_TEXT.has(key)) {
-          const textEl = document.getElementById('bbbSecText_' + key);
-          entry.text = textEl ? textEl.value : '';
-        }
-        sections[key] = entry;
+      PILGRIM_KEYS.forEach(k => {
+        const prev = _bbbSectionsData[k] || {};
+        sections[k] = { ...prev, open: pilgrimOn };
       });
       const statusEl = document.getElementById('bbbSectionSaveStatus');
       statusEl.textContent = '저장 중...';
@@ -2513,14 +3055,13 @@
       statusEl.textContent = '처리 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({
-          action: 'adminCreateCardEvent',
-          adminPw,
-          eventMode: mode,
-          userId,
-          cardId,
-          amount,
-          reason,
+        requireSupabaseAdminSession();
+        const res = await callSupabaseAdminRpc('admin_adjust_card', {
+          p_login_id: userId,
+          p_card_id: cardId,
+          p_amount: amount,
+          p_mode: mode,
+          p_reason: reason,
         });
         if (res.ok) {
           const count = res.collection && res.collection[cardId] ? res.collection[cardId] : 0;
@@ -2539,19 +3080,20 @@
     }
 
     async function runRebuildEventDerivedViews() {
-      if (!confirm('Events 기준으로 Collection, MissionProgress, UserDashboard를 다시 계산합니다.\n진행할까요?')) return;
+      if (!confirm('Supabase 기준으로 사용자 요약, 카드 현황, 추첨권 상태를 다시 계산합니다.\n진행할까요?')) return;
       const btn = document.getElementById('rebuildEventsDashboardBtn');
       const statusEl = document.getElementById('rebuildEventsDashboardStatus');
       const rowLimit = Number(document.getElementById('eventDashboardRows').value) || 300;
       btn.disabled = true;
       btn.textContent = '재계산 중...';
-      statusEl.textContent = 'Events 기준 projection을 다시 만드는 중입니다.';
+      statusEl.textContent = 'Supabase 파생 상태를 다시 맞추는 중입니다.';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'adminRebuildEventDerivedViews', adminPw, rowLimit });
+        requireSupabaseAdminSession();
+        const res = await callSupabaseAdminRpc('admin_rebuild_user_state', { p_row_limit: rowLimit });
         if (res.ok) {
           const missionProgress = Number(res.missionProgressRebuilt) || 0;
-          statusEl.textContent = `완료. Collection ${res.collectionRebuilt || 0}명, MissionProgress ${missionProgress}행, UserDashboard ${res.dashboardRows || 0}행. 대시보드를 새로고침했습니다.`;
+          statusEl.textContent = `완료. 사용자 ${res.collectionRebuilt || 0}명, MissionProgress ${missionProgress}행, 요약 ${res.dashboardRows || 0}행을 새로고침했습니다.`;
           statusEl.className = 'status ok';
           await Promise.all([loadTicketStats(), loadCardStats(), loadCheckin()]);
         } else {
@@ -2572,7 +3114,28 @@
       statusEl.textContent = '확인 중...';
       statusEl.className = 'status';
       try {
-        const res = await post({ action: 'prodCutoverHealthCheck', adminPw, rowLimit: getCutoverRowLimit() });
+        const startedAt = performance.now();
+        requireSupabaseAdminSession();
+        const [dashboard, cards, users, settings, audit] = await Promise.allSettled([
+          callSupabaseAdminRpc('admin_dashboard_summary', { p_force: true }),
+          callSupabaseAdminRpc('admin_card_stats'),
+          callSupabaseAdmin('getUsers', {}),
+          callSupabaseAdmin('getTabSettings', {}),
+          callSupabaseAdminRpc('admin_audit_user_state', { p_limit: getEventAuditRowLimit() }, { allowOkFalse: true }),
+        ]);
+        const checks = {
+          dashboard: settledCheck(dashboard),
+          cards: settledCheck(cards),
+          users: settledCheck(users),
+          settings: settledCheck(settings),
+          audit: settledCheck(audit),
+        };
+        const res = {
+          ok: Object.values(checks).every(item => item.ok),
+          source: 'supabase',
+          checks,
+          elapsedMs: Math.round(performance.now() - startedAt),
+        };
         renderSystemStatus(res);
         statusEl.textContent = res.ok ? '정상' : '확인 필요';
         statusEl.className = res.ok ? 'status ok' : 'status';
@@ -2584,82 +3147,155 @@
       }
     }
 
-    async function runProdCutoverDryRun() {
-      const btn = document.getElementById('cutoverDryRunBtn');
-      const statusEl = document.getElementById('cutoverStatus');
-      btn.disabled = true;
-      statusEl.textContent = 'Dry-run 실행 중...';
-      statusEl.className = 'status';
-      try {
-        const res = await post({ action: 'prodCutoverDryRun', adminPw, rowLimit: getCutoverRowLimit() });
-        const statusResult = res.steps && res.steps.sheetStatus
-          ? { ok: res.ok, sheets: res.steps.sheetStatus.result, elapsedMs: res.elapsedMs }
-          : res;
-        renderSystemStatus(statusResult);
-        setSystemResult(res);
-        statusEl.textContent = res.ok ? 'Dry-run 정상' : 'Dry-run 확인 필요';
-        statusEl.className = res.ok ? 'status ok' : 'status';
-      } catch(e) {
-        statusEl.textContent = '연결 오류';
-        statusEl.className = 'status';
-      } finally {
-        btn.disabled = false;
+    function settledCheck(result) {
+      if (result.status === 'fulfilled') {
+        const value = result.value || {};
+        return {
+          ok: value.ok !== false,
+          source: value.source || 'supabase',
+          error: value.ok === false ? (value.error || '') : undefined,
+          mismatchCount: value.mismatchCount,
+          checkedLimit: value.checkedLimit,
+          mismatches: value.mismatches,
+        };
       }
+      return {
+        ok: false,
+        error: result.reason && result.reason.message ? result.reason.message : 'failed',
+      };
     }
 
-    async function runProdCutoverApply() {
-      const confirmText = document.getElementById('cutoverConfirmInput').value.trim();
-      const statusEl = document.getElementById('cutoverStatus');
-      if (confirmText !== 'APPLY_PROD_CUTOVER') {
-        statusEl.textContent = '확인 문자열을 입력해 주세요.';
-        statusEl.className = 'status';
-        return;
-      }
-      if (!confirm('PROD 전환 apply를 실행할까요? 백업 후 마이그레이션과 대시보드 재계산을 진행합니다.')) return;
-
-      const btn = document.getElementById('cutoverApplyBtn');
-      btn.disabled = true;
-      statusEl.textContent = 'Apply 실행 중...';
-      statusEl.className = 'status';
-      try {
-        const res = await post({
-          action: 'prodCutoverApply',
-          adminPw,
-          rowLimit: getCutoverRowLimit(),
-          confirm: confirmText,
-        });
-        const health = res.steps && res.steps.healthCheck ? res.steps.healthCheck.result : res;
-        renderSystemStatus(health);
-        setSystemResult(res);
-        statusEl.textContent = res.ok ? 'Apply 완료' : 'Apply 확인 필요';
-        statusEl.className = res.ok ? 'status ok' : 'status';
-      } catch(e) {
-        statusEl.textContent = '연결 오류';
-        statusEl.className = 'status';
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function getCutoverRowLimit() {
-      const input = document.getElementById('cutoverDashboardRows');
-      return Math.max(Number(input && input.value) || 250, 1);
+    function getEventAuditRowLimit() {
+      const input = document.getElementById('eventDashboardRows');
+      return Math.max(Number(input && input.value) || 300, 1);
     }
 
     function renderSystemStatus(res) {
       const result = res || {};
-      const phase2E = result.phase2E || {};
-      const projection = phase2E.projection || {};
-      const sheets = result.sheets || {};
+      const checks = result.checks || {};
       document.getElementById('systemOverall').textContent = result.ok ? 'OK' : 'CHECK';
-      document.getElementById('systemMismatch').textContent = projection.mismatchCount === undefined ? '-' : projection.mismatchCount;
-      document.getElementById('systemLegacyVisible').textContent = Array.isArray(sheets.visibleLegacySheets) ? sheets.visibleLegacySheets.length : '-';
+      document.getElementById('systemMismatch').textContent = checks.dashboard ? (checks.dashboard.ok ? 'OK' : 'CHECK') : '-';
+      document.getElementById('systemLegacyVisible').textContent = checks.cards ? (checks.cards.ok ? 'OK' : 'CHECK') : '-';
       document.getElementById('systemElapsed').textContent = result.elapsedMs === undefined ? '-' : result.elapsedMs + 'ms';
       setSystemResult(result);
     }
 
     function setSystemResult(result) {
       document.getElementById('systemResultJson').textContent = JSON.stringify(result || {}, null, 2);
+    }
+
+    function getEventLogLimit() {
+      const input = document.getElementById('eventLogLimitInput');
+      return Math.max(1, Math.min(1000, Number(input && input.value) || 200));
+    }
+
+    function renderEventLogTypeOptions(types, selected) {
+      const select = document.getElementById('eventLogTypeFilter');
+      if (!select) return;
+      const nextTypes = Array.isArray(types) ? types.filter(Boolean) : [];
+      const same = JSON.stringify(nextTypes) === JSON.stringify(_eventLogTypes);
+      if (same && select.options.length > 1) return;
+      _eventLogTypes = nextTypes;
+      select.innerHTML = '<option value="">전체 이벤트</option>' + nextTypes.map(type => (
+        `<option value="${esc(type)}"${type === selected ? ' selected' : ''}>${esc(type)}</option>`
+      )).join('');
+      if (selected && nextTypes.includes(selected)) select.value = selected;
+    }
+
+    function formatEventPayload(payload) {
+      if (payload === null || payload === undefined) return '{}';
+      try {
+        return JSON.stringify(payload, null, 2);
+      } catch(e) {
+        return String(payload);
+      }
+    }
+
+    function renderEventLogs(events, limit) {
+      const listEl = document.getElementById('eventLogList');
+      const rows = Array.isArray(events) ? events : [];
+      if (!rows.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">조건에 맞는 Event 로그가 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>시각</th>
+              <th>유저</th>
+              <th>이벤트</th>
+              <th>Ref</th>
+              <th>수량</th>
+              <th>Source</th>
+              <th>Payload</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(ev => {
+              const userLabel = ev.loginId || ev.displayName || ev.name || '(system)';
+              const userMeta = [ev.name, ev.parish].filter(Boolean).join(' · ');
+              const refParts = [ev.weekKey, ev.refType, ev.refId].filter(Boolean).join(' · ');
+              const payloadText = formatEventPayload(ev.payload);
+              return `
+                <tr>
+                  <td style="white-space:nowrap;color:var(--sub);font-size:12px;">${esc(formatDateTime(ev.occurredAt || ev.createdAt))}</td>
+                  <td>
+                    <strong>${esc(userLabel)}</strong>
+                    <div style="font-size:11px;color:var(--sub);">${esc(userMeta || '-')}</div>
+                  </td>
+                  <td>
+                    <strong>${esc(ev.eventType)}</strong>
+                    <div style="font-size:11px;color:var(--sub);">${esc(ev.requestId || '')}</div>
+                  </td>
+                  <td style="font-size:12px;color:var(--sub);">${esc(refParts || '-')}</td>
+                  <td>${esc(ev.amount === undefined || ev.amount === null ? '-' : ev.amount)}</td>
+                  <td style="font-size:12px;color:var(--sub);">${esc(ev.source || '-')}</td>
+                  <td style="min-width:260px;">
+                    <details>
+                      <summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--sub);">보기</summary>
+                      <pre style="white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:11px;line-height:1.4;max-height:220px;overflow:auto;">${esc(payloadText)}</pre>
+                    </details>
+                  </td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+        <p style="font-size:12px;color:var(--sub);margin-top:8px;">최신순 ${rows.length}건 표시 중입니다. 현재 limit은 ${esc(limit)}건입니다.</p>
+      `;
+    }
+
+    async function loadEventLogs(force) {
+      if (_eventLogLoaded && !force) return;
+      const btn = document.getElementById('eventLogRefreshBtn');
+      const statusEl = document.getElementById('eventLogStatus');
+      const listEl = document.getElementById('eventLogList');
+      const type = document.getElementById('eventLogTypeFilter').value;
+      const query = document.getElementById('eventLogSearchInput').value.trim();
+      const limit = getEventLogLimit();
+      if (btn) btn.disabled = true;
+      statusEl.textContent = '불러오는 중...';
+      statusEl.className = 'status';
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        requireSupabaseAdminSession();
+        const res = await callSupabaseAdminRpc('admin_event_logs', {
+          p_limit: limit,
+          p_event_type: type || null,
+          p_query: query || null,
+        });
+        renderEventLogTypeOptions(res.eventTypes || [], type);
+        renderEventLogs(res.events || [], res.limit || limit);
+        statusEl.textContent = `정상. ${Number((res.events || []).length) || 0}건을 불러왔습니다.`;
+        statusEl.className = 'status ok';
+        _eventLogLoaded = true;
+      } catch(e) {
+        statusEl.textContent = '연결 오류';
+        statusEl.className = 'status';
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">Event 로그를 불러오지 못했어요.</p>';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
     }
 
     async function loadAdminInquiries() {
@@ -2805,11 +3441,8 @@
     document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
 
     /* ── 세션 복원 ── */
-    const saved = sessionStorage.getItem('adminPw');
-    if (saved) {
-      document.getElementById('adminPwInput').value = saved;
-      doAdminLogin();
-    }
+    const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
+    if (savedLoginId) document.getElementById('adminLoginIdInput').value = savedLoginId;
   </script>
 </body>
 </html>

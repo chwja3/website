@@ -27,7 +27,7 @@
 2026 청년교구 수련회 준비를 위한 통합 앱:
 - 사전미션 체크 / EN카드 컬렉션·뽑기·교환 / Hold & Pray / 채팅방 / 비밀친구(BBB) / QnA / 공지사항 / 개발자 문의
 
-단일 `index.html` 파일 + GAS REST API + Firebase Firestore(채팅) 구조. GitHub Pages 배포. PWA 지원.
+분리된 `app.html`/`app.css`/`app.js` 프론트 + Supabase Auth/RPC/Storage + Firebase Firestore(채팅) 구조. GitHub Pages 배포. PWA 지원.
 
 - **서비스 URL**: `https://chwja3.github.io/website/beyond_us/`
 - **어드민**: `https://chwja3.github.io/website/beyond_us/admin.html`
@@ -42,9 +42,9 @@
 | 영역 | 기술 |
 |------|------|
 | 프론트엔드 | Vanilla JS + CSS (단일 `index.html`) |
-| 메인 백엔드 | Google Apps Script (REST API) |
+| 메인 백엔드 | Supabase Auth + Postgres RPC + Edge Functions |
 | 실시간 채팅 백엔드 | Firebase Firestore (Spark 무료 플랜) |
-| 데이터 저장 | Google Sheets (메인), Firestore (채팅), Drive (이미지 업로드) |
+| 데이터 저장 | Supabase Postgres, Supabase Storage, Firestore (채팅) |
 | 배포 | GitHub Pages (`main` 브랜치) |
 | 부가 인프라 | Cloudflare Workers/Pages (`wrangler.jsonc` — 미사용) |
 | 클라이언트 상태 | `localStorage` (`beyondus_*` 키들) |
@@ -66,7 +66,7 @@ website/
     ├── manifest.json        # PWA 홈화면 추가 설정
     ├── sw.js                # 서비스 워커 (오프라인 캐시 + 네트워크 우선)
     ├── version.txt          # 앱 버전 문자열 (배포 시 동기화 필수)
-    ├── Apps_Script          # GAS 소스 (편집 후 직접 배포 필요)
+    ├── Apps_Script          # 기존 Google Sheets 이관용 백업 소스. 런타임 미사용
     ├── config_sheets/       # 주차별 미션 TSV (w1~w6.tsv)
     ├── 사전미션*.txt        # 사전미션 텍스트
     ├── preview_draw.html    # 카드 이펙트 미리보기 (개발용)
@@ -94,11 +94,13 @@ website/
 
 ## 4. 백엔드
 
-### 4.1 Google Apps Script (메인 API)
+### 4.1 Supabase (메인 API)
 
-- **SPREADSHEET_ID**: `1tlCozEXN8w2y9QqsEjUwffSuLr71edy2YOEJumy9e8Q`
-- **API URL**: `https://script.google.com/macros/s/AKfycbxwpRSDeXLxaLzvmfJj7zSSTmG0qPykJw_eu-NjtKpLEpgIDyHU3Po3qG5Hl-lg6iTtJg/exec`
-  - 재배포 시 URL이 바뀌면 `index.html` + `admin.html` 양쪽 `API_BASE` **동시 갱신 필수**.
+- **Project URL**: `https://qjwtkvfdzpeovjabdwxv.supabase.co`
+- **인증**: Supabase Auth password grant. 앱과 admin 모두 staff/dev role은 Supabase profile 기준으로 확인한다.
+- **데이터 API**: 프론트는 테이블 직접 쓰기보다 RPC와 Edge Function을 호출한다.
+- **파일 업로드**: `beyond-us-photos` Storage bucket 사용.
+- **기존 Google Apps Script**: `Apps_Script`와 관련 문서는 이관 기록과 백업으로만 보관한다. 앱과 admin 런타임에서는 호출하지 않는다.
 
 #### 시트 구성
 
@@ -111,7 +113,7 @@ website/
 | `Events` | 모든 변경 이력의 단일 truth source. append-only. LockService 보호 |
 | `AppSettings` | 앱 단일값 설정 Key-Value (current_week, app_open_date, bbb_message_open 등) |
 | `MissionDefinitions` | 주차별 미션 항목 정의 (1행 1미션, 6주 × 6항목 = 36행) |
-| `UserDashboard` | 유저 현황 대시보드. 읽기 전용, 시트 함수만 사용. GAS 미기록 |
+| `UserDashboard` | 기존 Google Sheets 시절 유저 현황 대시보드. Supabase 런타임에서는 미사용 |
 
 **기존 유지 시트**
 
@@ -216,7 +218,7 @@ website/
 - `loadUserStatus`로 서버 이력 머지 (다른 기기 동기화)
 - **주차 점수 집계**: `weekTitle` 기준 (캘린더 주가 바뀌어도 같은 주차로 처리)
 - **config 시트**: 8행 단위 블록, `startRow = (week-1)*8+5`, 항목 6개
-- config 갱신: `Apps_Script`의 `setupAllWeeks()` 실행
+- config 갱신: Supabase `app_settings`, `mission_items` 관련 RPC 또는 admin 탭 활성화/미션 설정 화면 사용
 - **주차 자동 전환은 미구현** — 어드민이 `setCurrentWeek` 수동 호출
 
 ### EN카드
@@ -257,7 +259,7 @@ website/
 - **페이지별 도움말 툴팁(?)**: 미션·뽑기·컬렉션·H&P 각 페이지에 맥락 안내
 
 ### 테스트 모드
-- URL에 `?test=1` 추가 시 GAS 검증 스킵
+- DEV 개발자 계정은 Supabase 권한과 전용 RPC로 테스트 흐름을 확인
 
 ---
 
@@ -447,11 +449,11 @@ curl -s -X POST \
 
 ### 구조
 - 드로어 메뉴: `Hold & Pray` (`data-section="prayer"`)
-- 진입 시 `loadHoldPray()` → GAS `getHoldPray?weekKey=&nickname=`
+- 진입 시 `loadHoldPray()` → Supabase RPC `get_hold_pray`
 - Coming Soon 티저에서도 `loadHoldPrayPreview()`로 노출
 
 ### 동작
-1. 주차 키 + 닉네임으로 GAS에 요청 → 계정별로 다른 **3장** 응답
+1. 주차 키 + 닉네임으로 Supabase RPC에 요청 → 계정별로 다른 **3장** 응답
 2. 캐러셀로 좌우 스와이프 (모바일+마우스 드래그)
 3. 양쪽에 화살표 오버레이 배치
 4. 각 카드에서 이름 + 교구 입력 → `submitHoldPrayGuess`
@@ -506,7 +508,7 @@ curl -s -X POST \
 | 로그인 정보 저장 | `saveAuth(nickname, password, parish)` |
 | 스플래시/앱 표시 | `hideSplash()` / `showApp()` |
 | 유저 뱃지 | `updateUserBadge()` |
-| 닉네임 찾기 | `findNickname` (GAS) — 이름+교구 → 닉네임 후보 |
+| 닉네임 찾기 | `app-auth` Edge Function `findNickname` — 이름+교구 → 닉네임 후보 |
 
 ### Coming Soon / PWA
 | 기능 | 함수 |
@@ -543,7 +545,7 @@ curl -s -X POST \
 | 로딩 도트 | `startLoadingDots()` / `stopLoadingDots()` |
 | 빛 효과 | `ensureRevealSparks()` / `resetRevealSparks()` / `burstRevealSparks(power)` |
 | 별/빔 이펙트 | `twinkleGoldStars()` / `ensureDrawParticles()` / `resetDrawParticles()` |
-| 카드 교환 | `requestTrade` / `acceptTrade` / `rejectTrade` / `cancelTrade` / `prayForTrade` (GAS) |
+| 카드 교환 | Supabase RPC `request_trade` / `accept_trade` / `reject_trade` / `cancel_trade` / `pray_for_trade` |
 
 ### Hold & Pray
 | 기능 | 함수 |
@@ -554,13 +556,13 @@ curl -s -X POST \
 | 정답 제출 | `submitHoldPrayGuess` POST |
 
 ### 비밀친구 (BBB)
-| 기능 | 함수 (GAS 위주) |
+| 기능 | 함수 |
 |------|------|
-| 매칭 셋업 | `setupBBBMatching` |
-| 정보 조회 | `getBBB(userId)` |
-| 정답 추측 | `guessBBBSecret(body)` |
-| 메시지 송수신 | `sendBBBMessage(body)` / `getBBBMessages(userId)` |
-| 사진 업로드 | `uploadBBBPhoto(body)` |
+| 매칭 셋업 | 조별/티어 기반 재설계 예정 |
+| 정보 조회 | Supabase RPC `get_bbb_status` |
+| 정답 추측 | Supabase RPC `guess_bbb_secret` |
+| 메시지 송수신 | Supabase RPC `send_bbb_message` / `get_bbb_messages` |
+| 사진 업로드 | Supabase Storage + RPC `submit_mission_photo` |
 
 ### 공지 / 문의 / QnA
 | 기능 | 함수 |
@@ -598,7 +600,7 @@ curl -s -X POST \
 - [ ] **기존 공지 → Q&A 탭 이전** (운영 작업)
 
 ### 백엔드 / 자동화
-- [ ] **주차 자동 전환 (미구현)** — GAS `ScriptApp.newTrigger()` 시간 기반 트리거 필요. 현재 어드민 `setCurrentWeek` 수동 호출만 가능
+- [ ] **주차 자동 전환 (미구현)** — Supabase cron 또는 외부 스케줄러 검토 필요. 현재 어드민 `setCurrentWeek` 수동 호출만 가능
 
 ### 게임 / 콘텐츠
 - [ ] **컬렉션 보상 (응모권 시스템) 구현** — 9종 다 모으면? N장 모으면?
