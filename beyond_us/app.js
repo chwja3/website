@@ -30,22 +30,9 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260518ac';
-    const MAINTENANCE_MODE = false;
-    if (MAINTENANCE_MODE && !IS_DEV_ENV) {
-      if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-      document.addEventListener('DOMContentLoaded', () => {
-        document.body.innerHTML = `
-          <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:#faf6ef;color:#2c2417;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;">
-            <section style="max-width:420px;">
-              <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:128px;height:auto;margin-bottom:28px;" />
-              <h1 style="font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:850;">잠시 점검 중입니다.</h1>
-              <p style="font-size:15px;line-height:1.8;margin:0;color:#6f6254;">더 안정적인 운영을 위해 서버와 데이터를 정리하고 있어요.<br>작업이 끝나면 다시 열어둘게요.</p>
-            </section>
-          </main>`;
-      });
-      throw new Error('maintenance_mode');
-    }
+    const APP_VERSION = '20260519a';
+    const MAINTENANCE_MODE = true;
+    const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -365,6 +352,47 @@
       if (!appOpenDate) return false;
       return new Date().toISOString().slice(0, 10) >= appOpenDate;
     }
+
+    function isMaintenanceBlocked(nickname) {
+      if (!MAINTENANCE_MODE || IS_DEV_ENV) return false;
+      return !MAINTENANCE_ALLOWED_NICKNAMES.has(String(nickname || ''));
+    }
+
+    function showMaintenanceNotice() {
+      hideSplash();
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('appScreen').classList.add('hidden');
+      document.getElementById('comingSoonScreen').classList.add('hidden');
+
+      let screen = document.getElementById('maintenanceScreen');
+      if (!screen) {
+        screen = document.createElement('div');
+        screen.id = 'maintenanceScreen';
+        screen.innerHTML = `
+          <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:#faf6ef;color:#2c2417;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;">
+            <section style="max-width:430px;">
+              <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:126px;height:auto;margin-bottom:28px;" />
+              <p style="display:inline-flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:999px;background:#efe5d1;color:#7b4fa6;font-size:12px;font-weight:850;margin:0 0 14px;">20:00~21:00</p>
+              <h1 style="font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:850;">서버 이전 작업 중입니다.</h1>
+              <p style="font-size:15px;line-height:1.8;margin:0;color:#6f6254;">더욱 빨라지고 쾌적해진 beyond us를 기대해주세요!</p>
+              <button type="button" id="maintenanceSwitchAccountBtn" style="margin-top:24px;border:1px solid #d8cbb7;background:#fffaf2;color:#2c2417;border-radius:999px;padding:10px 16px;font-weight:800;cursor:pointer;">개발자 계정으로 로그인</button>
+            </section>
+          </main>`;
+        document.body.appendChild(screen);
+        screen.querySelector('#maintenanceSwitchAccountBtn').addEventListener('click', () => {
+          clearSupabaseSession();
+          Object.keys(localStorage)
+            .filter(k => k.startsWith('beyondus_'))
+            .forEach(k => localStorage.removeItem(k));
+          currentNickname = null;
+          currentParish = null;
+          screen.classList.add('hidden');
+          showAuth('login');
+        });
+      }
+      screen.classList.remove('hidden');
+    }
+
     /* ── Coming Soon 캐러셀 ── */
     let _csIdx = 0;
     let _csTimer = null;
@@ -513,6 +541,7 @@
 
     function showComingSoon() {
       hideSplash();
+      document.getElementById('maintenanceScreen')?.classList.add('hidden');
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.remove('hidden');
@@ -553,6 +582,7 @@
     function showAuth(pane) {
       hideSplash();
       csStopAuto();
+      document.getElementById('maintenanceScreen')?.classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.remove('hidden');
       document.getElementById('appScreen').classList.add('hidden');
@@ -573,6 +603,11 @@
     }
 
     function showApp() {
+      if (isMaintenanceBlocked(currentNickname)) {
+        showMaintenanceNotice();
+        return;
+      }
+      document.getElementById('maintenanceScreen')?.classList.add('hidden');
       document.getElementById('comingSoonScreen').classList.add('hidden');
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
@@ -1178,6 +1213,11 @@
       localStorage.setItem('beyondus_app_open_date', appOpenDate);
       updateUserBadge();
 
+      if (isMaintenanceBlocked(resolvedNickname)) {
+        showMaintenanceNotice();
+        return;
+      }
+
       if (shouldEnterApp(isStaff, appOpenDate)) {
         showApp();
         syncInitialData().catch(() => {});
@@ -1205,6 +1245,10 @@
       currentNickname = savedNickname;
       currentParish   = savedParish || '';
       updateUserBadge();
+      if (isMaintenanceBlocked(savedNickname)) {
+        showMaintenanceNotice();
+        return;
+      }
       showApp();
       const cachedConfig = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
       if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
@@ -1222,6 +1266,10 @@
         localStorage.setItem('beyondus_is_dev', String(profile.isDev === true));
         localStorage.setItem('beyondus_app_open_date', profile.appOpenDate || '');
         updateUserBadge();
+        if (isMaintenanceBlocked(profile.nickname || savedNickname)) {
+          showMaintenanceNotice();
+          return;
+        }
         syncInitialData({ silent: true }).catch(() => {});
       } catch(e) {
         console.warn('[DIAG] Supabase autoLogin auth-fail', e);

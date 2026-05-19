@@ -841,6 +841,8 @@
     let adminPw = '';
     let targetNickname = '';
     const ADMIN_TABLE_INITIAL_LIMIT = 80;
+    const MAINTENANCE_MODE = true;
+    const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const PARISH_SORT_ORDER = ['1청', '2청', '3청', '4청', 'VIP', '교회학교', '목양교구'];
     const TAB_SETTING_ID_MAP = {
       holdpray: 'togglePrayer',
@@ -871,6 +873,15 @@
       if (parishDiff) return parishDiff;
       return String((a && a.name) || '').localeCompare(String((b && b.name) || ''), 'ko')
         || String((a && a.nickname) || '').localeCompare(String((b && b.nickname) || ''), 'ko');
+    }
+
+    function isMaintenanceBlockedLoginId(loginId) {
+      if (!MAINTENANCE_MODE || IS_DEV_ENV) return false;
+      return !MAINTENANCE_ALLOWED_NICKNAMES.has(String(loginId || ''));
+    }
+
+    function maintenanceMessageHtml() {
+      return '서버 이전 작업 중입니다.<br>더욱 빨라지고 쾌적해진 beyond us를 기대해주세요!<br><strong>20:00~21:00</strong>';
     }
 
     /* ── DEV 환경 감지 ── */
@@ -947,6 +958,17 @@
       sessionStorage.removeItem('adminMode');
     }
 
+    function clearSupabaseAdminAuthStorage() {
+      [
+        'beyondus_supabase_login_id',
+        'beyondus_supabase_user_id',
+        'beyondus_supabase_access_token',
+        'beyondus_supabase_refresh_token',
+        'beyondus_supabase_expires_at',
+      ].forEach(key => localStorage.removeItem(key));
+      clearSupabaseAdminSessionHint();
+    }
+
     function enterAdminPanel(options) {
       const opts = options || {};
       adminPw = opts.adminPw || '';
@@ -981,6 +1003,12 @@
         }
       }
       saveSupabaseAdminSession(loginId, authResult);
+      if (isMaintenanceBlockedLoginId(loginId)) {
+        clearSupabaseAdminAuthStorage();
+        const err = new Error('maintenance_mode');
+        err.status = 503;
+        throw err;
+      }
       await callSupabaseAdmin('getUsers', { action: 'getUsers' });
       enterAdminPanel({ mode: 'supabase', loginId });
     }
@@ -1004,6 +1032,8 @@
           statusEl.textContent = 'Staff 권한이 없는 계정이에요.';
         } else if (e.message === 'staff_password_upgrade_required') {
           statusEl.textContent = '이 계정은 먼저 앱에서 6자 이상 비밀번호로 업데이트해야 해요.';
+        } else if (e.message === 'maintenance_mode') {
+          statusEl.innerHTML = maintenanceMessageHtml();
         } else if (e.status === 400 || e.message === 'invalid_grant') {
           statusEl.textContent = 'Staff 아이디 또는 비밀번호를 확인해주세요.';
         } else {
