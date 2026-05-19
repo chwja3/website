@@ -137,6 +137,7 @@
     .parish-summary-card.parish-p4 { background:#dbeafe; border-color:#bfdbfe; }
     .parish-summary-card.parish-vip { background:#ede9fe; border-color:#ddd6fe; }
     .parish-summary-card.parish-churchSchool { background:#f1f5f9; border-color:#cbd5e1; }
+    .parish-summary-card.parish-overall { background:#ecfeff; border-color:#67e8f9; }
     .parish-summary-card.parish-etc { background:#fffaf2; border-color:var(--line); }
     .parish-summary-title { font-weight:800; margin-bottom:8px; }
     .parish-summary-meta { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px; color:var(--sub); font-size:12px; }
@@ -1249,11 +1250,47 @@
       if (['p1', 'p2', 'p3', 'p4', 'vip', 'churchSchool'].includes(key)) {
         return 'parish-' + key;
       }
+      if (key === 'overall') return 'parish-overall';
       return 'parish-etc';
     }
 
-    function renderParishSummarySection(parishSummaries, gridId, detailListId, detailPrefix, emptyMessage, noParticipantMessage) {
-      const summaries = Array.isArray(parishSummaries) ? parishSummaries : [];
+    function makeOverallParishSummary(parishSummaries) {
+      const source = Array.isArray(parishSummaries)
+        ? parishSummaries.filter(summary => String(summary && summary.key) !== 'overall')
+        : [];
+      const allUsers = source.flatMap(summary => Array.isArray(summary.users) ? summary.users : []);
+      allUsers.sort((a, b) =>
+        Number(b.score || 0) - Number(a.score || 0) ||
+        Number(b.activeDays || 0) - Number(a.activeDays || 0) ||
+        String(a.nickname || '').localeCompare(String(b.nickname || ''), 'ko')
+      );
+      return {
+        key: 'overall',
+        label: '전체',
+        participantCount: source.reduce((sum, summary) => sum + Number(summary.participantCount || 0), 0),
+        activeDays: source.reduce((sum, summary) => sum + Number(summary.activeDays || 0), 0),
+        totalScore: source.reduce((sum, summary) => sum + Number(summary.totalScore || 0), 0),
+        users: allUsers,
+      };
+    }
+
+    function insertOverallAfterChurchSchool(parishSummaries) {
+      const summaries = Array.isArray(parishSummaries)
+        ? parishSummaries.filter(summary => String(summary && summary.key) !== 'overall')
+        : [];
+      const overall = makeOverallParishSummary(summaries);
+      const churchIdx = summaries.findIndex(summary => String(summary && summary.key) === 'churchSchool');
+      if (churchIdx < 0) return [...summaries, overall];
+      return [
+        ...summaries.slice(0, churchIdx + 1),
+        overall,
+        ...summaries.slice(churchIdx + 1),
+      ];
+    }
+
+    function renderParishSummarySection(parishSummaries, gridId, detailListId, detailPrefix, emptyMessage, noParticipantMessage, options) {
+      const baseSummaries = Array.isArray(parishSummaries) ? parishSummaries : [];
+      const summaries = options && options.includeOverall ? insertOverallAfterChurchSchool(baseSummaries) : baseSummaries;
       const grid = document.getElementById(gridId);
       const detailList = document.getElementById(detailListId);
       if (!summaries.length) {
@@ -1334,7 +1371,8 @@
         'weeklyParishDetailList',
         'weeklyParishDetail-',
         '선택한 주차의 교구 참여 기록이 없어요.',
-        '해당 주차 참여자가 없어요.'
+        '해당 주차 참여자가 없어요.',
+        { includeOverall: true }
       );
     }
 
