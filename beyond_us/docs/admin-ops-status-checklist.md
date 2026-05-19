@@ -9,4 +9,4 @@
 - [x] BBB 사진 승인 탭을 BBB/천로역정 탭으로 확장한다.
 - [x] 문법, 버전, SQL shape 검사를 실행한다.
 - [x] main에 커밋/푸시한다.
-- [ ] PROD SQL migration 적용 후 admin 화면을 검증한다.
+- [x] PROD SQL migration 적용 후 admin 화면을 검증한다.

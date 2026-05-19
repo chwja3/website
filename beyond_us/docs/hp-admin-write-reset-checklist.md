@@ -5,6 +5,6 @@
 - [x] 관리자용 H&P 기도제목 작성 RPC를 추가했다.
 - [x] 관리자 H&P 현황에서 미작성자에게 작성 UI를 노출했다.
 - [x] 관리자 강력 새로고침 후 Supabase 세션 복원 경로를 추가했다.
-- [ ] PROD Supabase SQL Editor에서 migration을 실행한다.
-- [ ] admin H&P 현황에서 미작성자 기도제목 작성이 되는지 확인한다.
-- [ ] admin 강력 새로고침 후 로그인 상태가 유지되는지 확인한다.
+- [x] PROD Supabase SQL Editor에서 migration을 실행한다.
+- [x] admin H&P 현황에서 미작성자 기도제목 작성이 되는지 확인한다.
+- [x] admin 강력 새로고침 후 로그인 상태가 유지되는지 확인한다.
