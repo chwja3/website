@@ -30,7 +30,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260519g';
+    const APP_VERSION = '20260519h';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -5008,16 +5008,28 @@
       }
       if (_hpLoadedFor && _hpLoadedFor !== nick) resetHoldPrayState({ clearDom: true });
 
-      if (_hpLoadedFor === nick && _hpCards.length === 3 && !forceRefresh) {
+      if (_hpLoadedFor === nick && _hpCards.length > 0 && _hpCards.length <= 3 && !forceRefresh) {
         renderHoldPray();
         return;
       }
 
       const hpCacheKey = 'beyondus_cache_hp_' + nick;
       const hpCached = JSON.parse(localStorage.getItem(hpCacheKey) || 'null');
+      const hpCacheValid = !!(
+        hpCached &&
+        hpCached.ok &&
+        hpCached.clientVersion === APP_VERSION &&
+        Array.isArray(hpCached.cards) &&
+        hpCached.cards.length > 0 &&
+        hpCached.cards.length <= 3
+      );
       let hpHasCache = false;
 
-      if (hpCached && hpCached.ok) {
+      if (hpCached && !hpCacheValid) {
+        localStorage.removeItem(hpCacheKey);
+      }
+
+      if (hpCacheValid) {
         _hpLoadedFor = nick;
         _hpCards = hpCached.cards || [];
         _hpWeekKey = hpCached.weekKey || '';
@@ -5055,8 +5067,8 @@
         const data = res;
         if (!data.ok) throw new Error(data.error || 'error');
         if (!isActiveAccount(nick)) return;
-        localStorage.setItem(hpCacheKey, JSON.stringify(data));
-        const sameWeek = hpCached && hpCached.weekKey === data.weekKey;
+        localStorage.setItem(hpCacheKey, JSON.stringify({ ...data, clientVersion: APP_VERSION }));
+        const sameWeek = hpCacheValid && hpCached.weekKey === data.weekKey;
         const prevIdx = _hpCurrentIdx;
         _hpLoadedFor = nick;
         _hpCards = data.cards || [];
@@ -5192,8 +5204,6 @@
         let hintHtml;
         if (_hpHintReplies[idx]) {
           hintHtml = `<p class="hp-hint-below-reply">💡 ${escHtml(_hpHintReplies[idx])}</p>`;
-        } else if (localStorage.getItem(hpHintStorageKey(_hpWeekKey, idx))) {
-          hintHtml = `<p class="hp-hint-below-pending">힌트 요청이 접수됐어요 🙏</p>`;
         } else {
           hintHtml = `<button class="hp-hint-below" onclick="hpHintInquiry(${idx})">현수막에서 카드를 못 찾겠어요</button>`;
         }
@@ -5310,11 +5320,24 @@
       try {
         const data = await apiClient.postHpHint(_hpWeekKey, cardIdx);
         if (data.ok) {
-          localStorage.setItem(hpHintStorageKey(_hpWeekKey, cardIdx), data.id || 'submitted');
+          const hintText = data.hintText || data.hint || '초성 정보가 없어요';
+          _hpHintReplies[cardIdx] = hintText;
+          localStorage.removeItem(hpHintStorageKey(_hpWeekKey, cardIdx));
+          const hpCacheKey = 'beyondus_cache_hp_' + nick;
+          const cached = JSON.parse(localStorage.getItem(hpCacheKey) || 'null');
+          if (cached && cached.ok && cached.weekKey === _hpWeekKey) {
+            cached.clientVersion = APP_VERSION;
+            cached.hintReplies = { ...(cached.hintReplies || {}), [cardIdx]: hintText };
+            localStorage.setItem(hpCacheKey, JSON.stringify(cached));
+          }
           renderHpCard(cardIdx);
+        } else if (data.error === 'anonymous') {
+          alert('익명 기도제목은 힌트를 볼 수 없어요.');
+        } else {
+          alert('힌트를 불러오지 못했어요. 새로고침 후 다시 시도해주세요.');
         }
       } catch(e) {
-        alert('요청 전송 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
+        alert('힌트를 불러오는 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
       }
     }
 
