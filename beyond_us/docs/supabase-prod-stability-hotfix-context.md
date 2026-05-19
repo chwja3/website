@@ -11,3 +11,5 @@
 2026-05-19. 비밀번호 초기화 이후 미션을 제출한 사용자에게 mismatch가 반복된다는 보고가 있었다. 비밀번호 초기화 자체가 summary를 바꾸는 것은 아니지만, 초기화 후 정상 Supabase Auth 세션으로 미션 제출을 수행하면 `submit_pre_mission`의 기존 수동 `user_summary.mission_count + 1` 경로가 다시 실행된다. 원천 테이블 기준 재계산과 수동 증가가 섞이는 구조 자체가 위험하므로, 미션 제출과 카드 뽑기 RPC에서 수동 summary 증가를 제거하고 마지막에 `bu_refresh_profile_summary`만 호출하도록 보정했다.
 
 2026-05-19. H&P 서버 오류가 계속될 가능성에 대비해 `bu_hold_pray_cards_for_profile`의 반환 컬럼과 내부 `picked_cards` 컬럼명이 겹치지 않도록 `pc.` alias를 명시했다. SQL 함수의 출력 컬럼명과 select 컬럼명이 겹칠 때 PostgreSQL에서 ambiguous column 오류가 날 수 있기 때문이다.
+
+2026-05-19. 관리자 `H&P 현황` 탭은 앱용 H&P RPC가 아니라 `admin_hold_pray_status` RPC를 직접 호출한다. 이 RPC가 앱에서 쓰는 `bu_hold_pray_cards_for_profile` helper를 쓰지 않고 예전 lateral query를 갖고 있어, 앱 H&P를 고쳐도 관리자 유저별 현황에서 서버 연결 오류가 계속될 수 있었다. `20260519000600_admin_hold_pray_status_hotfix.sql`에서 관리자 RPC도 helper 기반으로 덮어썼다.
