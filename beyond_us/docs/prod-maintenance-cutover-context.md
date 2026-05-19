@@ -25,3 +25,5 @@
 2026-05-19. `SingSangSong` 로그인 실패 원인은 PROD Edge Function 목록에 `app-auth`가 누락된 것이었다. `app-auth`를 `--no-verify-jwt`로 재배포했고, 함수 목록과 테스트 호출에서 정상 응답을 확인했다. 점검 시간은 `20:00~22:00`으로 연장했고, 캐시 버전은 `20260519e`로 올렸다.
 
 2026-05-19. 회원가입과 비밀번호 재설정 placeholder에 남아 있던 `4자 이상` 문구를 `6자 이상`으로 수정했다. 실제 검증 로직은 이미 `getRequiredPasswordLength()` 기준 6자리였다. 캐시 버전은 `20260519f`로 올렸다.
+
+2026-05-19. 개발자 계정 앱/admin smoke test가 정상 확인되어 점검 모드를 해제했다. `app.js`, `admin.html`의 `MAINTENANCE_MODE`는 `false`이고, 캐시 버전은 `20260519g`로 올렸다.
