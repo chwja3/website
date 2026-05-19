@@ -908,6 +908,7 @@
     let _eventLogTypes = [];
     let _adminHpRows = [];
     let _adminHpFilter = '';
+    let _adminHpWeekKey = '';
     let _bbbOpsRows = [];
     let _bbbOpsFilter = '';
 
@@ -997,6 +998,7 @@
       localStorage.setItem('beyondus_supabase_access_token', data.access_token || '');
       localStorage.setItem('beyondus_supabase_refresh_token', data.refresh_token || '');
       localStorage.setItem('beyondus_supabase_expires_at', String(data.expires_at || ''));
+      localStorage.setItem('beyondus_supabase_admin_ok', '1');
       sessionStorage.removeItem('beyondus_supabase_admin_disabled');
     }
 
@@ -1004,6 +1006,7 @@
       sessionStorage.removeItem('beyondus_supabase_admin_ok');
       sessionStorage.removeItem('beyondus_supabase_admin_disabled');
       sessionStorage.removeItem('adminMode');
+      localStorage.removeItem('beyondus_supabase_admin_ok');
     }
 
     function clearSupabaseAdminAuthStorage() {
@@ -1023,6 +1026,8 @@
       if (opts.mode) sessionStorage.setItem('adminMode', opts.mode);
       if (opts.loginId) sessionStorage.setItem('adminLoginId', opts.loginId);
       if (opts.adminPw) sessionStorage.setItem('adminPw', opts.adminPw);
+      sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
+      localStorage.setItem('beyondus_supabase_admin_ok', '1');
       document.getElementById('authGate').style.display  = 'none';
       document.getElementById('adminPanel').style.display = 'block';
       loadUsers();
@@ -1841,6 +1846,12 @@
     function getSupabaseAccessToken() {
       return localStorage.getItem('beyondus_supabase_access_token') || '';
     }
+    function getSupabaseRefreshToken() {
+      return localStorage.getItem('beyondus_supabase_refresh_token') || '';
+    }
+    function getSupabaseExpiresAt() {
+      return Number(localStorage.getItem('beyondus_supabase_expires_at') || '0') || 0;
+    }
     function shouldForceSupabaseAdmin() {
       try {
         const flag = new URLSearchParams(location.search).get('supabaseAdmin');
@@ -1854,11 +1865,13 @@
     }
     function hasSupabaseAdminHint() {
       return sessionStorage.getItem('beyondus_supabase_admin_ok') === '1' ||
+        localStorage.getItem('beyondus_supabase_admin_ok') === '1' ||
         localStorage.getItem('beyondus_is_dev') === 'true' ||
         shouldForceSupabaseAdmin();
     }
     function markSupabaseAdminUnauthorized() {
       sessionStorage.removeItem('beyondus_supabase_admin_ok');
+      localStorage.removeItem('beyondus_supabase_admin_ok');
       sessionStorage.setItem('beyondus_supabase_admin_disabled', '1');
     }
     function canUseSupabaseAdmin() {
@@ -1867,6 +1880,30 @@
         !!getSupabaseAccessToken() &&
         sessionStorage.getItem('beyondus_supabase_admin_disabled') !== '1' &&
         hasSupabaseAdminHint();
+    }
+    async function refreshSupabaseAdminSession() {
+      const refreshToken = getSupabaseRefreshToken();
+      if (!refreshToken) return { ok: false, error: 'missing_refresh_token' };
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error_code || data.error || 'refresh_failed', status: res.status };
+      saveSupabaseAdminSession(localStorage.getItem('beyondus_supabase_login_id') || '', { data });
+      return { ok: true, data };
+    }
+    async function ensureSupabaseAdminSession() {
+      if (!SUPABASE_PROJECT_URL || !SUPABASE_ANON_KEY) return { ok: false, error: 'supabase_auth_disabled' };
+      const accessToken = getSupabaseAccessToken();
+      const expiresAt = getSupabaseExpiresAt();
+      if (accessToken && (!expiresAt || Date.now() < (expiresAt - 60) * 1000)) return { ok: true };
+      return refreshSupabaseAdminSession();
     }
     function supabasePhotoUrl(value) {
       const raw = String(value || '').trim();
@@ -1920,6 +1957,7 @@
       return normalizeSupabaseAdminResponse(data);
     }
     async function callSupabaseAdmin(action, payload) {
+      await ensureSupabaseAdminSession();
       const token = getSupabaseAccessToken();
       if (!token) throw new Error('supabase_admin_session_required');
       const res = await fetch(`${SUPABASE_REST_URL}/rpc/admin_dispatch`, {
@@ -1944,6 +1982,7 @@
     }
     async function callSupabaseAdminRpc(functionName, payload, options) {
       const opts = options || {};
+      await ensureSupabaseAdminSession();
       const token = getSupabaseAccessToken();
       if (!token) throw new Error('supabase_admin_session_required');
       const res = await fetch(`${SUPABASE_REST_URL}/rpc/${functionName}`, {
@@ -1967,6 +2006,7 @@
       return normalizeSupabaseAdminResponse(data);
     }
     async function callAdminResetPassword(payload) {
+      await ensureSupabaseAdminSession();
       const token = getSupabaseAccessToken();
       if (!token) throw new Error('supabase_admin_session_required');
       const res = await fetch(ADMIN_RESET_PASSWORD_URL, {
@@ -3114,6 +3154,7 @@
         const res = await callSupabaseAdminRpc('admin_hold_pray_status', { p_week_key: weekKey || null });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         _adminHpRows = res.rows || [];
+        _adminHpWeekKey = res.weekKey || '';
         document.getElementById('hpAdminWeekLabel').textContent = res.weekKey || '-';
         document.getElementById('hpAdminPrayerCount').textContent = _adminHpRows.filter(row => row.ownPrayer).length;
         document.getElementById('hpAdminCorrectUserCount').textContent = _adminHpRows.filter(row => Number(row.correctCount || 0) > 0).length;
@@ -3141,6 +3182,11 @@
         const cards = Array.isArray(row.cards) ? row.cards : [];
         const answered = Number(row.answeredCount || 0);
         const correct = Number(row.correctCount || 0);
+        const missingPrayerEditor = row.ownPrayer ? '' : `
+          <div class="hp-admin-prayer-editor" data-user-id="${esc(row.userId)}" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+            <textarea class="input hp-admin-prayer-input" rows="3" placeholder="운영자가 대신 입력할 H&P 기도제목" style="resize:vertical;margin-bottom:0;line-height:1.5;"></textarea>
+            <button class="btn btn-primary" type="button" onclick="saveAdminHPPrayer(this)" style="align-self:flex-end;padding:8px 12px;">기도제목 작성</button>
+          </div>`;
         return `
           <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
             <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
@@ -3158,6 +3204,7 @@
               <div style="background:var(--primary-soft);border-radius:10px;padding:10px;margin-bottom:10px;">
                 <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px;">내 기도제목</div>
                 <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;">${row.ownPrayer ? esc(row.ownPrayer) : '<span style="color:var(--sub);">미작성</span>'}</div>
+                ${missingPrayerEditor}
               </div>
               <div style="display:flex;flex-direction:column;gap:8px;">
                 ${cards.length ? cards.map(card => `
@@ -3174,6 +3221,37 @@
             </div>
           </details>`;
       }).join('');
+    }
+
+    async function saveAdminHPPrayer(button) {
+      const wrap = button?.closest?.('.hp-admin-prayer-editor');
+      if (!wrap) return;
+      const userId = wrap.dataset.userId || '';
+      const input = wrap.querySelector('.hp-admin-prayer-input');
+      const content = (input?.value || '').trim();
+      if (!userId || !content) {
+        alert('기도제목을 입력해주세요.');
+        return;
+      }
+      button.disabled = true;
+      const prevText = button.textContent;
+      button.textContent = '저장 중...';
+      try {
+        const res = await callSupabaseAdminRpc('admin_upsert_hold_pray_entry', {
+          p_login_id: userId,
+          p_week_key: _adminHpWeekKey || document.getElementById('hpStatusWeekInput')?.value || null,
+          p_content: content,
+          p_anonymous: false,
+          p_visible: true,
+        });
+        if (!res.ok) throw new Error(res.error || 'save_failed');
+        await loadAdminHPStatus();
+      } catch(e) {
+        alert('저장 실패: ' + (e.response?.error || e.message || '연결 오류'));
+      } finally {
+        button.disabled = false;
+        button.textContent = prevText;
+      }
     }
 
     /* ── B.B.B. ── */
@@ -3680,6 +3758,23 @@
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
     if (savedLoginId) document.getElementById('adminLoginIdInput').value = savedLoginId;
+    async function restoreSupabaseAdminSessionOnLoad() {
+      if (!savedLoginId) return;
+      if (!getSupabaseAccessToken() && !getSupabaseRefreshToken()) return;
+      if (sessionStorage.getItem('beyondus_supabase_admin_disabled') === '1') return;
+      try {
+        const session = await ensureSupabaseAdminSession();
+        if (!session.ok) return;
+        sessionStorage.setItem('beyondus_supabase_admin_ok', '1');
+        localStorage.setItem('beyondus_supabase_admin_ok', '1');
+        await callSupabaseAdmin('getUsers', { action: 'getUsers' });
+        enterAdminPanel({ mode: 'supabase', loginId: savedLoginId });
+      } catch(e) {
+        localStorage.removeItem('beyondus_supabase_admin_ok');
+        sessionStorage.removeItem('beyondus_supabase_admin_ok');
+      }
+    }
+    restoreSupabaseAdminSessionOnLoad();
   </script>
 </body>
 </html>
