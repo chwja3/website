@@ -30,7 +30,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260519c';
+    const APP_VERSION = '20260519d';
     const MAINTENANCE_MODE = true;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -762,8 +762,14 @@
     let pendingLegacyPasswordUpgrade = null;
 
     /* ════ Auth 패인 전환 ════ */
+    function canUseLegacyUpgradeDuringMaintenance() {
+      return pendingLegacyPasswordUpgrade && !isMaintenanceBlocked(pendingLegacyPasswordUpgrade.nickname);
+    }
+
     function switchAuthPane(pane) {
-      const maintenanceLimited = isMaintenanceGateActive() && pane !== 'login';
+      const maintenanceLimited = isMaintenanceGateActive()
+        && pane !== 'login'
+        && !(pane === 'legacyUpgrade' && canUseLegacyUpgradeDuringMaintenance());
       if (maintenanceLimited) pane = 'login';
       ['register', 'login', 'legacyUpgrade', 'reset', 'findNickname'].forEach(p => {
         document.getElementById(p + 'Pane').classList.add('hidden');
@@ -1394,7 +1400,7 @@
       const confirmPassword = document.getElementById('legacyNewPasswordConfirm').value;
 
       statusEl.className = 'auth-status';
-      if (isMaintenanceGateActive()) {
+      if (isMaintenanceGateActive() && !canUseLegacyUpgradeDuringMaintenance()) {
         statusEl.textContent = getMaintenanceText();
         return;
       }

@@ -19,3 +19,5 @@
 2026-05-19. PROD import 결과: 원본 row 2,187개를 `legacy_sheet_rows`에 적재했고, 정규 테이블에는 profiles 170, active profiles 167, events 846, user inventory 166, user cards 55, user summary 167, mission progress 139, raffle tickets 155, H&P entries 160, H&P guesses 50, notices 3, inquiries 76을 적재했다. legacy auth hashes 170개와 Supabase Auth user 170개도 생성했다.
 
 2026-05-19. 검증 결과: active profile 중 `auth_user_id` 누락 0, raffle excluded user의 active raffle ticket 0. 추첨권 import가 `raffle.*` 이벤트 155개를 추가 생성해 최종 Events count는 1,001이다. 공개 RPC `get_app_bootstrap`는 currentWeek 2, `get_notices`는 3건으로 정상 응답했다. migration warning은 `TabSettings`의 `specialPack` 중복 1건과 유저 참조 없는 과거 `BBBPhotos` 4건이다.
+
+2026-05-19. 점검 모드 중에도 예외 개발자 계정은 기존 4자리 비밀번호 승격 화면에 들어갈 수 있도록 보강했다. 캐시 버전은 `20260519d`로 올렸다.
