@@ -5,3 +5,5 @@
 2026-05-19. 새 Supabase 프로젝트 이름은 사용자가 `AGC retreat PROD`라고 알려줬다. 실제 프론트 상수 교체와 import 작업에는 PROD Supabase project URL, anon key, service role key가 필요하다.
 
 2026-05-19. `APP_VERSION`은 `20260519a`로 올렸고, `app.html`, `sw.js`, `version.txt`를 같은 버전으로 맞췄다. `node --check beyond_us\app.js`, admin inline script syntax check, `git diff --check`를 통과했다.
+
+2026-05-19. dev 커밋 `048b080`을 원격에 push했고, main에 병합 후 원격 main을 `75f1866`까지 push했다. Cloudflare `website-78h.pages.dev`에서 앱과 admin 모두 점검 모드 상수와 안내 문구가 배포된 것을 확인했다.
