@@ -30,7 +30,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260519a';
+    const APP_VERSION = '20260519b';
     const MAINTENANCE_MODE = true;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -356,6 +356,14 @@
     function isMaintenanceBlocked(nickname) {
       if (!MAINTENANCE_MODE || IS_DEV_ENV) return false;
       return !MAINTENANCE_ALLOWED_NICKNAMES.has(String(nickname || ''));
+    }
+
+    function isMaintenanceGateActive() {
+      return MAINTENANCE_MODE && !IS_DEV_ENV;
+    }
+
+    function getMaintenanceText() {
+      return '서버 이전 작업 중입니다. 더욱 빨라지고 쾌적해진 beyond us를 기대해주세요! 20:00~21:00';
     }
 
     function showMaintenanceNotice() {
@@ -755,6 +763,8 @@
 
     /* ════ Auth 패인 전환 ════ */
     function switchAuthPane(pane) {
+      const maintenanceLimited = isMaintenanceGateActive() && pane !== 'login';
+      if (maintenanceLimited) pane = 'login';
       ['register', 'login', 'legacyUpgrade', 'reset', 'findNickname'].forEach(p => {
         document.getElementById(p + 'Pane').classList.add('hidden');
       });
@@ -765,6 +775,10 @@
         el.className = 'auth-status';
       });
       document.getElementById('resetDuplicates').style.display = 'none';
+      if (maintenanceLimited) {
+        const loginStatus = document.getElementById('loginStatus');
+        loginStatus.textContent = getMaintenanceText();
+      }
     }
 
     function needsLegacyPasswordReset(data) {
@@ -1295,6 +1309,10 @@
       const password = document.getElementById('regPassword').value;
       const statusEl = document.getElementById('registerStatus');
 
+      if (isMaintenanceGateActive()) {
+        statusEl.textContent = getMaintenanceText();
+        return;
+      }
       if (!name || !parish || !nickname || !password) {
         statusEl.textContent = '모든 항목을 입력해주세요.'; return;
       }
@@ -1334,6 +1352,10 @@
       const statusEl = document.getElementById('loginStatus');
 
       if (!nickname || !password) { statusEl.textContent = '닉네임과 비밀번호를 입력해주세요.'; return; }
+      if (isMaintenanceBlocked(nickname)) {
+        statusEl.textContent = getMaintenanceText();
+        return;
+      }
 
       const btn = document.getElementById('loginBtn');
       btn.disabled = true;
@@ -1372,6 +1394,10 @@
       const confirmPassword = document.getElementById('legacyNewPasswordConfirm').value;
 
       statusEl.className = 'auth-status';
+      if (isMaintenanceGateActive()) {
+        statusEl.textContent = getMaintenanceText();
+        return;
+      }
       if (!pendingLegacyPasswordUpgrade) {
         statusEl.textContent = '로그인 화면에서 다시 시도해주세요.';
         return;
@@ -1446,6 +1472,10 @@
       const statusEl    = document.getElementById('resetStatus');
       const btn         = document.getElementById('resetBtn');
 
+      if (isMaintenanceGateActive()) {
+        statusEl.textContent = getMaintenanceText();
+        return;
+      }
       btn.disabled = true;
       statusEl.className = 'auth-status';
       const dotsTimerReset = animDots(statusEl, '확인 중');
@@ -1489,6 +1519,10 @@
       document.getElementById('resetDuplicates').style.display = 'none';
       statusEl.className = 'auth-status';
 
+      if (isMaintenanceGateActive()) {
+        statusEl.textContent = getMaintenanceText();
+        return;
+      }
       if (!name || !parish || !newPassword) {
         statusEl.textContent = '모든 항목을 입력해주세요.'; return;
       }
@@ -1504,6 +1538,10 @@
       const parish   = document.getElementById('findParish').value;
       const statusEl = document.getElementById('findNicknameStatus');
 
+      if (isMaintenanceGateActive()) {
+        statusEl.textContent = getMaintenanceText();
+        return;
+      }
       if (!name || !parish) { statusEl.textContent = '이름과 소속을 모두 입력해주세요.'; return; }
 
       const btn = document.getElementById('findNicknameBtn');
