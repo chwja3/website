@@ -30,7 +30,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260519d';
+    const APP_VERSION = '20260519e';
     const MAINTENANCE_MODE = true;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -363,7 +363,7 @@
     }
 
     function getMaintenanceText() {
-      return '서버 이전 작업 중입니다. 더욱 빨라지고 쾌적해진 beyond us를 기대해주세요! 20:00~21:00';
+      return '서버 이전 작업 중입니다. 더욱 빨라지고 쾌적해진 beyond us를 기대해주세요! 20:00~22:00';
     }
 
     function showMaintenanceNotice() {
@@ -380,7 +380,7 @@
           <main style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:#faf6ef;color:#2c2417;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;">
             <section style="max-width:430px;">
               <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:126px;height:auto;margin-bottom:28px;" />
-              <p style="display:inline-flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:999px;background:#efe5d1;color:#7b4fa6;font-size:12px;font-weight:850;margin:0 0 14px;">20:00~21:00</p>
+              <p style="display:inline-flex;align-items:center;justify-content:center;padding:5px 12px;border-radius:999px;background:#efe5d1;color:#7b4fa6;font-size:12px;font-weight:850;margin:0 0 14px;">20:00~22:00</p>
               <h1 style="font-size:24px;line-height:1.35;margin:0 0 12px;font-weight:850;">서버 이전 작업 중입니다.</h1>
               <p style="font-size:15px;line-height:1.8;margin:0;color:#6f6254;">더욱 빨라지고 쾌적해진 beyond us를 기대해주세요!</p>
               <button type="button" id="maintenanceSwitchAccountBtn" style="margin-top:24px;border:1px solid #d8cbb7;background:#fffaf2;color:#2c2417;border-radius:999px;padding:10px 16px;font-weight:800;cursor:pointer;">개발자 계정으로 로그인</button>

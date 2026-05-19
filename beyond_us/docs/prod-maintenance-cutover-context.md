@@ -1,6 +1,6 @@
 # PROD 점검 전환 컨텍스트
 
-2026-05-19. 사용자는 main/Supabase 전환을 시작하기 전에 프로덕션 서버를 닫아달라고 요청했다. 일반 계정에는 `서버 이전 작업 중입니다. 더욱 빨라지고 쾌적해진 beyond us를 기대해주세요! 20:00~21:00` 문구를 표시하고, 개발자 계정 `SingSangSong`, `카니보어시즌2`만 통과시킨다.
+2026-05-19. 사용자는 main/Supabase 전환을 시작하기 전에 프로덕션 서버를 닫아달라고 요청했다. 일반 계정에는 `서버 이전 작업 중입니다. 더욱 빨라지고 쾌적해진 beyond us를 기대해주세요! 20:00~22:00` 문구를 표시하고, 개발자 계정 `SingSangSong`, `카니보어시즌2`만 통과시킨다.
 
 2026-05-19. 새 Supabase 프로젝트 이름은 사용자가 `AGC retreat PROD`라고 알려줬다. 실제 프론트 상수 교체와 import 작업에는 PROD Supabase project URL, anon key, service role key가 필요하다.
 
@@ -21,3 +21,5 @@
 2026-05-19. 검증 결과: active profile 중 `auth_user_id` 누락 0, raffle excluded user의 active raffle ticket 0. 추첨권 import가 `raffle.*` 이벤트 155개를 추가 생성해 최종 Events count는 1,001이다. 공개 RPC `get_app_bootstrap`는 currentWeek 2, `get_notices`는 3건으로 정상 응답했다. migration warning은 `TabSettings`의 `specialPack` 중복 1건과 유저 참조 없는 과거 `BBBPhotos` 4건이다.
 
 2026-05-19. 점검 모드 중에도 예외 개발자 계정은 기존 4자리 비밀번호 승격 화면에 들어갈 수 있도록 보강했다. 캐시 버전은 `20260519d`로 올렸다.
+
+2026-05-19. `SingSangSong` 로그인 실패 원인은 PROD Edge Function 목록에 `app-auth`가 누락된 것이었다. `app-auth`를 `--no-verify-jwt`로 재배포했고, 함수 목록과 테스트 호출에서 정상 응답을 확인했다. 점검 시간은 `20:00~22:00`으로 연장했고, 캐시 버전은 `20260519e`로 올렸다.
