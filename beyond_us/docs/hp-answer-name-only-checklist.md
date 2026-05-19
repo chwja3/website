@@ -7,5 +7,5 @@
 - [x] `submit_hold_pray_guess` 정답 판정을 실명 기준으로 변경
 - [x] 기존 H&P 응답의 `correct` 값을 실명 기준으로 재계산
 - [x] 정적 검증 실행
-- [ ] `dev` 커밋 및 푸시
-- [ ] `main` 반영 및 푸시
+- [x] `dev` 커밋 및 푸시
+- [x] `main` 반영 및 푸시
