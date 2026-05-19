@@ -7,3 +7,7 @@
 2026-05-19. H&P 서버 연결 오류는 프론트 fallback 문제가 아니라 Supabase RPC 런타임 오류 가능성이 높다. 특히 `ticketCardIdx`를 읽을 때 오래된 이벤트 payload에 숫자가 아닌 값이 들어 있으면 캐스팅 오류가 날 수 있어, 숫자 문자열일 때만 integer로 바꾸도록 보정했다.
 
 2026-05-19. H&P 조회, 정답 제출, 힌트 요청은 모두 같은 3장 선택 기준을 공유해야 한다. 이를 위해 `bu_hold_pray_cards_for_profile` helper를 추가하고 세 RPC가 이 helper를 사용하도록 했다.
+
+2026-05-19. 비밀번호 초기화 이후 미션을 제출한 사용자에게 mismatch가 반복된다는 보고가 있었다. 비밀번호 초기화 자체가 summary를 바꾸는 것은 아니지만, 초기화 후 정상 Supabase Auth 세션으로 미션 제출을 수행하면 `submit_pre_mission`의 기존 수동 `user_summary.mission_count + 1` 경로가 다시 실행된다. 원천 테이블 기준 재계산과 수동 증가가 섞이는 구조 자체가 위험하므로, 미션 제출과 카드 뽑기 RPC에서 수동 summary 증가를 제거하고 마지막에 `bu_refresh_profile_summary`만 호출하도록 보정했다.
+
+2026-05-19. H&P 서버 오류가 계속될 가능성에 대비해 `bu_hold_pray_cards_for_profile`의 반환 컬럼과 내부 `picked_cards` 컬럼명이 겹치지 않도록 `pc.` alias를 명시했다. SQL 함수의 출력 컬럼명과 select 컬럼명이 겹칠 때 PostgreSQL에서 ambiguous column 오류가 날 수 있기 때문이다.
