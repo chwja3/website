@@ -11,3 +11,11 @@
 2026-05-19. 점검 중 신규 가입, 비밀번호 재설정, 닉네임 찾기, legacy password upgrade 같은 비개발자 쓰기/조회 진입도 막도록 보강했다. 캐시 버전은 `20260519b`로 올렸다.
 
 2026-05-19. PROD Supabase 프로젝트 URL과 publishable key를 받았고, 프론트 `app.js`, `admin.html`이 `AGC retreat PROD` 프로젝트를 바라보도록 바꿨다. service role key와 password pepper는 repo에 기록하지 않는다. 캐시 버전은 `20260519c`로 올렸다.
+
+2026-05-19. PROD Supabase Edge Functions `app-auth`, `legacy-password-upgrade`, `admin-reset-password`를 `AGC retreat PROD` 프로젝트에 배포했다. Dashboard secret에는 `LEGACY_PASSWORD_PEPPER`만 수동 추가했고, `SUPABASE_URL`, `SUPABASE_SECRET_KEYS`는 Supabase 기본 제공 secret을 사용한다.
+
+2026-05-19. SQL migration은 PROD bundle로 실행했고, `20260518001500_dev_reset_cards.sql`은 제외했다. PROD Sheet export 파일은 `beyond_us_supabase_export_prod_20260519_204734.json`이고, `sourceEnvironment`는 `prod`, 총 25개 sheet, 2,187 row다.
+
+2026-05-19. PROD import 결과: 원본 row 2,187개를 `legacy_sheet_rows`에 적재했고, 정규 테이블에는 profiles 170, active profiles 167, events 846, user inventory 166, user cards 55, user summary 167, mission progress 139, raffle tickets 155, H&P entries 160, H&P guesses 50, notices 3, inquiries 76을 적재했다. legacy auth hashes 170개와 Supabase Auth user 170개도 생성했다.
+
+2026-05-19. 검증 결과: active profile 중 `auth_user_id` 누락 0, raffle excluded user의 active raffle ticket 0. 추첨권 import가 `raffle.*` 이벤트 155개를 추가 생성해 최종 Events count는 1,001이다. 공개 RPC `get_app_bootstrap`는 currentWeek 2, `get_notices`는 3건으로 정상 응답했다. migration warning은 `TabSettings`의 `specialPack` 중복 1건과 유저 참조 없는 과거 `BBBPhotos` 4건이다.
