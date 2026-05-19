@@ -9,8 +9,8 @@
     const IS_DEV_ENV = isDevEnvironment();
     const RAFFLE_PREVIEW_MODE = IS_DEV_ENV && new URLSearchParams(location.search).get('rafflePreview') === '1';
 
-    const SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
+    const SUPABASE_PROJECT_URL = 'https://dvpxqgezhiugnbimglvw.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_BF6Q0chZXMp6BfoQc-K9zw_xCU6q2Ea';
     const SYNTHETIC_AUTH_EMAIL_DOMAIN = 'auth.beyond-us.local';
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const APP_AUTH_URL = `${SUPABASE_PROJECT_URL}/functions/v1/app-auth`;
@@ -30,7 +30,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260519b';
+    const APP_VERSION = '20260519c';
     const MAINTENANCE_MODE = true;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {

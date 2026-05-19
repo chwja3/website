@@ -9,14 +9,14 @@
 - `main`이 붙을 Supabase 프로젝트가 정해져 있어야 한다.
 - 해당 Supabase 프로젝트의 데이터가 PROD 정본이어야 한다.
 - DEV 검증 데이터가 남아 있는 Supabase 프로젝트에 PROD Sheet 데이터를 섞어 넣으면 안 된다.
-- 현재 프론트 코드의 Supabase URL은 `https://qjwtkvfdzpeovjabdwxv.supabase.co`로 하드코딩되어 있다.
-- 이 프로젝트를 그대로 PROD로 쓸 계획이면, 이 DB 안의 데이터가 최종 PROD 데이터인지 먼저 확인한다.
+- 프론트 코드의 Supabase URL이 PROD 프로젝트를 바라보는지 확인한다.
 - 별도 PROD Supabase 프로젝트를 쓸 계획이면, `app.js`와 `admin.html`의 Supabase URL과 anon key를 PROD 값으로 바꾸는 커밋을 먼저 만든다.
+- 2026-05-19 전환 작업에서는 `AGC retreat PROD` 프로젝트를 사용한다.
 
 권장 판단은 이렇다.
 
 - DEV 검증용 데이터와 PROD 운영 데이터를 분리하고 싶으면 별도 PROD Supabase 프로젝트를 만든다.
-- 이미 `qjwtkvfdzpeovjabdwxv` 프로젝트를 최종 운영 DB로 쓰기로 했다면, DEV 테스트 데이터가 남아 있지 않은지 확인한 뒤 진행한다.
+- DEV 프로젝트를 최종 운영 DB로 착각해 연결하지 않는다.
 
 ## 1. 서버 닫기 전 준비
 
