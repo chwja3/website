@@ -865,8 +865,12 @@
     }
 
     const IS_DEV_ENV = isDevEnvironment();
-    const SUPABASE_PROJECT_URL = 'https://dvpxqgezhiugnbimglvw.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_BF6Q0chZXMp6BfoQc-K9zw_xCU6q2Ea';
+    const DEV_SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
+    const DEV_SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
+    const PROD_SUPABASE_PROJECT_URL = 'https://dvpxqgezhiugnbimglvw.supabase.co';
+    const PROD_SUPABASE_ANON_KEY = 'sb_publishable_BF6Q0chZXMp6BfoQc-K9zw_xCU6q2Ea';
+    const SUPABASE_PROJECT_URL = IS_DEV_ENV ? DEV_SUPABASE_PROJECT_URL : PROD_SUPABASE_PROJECT_URL;
+    const SUPABASE_ANON_KEY = IS_DEV_ENV ? DEV_SUPABASE_ANON_KEY : PROD_SUPABASE_ANON_KEY;
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const LEGACY_PASSWORD_UPGRADE_URL = `${SUPABASE_PROJECT_URL}/functions/v1/legacy-password-upgrade`;
     const ADMIN_RESET_PASSWORD_URL = `${SUPABASE_PROJECT_URL}/functions/v1/admin-reset-password`;
