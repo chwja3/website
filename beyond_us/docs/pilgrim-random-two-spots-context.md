@@ -10,8 +10,15 @@
 ## 결정
 
 - 랜덤 배정은 완전한 일회성 난수가 아니라 유저 ID 기반 고정 랜덤으로 처리한다.
-- 이 방식은 시트 쓰기를 늘리지 않고, 앱을 다시 열어도 배정이 바뀌지 않는다.
+- 배정 결과는 `pilgrim_assignments`에 저장해서 앱을 다시 열어도 바뀌지 않는다.
 - 서버에서 지정 스팟 여부를 검증해 클라이언트 조작으로 다른 스팟을 인증하지 못하게 한다.
 - 기존 `BBBPhotos` 사진 저장 구조와 `bbb_m3` 보상 이벤트는 유지한다.
 - M3 응답 캐시 구조가 바뀌었으므로 `BBB_CACHE_VERSION`을 올려 기존 캐시가 새 UI에 섞이지 않게 한다.
 - 일반 흰색 스팟은 강화 스타일 이전의 가벼운 반투명 dashed 원으로 유지하고, 미션 스팟 빨강/완료 초록만 파스텔 반투명 톤으로 표시한다.
+
+## 2026-05-21 DEV 확인
+
+- 프론트 렌더링은 `m3AssignedSpots`에 들어온 두 스팟을 빨간 원으로 표시하고, 해당 스팟 사진이 있으면 초록 원으로 표시한다.
+- 기존 Supabase RPC는 `submit_mission_photo`에서만 `pilgrim_assignments`를 만들고, `get_bbb_status` 조회에서는 만들지 않았다.
+- 첫 진입 유저는 배정 row가 없으면 `m3AssignedSpots: []`를 받아 빨간 원 2개가 보이지 않을 수 있었다.
+- `20260521000100_pilgrim_assignment_on_status_read.sql`에서 상태 조회 시 배정을 보장하는 `bu_ensure_pilgrim_assignment`를 추가했다.
