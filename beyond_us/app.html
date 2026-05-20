@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260519i" />
+  <link rel="stylesheet" href="app.css?v=20260521a" />
 </head>
 <body>
 
@@ -642,11 +642,20 @@
       <!-- Q.T. 말씀 묵상 -->
       <div id="sectionQt" class="section hidden">
         <div class="wrap">
-          <section class="card" style="margin-top:16px;text-align:center;padding:36px 24px;">
-            <img src="images/hc_logo_png2.png" alt="Beyond Us" style="width:96px;height:auto;margin-bottom:18px;" />
-            <p style="font-size:11px;font-weight:900;color:var(--primary);letter-spacing:.12em;margin:0 0 8px;">Q.T.</p>
-            <h2 class="card-title" style="font-size:20px;margin:0 0 10px;">말씀 묵상</h2>
-            <p style="font-size:14px;color:var(--sub);line-height:1.7;margin:0;">준비중입니다.</p>
+          <section class="card qt-card">
+            <div class="qt-header">
+              <p class="qt-eyebrow">Q.T.</p>
+              <h2 class="card-title qt-title">오늘의 말씀 묵상</h2>
+              <p id="qtTodayLabel" class="qt-date">오늘 날짜를 확인하는 중...</p>
+            </div>
+            <div class="qt-image-frame">
+              <div id="qtLoading" class="qt-status">본문을 불러오는 중...</div>
+              <img id="qtTodayImage" class="qt-today-image hidden" alt="오늘의 Q.T. 말씀 묵상" loading="lazy" decoding="async" />
+              <div id="qtMissing" class="qt-empty hidden">
+                <strong>오늘 Q.T.가 아직 준비되지 않았어요.</strong>
+                <span>날짜별 PNG 파일을 확인해주세요.</span>
+              </div>
+            </div>
           </section>
         </div>
       </div>
@@ -1136,7 +1145,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260520c" defer></script>
+  <script src="app.js?v=20260521a" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

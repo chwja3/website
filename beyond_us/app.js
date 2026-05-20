@@ -34,7 +34,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260520c';
+    const APP_VERSION = '20260521a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -3500,6 +3500,72 @@
       return item ? item.dataset.section : '';
     }
 
+    let _qtRenderedKey = '';
+    function getTodayQtMeta() {
+      const now = new Date();
+      const fileParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul',
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(now).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const labelParts = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).formatToParts(now).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const yy = fileParts.year;
+      const mm = fileParts.month;
+      const dd = fileParts.day;
+      const fileName = `${yy}${mm}${dd}.png`;
+      return {
+        key: `${yy}${mm}${dd}`,
+        src: `QT/${fileName}?v=${APP_VERSION}`,
+        label: `${labelParts.year}년 ${labelParts.month} ${labelParts.day} ${labelParts.weekday}`,
+      };
+    }
+
+    function renderTodayQt(force) {
+      const labelEl = document.getElementById('qtTodayLabel');
+      const imgEl = document.getElementById('qtTodayImage');
+      const loadingEl = document.getElementById('qtLoading');
+      const missingEl = document.getElementById('qtMissing');
+      if (!labelEl || !imgEl || !loadingEl || !missingEl) return;
+
+      const meta = getTodayQtMeta();
+      labelEl.textContent = meta.label;
+      if (!force && _qtRenderedKey === meta.key && imgEl.dataset.loaded === 'true') return;
+
+      _qtRenderedKey = meta.key;
+      imgEl.dataset.loaded = 'false';
+      imgEl.classList.add('hidden');
+      missingEl.classList.add('hidden');
+      loadingEl.classList.remove('hidden');
+      loadingEl.textContent = '본문을 불러오는 중...';
+
+      imgEl.onload = () => {
+        imgEl.dataset.loaded = 'true';
+        loadingEl.classList.add('hidden');
+        missingEl.classList.add('hidden');
+        imgEl.classList.remove('hidden');
+      };
+      imgEl.onerror = () => {
+        imgEl.dataset.loaded = 'false';
+        loadingEl.classList.add('hidden');
+        imgEl.classList.add('hidden');
+        missingEl.classList.remove('hidden');
+      };
+      imgEl.src = meta.src;
+    }
+
     function updateScoreProgress() {
       const wrap = document.getElementById('scoreProgressWrap');
       if (!currentNickname || !userStatus || userStatus.error || !lastConfigData) { wrap.style.display = 'none'; return; }
@@ -3892,6 +3958,7 @@
           loadUserStatus({ silent: true }).then(() => { renderCollection(); loadTrades(); }).catch(() => {});
         }
       }
+      if (name === 'qt') renderTodayQt();
       if (name === 'secret') { loadBBB(); }
       if (name === 'pilgrim') { loadBBB(); }
       if (name === 'chat') initChat();
