@@ -6,6 +6,6 @@
 - [x] `dev` 변경사항을 `main`에 병합.
 - [x] main 전용 verification SQL 파일 삭제 여부 확인 후 보존.
 - [x] 정적 검사 실행.
-- [ ] main push.
+- [x] main push.
 - [ ] 사용자가 PROD Storage에 Q.T. PNG 수동 업로드.
 - [ ] 사용자가 PROD Supabase에서 통합 SQL 실행.
