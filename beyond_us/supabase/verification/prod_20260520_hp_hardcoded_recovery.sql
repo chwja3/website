@@ -1,10 +1,10 @@
--- ?? GAS ???? H&P ????? Supabase H&P ?? ???? ??? ????.
+-- 예전 GAS 하드코딩 H&P 기도제목을 Supabase H&P 원천 데이터와 매칭해 보강한다.
 begin;
 
 alter table public.hold_pray_entries
   add column if not exists owner_name_input text;
 
-comment on column public.hold_pray_entries.owner_name_input is '???? ??? ??? ?? ??? ??. ???? ? ???? ????? ?? ????.';
+comment on column public.hold_pray_entries.owner_name_input is '관리자가 작성자 매칭을 위해 입력한 실명. 프로필을 못 찾았거나 동명이인일 때도 보존한다.';
 
 create or replace function public.bu_hp_answer_key(p_text text)
 returns text
@@ -1016,7 +1016,7 @@ name_counts as (
       'name', nc.name,
       'parish', nc.parish
     ) order by
-      coalesce(array_position(array['1?','2?','3?','4?','VIP','????','????'], nc.parish), 99),
+      coalesce(array_position(array['1청','2청','3청','4청','VIP','교회학교','목양교구'], nc.parish), 99),
       nc.name,
       nc.login_id
     ) filter (where nc.profile_id is not null), '[]'::jsonb) as candidates
