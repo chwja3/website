@@ -66,6 +66,65 @@
     .card-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
     .card-sub { font-size: 13px; color: var(--sub); line-height: 1.6; margin-bottom: 14px; }
 
+    .qt-card {
+      margin-top: 16px;
+      padding: 20px 16px 18px;
+    }
+    .qt-header {
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .qt-eyebrow {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--primary);
+      letter-spacing: .12em;
+      margin-bottom: 8px;
+    }
+    .qt-title {
+      font-size: 20px;
+      margin-bottom: 8px;
+    }
+    .qt-date {
+      font-size: 13px;
+      color: var(--sub);
+      line-height: 1.5;
+    }
+    .qt-image-frame {
+      width: 100%;
+      min-height: 320px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fffaf0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .qt-today-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: none;
+    }
+    .qt-status,
+    .qt-empty {
+      padding: 34px 18px;
+      text-align: center;
+      color: var(--sub);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .qt-empty {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .qt-empty strong {
+      color: var(--text);
+      font-size: 15px;
+    }
+
     
     .week-badge {
       display: inline-block;

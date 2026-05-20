@@ -21,6 +21,7 @@
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
+    const SUPABASE_QT_PUBLIC_BASE = `${SUPABASE_PHOTO_PUBLIC_BASE}QT/`;
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'password_migration_required',
@@ -34,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260520c';
+    const APP_VERSION = '20260521c';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -1037,8 +1038,13 @@
     function safeStoragePathPart(value) {
       return String(value || '')
         .trim()
-        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/[\\/#?%&{}<>*:$!'"@+`|=\u0000-\u001F]+/g, '_')
+        .replace(/\s+/g, '_')
         .replace(/^_+|_+$/g, '') || 'user';
+    }
+
+    function encodeStorageObjectPath(path) {
+      return String(path || '').split('/').map(encodeURIComponent).join('/');
     }
 
     async function uploadSupabaseMissionPhoto(dataUrl, missionType) {
@@ -1047,11 +1053,12 @@
       const blob = dataUrlToBlob(dataUrl);
       const ext = blob.type === 'image/png' ? 'png' : (blob.type === 'image/webp' ? 'webp' : 'jpg');
       const path = [
+        'BBB_missions',
         safeStoragePathPart(currentNickname),
         safeStoragePathPart(missionType || 'mission'),
         `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
       ].join('/');
-      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${path}`, {
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${encodeStorageObjectPath(path)}`, {
         method: 'POST',
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -3500,6 +3507,89 @@
       return item ? item.dataset.section : '';
     }
 
+    let _qtRenderedKey = '';
+    function getTodayQtMeta() {
+      const now = new Date();
+      const fileParts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul',
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(now).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const labelParts = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).formatToParts(now).reduce((acc, part) => {
+        acc[part.type] = part.value;
+        return acc;
+      }, {});
+      const yy = fileParts.year;
+      const mm = fileParts.month;
+      const dd = fileParts.day;
+      const fileName = `${yy}${mm}${dd}.png`;
+      return {
+        key: `${yy}${mm}${dd}`,
+        storageSrc: `${SUPABASE_QT_PUBLIC_BASE}${fileName}?v=${APP_VERSION}`,
+        localSrc: `QT/${fileName}?v=${APP_VERSION}`,
+        label: `${labelParts.year}년 ${labelParts.month} ${labelParts.day} ${labelParts.weekday}`,
+      };
+    }
+
+    function loadImageProbe(src) {
+      return new Promise((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = () => resolve(src);
+        probe.onerror = () => reject(new Error('image_load_failed'));
+        probe.src = src;
+      });
+    }
+
+    function renderTodayQt(force) {
+      const labelEl = document.getElementById('qtTodayLabel');
+      const imgEl = document.getElementById('qtTodayImage');
+      const loadingEl = document.getElementById('qtLoading');
+      const missingEl = document.getElementById('qtMissing');
+      if (!labelEl || !imgEl || !loadingEl || !missingEl) return;
+
+      const meta = getTodayQtMeta();
+      labelEl.textContent = meta.label;
+      if (!force && _qtRenderedKey === meta.key && imgEl.dataset.loaded === 'true') return;
+
+      _qtRenderedKey = meta.key;
+      imgEl.dataset.loaded = 'false';
+      imgEl.classList.add('hidden');
+      missingEl.classList.add('hidden');
+      loadingEl.classList.remove('hidden');
+      loadingEl.textContent = '본문을 불러오는 중...';
+      imgEl.removeAttribute('src');
+
+      loadImageProbe(meta.storageSrc)
+        .catch(() => loadImageProbe(meta.localSrc))
+        .then(src => {
+          if (_qtRenderedKey !== meta.key) return;
+          imgEl.onload = null;
+          imgEl.onerror = null;
+          imgEl.src = src;
+          imgEl.dataset.loaded = 'true';
+          loadingEl.classList.add('hidden');
+          missingEl.classList.add('hidden');
+          imgEl.classList.remove('hidden');
+        })
+        .catch(() => {
+          if (_qtRenderedKey !== meta.key) return;
+          imgEl.dataset.loaded = 'false';
+          loadingEl.classList.add('hidden');
+          imgEl.classList.add('hidden');
+          missingEl.classList.remove('hidden');
+        });
+    }
+
     function updateScoreProgress() {
       const wrap = document.getElementById('scoreProgressWrap');
       if (!currentNickname || !userStatus || userStatus.error || !lastConfigData) { wrap.style.display = 'none'; return; }
@@ -3892,6 +3982,7 @@
           loadUserStatus({ silent: true }).then(() => { renderCollection(); loadTrades(); }).catch(() => {});
         }
       }
+      if (name === 'qt') renderTodayQt();
       if (name === 'secret') { loadBBB(); }
       if (name === 'pilgrim') { loadBBB(); }
       if (name === 'chat') initChat();
