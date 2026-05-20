@@ -18,3 +18,9 @@
 - `app.js`에서 `renderTodayQt()`를 추가했고, Q.T. 탭 진입 시 한국 시간 기준 `QT/YYMMDD.png`를 로드한다.
 - 오늘 파일이 없으면 “오늘 Q.T.가 아직 준비되지 않았어요.” 안내를 보여준다.
 - 프론트 버전은 `20260521a`로 동기화했다.
+
+## 2026-05-21 Storage 전환 보강
+
+- Q.T. 이미지는 이제 Supabase Storage `beyond-us-photos/QT/YYMMDD.png`를 우선 로드한다.
+- Storage 파일이 없을 때만 로컬 `QT/YYMMDD.png`로 fallback한다.
+- 프론트 버전은 `20260521b`로 동기화했다.

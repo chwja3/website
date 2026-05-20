@@ -21,6 +21,7 @@
     const SUPABASE_REST_URL = `${SUPABASE_PROJECT_URL}/rest/v1`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
+    const SUPABASE_QT_PUBLIC_BASE = `${SUPABASE_PHOTO_PUBLIC_BASE}QT/`;
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'password_migration_required',
@@ -34,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260521a';
+    const APP_VERSION = '20260521b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -1037,8 +1038,13 @@
     function safeStoragePathPart(value) {
       return String(value || '')
         .trim()
-        .replace(/[^a-zA-Z0-9._-]+/g, '_')
+        .replace(/[\\/#?%&{}<>*:$!'"@+`|=\u0000-\u001F]+/g, '_')
+        .replace(/\s+/g, '_')
         .replace(/^_+|_+$/g, '') || 'user';
+    }
+
+    function encodeStorageObjectPath(path) {
+      return String(path || '').split('/').map(encodeURIComponent).join('/');
     }
 
     async function uploadSupabaseMissionPhoto(dataUrl, missionType) {
@@ -1047,11 +1053,12 @@
       const blob = dataUrlToBlob(dataUrl);
       const ext = blob.type === 'image/png' ? 'png' : (blob.type === 'image/webp' ? 'webp' : 'jpg');
       const path = [
+        'BBB_missions',
         safeStoragePathPart(currentNickname),
         safeStoragePathPart(missionType || 'mission'),
         `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
       ].join('/');
-      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${path}`, {
+      const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${encodeStorageObjectPath(path)}`, {
         method: 'POST',
         headers: {
           apikey: SUPABASE_ANON_KEY,
@@ -3528,7 +3535,8 @@
       const fileName = `${yy}${mm}${dd}.png`;
       return {
         key: `${yy}${mm}${dd}`,
-        src: `QT/${fileName}?v=${APP_VERSION}`,
+        storageSrc: `${SUPABASE_QT_PUBLIC_BASE}${fileName}?v=${APP_VERSION}`,
+        localSrc: `QT/${fileName}?v=${APP_VERSION}`,
         label: `${labelParts.year}년 ${labelParts.month} ${labelParts.day} ${labelParts.weekday}`,
       };
     }
@@ -3546,6 +3554,7 @@
 
       _qtRenderedKey = meta.key;
       imgEl.dataset.loaded = 'false';
+      imgEl.dataset.qtSource = 'storage';
       imgEl.classList.add('hidden');
       missingEl.classList.add('hidden');
       loadingEl.classList.remove('hidden');
@@ -3558,12 +3567,17 @@
         imgEl.classList.remove('hidden');
       };
       imgEl.onerror = () => {
+        if (imgEl.dataset.qtSource === 'storage') {
+          imgEl.dataset.qtSource = 'local';
+          imgEl.src = meta.localSrc;
+          return;
+        }
         imgEl.dataset.loaded = 'false';
         loadingEl.classList.add('hidden');
         imgEl.classList.add('hidden');
         missingEl.classList.remove('hidden');
       };
-      imgEl.src = meta.src;
+      imgEl.src = meta.storageSrc;
     }
 
     function updateScoreProgress() {
