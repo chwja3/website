@@ -639,6 +639,35 @@
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshHPMatchingBtn" onclick="loadHPPrayerMatching()">새로고침</button>
           </div>
+          <details open style="border:1px solid var(--line);border-radius:12px;background:var(--primary-soft);margin-bottom:12px;overflow:hidden;">
+            <summary style="cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div>
+                <div style="font-size:14px;font-weight:900;">새 기도제목 추가</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">새로 들어온 H&amp;P 기도제목을 작성자와 함께 저장합니다.</div>
+              </div>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <textarea id="hpNewPrayerContent" class="input" rows="4" placeholder="기도제목" style="resize:vertical;margin-bottom:8px;line-height:1.5;"></textarea>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-bottom:8px;">
+                <input type="text" id="hpNewPrayerOwnerName" class="input" placeholder="사람 이름" style="margin-bottom:0;" />
+                <input type="text" id="hpNewPrayerOwnerLoginId" class="input" placeholder="닉네임. 동명이인일 때 선택 입력" style="margin-bottom:0;" />
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--sub);">
+                  <label style="display:flex;align-items:center;gap:6px;font-weight:800;color:var(--text);">
+                    <input type="checkbox" id="hpNewPrayerAnonymous" />
+                    익명
+                  </label>
+                  <label style="display:flex;align-items:center;gap:6px;font-weight:800;color:var(--text);">
+                    <input type="checkbox" id="hpNewPrayerVisible" checked />
+                    사용자 화면 노출
+                  </label>
+                </div>
+                <button class="btn btn-primary btn-sm" id="createHPPrayerBtn" type="button" onclick="createHPPrayerEntry()" style="width:auto;min-width:90px;">추가</button>
+              </div>
+              <div id="hpNewPrayerStatus" class="status" style="min-height:17px;margin-top:8px;font-size:12px;"></div>
+            </div>
+          </details>
           <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-bottom:12px;">
             <input type="search" id="hpMatchSearch" placeholder="🔍 기도제목, 이름, 교구 검색" class="input" style="margin-bottom:0;" oninput="filterHPPrayerMatching(this.value)" />
           </div>
@@ -3371,6 +3400,67 @@
     }
 
     /* ── H&P 기도제목 매칭 ── */
+    async function createHPPrayerEntry() {
+      const contentEl = document.getElementById('hpNewPrayerContent');
+      const ownerNameEl = document.getElementById('hpNewPrayerOwnerName');
+      const ownerLoginIdEl = document.getElementById('hpNewPrayerOwnerLoginId');
+      const anonymousEl = document.getElementById('hpNewPrayerAnonymous');
+      const visibleEl = document.getElementById('hpNewPrayerVisible');
+      const statusEl = document.getElementById('hpNewPrayerStatus');
+      const button = document.getElementById('createHPPrayerBtn');
+      const content = (contentEl?.value || '').trim();
+      const ownerName = (ownerNameEl?.value || '').trim();
+      const ownerLoginId = (ownerLoginIdEl?.value || '').trim();
+      if (!content) {
+        alert('기도제목을 입력해주세요.');
+        contentEl?.focus?.();
+        return;
+      }
+      if (!ownerName && !ownerLoginId) {
+        alert('사람 이름을 입력하거나 닉네임을 입력해주세요.');
+        ownerNameEl?.focus?.();
+        return;
+      }
+      if (button) button.disabled = true;
+      if (statusEl) {
+        statusEl.className = 'status';
+        statusEl.textContent = '기도제목 추가 중...';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_create_hold_pray_entry', {
+          p_content: content,
+          p_owner_name: ownerName || null,
+          p_owner_login_id: ownerLoginId || null,
+          p_anonymous: !!anonymousEl?.checked,
+          p_visible: visibleEl ? !!visibleEl.checked : true,
+          p_week_key: null,
+        });
+        if (!res.ok) throw new Error(res.error || 'create_failed');
+        if (statusEl) {
+          statusEl.className = res.matchState === 'matched' ? 'status ok' : 'status';
+          if (res.matchState === 'matched') {
+            statusEl.textContent = `${res.matchedName || ownerName || ownerLoginId}님과 연결해서 추가했습니다.`;
+          } else if (res.matchState === 'multiple') {
+            statusEl.textContent = `기도제목은 추가했고, 동명이인 ${res.candidateCount || 0}명 중 닉네임 선택이 필요합니다.`;
+          } else if (res.matchState === 'not_found') {
+            statusEl.textContent = '기도제목은 추가했고, 유저 정보에서 사람을 찾지 못했습니다.';
+          } else {
+            statusEl.textContent = '기도제목을 미매칭 상태로 추가했습니다.';
+          }
+        }
+        if (contentEl) contentEl.value = '';
+        if (ownerNameEl) ownerNameEl.value = '';
+        if (ownerLoginIdEl) ownerLoginIdEl.value = '';
+        if (anonymousEl) anonymousEl.checked = false;
+        if (visibleEl) visibleEl.checked = true;
+        await loadHPPrayerMatching();
+      } catch(e) {
+        if (statusEl) statusEl.textContent = '추가 실패: ' + adminErrorMessage(e);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
     function filterHPPrayerMatching(value) {
       _hpPrayerMatchingFilter = String(value || '').trim().toLowerCase();
       renderHPPrayerMatching();
