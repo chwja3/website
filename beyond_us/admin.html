@@ -3381,6 +3381,7 @@
         row.matchedName,
         row.matchedParish,
         row.matchState,
+        ...(Array.isArray(row.candidates) ? row.candidates.flatMap(candidate => [candidate.userId, candidate.name, candidate.parish]) : []),
       ].some(v => String(v || '').toLowerCase().includes(query));
     }
 
@@ -3449,6 +3450,7 @@
           ${row.matchedUserId ? `
             <div style="font-size:12px;color:var(--sub);margin-bottom:8px;">현재 연결: <strong style="color:var(--text);">${esc(row.matchedName || '-')}</strong> · ${esc(row.matchedUserId || '-')} · ${esc(row.matchedParish || '-')}</div>
           ` : ''}
+          ${renderHPPrayerMatchCandidatePicker(row)}
           <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;">
             <input type="text" class="input hp-prayer-match-name" value="${esc(inputValue)}" placeholder="사람 이름" style="margin-bottom:0;" />
             <button class="btn btn-primary btn-sm" type="button" onclick="saveHPPrayerMatch(this)" style="width:auto;min-width:72px;">저장</button>
@@ -3458,18 +3460,45 @@
         </div>`;
     }
 
+    function renderHPPrayerMatchCandidatePicker(row) {
+      const candidates = Array.isArray(row.candidates) ? row.candidates : [];
+      if (row.matchState !== 'multiple' || candidates.length < 2) return '';
+      return `
+        <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:9px;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:900;color:#b45309;margin-bottom:6px;">동명이인 닉네임 선택</div>
+          <select class="input hp-prayer-match-user-select" onchange="onHPPrayerCandidateChange(this)" style="margin-bottom:0;">
+            <option value="">닉네임을 선택해주세요</option>
+            ${candidates.map(candidate => `
+              <option value="${esc(candidate.userId || '')}" data-name="${esc(candidate.name || '')}">
+                ${esc(candidate.userId || '-')} · ${esc(candidate.name || '-')} · ${esc(candidate.parish || '-')}
+              </option>
+            `).join('')}
+          </select>
+        </div>`;
+    }
+
+    function onHPPrayerCandidateChange(select) {
+      const rowEl = select?.closest?.('.hp-prayer-match-row');
+      const input = rowEl?.querySelector?.('.hp-prayer-match-name');
+      const selected = select?.selectedOptions?.[0];
+      const name = selected?.dataset?.name || '';
+      if (input && name) input.value = name;
+    }
+
     async function saveHPPrayerMatch(button) {
       const rowEl = button?.closest?.('.hp-prayer-match-row');
       if (!rowEl) return;
       const entryId = rowEl.dataset.hpEntryId || '';
       const input = rowEl.querySelector('.hp-prayer-match-name');
+      const select = rowEl.querySelector('.hp-prayer-match-user-select');
       const ownerName = (input?.value || '').trim();
+      const ownerLoginId = (select?.value || '').trim();
       const statusEl = rowEl.querySelector('.hp-prayer-match-status');
-      if (!entryId || !ownerName) {
-        alert('사람 이름을 입력해주세요.');
+      if (!entryId || (!ownerName && !ownerLoginId)) {
+        alert('사람 이름을 입력하거나 닉네임을 선택해주세요.');
         return;
       }
-      await submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl);
+      await submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl, ownerLoginId);
     }
 
     async function clearHPPrayerMatch(button) {
@@ -3479,10 +3508,10 @@
       const statusEl = rowEl.querySelector('.hp-prayer-match-status');
       if (!entryId) return;
       if (!confirm('이 기도제목의 작성자 매칭을 해제할까요?')) return;
-      await submitHPPrayerMatch(rowEl, entryId, '', statusEl);
+      await submitHPPrayerMatch(rowEl, entryId, '', statusEl, '');
     }
 
-    async function submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl) {
+    async function submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl, ownerLoginId) {
       const buttons = rowEl.querySelectorAll('button');
       buttons.forEach(btn => { btn.disabled = true; });
       if (statusEl) {
@@ -3493,6 +3522,7 @@
         const res = await callSupabaseAdminRpc('admin_match_hold_pray_entry', {
           p_entry_id: entryId,
           p_owner_name: ownerName,
+          p_owner_login_id: ownerLoginId || null,
         });
         if (!res.ok) throw new Error(res.error || 'save_failed');
         if (statusEl) {
@@ -3502,7 +3532,7 @@
           if (res.matchState === 'matched') {
             statusEl.textContent = `${res.matchedName || ownerName}님과 연결했습니다.`;
           } else if (res.matchState === 'multiple') {
-            statusEl.textContent = `동명이인 ${res.candidateCount || 0}명이 있어 확인이 필요합니다.`;
+            statusEl.textContent = `동명이인 ${res.candidateCount || 0}명이 있어 닉네임 선택이 필요합니다.`;
           } else if (res.matchState === 'not_found') {
             statusEl.textContent = '유저 정보에서 찾지 못했습니다.';
           } else {
