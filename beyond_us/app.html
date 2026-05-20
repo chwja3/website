@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260521b" />
+  <link rel="stylesheet" href="app.css?v=20260521c" />
 </head>
 <body>
 
@@ -650,7 +650,7 @@
             </div>
             <div class="qt-image-frame">
               <div id="qtLoading" class="qt-status">본문을 불러오는 중...</div>
-              <img id="qtTodayImage" class="qt-today-image hidden" alt="오늘의 Q.T. 말씀 묵상" loading="lazy" decoding="async" />
+              <img id="qtTodayImage" class="qt-today-image hidden" alt="오늘의 Q.T. 말씀 묵상" loading="eager" decoding="async" fetchpriority="high" />
               <div id="qtMissing" class="qt-empty hidden">
                 <strong>오늘 Q.T.가 아직 준비되지 않았어요.</strong>
                 <span>날짜별 PNG 파일을 확인해주세요.</span>
@@ -1145,7 +1145,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260521b" defer></script>
+  <script src="app.js?v=20260521c" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

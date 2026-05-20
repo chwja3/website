@@ -21,6 +21,13 @@
 - 기존 path 정규화가 한글 닉네임을 전부 제거하던 문제를 줄이기 위해, `/`, URL 예약문자, 제어문자만 `_`로 바꾸고 한글은 유지한다.
 - `beyond_us/tools/upload_qt_storage.mjs`를 추가했다.
 
+## 2026-05-21 Q.T. 로딩 멈춤 수정
+
+- 숨겨진 이미지에 `loading="lazy"` 상태로 `src`를 넣으면 브라우저가 실제 요청을 미뤄 `onload`와 `onerror`가 모두 실행되지 않을 수 있었다.
+- Q.T. 이미지는 이제 DOM 이미지에 바로 `src`를 넣지 않고, `new Image()`로 Storage URL과 local fallback URL을 먼저 검증한다.
+- 성공한 URL만 화면 이미지에 넣고, 둘 다 실패하면 준비되지 않았다는 메시지를 보여준다.
+- 프론트 버전은 `20260521c`로 동기화했다.
+
 ## Q.T. 업로드 절차
 
 DEV 또는 PROD Supabase 프로젝트별로 아래 환경변수를 설정한 뒤 실행한다.

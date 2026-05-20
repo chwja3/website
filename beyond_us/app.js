@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260521b';
+    const APP_VERSION = '20260521c';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -3541,6 +3541,15 @@
       };
     }
 
+    function loadImageProbe(src) {
+      return new Promise((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = () => resolve(src);
+        probe.onerror = () => reject(new Error('image_load_failed'));
+        probe.src = src;
+      });
+    }
+
     function renderTodayQt(force) {
       const labelEl = document.getElementById('qtTodayLabel');
       const imgEl = document.getElementById('qtTodayImage');
@@ -3554,30 +3563,31 @@
 
       _qtRenderedKey = meta.key;
       imgEl.dataset.loaded = 'false';
-      imgEl.dataset.qtSource = 'storage';
       imgEl.classList.add('hidden');
       missingEl.classList.add('hidden');
       loadingEl.classList.remove('hidden');
       loadingEl.textContent = '본문을 불러오는 중...';
+      imgEl.removeAttribute('src');
 
-      imgEl.onload = () => {
-        imgEl.dataset.loaded = 'true';
-        loadingEl.classList.add('hidden');
-        missingEl.classList.add('hidden');
-        imgEl.classList.remove('hidden');
-      };
-      imgEl.onerror = () => {
-        if (imgEl.dataset.qtSource === 'storage') {
-          imgEl.dataset.qtSource = 'local';
-          imgEl.src = meta.localSrc;
-          return;
-        }
-        imgEl.dataset.loaded = 'false';
-        loadingEl.classList.add('hidden');
-        imgEl.classList.add('hidden');
-        missingEl.classList.remove('hidden');
-      };
-      imgEl.src = meta.storageSrc;
+      loadImageProbe(meta.storageSrc)
+        .catch(() => loadImageProbe(meta.localSrc))
+        .then(src => {
+          if (_qtRenderedKey !== meta.key) return;
+          imgEl.onload = null;
+          imgEl.onerror = null;
+          imgEl.src = src;
+          imgEl.dataset.loaded = 'true';
+          loadingEl.classList.add('hidden');
+          missingEl.classList.add('hidden');
+          imgEl.classList.remove('hidden');
+        })
+        .catch(() => {
+          if (_qtRenderedKey !== meta.key) return;
+          imgEl.dataset.loaded = 'false';
+          loadingEl.classList.add('hidden');
+          imgEl.classList.add('hidden');
+          missingEl.classList.remove('hidden');
+        });
     }
 
     function updateScoreProgress() {
