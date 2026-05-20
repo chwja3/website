@@ -1123,7 +1123,7 @@
         } else if (e.status === 400 || e.message === 'invalid_grant') {
           statusEl.textContent = 'Staff 아이디 또는 비밀번호를 확인해주세요.';
         } else {
-          statusEl.textContent = '연결 오류. 잠시 후 다시 시도해주세요.';
+          adminSetStatusError(statusEl, e);
         }
       } finally {
         btn.disabled = false;
@@ -1208,7 +1208,7 @@
             <td><button class="btn btn-ghost btn-sm" onclick="openResetModal('${esc(u.nickname)}','${esc(u.name)}')">비번 초기화</button></td>
           </tr>`).join('');
       } catch(e) {
-        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);">서버 연결 오류</td></tr>';
+        tbody.innerHTML = adminErrorRow(5, e);
       }
     }
     document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
@@ -1429,14 +1429,14 @@
         renderWeeklyParishDashboard(res.weeklyParishSummaries || [], res.currentWeek);
       } catch(e) {
         document.getElementById('checkinTableBody').innerHTML =
-          '<tr><td colspan="2" style="color:var(--danger);">서버 연결 오류</td></tr>';
+          adminErrorRow(2, e);
         document.getElementById('weeklyCheckinTableBody').innerHTML =
-          '<tr><td colspan="2" style="color:var(--danger);">서버 연결 오류</td></tr>';
+          adminErrorRow(2, e);
         document.getElementById('parishSummaryGrid').innerHTML =
-          '<div style="color:var(--danger); padding:12px;">서버 연결 오류</div>';
+          adminErrorBlock(e, '서버 연결 오류', '12px');
         document.getElementById('parishDetailList').innerHTML = '';
         document.getElementById('weeklyParishSummaryGrid').innerHTML =
-          '<div style="color:var(--danger); padding:12px;">서버 연결 오류</div>';
+          adminErrorBlock(e, '서버 연결 오류', '12px');
         document.getElementById('weeklyParishDetailList').innerHTML = '';
       }
     }
@@ -1476,8 +1476,8 @@
         updateAttendanceMoreButton(res);
       } catch(e) {
         if (moreBtn) moreBtn.style.display = 'none';
-        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
-        deletedTbody.innerHTML = '<tr><td colspan="5" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+        tbody.innerHTML = adminErrorRow(7, e);
+        deletedTbody.innerHTML = adminErrorRow(5, e);
       }
     }
 
@@ -1564,7 +1564,7 @@
         await loadRaffleAttendance();
       } catch(e) {
         btn.disabled = false;
-        statusEl.textContent = '삭제 처리에 실패했어요. 잠시 후 다시 시도해주세요.';
+        adminSetStatusError(statusEl, e, '삭제 처리 실패');
         statusEl.className = 'status';
       }
     }
@@ -1584,7 +1584,7 @@
         await loadRaffleAttendance();
       } catch(e) {
         btn.disabled = false;
-        statusEl.textContent = '복구에 실패했어요. 잠시 후 다시 시도해주세요.';
+        adminSetStatusError(statusEl, e, '복구 실패');
         statusEl.className = 'status';
       }
     }
@@ -1613,7 +1613,7 @@
         }, 1400);
       } catch(e) {
         checkbox.checked = !attended;
-        statusEl.textContent = '저장 실패. 잠시 후 다시 시도해주세요.';
+        adminSetStatusError(statusEl, e, '저장 실패');
         statusEl.className = 'status';
       } finally {
         checkbox.disabled = false;
@@ -1646,7 +1646,7 @@
         statusEl.className = 'status ok';
       } catch(e) {
         checkbox.checked = !excluded;
-        statusEl.textContent = '저장 실패. 잠시 후 다시 시도해주세요.';
+        adminSetStatusError(statusEl, e, '저장 실패');
         statusEl.className = 'status';
       } finally {
         checkbox.disabled = false;
@@ -1800,7 +1800,7 @@
           alert('오류: ' + (res.error || ''));
           btns.forEach(b => { b.disabled = false; });
         }
-      } catch(e) { alert('연결 오류'); btns.forEach(b => { b.disabled = false; }); }
+      } catch(e) { adminAlertError(e); btns.forEach(b => { b.disabled = false; }); }
     }
 
     const SPIRIT_CARDS_ADMIN = [
@@ -1864,7 +1864,7 @@
         renderCardUserRows(_cardUserStats);
       } catch(e) {
         document.getElementById('cardUserTableBody').innerHTML =
-          '<tr><td colspan="3" style="color:var(--danger);">서버 연결 오류</td></tr>';
+          adminErrorRow(3, e);
       }
     }
     document.getElementById('refreshCardsBtn').addEventListener('click', loadCardStats);
@@ -1903,7 +1903,7 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
       } finally {
         btn.disabled = false;
       }
@@ -2118,7 +2118,34 @@
     function jsArg(s) { return JSON.stringify(String(s || '')).replace(/</g, '\\u003c'); }
     function adminErrorMessage(e) {
       const data = e && e.response ? e.response : {};
-      return data.error || data.message || data.code || e.message || 'unknown_error';
+      const parts = [];
+      if (e && e.status) parts.push(`HTTP ${e.status}`);
+      if (typeof data === 'string') parts.push(data);
+      if (data && typeof data === 'object') {
+        ['error', 'message', 'code', 'details', 'hint'].forEach(key => {
+          if (data[key]) parts.push(String(data[key]));
+        });
+      }
+      if (e && e.message) parts.push(e.message);
+      const unique = parts.map(part => part.trim()).filter(Boolean)
+        .filter((part, idx, arr) => arr.indexOf(part) === idx);
+      return unique.join(' · ') || 'unknown_error';
+    }
+    function adminErrorHtml(e, label) {
+      return `${esc(label || '서버 연결 오류')}<br><span style="display:block;margin-top:5px;font-size:12px;line-height:1.45;color:var(--danger);word-break:break-word;">${esc(adminErrorMessage(e))}</span>`;
+    }
+    function adminErrorRow(colspan, e, label) {
+      return `<tr><td colspan="${Number(colspan) || 1}" style="color:var(--danger);text-align:center;padding:20px;">${adminErrorHtml(e, label || '서버 연결 오류')}</td></tr>`;
+    }
+    function adminErrorBlock(e, label, padding) {
+      return `<p style="color:var(--danger);font-size:14px;text-align:center;padding:${padding || '16px'};">${adminErrorHtml(e, label || '서버 연결 오류')}</p>`;
+    }
+    function adminSetStatusError(statusEl, e, label) {
+      if (!statusEl) return;
+      statusEl.textContent = `${label || '연결 오류'}: ${adminErrorMessage(e)}`;
+    }
+    function adminAlertError(e, label) {
+      alert(`${label || '연결 오류'}: ${adminErrorMessage(e)}`);
     }
     function formatDate(v) {
       if (!v) return '-';
@@ -2184,7 +2211,7 @@
           statusEl.className = 'status ok';
         }
       } catch(e) {
-        statusEl.textContent = '오류가 발생했어요.';
+        adminSetStatusError(statusEl, e, '반영 실패');
         statusEl.className = 'status error';
       }
     });
@@ -2199,7 +2226,7 @@
       document.getElementById('missionSaveStatus').className = 'status';
       try {
         const res = await get({ action: 'getMissionConfig', adminPw, week });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(res.error || 'get_mission_config_failed');
         document.getElementById('missionTitle').value = res.title || '';
         document.getElementById('missionThreshold').value = res.threshold || 6;
         const listEl = document.getElementById('missionItemList');
@@ -2218,7 +2245,7 @@
         document.getElementById('missionSaveStatus').textContent = '';
         document.getElementById('missionEditForm').style.display = '';
       } catch(e) {
-        document.getElementById('missionSaveStatus').textContent = '불러오기 실패';
+        document.getElementById('missionSaveStatus').textContent = `불러오기 실패: ${adminErrorMessage(e)}`;
         document.getElementById('missionSaveStatus').className = 'status error';
       }
     }
@@ -2250,10 +2277,10 @@
           statusEl.textContent = '저장됐어요!';
           statusEl.className = 'status ok';
         } else {
-          throw new Error();
+          throw new Error(res.error || 'set_mission_config_failed');
         }
       } catch(e) {
-        statusEl.textContent = '저장 실패';
+        adminSetStatusError(statusEl, e, '저장 실패');
         statusEl.className = 'status error';
       }
     });
@@ -2355,7 +2382,7 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
       } finally {
         btn.disabled = false;
       }
@@ -2451,7 +2478,9 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : '연결 오류';
+        statusEl.textContent = e.message === 'supabase_admin_session_required'
+          ? 'Supabase 관리자 세션이 필요해요.'
+          : `연결 오류: ${adminErrorMessage(e)}`;
       }
     }
 
@@ -2467,7 +2496,7 @@
         cachedAdminNotices = res.notices;
         renderAdminNotices(cachedAdminNotices);
       } catch(e) {
-        list.innerHTML = '<p style="color:var(--danger); font-size:14px;">서버 연결 오류</p>';
+        list.innerHTML = adminErrorBlock(e, '서버 연결 오류', '12px 0');
       }
     }
 
@@ -2488,7 +2517,10 @@
       try {
         const res = await callSupabaseAdmin('deleteNotice', { action: 'deleteNotice', adminPw, rowIndex });
         if (!res.ok) { alert('삭제 실패: ' + (res.error || '')); loadAdminNotices(); }
-      } catch(e) { alert(e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : '연결 오류'); loadAdminNotices(); }
+      } catch(e) {
+        alert(e.message === 'supabase_admin_session_required' ? 'Supabase 관리자 세션이 필요해요.' : `연결 오류: ${adminErrorMessage(e)}`);
+        loadAdminNotices();
+      }
     }
 
     // Drive 공유 URL → img 태그 직링크 변환
@@ -2685,7 +2717,7 @@
         statusEl.className = 'status error';
         statusEl.textContent = e.message === 'supabase_admin_session_required'
           ? 'Supabase 관리자 세션이 필요해요. Staff 계정으로 다시 로그인해주세요.'
-          : (e.message === 'image_convert_failed' ? '이미지를 변환할 수 없어요. JPG, PNG, WebP 파일로 다시 시도해주세요.' : `연결 오류: ${e.message || '알 수 없는 오류'}`);
+          : (e.message === 'image_convert_failed' ? '이미지를 변환할 수 없어요. JPG, PNG, WebP 파일로 다시 시도해주세요.' : `연결 오류: ${adminErrorMessage(e)}`);
       } finally {
         btn.disabled = false;
       }
@@ -2699,7 +2731,7 @@
       el.innerHTML = '<p style="color:var(--sub);font-size:13px;">불러오는 중...</p>';
       try {
         const res = await get({ action: 'getAdminTrades', adminPw });
-        if (!res.ok) { el.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
+        if (!res.ok) { el.innerHTML = adminErrorBlock({ response: res }, '불러오기 실패', '12px'); return; }
         const trades = res.trades || [];
         if (!trades.length) { el.innerHTML = '<p style="color:var(--sub);font-size:13px;">교환 내역이 없어요.</p>'; return; }
         const statusLabel = { pending:'⏳ 대기중', accepted:'✅ 수락됨', rejected:'❌ 거절됨', cancelled:'🚫 취소됨',
@@ -2730,7 +2762,7 @@
             </tbody>
           </table>
         </div>`;
-      } catch(e) { el.innerHTML = '<p style="color:var(--danger);">오류 발생</p>'; }
+      } catch(e) { el.innerHTML = adminErrorBlock(e, '오류 발생', '12px'); }
     }
 
     function formatDateTime(v) {
@@ -2752,7 +2784,7 @@
       try {
         const res = await get({ action: 'adminGetBBBPhotoApprovals', adminPw });
         if (!res.ok) {
-          listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">불러오기 실패</p>';
+          listEl.innerHTML = adminErrorBlock({ response: res }, '불러오기 실패');
           return;
         }
         document.getElementById('bbbPhotoPendingCount').textContent = res.pendingCount || 0;
@@ -2761,7 +2793,7 @@
         _bbbPhotoApprovals = res.photos || [];
         renderBBBPhotoApprovals(_bbbPhotoApprovals);
       } catch(e) {
-        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+        listEl.innerHTML = adminErrorBlock(e, '연결 오류');
       } finally {
         if (refreshBtn) refreshBtn.disabled = false;
       }
@@ -2833,7 +2865,7 @@
           </div>`;
       } catch(e) {
         resultEl.style.color = 'var(--danger)';
-        resultEl.innerHTML = '연결 오류';
+        resultEl.innerHTML = adminErrorHtml(e, '연결 오류');
       } finally {
         btn.disabled = false;
       }
@@ -2884,7 +2916,7 @@
       } catch(e) {
         console.warn('[DIAG] raffle backfill failed', e);
         statusEl.style.color = 'var(--danger)';
-        statusEl.textContent = `보정 실패. ${e.message || 'server_error'}`;
+        statusEl.textContent = `보정 실패: ${adminErrorMessage(e)}`;
       } finally {
         btn.disabled = false;
       }
@@ -2961,7 +2993,7 @@
       } catch(e) {
         if (moreBtn) moreBtn.style.display = 'none';
         renderRaffleAvailableNumbers(null);
-        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px;">서버 연결 오류</td></tr>';
+        tbody.innerHTML = adminErrorRow(6, e);
       }
     }
 
@@ -3030,7 +3062,7 @@
         _bbbOpsRows = res.rows || [];
         renderBBBPilgrimStatus(_bbbOpsRows);
       } catch(e) {
-        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">서버 연결 오류</p>';
+        listEl.innerHTML = adminErrorBlock(e);
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -3201,7 +3233,7 @@
           slot.querySelectorAll('button').forEach(button => { button.disabled = false; });
         }
       } catch(e) {
-        if (statusEl) statusEl.textContent = '연결 오류';
+        if (statusEl) adminSetStatusError(statusEl, e);
         slot.querySelectorAll('button').forEach(button => { button.disabled = false; });
       }
     }
@@ -3234,7 +3266,7 @@
         document.getElementById('hpAdminCorrectUserCount').textContent = _adminHpRows.filter(row => Number(row.correctCount || 0) > 0).length;
         renderAdminHPStatus(_adminHpRows);
       } catch(e) {
-        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">서버 연결 오류</p>';
+        listEl.innerHTML = adminErrorBlock(e);
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -3331,7 +3363,7 @@
         if (!res.ok) throw new Error(res.error || 'save_failed');
         await loadAdminHPStatus();
       } catch(e) {
-        alert('저장 실패: ' + (e.response?.error || e.message || '연결 오류'));
+        alert('저장 실패: ' + adminErrorMessage(e));
       } finally {
         button.disabled = false;
         button.textContent = prevText;
@@ -3365,7 +3397,7 @@
         document.getElementById('hpMatchMatchedCount').textContent = _hpPrayerMatchingData.matched.length;
         renderHPPrayerMatching();
       } catch(e) {
-        listEl.innerHTML = `<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">서버 연결 오류<br><span style="font-size:12px;">${esc(adminErrorMessage(e))}</span></p>`;
+        listEl.innerHTML = adminErrorBlock(e);
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -3541,7 +3573,7 @@
         }
         await loadHPPrayerMatching();
       } catch(e) {
-        if (statusEl) statusEl.textContent = '저장 실패: ' + (e.response?.error || e.message || '연결 오류');
+        if (statusEl) statusEl.textContent = '저장 실패: ' + adminErrorMessage(e);
       } finally {
         buttons.forEach(btn => { btn.disabled = false; });
       }
@@ -3556,7 +3588,7 @@
           get({ action: 'adminGetBBB', adminPw }),
           get({ action: 'getTabSettings', adminPw }),
         ]);
-        if (!res.ok) { matchEl.innerHTML = '<p style="color:var(--danger);">불러오기 실패</p>'; return; }
+        if (!res.ok) { matchEl.innerHTML = adminErrorBlock({ response: res }, '불러오기 실패', '12px'); return; }
 
         // 섹션 오픈 설정 로드
         if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
@@ -3593,7 +3625,7 @@
             </table>
           </div>`;
         }
-      } catch(e) { matchEl.innerHTML = '<p style="color:var(--danger);">오류 발생</p>'; }
+      } catch(e) { matchEl.innerHTML = adminErrorBlock(e, '오류 발생', '12px'); }
     }
 
     async function runBBBMatching() {
@@ -3654,7 +3686,7 @@
         _bbbSectionsData = sections;
         statusEl.textContent = '✅ 저장 완료';
         setTimeout(() => { statusEl.textContent = ''; }, 2000);
-      } catch(e) { statusEl.textContent = '연결 오류'; }
+      } catch(e) { adminSetStatusError(statusEl, e); }
     }
 
     async function createAdminCardEvent(mode) {
@@ -3693,7 +3725,7 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
       } finally {
         grantBtn.disabled = false;
         removeBtn.disabled = false;
@@ -3721,7 +3753,7 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
       } finally {
         btn.disabled = false;
         btn.textContent = '재계산';
@@ -3761,7 +3793,7 @@
         statusEl.textContent = res.ok ? '정상' : '확인 필요';
         statusEl.className = res.ok ? 'status ok' : 'status';
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
         statusEl.className = 'status';
       } finally {
         btn.disabled = false;
@@ -3911,7 +3943,7 @@
         statusEl.className = 'status ok';
         _eventLogLoaded = true;
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
         statusEl.className = 'status';
         listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">Event 로그를 불러오지 못했어요.</p>';
       } finally {
@@ -3926,11 +3958,11 @@
       doneListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       try {
         const res = await get({ action: 'getInquiries', adminPw });
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(res.error || 'get_inquiries_failed');
         renderAdminInquiries(res.inquiries);
       } catch(e) {
-        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
-        doneListEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">연결 오류</p>';
+        listEl.innerHTML = adminErrorBlock(e, '연결 오류');
+        doneListEl.innerHTML = adminErrorBlock(e, '연결 오류');
       }
     }
 
@@ -3996,7 +4028,7 @@
           statusEl.textContent = '오류: ' + (res.error || '실패');
         }
       } catch(e) {
-        statusEl.textContent = '연결 오류';
+        adminSetStatusError(statusEl, e);
       }
     }
 
@@ -4034,7 +4066,7 @@
         const res = await post({ action: 'replyInquiry', adminPw, id, reply: '' });
         if (res.ok) loadAdminInquiries();
         else alert('오류: ' + (res.error || ''));
-      } catch(e) { alert('연결 오류'); }
+      } catch(e) { adminAlertError(e); }
     }
 
     async function deleteAdminInquiry(id) {
@@ -4043,7 +4075,7 @@
         const res = await post({ action: 'deleteInquiry', adminPw, id });
         if (res.ok) loadAdminInquiries();
         else alert('삭제 실패: ' + (res.error || ''));
-      } catch(e) { alert('연결 오류'); }
+      } catch(e) { adminAlertError(e); }
     }
 
     document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
