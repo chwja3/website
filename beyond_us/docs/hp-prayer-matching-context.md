@@ -11,3 +11,8 @@
 ## 이유
 
 H&P 정답 판정은 실명 기준으로 고정되어 있다. 따라서 기도제목도 작성자 프로필과 연결되어 있어야 사용자별 랜덤 3장, 본인 제외, 정답 판정, 운영 현황이 같은 기준으로 동작한다.
+
+## 후속 보강
+
+- 새 RPC가 Supabase PostgREST schema cache에 바로 보이지 않을 수 있어 `notify pgrst, 'reload schema'` hotfix를 추가했다.
+- Admin 화면의 H&P 기도 매칭 로딩 실패 메시지는 실제 RPC 오류 코드를 같이 보여주도록 변경했다.
