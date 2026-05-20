@@ -242,6 +242,7 @@
       <button class="drawer-item" data-panel="cards">실물 카드 수령</button>
       <button class="drawer-item" data-panel="bbbphotos">BBB/천로역정</button>
       <button class="drawer-item" data-panel="hpholdpray">H&amp;P 현황</button>
+      <button class="drawer-item" data-panel="hpmatching">H&amp;P 기도 매칭</button>
       <button class="drawer-item" data-panel="raffle">추첨권 번호</button>
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
@@ -622,6 +623,32 @@
         </div>
       </div>
 
+      <!-- H&P 기도 매칭 -->
+      <div id="tab-hpmatching" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">조회 주차</div><div class="stat-value" id="hpMatchWeekLabel">-</div></div>
+          <div class="stat-card"><div class="stat-label">미매칭</div><div class="stat-value" id="hpMatchUnmatchedCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">확인 필요</div><div class="stat-value" id="hpMatchUnresolvedCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">매칭 완료</div><div class="stat-value" id="hpMatchMatchedCount">-</div></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">H&amp;P 기도제목 매칭</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">작성자와 연결되지 않은 기도제목을 실명 기준으로 유저와 연결합니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshHPMatchingBtn" onclick="loadHPPrayerMatching()">새로고침</button>
+          </div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;margin-bottom:12px;">
+            <input type="search" id="hpMatchSearch" placeholder="🔍 기도제목, 이름, 교구 검색" class="input" style="margin-bottom:0;" oninput="filterHPPrayerMatching(this.value)" />
+            <input type="text" id="hpMatchWeekInput" placeholder="주차 예: w2" class="input" style="margin-bottom:0;" />
+          </div>
+          <div id="hpPrayerMatchList">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">탭을 열면 불러옵니다.</p>
+          </div>
+        </div>
+      </div>
+
 
       <!-- B.B.B. 탭 -->
       <div id="tab-bbb" class="tab-panel">
@@ -910,6 +937,8 @@
     let _adminHpRows = [];
     let _adminHpFilter = '';
     let _adminHpWeekKey = '';
+    let _hpPrayerMatchingData = { unmatched: [], unresolved: [], matched: [] };
+    let _hpPrayerMatchingFilter = '';
     let _bbbOpsRows = [];
     let _bbbOpsFilter = '';
 
@@ -1126,6 +1155,7 @@
       if (panelId === 'checkin') loadCheckin();
       if (panelId === 'bbbphotos') { loadBBBPhotoApprovals(); loadBBBPilgrimStatus(); }
       if (panelId === 'hpholdpray') loadAdminHPStatus();
+      if (panelId === 'hpmatching') loadHPPrayerMatching();
       if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
@@ -1145,6 +1175,9 @@
     });
     document.getElementById('hpStatusWeekInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') loadAdminHPStatus();
+    });
+    document.getElementById('hpMatchWeekInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') loadHPPrayerMatching();
     });
 
     /* ── 유저 목록 ── */
@@ -3299,6 +3332,186 @@
       } finally {
         button.disabled = false;
         button.textContent = prevText;
+      }
+    }
+
+    /* ── H&P 기도제목 매칭 ── */
+    function filterHPPrayerMatching(value) {
+      _hpPrayerMatchingFilter = String(value || '').trim().toLowerCase();
+      renderHPPrayerMatching();
+    }
+
+    async function loadHPPrayerMatching() {
+      const listEl = document.getElementById('hpPrayerMatchList');
+      const btn = document.getElementById('refreshHPMatchingBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (btn) btn.disabled = true;
+      try {
+        const weekKey = document.getElementById('hpMatchWeekInput')?.value || '';
+        const res = await callSupabaseAdminRpc('admin_hold_pray_entry_matching', { p_week_key: weekKey || null });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        _hpPrayerMatchingData = {
+          weekKey: res.weekKey || '',
+          unmatched: Array.isArray(res.unmatched) ? res.unmatched : [],
+          unresolved: Array.isArray(res.unresolved) ? res.unresolved : [],
+          matched: Array.isArray(res.matched) ? res.matched : [],
+        };
+        document.getElementById('hpMatchWeekLabel').textContent = _hpPrayerMatchingData.weekKey || '-';
+        document.getElementById('hpMatchUnmatchedCount').textContent = _hpPrayerMatchingData.unmatched.length;
+        document.getElementById('hpMatchUnresolvedCount').textContent = _hpPrayerMatchingData.unresolved.length;
+        document.getElementById('hpMatchMatchedCount').textContent = _hpPrayerMatchingData.matched.length;
+        renderHPPrayerMatching();
+      } catch(e) {
+        listEl.innerHTML = '<p style="color:var(--danger);font-size:14px;text-align:center;padding:16px;">서버 연결 오류</p>';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    function hpPrayerMatchRowMatches(row) {
+      const query = _hpPrayerMatchingFilter;
+      if (!query) return true;
+      return [
+        row.content,
+        row.ownerNameInput,
+        row.matchedUserId,
+        row.matchedName,
+        row.matchedParish,
+        row.matchState,
+      ].some(v => String(v || '').toLowerCase().includes(query));
+    }
+
+    function hpPrayerMatchStateMeta(row) {
+      const state = row.matchState || '';
+      if (state === 'matched') {
+        return { label: '매칭 완료', color: 'var(--success)' };
+      }
+      if (state === 'multiple') {
+        return { label: `! 동명이인 ${Number(row.candidateCount || 0)}명`, color: 'var(--danger)' };
+      }
+      if (state === 'needs_save') {
+        return { label: '! 저장 필요', color: '#b45309' };
+      }
+      if (state === 'not_found') {
+        return { label: '! 유저 없음', color: 'var(--danger)' };
+      }
+      return { label: '미매칭', color: 'var(--sub)' };
+    }
+
+    function renderHPPrayerMatching() {
+      const listEl = document.getElementById('hpPrayerMatchList');
+      if (!listEl) return;
+      const data = _hpPrayerMatchingData || {};
+      const unmatched = (data.unmatched || []).filter(hpPrayerMatchRowMatches);
+      const unresolved = (data.unresolved || []).filter(hpPrayerMatchRowMatches);
+      const matched = (data.matched || []).filter(hpPrayerMatchRowMatches);
+      listEl.innerHTML = [
+        renderHPPrayerMatchSection('아직 매칭 안된 기도제목', '이름을 입력하면 유저 정보에서 실명 기준으로 찾습니다.', unmatched, true),
+        renderHPPrayerMatchSection('매칭은 되었지만 유저 정보에서 못찾은 기도제목', '없는 이름이거나 동명이인이라 운영 확인이 필요합니다.', unresolved, true),
+        renderHPPrayerMatchSection('유저와 매칭된 기도제목', '이미 작성자 프로필과 연결된 기도제목입니다.', matched, false),
+      ].join('');
+    }
+
+    function renderHPPrayerMatchSection(title, desc, rows, open) {
+      return `
+        <details ${open ? 'open' : ''} style="border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:var(--card);overflow:hidden;">
+          <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+            <div style="min-width:0;">
+              <div style="font-weight:900;font-size:14px;">${esc(title)}</div>
+              <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(desc)}</div>
+            </div>
+            <span style="font-size:12px;font-weight:900;color:var(--primary);background:var(--primary-soft);border-radius:999px;padding:4px 9px;white-space:nowrap;">${rows.length}개</span>
+          </summary>
+          <div style="padding:0 14px 14px;">
+            ${rows.length
+              ? rows.map(renderHPPrayerMatchRow).join('')
+              : '<p style="color:var(--sub);font-size:13px;text-align:center;padding:14px 0;">표시할 기도제목이 없어요.</p>'
+            }
+          </div>
+        </details>`;
+    }
+
+    function renderHPPrayerMatchRow(row) {
+      const meta = hpPrayerMatchStateMeta(row);
+      const inputValue = row.ownerNameInput || row.matchedName || '';
+      return `
+        <div class="hp-prayer-match-row" data-hp-entry-id="${esc(row.entryId || '')}" style="border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:9px;background:var(--bg);">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px;">
+            <div style="min-width:0;">
+              <div style="font-size:12px;color:var(--sub);margin-bottom:4px;">${esc(row.weekKey || '-')}${row.visible === false ? ' · 숨김' : ''}${row.anonymous ? ' · 익명' : ''}</div>
+              <div style="font-size:13px;line-height:1.6;white-space:pre-wrap;">${esc(row.content || '')}</div>
+            </div>
+            <span style="font-size:11px;font-weight:900;color:${meta.color};background:var(--primary-soft);border-radius:999px;padding:4px 8px;white-space:nowrap;">${esc(meta.label)}</span>
+          </div>
+          ${row.matchedUserId ? `
+            <div style="font-size:12px;color:var(--sub);margin-bottom:8px;">현재 연결: <strong style="color:var(--text);">${esc(row.matchedName || '-')}</strong> · ${esc(row.matchedUserId || '-')} · ${esc(row.matchedParish || '-')}</div>
+          ` : ''}
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;">
+            <input type="text" class="input hp-prayer-match-name" value="${esc(inputValue)}" placeholder="사람 이름" style="margin-bottom:0;" />
+            <button class="btn btn-primary btn-sm" type="button" onclick="saveHPPrayerMatch(this)" style="width:auto;min-width:72px;">저장</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="clearHPPrayerMatch(this)" style="width:auto;min-width:72px;">해제</button>
+          </div>
+          <div class="status hp-prayer-match-status" style="min-height:17px;margin-top:6px;font-size:12px;"></div>
+        </div>`;
+    }
+
+    async function saveHPPrayerMatch(button) {
+      const rowEl = button?.closest?.('.hp-prayer-match-row');
+      if (!rowEl) return;
+      const entryId = rowEl.dataset.hpEntryId || '';
+      const input = rowEl.querySelector('.hp-prayer-match-name');
+      const ownerName = (input?.value || '').trim();
+      const statusEl = rowEl.querySelector('.hp-prayer-match-status');
+      if (!entryId || !ownerName) {
+        alert('사람 이름을 입력해주세요.');
+        return;
+      }
+      await submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl);
+    }
+
+    async function clearHPPrayerMatch(button) {
+      const rowEl = button?.closest?.('.hp-prayer-match-row');
+      if (!rowEl) return;
+      const entryId = rowEl.dataset.hpEntryId || '';
+      const statusEl = rowEl.querySelector('.hp-prayer-match-status');
+      if (!entryId) return;
+      if (!confirm('이 기도제목의 작성자 매칭을 해제할까요?')) return;
+      await submitHPPrayerMatch(rowEl, entryId, '', statusEl);
+    }
+
+    async function submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl) {
+      const buttons = rowEl.querySelectorAll('button');
+      buttons.forEach(btn => { btn.disabled = true; });
+      if (statusEl) {
+        statusEl.className = 'status hp-prayer-match-status';
+        statusEl.textContent = ownerName ? '매칭 저장 중...' : '매칭 해제 중...';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_match_hold_pray_entry', {
+          p_entry_id: entryId,
+          p_owner_name: ownerName,
+        });
+        if (!res.ok) throw new Error(res.error || 'save_failed');
+        if (statusEl) {
+          statusEl.className = res.matchState === 'matched' || res.matchState === 'unmatched'
+            ? 'status ok hp-prayer-match-status'
+            : 'status hp-prayer-match-status';
+          if (res.matchState === 'matched') {
+            statusEl.textContent = `${res.matchedName || ownerName}님과 연결했습니다.`;
+          } else if (res.matchState === 'multiple') {
+            statusEl.textContent = `동명이인 ${res.candidateCount || 0}명이 있어 확인이 필요합니다.`;
+          } else if (res.matchState === 'not_found') {
+            statusEl.textContent = '유저 정보에서 찾지 못했습니다.';
+          } else {
+            statusEl.textContent = '매칭을 해제했습니다.';
+          }
+        }
+        await loadHPPrayerMatching();
+      } catch(e) {
+        if (statusEl) statusEl.textContent = '저장 실패: ' + (e.response?.error || e.message || '연결 오류');
+      } finally {
+        buttons.forEach(btn => { btn.disabled = false; });
       }
     }
 
