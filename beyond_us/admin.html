@@ -626,7 +626,7 @@
       <!-- H&P 기도 매칭 -->
       <div id="tab-hpmatching" class="tab-panel">
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-label">조회 주차</div><div class="stat-value" id="hpMatchWeekLabel">-</div></div>
+          <div class="stat-card"><div class="stat-label">대상</div><div class="stat-value" id="hpMatchScopeLabel">전체</div></div>
           <div class="stat-card"><div class="stat-label">미매칭</div><div class="stat-value" id="hpMatchUnmatchedCount">-</div></div>
           <div class="stat-card"><div class="stat-label">확인 필요</div><div class="stat-value" id="hpMatchUnresolvedCount">-</div></div>
           <div class="stat-card"><div class="stat-label">매칭 완료</div><div class="stat-value" id="hpMatchMatchedCount">-</div></div>
@@ -639,9 +639,8 @@
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshHPMatchingBtn" onclick="loadHPPrayerMatching()">새로고침</button>
           </div>
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-bottom:12px;">
             <input type="search" id="hpMatchSearch" placeholder="🔍 기도제목, 이름, 교구 검색" class="input" style="margin-bottom:0;" oninput="filterHPPrayerMatching(this.value)" />
-            <input type="text" id="hpMatchWeekInput" placeholder="주차 예: w2" class="input" style="margin-bottom:0;" />
           </div>
           <div id="hpPrayerMatchList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">탭을 열면 불러옵니다.</p>
@@ -1180,10 +1179,6 @@
     document.getElementById('hpStatusWeekInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') loadAdminHPStatus();
     });
-    document.getElementById('hpMatchWeekInput').addEventListener('keydown', e => {
-      if (e.key === 'Enter') loadHPPrayerMatching();
-    });
-
     /* ── 유저 목록 ── */
     async function loadUsers() {
       const tbody = document.getElementById('userTableBody');
@@ -3356,8 +3351,7 @@
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       if (btn) btn.disabled = true;
       try {
-        const weekKey = document.getElementById('hpMatchWeekInput')?.value || '';
-        const res = await callSupabaseAdminRpc('admin_hold_pray_entry_matching', { p_week_key: weekKey || null });
+        const res = await callSupabaseAdminRpc('admin_hold_pray_entry_matching', {});
         if (!res.ok) throw new Error(res.error || 'load_failed');
         _hpPrayerMatchingData = {
           weekKey: res.weekKey || '',
@@ -3365,7 +3359,7 @@
           unresolved: Array.isArray(res.unresolved) ? res.unresolved : [],
           matched: Array.isArray(res.matched) ? res.matched : [],
         };
-        document.getElementById('hpMatchWeekLabel').textContent = _hpPrayerMatchingData.weekKey || '-';
+        document.getElementById('hpMatchScopeLabel').textContent = '전체';
         document.getElementById('hpMatchUnmatchedCount').textContent = _hpPrayerMatchingData.unmatched.length;
         document.getElementById('hpMatchUnresolvedCount').textContent = _hpPrayerMatchingData.unresolved.length;
         document.getElementById('hpMatchMatchedCount').textContent = _hpPrayerMatchingData.matched.length;
