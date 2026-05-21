@@ -81,6 +81,13 @@
       color: var(--sub); letter-spacing: .08em; text-transform: uppercase;
     }
     .drawer-section-divider { height: 10px; border-bottom: 1px solid var(--line); background: #faf6ef; }
+    .drawer-logout-wrap { padding: 14px 16px 18px; }
+    .drawer-logout-btn {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px;
+      background: #fff7ed; color: #9a3412; padding: 12px 14px;
+      font-size: 14px; font-weight: 900; cursor: pointer;
+    }
+    .drawer-logout-btn:hover { background: #ffedd5; }
 
     /* ── 유저 앱 탭 설정 ── */
     .tab-settings-list { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
@@ -254,6 +261,9 @@
       <button class="drawer-item" data-panel="events">Events·시스템</button>
       <button class="drawer-item" data-panel="eventlog">Event 로그</button>
       <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
+      <div class="drawer-logout-wrap">
+        <button type="button" class="drawer-logout-btn" id="adminLogoutBtn">로그아웃</button>
+      </div>
     </nav>
 
     <div class="admin-wrap">
@@ -1199,6 +1209,19 @@
     document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
     document.querySelectorAll('.drawer-item').forEach(btn => {
       btn.addEventListener('click', () => switchPanel(btn.dataset.panel, btn.textContent.trim()));
+    });
+    document.getElementById('adminLogoutBtn').addEventListener('click', () => {
+      clearSupabaseAdminAuthStorage();
+      sessionStorage.removeItem('adminLoginId');
+      sessionStorage.removeItem('adminPw');
+      adminPw = '';
+      document.getElementById('adminPwInput').value = '';
+      document.getElementById('adminLoginIdInput').value = '';
+      document.getElementById('adminPanel').style.display = 'none';
+      document.getElementById('authGate').style.display = 'flex';
+      document.getElementById('gateStatus').textContent = '로그아웃되었어요.';
+      document.getElementById('gateStatus').className = 'status ok';
+      closeDrawer();
     });
     document.getElementById('eventLogTypeFilter').addEventListener('change', () => loadEventLogs(true));
     document.getElementById('eventLogLimitInput').addEventListener('change', () => loadEventLogs(true));
