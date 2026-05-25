@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260521d';
+    const APP_VERSION = '20260525';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -5103,7 +5103,7 @@
       }
       if (_hpLoadedFor && _hpLoadedFor !== nick) resetHoldPrayState({ clearDom: true });
 
-      if (_hpLoadedFor === nick && _hpCards.length > 0 && _hpCards.length <= 3 && !forceRefresh) {
+      if (_hpLoadedFor === nick && _hpWeekKey === getWeekKey() && _hpCards.length > 0 && _hpCards.length <= 3 && !forceRefresh) {
         renderHoldPray();
         return;
       }
@@ -5114,6 +5114,7 @@
         hpCached &&
         hpCached.ok &&
         hpCached.clientVersion === APP_VERSION &&
+        hpCached.weekKey === getWeekKey() &&
         Array.isArray(hpCached.cards) &&
         hpCached.cards.length > 0 &&
         hpCached.cards.length <= 3
@@ -5156,7 +5157,7 @@
 
       try {
         const [res] = await Promise.all([
-          apiClient.getHoldPray(''),
+          apiClient.getHoldPray(getWeekKey()),
           document.fonts.load('1em "Nanum Pen Script"').catch(() => {})
         ]);
         const data = res;
