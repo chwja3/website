@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260521d" />
+  <link rel="stylesheet" href="app.css?v=20260526a" />
 </head>
 <body>
 
@@ -1140,12 +1140,25 @@
         </div>
       </div>
 
+      <!-- Coming Soon 안내 -->
+      <div id="sectionComingSoon" class="section hidden">
+        <div class="wrap">
+          <section class="card coming-soon-info-card">
+            <div class="coming-soon-info-date" id="comingSoonDateTag">Coming Soon</div>
+            <h2 class="card-title" id="comingSoonTitle">준비 중이에요</h2>
+            <p class="coming-soon-info-text" id="comingSoonDescription">조금만 기다려주세요.</p>
+            <div class="coming-soon-info-note" id="comingSoonNote">오픈 전에는 메뉴에서 안내만 확인할 수 있어요.</div>
+            <button class="btn btn-secondary coming-soon-home-btn" type="button" onclick="switchSection('mission')">사전미션으로 돌아가기</button>
+          </section>
+        </div>
+      </div>
+
     </div>
 
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260521d" defer></script>
+  <script src="app.js?v=20260526a" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

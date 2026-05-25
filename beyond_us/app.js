@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260525';
+    const APP_VERSION = '20260526a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -722,7 +722,7 @@
           if (!isActiveAccount(nickname)) return;
           preloadImage('images/천로역정맵.webp', 'low');
           loadHoldPray(false).catch(() => {});
-          loadBBB(true).catch(() => {});
+          if (shouldLoadBbbData()) loadBBB(true).catch(() => {});
         }, 0, 2200);
       }, delay || 1200);
     }
@@ -3450,6 +3450,37 @@
       return _dashboardPromise;
     }
 
+    let _tabStatusBySection = {
+      secret: { enabled: true, status: 'closed' },
+      pilgrim: { enabled: true, status: 'closed' },
+    };
+    const COMING_SOON_INFO = {
+      secret: {
+        date: '6/20 Open',
+        title: 'B.B.B 미션',
+        description: '수련회 현장에서 서로를 돌보고 알아가는 버디 미션이에요. 케어버디와 시크릿버디가 공개되면 사진 미션, 메시지, 시크릿버디 맞추기를 진행할 수 있어요.',
+        note: '오픈 전에는 미션 내용만 미리 확인할 수 있고, 실제 참여 기능은 열리지 않아요.',
+      },
+      pilgrim: {
+        date: '6/21 Open',
+        title: '천로역정',
+        description: '필그림하우스 현장에서 진행되는 스팟 인증 미션이에요. 나에게 배정된 스팟을 찾아 인증하면 레어 엔 카드 보상으로 이어져요.',
+        note: '오픈 전에는 지도와 인증 기능이 잠겨 있어요. 현장 안내에 맞춰 진행해주세요.',
+      },
+      chat: {
+        date: 'Coming Soon',
+        title: '채팅방',
+        description: '청년교구가 함께 소식을 나눌 수 있는 공간이에요.',
+        note: '오픈 전에는 채팅 기능이 잠겨 있어요.',
+      },
+      qt: {
+        date: 'Coming Soon',
+        title: 'Q.T. 말씀 묵상',
+        description: '오늘의 말씀 묵상 본문을 확인하는 공간이에요.',
+        note: '오픈 전에는 본문이 보이지 않아요.',
+      },
+    };
+
     function applyTabSettings(data) {
       if (!data || !data.tabSettings) return;
       const settings = data.tabSettings;
@@ -3470,7 +3501,12 @@
         inquiry: settings.inquiry !== false,
       };
       Object.keys(tabEnabled).forEach(section => {
-        applyDrawerTabState(section, tabEnabled[section], statuses[section] || 'open');
+        const status = statuses[section] || 'open';
+        _tabStatusBySection[section] = {
+          enabled: tabEnabled[section],
+          status,
+        };
+        applyDrawerTabState(section, tabEnabled[section], status);
       });
       if (data.tabSettings.bbbSections) _bbbSections = Object.assign(_bbbSections, data.tabSettings.bbbSections);
       if (tabEnabled[_currentSection] === false) switchSection(getFirstVisibleDrawerSection() || 'mission');
@@ -3952,6 +3988,7 @@
       qt:         'sectionQt',
       secret:     'sectionSecret',
       pilgrim:    'sectionPilgrim',
+      comingSoon: 'sectionComingSoon',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
       faq:        'sectionFaq',
@@ -3959,16 +3996,49 @@
     let _currentSection = 'mission';
     const _sectionScrollPos = {};
     let _bbbSections = { careBuddy:{open:false,text:'Coming Soon!\n6/14 Open'}, m1:{open:false,text:'Coming Soon!\n6/20 Open'}, m2:{open:false,text:'Coming Soon!\n6/20 Open'}, m3:{open:false,text:'Coming Soon!\n6/21 Open'}, secretBuddy:{open:false,text:'Coming Soon!\n6/20 Open'}, msgOpen:{open:false} };
+
+    function isComingSoonSection(name) {
+      const tab = _tabStatusBySection[name];
+      return !!(tab && tab.enabled !== false && tab.status !== 'open');
+    }
+
+    function isFeatureTabOpen(name) {
+      const tab = _tabStatusBySection[name];
+      return !tab || (tab.enabled !== false && tab.status === 'open');
+    }
+
+    function shouldLoadBbbData() {
+      return isFeatureTabOpen('secret') || isFeatureTabOpen('pilgrim');
+    }
+
+    function renderComingSoonSection(name) {
+      const info = COMING_SOON_INFO[name] || {};
+      const label = document.querySelector(`.drawer-item[data-section="${name}"] .drawer-label`)?.textContent || info.title || '준비 중이에요';
+      const dateTag = document.getElementById('comingSoonDateTag');
+      const titleEl = document.getElementById('comingSoonTitle');
+      const descEl = document.getElementById('comingSoonDescription');
+      const noteEl = document.getElementById('comingSoonNote');
+      if (dateTag) dateTag.textContent = info.date || (COMING_SOON_DATES[name] ? `${COMING_SOON_DATES[name]} Open` : 'Coming Soon');
+      if (titleEl) titleEl.textContent = info.title || label;
+      if (descEl) descEl.textContent = info.description || `${label} 페이지는 아직 준비 중이에요.`;
+      if (noteEl) noteEl.textContent = info.note || '오픈 전에는 실제 기능이 잠겨 있어요.';
+    }
+
     function switchSection(name, options) {
       const opts = options || {};
       const prev = _currentSection;
+      const requestedName = name;
+      if (isComingSoonSection(name)) {
+        renderComingSoonSection(name);
+        name = 'comingSoon';
+      }
       _sectionScrollPos[prev] = window.scrollY;
       Object.values(SECTION_IDS).forEach(id => {
         document.getElementById(id).classList.add('hidden');
       });
       document.getElementById(SECTION_IDS[name]).classList.remove('hidden');
       document.querySelectorAll('.drawer-item').forEach(el => {
-        el.classList.toggle('active', el.dataset.section === name);
+        el.classList.toggle('active', el.dataset.section === requestedName);
       });
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
@@ -3988,7 +4058,7 @@
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
       _currentSection = name;
-      window.scrollTo(0, _sectionScrollPos[name] || 0);
+      window.scrollTo(0, _sectionScrollPos[requestedName] || 0);
       closeDrawer();
     }
     document.querySelectorAll('.drawer-item').forEach(el => {
