@@ -2019,6 +2019,7 @@
       line-height: 1.6;
     }
     .coming-soon-home-btn {
+      flex: none;
       width: auto;
       min-width: 180px;
     }
