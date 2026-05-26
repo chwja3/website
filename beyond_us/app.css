@@ -2010,6 +2010,7 @@
       font-size: 15px;
       font-weight: 700;
       line-height: 1.7;
+      white-space: pre-line;
     }
     .coming-soon-info-note {
       max-width: 420px;
@@ -2017,6 +2018,7 @@
       color: var(--sub);
       font-size: 13px;
       line-height: 1.6;
+      white-space: pre-line;
     }
     .coming-soon-home-btn {
       flex: none;
