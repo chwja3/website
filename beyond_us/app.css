@@ -2011,6 +2011,7 @@
       font-weight: 700;
       line-height: 1.7;
       white-space: pre-line;
+      text-align: left;
     }
     .coming-soon-info-note {
       max-width: 420px;
@@ -2019,6 +2020,7 @@
       font-size: 13px;
       line-height: 1.6;
       white-space: pre-line;
+      text-align: left;
     }
     .coming-soon-home-btn {
       flex: none;
