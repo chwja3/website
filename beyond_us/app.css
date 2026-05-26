@@ -2021,6 +2021,13 @@
       white-space: pre-line;
       text-align: left;
     }
+    .coming-soon-info-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      margin: 14px 0 0;
+      border-radius: 10px;
+    }
     .coming-soon-info-note {
       margin: 14px 0 0;
       padding: 10px 12px;

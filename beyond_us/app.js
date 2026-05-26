@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260526j';
+    const APP_VERSION = '20260526k';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -3466,6 +3466,7 @@
         title: '천로역정',
         description: '천로역정이란 영국의 신학자이자 작가 "존 번연"이 쓴 기독교 소설로, 한 순례자가 멸망의 도시를 떠나 천성을 향해 걸어가는 믿음의 여정을 그린 이야기입니다.\n\n필그림 하우스의 천로역정은 이 여정을 공간으로 옮겨놓은 곳입니다.\n\n그 여정을 따라 잠시 멈추고 머물며, 쉼을 누려보세요.',
         note: '나에게 배정된 천로역정 스팟 2곳을 인증하면 특별한 레어카드를 받을 수 있습니다. 🎁✨',
+        image: 'images/pilgrim_house.jpg',
       },
       chat: {
         date: 'Coming Soon',
@@ -4022,6 +4023,11 @@
       if (titleEl) titleEl.textContent = info.title || label;
       if (descEl) descEl.textContent = info.description || `${label} 페이지는 아직 준비 중이에요.`;
       if (noteEl) noteEl.textContent = info.note || '오픈 전에는 실제 기능이 잠겨 있어요.';
+      const imgEl = document.getElementById('comingSoonImage');
+      if (imgEl) {
+        if (info.image) { imgEl.src = info.image; imgEl.style.display = ''; }
+        else { imgEl.removeAttribute('src'); imgEl.style.display = 'none'; }
+      }
     }
 
     function switchSection(name, options) {
