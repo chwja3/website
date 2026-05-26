@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260526c';
+    const APP_VERSION = '20260526d';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -3464,8 +3464,8 @@
       pilgrim: {
         date: '6/21 Open',
         title: '천로역정',
-        description: '필그림하우스 현장에서 진행되는 스팟 인증 미션이에요. 나에게 배정된 스팟을 찾아 인증하면 레어 엔 카드 보상으로 이어져요.',
-        note: '오픈 전에는 지도와 인증 기능이 잠겨 있어요. 현장 안내에 맞춰 진행해주세요.',
+        description: '천로역정이란 영국의 신학자이자 작가 존 번연이 쓴 기독교 소설로 한 순례자가 멸망의 도시를 떠나 천성을 향해 걸어가는 믿음의 여정을 그린 이야기입니다. 필그림 하우스는 천로역정 속 순례자의 길을 공간으로 옮겨놓은 곳입니다. 그 여정을 따라 잠시 멈추고 머물며, 쉼을 누려보세요.',
+        note: '나에게 배정된 천로역정 스팟 2곳을 인증하면 특별한 레어카드를 받을 수 있습니다.',
       },
       chat: {
         date: 'Coming Soon',
