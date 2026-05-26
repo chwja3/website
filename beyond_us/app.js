@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260526a';
+    const APP_VERSION = '20260526b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -3457,9 +3457,9 @@
     const COMING_SOON_INFO = {
       secret: {
         date: '6/20 Open',
-        title: 'B.B.B 미션',
-        description: '수련회 현장에서 서로를 돌보고 알아가는 버디 미션이에요. 케어버디와 시크릿버디가 공개되면 사진 미션, 메시지, 시크릿버디 맞추기를 진행할 수 있어요.',
-        note: '오픈 전에는 미션 내용만 미리 확인할 수 있고, 실제 참여 기능은 열리지 않아요.',
+        title: 'B.B.B. - Buddy Beyond Buddy',
+        description: '수련회 현장에서 서로를 돌보고 알아가는 버디 미션이에요. 내 케어버디를 몰래 섬기면서 동시에 나를 돕고 있는 시크릿버디가 누구인지 맞춰 보세요.',
+        note: '케어버디 미션과 보상이 준비되어 있어요 🎁',
       },
       pilgrim: {
         date: '6/21 Open',
