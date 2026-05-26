@@ -647,8 +647,12 @@
               <h2 class="card-title" style="margin:0;">H&amp;P 기도제목 매칭</h2>
               <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">작성자와 연결되지 않은 기도제목을 실명 기준으로 유저와 연결합니다.</p>
             </div>
-            <button class="btn btn-ghost btn-sm" id="refreshHPMatchingBtn" onclick="loadHPPrayerMatching()">새로고침</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-ghost btn-sm" id="bulkSaveHPNotFoundBtn" onclick="bulkSaveHPNotFoundMatches()">유저 없음 전체 저장</button>
+              <button class="btn btn-ghost btn-sm" id="refreshHPMatchingBtn" onclick="loadHPPrayerMatching()">새로고침</button>
+            </div>
           </div>
+          <div id="hpMatchBulkStatus" class="status" style="min-height:17px;margin:-6px 0 12px;font-size:12px;"></div>
           <details open style="border:1px solid var(--line);border-radius:12px;background:var(--primary-soft);margin-bottom:12px;overflow:hidden;">
             <summary style="cursor:pointer;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
               <div>
@@ -3508,6 +3512,7 @@
         document.getElementById('hpMatchUnmatchedCount').textContent = _hpPrayerMatchingData.unmatched.length;
         document.getElementById('hpMatchUnresolvedCount').textContent = _hpPrayerMatchingData.unresolved.length;
         document.getElementById('hpMatchMatchedCount').textContent = _hpPrayerMatchingData.matched.length;
+        updateHPNotFoundBulkButton();
         renderHPPrayerMatching();
       } catch(e) {
         listEl.innerHTML = adminErrorBlock(e);
@@ -3530,6 +3535,26 @@
       ].some(v => String(v || '').toLowerCase().includes(query));
     }
 
+    function getHPNotFoundRowsForBulkSave() {
+      const unresolved = Array.isArray(_hpPrayerMatchingData?.unresolved)
+        ? _hpPrayerMatchingData.unresolved
+        : [];
+      return unresolved.filter(row =>
+        row &&
+        row.matchState === 'not_found' &&
+        row.entryId &&
+        String(row.ownerNameInput || '').trim()
+      );
+    }
+
+    function updateHPNotFoundBulkButton() {
+      const button = document.getElementById('bulkSaveHPNotFoundBtn');
+      if (!button) return;
+      const count = getHPNotFoundRowsForBulkSave().length;
+      button.disabled = count === 0;
+      button.textContent = count ? `유저 없음 전체 저장 (${count})` : '유저 없음 전체 저장';
+    }
+
     function hpPrayerMatchStateMeta(row) {
       const state = row.matchState || '';
       if (state === 'matched') {
@@ -3550,6 +3575,7 @@
     function renderHPPrayerMatching() {
       const listEl = document.getElementById('hpPrayerMatchList');
       if (!listEl) return;
+      updateHPNotFoundBulkButton();
       const data = _hpPrayerMatchingData || {};
       const unmatched = (data.unmatched || []).filter(hpPrayerMatchRowMatches);
       const unresolved = (data.unresolved || []).filter(hpPrayerMatchRowMatches);
@@ -3654,6 +3680,51 @@
       if (!entryId) return;
       if (!confirm('이 기도제목의 작성자 매칭을 해제할까요?')) return;
       await submitHPPrayerMatch(rowEl, entryId, '', statusEl, '');
+    }
+
+    async function bulkSaveHPNotFoundMatches() {
+      const rows = getHPNotFoundRowsForBulkSave();
+      const statusEl = document.getElementById('hpMatchBulkStatus');
+      const button = document.getElementById('bulkSaveHPNotFoundBtn');
+      if (!rows.length) {
+        if (statusEl) {
+          statusEl.className = 'status';
+          statusEl.textContent = '저장할 유저 없음 항목이 없어요.';
+        }
+        return;
+      }
+      if (!confirm(`유저 없음 항목 ${rows.length}개를 현재 이름으로 저장할까요?`)) return;
+      if (button) button.disabled = true;
+      if (statusEl) {
+        statusEl.className = 'status';
+        statusEl.textContent = `유저 없음 항목 저장 중... 0/${rows.length}`;
+      }
+      let saved = 0;
+      let failed = 0;
+      for (const row of rows) {
+        try {
+          const res = await callSupabaseAdminRpc('admin_match_hold_pray_entry', {
+            p_entry_id: row.entryId,
+            p_owner_name: String(row.ownerNameInput || '').trim(),
+            p_owner_login_id: null,
+          });
+          if (!res.ok) throw new Error(res.error || 'save_failed');
+          saved += 1;
+        } catch(e) {
+          failed += 1;
+          console.warn('[H&P matching] bulk not_found save failed', row.entryId, e);
+        }
+        if (statusEl) {
+          statusEl.textContent = `유저 없음 항목 저장 중... ${saved + failed}/${rows.length}`;
+        }
+      }
+      if (statusEl) {
+        statusEl.className = failed ? 'status' : 'status ok';
+        statusEl.textContent = failed
+          ? `완료 ${saved}개, 실패 ${failed}개. 실패 항목은 개별 저장으로 확인해주세요.`
+          : `유저 없음 항목 ${saved}개를 저장했어요.`;
+      }
+      await loadHPPrayerMatching();
     }
 
     async function submitHPPrayerMatch(rowEl, entryId, ownerName, statusEl, ownerLoginId) {
