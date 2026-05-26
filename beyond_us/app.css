@@ -2003,8 +2003,16 @@
       font-weight: 900;
       letter-spacing: 0.02em;
     }
-    .coming-soon-info-text {
+    .coming-soon-box {
+      width: 100%;
       max-width: 420px;
+      margin: 16px 0 22px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      text-align: left;
+    }
+    .coming-soon-info-text {
       margin: 0;
       color: var(--text);
       font-size: 15px;
@@ -2014,10 +2022,13 @@
       text-align: left;
     }
     .coming-soon-info-note {
-      max-width: 420px;
-      margin: 10px 0 12px;
-      color: var(--sub);
+      margin: 14px 0 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--primary-soft);
+      color: var(--primary);
       font-size: 13px;
+      font-weight: 800;
       line-height: 1.6;
       white-space: pre-line;
       text-align: left;
