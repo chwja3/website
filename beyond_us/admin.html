@@ -531,6 +531,19 @@
           <div class="status" id="attendanceStatus"></div>
         </div>
 
+        <div class="card" id="manualRewardCard" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">누락 보상 지급</h2>
+              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">조건을 이미 달성했지만 지급되지 않은 보상만 수동 지급합니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="closeManualRewardBtn">닫기</button>
+          </div>
+          <div id="manualRewardSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:12px;"></div>
+          <div id="manualRewardList" style="display:grid;gap:8px;"></div>
+          <div class="status" id="manualRewardStatus"></div>
+        </div>
+
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
             <div>
@@ -1501,6 +1514,7 @@
     /* ── 앱 가입자 관리 ── */
     let _raffleAttendanceUsers = [];
     let _deletedAttendanceUsers = [];
+    let _selectedManualRewardLoginId = '';
 
     async function loadRaffleAttendance(options) {
       const opts = options || {};
@@ -1566,7 +1580,10 @@
             <input type="checkbox" class="raffle-excluded-toggle" data-nickname="${esc(u.nickname)}" ${u.raffleExcluded ? 'checked' : ''} aria-label="${esc(u.nickname)} 추첨권 발급 제외" style="width:22px;height:22px;accent-color:var(--danger);cursor:pointer;" />
           </td>
           <td>
-            <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm user-reward-btn" data-nickname="${esc(u.nickname)}">누락 보상</button>
+              <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
+            </div>
           </td>
         </tr>
       `).join('');
@@ -1579,6 +1596,149 @@
       tbody.querySelectorAll('.user-delete-btn').forEach(btn => {
         btn.addEventListener('click', () => deactivateAttendanceUser(btn.dataset.nickname, btn));
       });
+      tbody.querySelectorAll('.user-reward-btn').forEach(btn => {
+        btn.addEventListener('click', () => loadManualRewardOpportunities(btn.dataset.nickname, btn));
+      });
+    }
+
+    function rewardTypeLabel(type) {
+      return type === 'raffle_ticket' ? '추첨권' : '카드 뽑기권';
+    }
+
+    function rewardDisabledLabel(reason) {
+      if (reason === 'already_claimed') return '이미 지급됨';
+      if (reason === 'condition_not_met') return '조건 미충족';
+      if (reason === 'raffle_excluded') return '추첨권 제외';
+      return '지급 불가';
+    }
+
+    function rewardBadgeStyle(type) {
+      if (type === 'raffle_ticket') return 'background:#fef3c7;color:#92400e;';
+      return 'background:var(--primary-soft);color:var(--primary);';
+    }
+
+    function showManualRewardCard() {
+      const card = document.getElementById('manualRewardCard');
+      if (card) card.style.display = 'block';
+    }
+
+    function hideManualRewardCard() {
+      _selectedManualRewardLoginId = '';
+      const card = document.getElementById('manualRewardCard');
+      const statusEl = document.getElementById('manualRewardStatus');
+      if (card) card.style.display = 'none';
+      if (statusEl) statusEl.textContent = '';
+    }
+
+    function renderManualRewardOpportunities(data) {
+      const summaryEl = document.getElementById('manualRewardSummary');
+      const listEl = document.getElementById('manualRewardList');
+      const subtitleEl = document.getElementById('manualRewardSubtitle');
+      const user = data.user || {};
+      const inventory = data.inventory || {};
+      const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+      const availableCount = rewards.filter(r => r.available).length;
+      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 보상 현황입니다. 지급 가능 ${availableCount}개.`;
+      summaryEl.innerHTML = `
+        <div class="stat-card" style="min-height:auto;padding:12px;">
+          <div class="stat-label">카드 뽑기권</div>
+          <div class="stat-value" style="font-size:22px;">${Number(inventory.normalPackRemaining) || 0}</div>
+        </div>
+        <div class="stat-card" style="min-height:auto;padding:12px;">
+          <div class="stat-label">추첨권</div>
+          <div class="stat-value" style="font-size:22px;">${Number(data.raffleTickets) || 0}</div>
+        </div>
+        <div class="stat-card" style="min-height:auto;padding:12px;">
+          <div class="stat-label">보유 카드 종수</div>
+          <div class="stat-value" style="font-size:22px;">${Number(data.uniqueCards) || 0}</div>
+        </div>
+      `;
+      if (!rewards.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">표시할 보상 항목이 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = rewards.map(reward => {
+        const available = reward.available === true;
+        const reason = reward.disabledReason || '';
+        return `
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;">
+            <div style="min-width:0;">
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+                <span class="badge" style="${rewardBadgeStyle(reward.type)}">${rewardTypeLabel(reward.type)}</span>
+                <strong>${esc(reward.label)}</strong>
+              </div>
+              <div style="font-size:12px;color:var(--sub);line-height:1.45;">${esc(reward.description)}</div>
+            </div>
+            <button class="btn ${available ? 'btn-primary' : 'btn-ghost'} btn-sm manual-reward-issue-btn" data-reward-key="${esc(reward.rewardKey)}" ${available ? '' : 'disabled'}>
+              ${available ? '지급' : rewardDisabledLabel(reason)}
+            </button>
+          </div>
+        `;
+      }).join('');
+      listEl.querySelectorAll('.manual-reward-issue-btn').forEach(btn => {
+        btn.addEventListener('click', () => issueManualReward(btn.dataset.rewardKey, btn));
+      });
+    }
+
+    async function loadManualRewardOpportunities(nickname, btn) {
+      const statusEl = document.getElementById('manualRewardStatus');
+      const listEl = document.getElementById('manualRewardList');
+      const summaryEl = document.getElementById('manualRewardSummary');
+      _selectedManualRewardLoginId = nickname || '';
+      showManualRewardCard();
+      if (btn) btn.disabled = true;
+      if (statusEl) {
+        statusEl.textContent = '보상 현황을 불러오는 중...';
+        statusEl.className = 'status';
+      }
+      if (summaryEl) summaryEl.innerHTML = '';
+      if (listEl) listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">불러오는 중...</p>';
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_user_reward_opportunities', {
+          p_login_id: nickname,
+        });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        renderManualRewardOpportunities(res);
+        if (statusEl) statusEl.textContent = '';
+        document.getElementById('manualRewardCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch(e) {
+        if (listEl) listEl.innerHTML = adminErrorBlock(e, '보상 현황 불러오기 실패', '12px');
+        if (statusEl) adminSetStatusError(statusEl, e, '보상 현황 불러오기 실패');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function issueManualReward(rewardKey, btn) {
+      if (!_selectedManualRewardLoginId || !rewardKey) return;
+      if (!confirm(`${_selectedManualRewardLoginId}님에게 이 누락 보상을 지급할까요?`)) return;
+      const statusEl = document.getElementById('manualRewardStatus');
+      btn.disabled = true;
+      if (statusEl) {
+        statusEl.textContent = '보상 지급 중...';
+        statusEl.className = 'status';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_issue_user_missed_reward', {
+          p_login_id: _selectedManualRewardLoginId,
+          p_reward_key: rewardKey,
+        });
+        if (!res.ok) throw new Error(res.error || 'issue_failed');
+        await Promise.all([
+          loadManualRewardOpportunities(_selectedManualRewardLoginId),
+          loadRaffleAttendance(),
+        ]);
+        if (statusEl) {
+          statusEl.textContent = '보상을 지급했어요.';
+          statusEl.className = 'status ok';
+        }
+      } catch(e) {
+        btn.disabled = false;
+        if (statusEl) {
+          adminSetStatusError(statusEl, e, '보상 지급 실패');
+          statusEl.className = 'status';
+        }
+      }
     }
 
     function renderDeletedAttendanceRows(users) {
@@ -1711,6 +1871,7 @@
 
     document.getElementById('refreshAttendanceBtn').addEventListener('click', () => loadRaffleAttendance({ resetLimit: true }));
     document.getElementById('attendanceSearch').addEventListener('input', e => filterRaffleAttendance(e.target.value));
+    document.getElementById('closeManualRewardBtn').addEventListener('click', hideManualRewardCard);
     document.getElementById('attendanceMoreBtn').addEventListener('click', () => {
       _attendanceLimit += ADMIN_TABLE_INITIAL_LIMIT;
       loadRaffleAttendance();
