@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260526k';
+    const APP_VERSION = '20260531a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -3545,6 +3545,15 @@
     }
 
     let _qtRenderedKey = '';
+    function getAppAssetBaseUrl() {
+      const script = document.querySelector('script[src*="app.js"]');
+      return new URL('.', script ? script.src : location.href).href;
+    }
+
+    function uniqueQtSources(sources) {
+      return Array.from(new Set(sources.filter(Boolean)));
+    }
+
     function getTodayQtMeta() {
       const now = new Date();
       const fileParts = new Intl.DateTimeFormat('en-US', {
@@ -3570,10 +3579,16 @@
       const mm = fileParts.month;
       const dd = fileParts.day;
       const fileName = `${yy}${mm}${dd}.png`;
+      const versionQuery = `?v=${APP_VERSION}`;
+      const appAssetBaseUrl = getAppAssetBaseUrl();
       return {
         key: `${yy}${mm}${dd}`,
-        storageSrc: `${SUPABASE_QT_PUBLIC_BASE}${fileName}?v=${APP_VERSION}`,
-        localSrc: `QT/${fileName}?v=${APP_VERSION}`,
+        sources: uniqueQtSources([
+          `${SUPABASE_QT_PUBLIC_BASE}${fileName}${versionQuery}`,
+          new URL(`QT/${fileName}${versionQuery}`, appAssetBaseUrl).href,
+          new URL(`QT/${fileName}${versionQuery}`, location.href).href,
+          `QT/${fileName}${versionQuery}`,
+        ]),
         label: `${labelParts.year}년 ${labelParts.month} ${labelParts.day} ${labelParts.weekday}`,
       };
     }
@@ -3585,6 +3600,18 @@
         probe.onerror = () => reject(new Error('image_load_failed'));
         probe.src = src;
       });
+    }
+
+    async function loadFirstQtImage(sources) {
+      let lastError = null;
+      for (const src of sources) {
+        try {
+          return await loadImageProbe(src);
+        } catch (err) {
+          lastError = err;
+        }
+      }
+      throw lastError || new Error('image_load_failed');
     }
 
     function renderTodayQt(force) {
@@ -3606,8 +3633,7 @@
       loadingEl.textContent = '본문을 불러오는 중...';
       imgEl.removeAttribute('src');
 
-      loadImageProbe(meta.storageSrc)
-        .catch(() => loadImageProbe(meta.localSrc))
+      loadFirstQtImage(meta.sources)
         .then(src => {
           if (_qtRenderedKey !== meta.key) return;
           imgEl.onload = null;
