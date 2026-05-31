@@ -736,16 +736,16 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:6px;">
             <input type="text" id="eventCardUserId" class="input" placeholder="닉네임" />
             <select id="eventCardId" class="input">
-              <option value="1">1 · 사랑</option>
-              <option value="2">2 · 희락</option>
-              <option value="3">3 · 화평</option>
-              <option value="4">4 · 오래참음</option>
-              <option value="5">5 · 자비</option>
-              <option value="6">6 · 양선</option>
-              <option value="7">7 · 충성</option>
-              <option value="8">8 · 온유</option>
-              <option value="9">9 · 절제</option>
-              <option value="10">10 · 레어</option>
+              <option value="1">1 · 사모</option>
+              <option value="2">2 · 라라</option>
+              <option value="3">3 · 달래</option>
+              <option value="4">4 · 오참</option>
+              <option value="5">5 · 더무</option>
+              <option value="6">6 · 네해</option>
+              <option value="7">7 · 고</option>
+              <option value="8">8 · 엔</option>
+              <option value="9">9 · 버터</option>
+              <option value="10">10 · BetWeEn</option>
             </select>
             <input type="number" id="eventCardAmount" class="input" min="1" max="20" value="1" placeholder="수량" />
           </div>
@@ -1789,8 +1789,9 @@
             if (tfNeedDirect.length > 0)
               badges += `<span style="font-size:10px;color:#ef4444;background:rgba(239,68,68,0.1);padding:1px 5px;border-radius:4px;margin-left:4px;">TF배부←${countNames(tfNeedDirect.map(d => d.from))}</span>`;
             const tfNeededDisplay = tfTarget - c.received;
+            const displayName = adminCardDisplayName(c.cardId, c.cardName);
             html += `<tr id="${rowId}">
-              <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)}${c.drew>1?`<span style="color:var(--sub);font-size:11px;margin-left:3px;">x${c.drew}</span>`:''}${badges}</td>
+              <td style="padding-left:20px;font-size:13px;">${esc(displayName)}${c.drew>1?`<span style="color:var(--sub);font-size:11px;margin-left:3px;">x${c.drew}</span>`:''}${badges}</td>
               <td style="color:var(--sub);font-size:12px;text-align:center;">${c.drew > 0 ? c.drew : '-'}</td>
               <td style="color:#22c55e;font-size:12px;text-align:center;">${c.received}</td>
               <td style="color:#ef4444;font-size:12px;text-align:center;font-weight:${tfNeededDisplay>0?700:400};">${tfNeededDisplay>0?tfNeededDisplay:'-'}</td>
@@ -1809,8 +1810,9 @@
 
           // ── 파트너에게 받아야 하는 행 (파트너 수령 완료 교환취득) ──
           tfFromPartner.forEach(d => {
+            const displayName = adminCardDisplayName(c.cardId, c.cardName);
             html += `<tr style="opacity:0.55;">
-              <td style="padding-left:20px;font-size:13px;">${esc(c.cardName)} <span style="font-size:10px;color:#8b5cf6;background:rgba(139,92,246,0.12);padding:1px 5px;border-radius:4px;">취득←${esc(d.from)}</span></td>
+              <td style="padding-left:20px;font-size:13px;">${esc(displayName)} <span style="font-size:10px;color:#8b5cf6;background:rgba(139,92,246,0.12);padding:1px 5px;border-radius:4px;">취득←${esc(d.from)}</span></td>
               <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
               <td style="color:var(--sub);font-size:12px;text-align:center;">-</td>
               <td colspan="2" style="color:#8b5cf6;font-size:11px;text-align:center;">TF 배부 불필요 · ${esc(d.from)}에게 받으세요</td>
@@ -1860,16 +1862,26 @@
     }
 
     const SPIRIT_CARDS_ADMIN = [
-      {id:1,name:'사랑',emoji:'❤️',g1:'#ff758c',g2:'#c0392b'},
-      {id:2,name:'희락',emoji:'☀️',g1:'#f7971e',g2:'#c0850a'},
-      {id:3,name:'화평',emoji:'🕊️',g1:'#185a9d',g2:'#43cea2'},
-      {id:4,name:'오래참음',emoji:'⏳',g1:'#8b6914',g2:'#c8a96e'},
-      {id:5,name:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788'},
-      {id:6,name:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d'},
-      {id:7,name:'충성',emoji:'⭐',g1:'#b5451b',g2:'#e8a87c'},
-      {id:8,name:'온유',emoji:'🌸',g1:'#7b4fa6',g2:'#c084fc'},
-      {id:9,name:'절제',emoji:'🛡️',g1:'#1a3a5c',g2:'#2e86c1'},
+      {id:1,name:'사모',virtue:'사랑',emoji:'❤️',g1:'#ff758c',g2:'#c0392b',img:'images/앤카드사랑최최종.webp'},
+      {id:2,name:'라라',virtue:'희락',emoji:'☀️',g1:'#f7971e',g2:'#c0850a',img:'images/앤카드희락최최종.webp'},
+      {id:3,name:'달래',virtue:'화평',emoji:'🕊️',g1:'#185a9d',g2:'#43cea2',img:'images/앤카드화평최최종.webp'},
+      {id:4,name:'오참',virtue:'오래참음',emoji:'⏳',g1:'#8b6914',g2:'#c8a96e',img:'images/앤카드오래참음최최종.webp'},
+      {id:5,name:'더무',virtue:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788',img:'images/앤카드자비최최종.webp'},
+      {id:6,name:'네해',virtue:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d',img:'images/앤카드양선최최종.webp'},
+      {id:7,name:'고',virtue:'충성',emoji:'⭐',g1:'#b5451b',g2:'#e8a87c',img:'images/앤카드충성최최종.webp'},
+      {id:8,name:'엔',virtue:'온유',emoji:'🌸',g1:'#7b4fa6',g2:'#c084fc',img:'images/앤카드온유최최종.webp'},
+      {id:9,name:'버터',virtue:'절제',emoji:'🛡️',g1:'#1a3a5c',g2:'#2e86c1',img:'images/앤카드절제최최종.webp'},
     ];
+    const ADMIN_CARD_META_BY_ID = Object.fromEntries(SPIRIT_CARDS_ADMIN.map(c => [c.id, c]));
+
+    function adminCardDisplayName(cardId, fallbackName) {
+      const byId = ADMIN_CARD_META_BY_ID[Number(cardId)];
+      if (byId) return byId.name;
+      const byName = SPIRIT_CARDS_ADMIN.find(c => c.name === fallbackName || c.virtue === fallbackName);
+      if (byName) return byName.name;
+      if (Number(cardId) === 10 || fallbackName === '레어' || fallbackName === '히든') return 'BetWeEn';
+      return fallbackName || `카드 ${cardId || ''}`.trim();
+    }
 
     let _ticketStatsAll = [];
     async function loadTicketStats() {
@@ -1899,7 +1911,7 @@
           const rcvPct = cnt > 0 ? Math.round(rcv / cnt * 100) : 0;
           return `
             <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);">
-              <img src="images/${c.name}.png" style="width:36px;height:52px;object-fit:contain;border-radius:4px;flex-shrink:0;" onerror="this.style.display='none'" />
+              <img src="${c.img}" style="width:36px;height:52px;object-fit:contain;border-radius:4px;flex-shrink:0;" onerror="this.style.display='none'" />
               <div style="flex:1;min-width:0;">
                 <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
                   <span style="font-size:13px;font-weight:800;">${c.name}</span>
@@ -2809,10 +2821,10 @@
               <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                 <td style="padding:8px 6px;color:${statusColor[t.status]||'#888'};font-weight:700;">${statusLabel[t.status]||t.status}</td>
                 <td style="padding:8px 6px;">${escHtml(t.requester)}</td>
-                <td style="padding:8px 6px;color:#e8854a;">${escHtml(t.requesterCardName)}</td>
+                <td style="padding:8px 6px;color:#e8854a;">${escHtml(adminCardDisplayName(t.requesterCardId, t.requesterCardName))}</td>
                 <td style="padding:8px 6px;text-align:center;color:var(--sub);">↔</td>
                 <td style="padding:8px 6px;">${escHtml(t.target)}</td>
-                <td style="padding:8px 6px;color:#a78bfa;">${escHtml(t.targetCardName)}</td>
+                <td style="padding:8px 6px;color:#a78bfa;">${escHtml(adminCardDisplayName(t.targetCardId, t.targetCardName))}</td>
                 <td style="padding:8px 6px;color:var(--sub);font-size:11px;">${t.createdAt ? t.createdAt.slice(0,16).replace('T',' ') : '-'}</td>
               </tr>`).join('')}
             </tbody>
