@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260606a';
+    const APP_VERSION = '20260606b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -4568,6 +4568,19 @@
         : '<span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:2px 8px;">본인만 보기</span>';
     }
 
+    function counselingReplyBlock(entry) {
+      const reply = String(entry?.reply || '').trim();
+      if (!reply) return '';
+      const repliedAt = entry?.repliedAt ? formatNoticeDate(entry.repliedAt) : '';
+      return `
+        <div style="margin-top:10px;background:var(--primary-soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:900;color:var(--primary);margin-bottom:5px;">상담 답변</div>
+          <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(reply)}</div>
+          ${repliedAt ? `<div style="font-size:12px;color:var(--sub);margin-top:6px;">${repliedAt}</div>` : ''}
+        </div>
+      `;
+    }
+
     function renderCounselingOwnList(entries) {
       const list = document.getElementById('counselingOwnList');
       if (!entries.length) {
@@ -4586,6 +4599,7 @@
                   ${counselingVisibilityBadge(publicVisible)}
                   <span style="font-size:12px;color:var(--sub);">${dateStr}</span>
                 </div>
+                ${counselingReplyBlock(entry)}
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
                 <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;" onclick="startCounselingEdit('${entry.id}')">수정</button>
@@ -4608,6 +4622,7 @@
           <div style="font-size:11px;font-weight:800;color:var(--primary);margin-bottom:5px;">익명 고민</div>
           <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(entry.content)}</div>
           <div style="font-size:12px;color:var(--sub);margin-top:6px;">${formatNoticeDate(entry.createdAt)}</div>
+          ${counselingReplyBlock(entry)}
         </div>
       `).join('');
     }

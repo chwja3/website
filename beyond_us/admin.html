@@ -253,6 +253,7 @@
       <button class="drawer-item" data-panel="raffle">추첨권 번호</button>
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
+      <button class="drawer-item" data-panel="counseling">익명 고민상담</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <div class="drawer-section-divider"></div>
       <div class="drawer-section-label">개발자</div>
@@ -618,6 +619,25 @@
         <div class="card">
           <h2 class="card-title" style="margin-bottom:14px;">답변 완료 문의</h2>
           <div id="inquiryDoneAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- 익명 고민상담 -->
+      <div id="tab-counseling" class="tab-panel">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">익명 고민상담</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">작성자 정보는 표시하지 않습니다. 고민 내용에만 익명으로 답변합니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshCounselingAdminBtn">새로고침</button>
+          </div>
+          <h3 style="font-size:13px;font-weight:900;margin:0 0 8px;color:var(--danger);">미답변 고민</h3>
+          <div id="counselingAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom:14px;">답변 완료 고민</h2>
+          <div id="counselingDoneAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -1218,6 +1238,7 @@
       if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
+      if (panelId === 'counseling') loadAdminCounseling();
       if (panelId === 'bbb')     loadAdminBBB();
       if (panelId === 'eventlog') loadEventLogs();
     }
@@ -4436,6 +4457,121 @@
     }
 
     document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
+
+    async function loadAdminCounseling() {
+      const listEl = document.getElementById('counselingAdminList');
+      const doneListEl = document.getElementById('counselingDoneAdminList');
+      if (!listEl || !doneListEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      doneListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_counseling_entries');
+        if (!res.ok) throw new Error(res.error || 'get_counseling_failed');
+        renderAdminCounselingEntries(Array.isArray(res.entries) ? res.entries : []);
+      } catch(e) {
+        listEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
+        doneListEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
+      }
+    }
+
+    function renderAdminCounselingEntries(entries) {
+      const listEl = document.getElementById('counselingAdminList');
+      const doneListEl = document.getElementById('counselingDoneAdminList');
+      const waiting = entries.filter(entry => !String(entry.reply || '').trim());
+      const done = entries.filter(entry => String(entry.reply || '').trim());
+      renderAdminCounselingList(listEl, waiting, '미답변 고민이 없어요.');
+      renderAdminCounselingList(doneListEl, done, '답변 완료된 고민이 없어요.');
+    }
+
+    function renderAdminCounselingList(listEl, entries, emptyText) {
+      if (!entries.length) {
+        listEl.innerHTML = `<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">${emptyText}</p>`;
+        return;
+      }
+      listEl.innerHTML = entries.map(entry => {
+        const id = String(entry.id || '');
+        const idArg = jsArg(id);
+        const content = String(entry.content || '');
+        const reply = String(entry.reply || '');
+        const publicVisible = entry.publicVisible === true;
+        const visibilityLabel = publicVisible ? '익명 공개' : '본인만 보기';
+        const visibilityStyle = publicVisible
+          ? 'color:#047857;background:#ecfdf5;'
+          : 'color:#475569;background:#f1f5f9;';
+        const answered = !!reply.trim();
+        return `
+          <details id="counselingAdmin_${esc(id)}" style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div style="min-width:0;">
+                <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:560px;">${esc(content)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 · ${visibilityLabel} · ${formatDate(entry.createdAt)}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+                <span style="font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;white-space:nowrap;${visibilityStyle}">${visibilityLabel}</span>
+                ${answered ? '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변 완료</span>' : '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>'}
+              </div>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;">${esc(content)}</div>
+              <div style="background:var(--primary-soft);border-radius:12px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:8px;">익명 답변</div>
+                <textarea id="counselingReplyInput_${esc(id)}" class="input" rows="4" maxlength="1200"
+                  placeholder="${answered ? '답변을 수정하세요.' : '익명을 유지한 채 답변을 작성하세요.'}"
+                  style="width:100%;resize:vertical;font-family:inherit;line-height:1.6;margin-bottom:8px;font-size:14px;background:var(--card);"
+                >${esc(reply)}</textarea>
+                ${answered && entry.repliedAt ? `<div style="font-size:12px;color:var(--sub);margin:-2px 0 8px;">마지막 답변: ${formatDate(entry.repliedAt)}</div>` : ''}
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;">
+                  ${answered ? `<button class="btn btn-ghost btn-sm" onclick="clearCounselingReply(${idArg})">답변 삭제</button>` : ''}
+                  <button class="btn btn-primary btn-sm" style="width:auto;" onclick="submitCounselingReply(${idArg})">${answered ? '수정' : '저장'}</button>
+                </div>
+                <div id="counselingReplyStatus_${esc(id)}" class="status" style="margin-top:6px;text-align:right;"></div>
+              </div>
+            </div>
+          </details>
+        `;
+      }).join('');
+    }
+
+    async function submitCounselingReply(id) {
+      const input = document.getElementById(`counselingReplyInput_${id}`);
+      const statusEl = document.getElementById(`counselingReplyStatus_${id}`);
+      const reply = input ? input.value.trim() : '';
+      if (!reply) {
+        if (statusEl) {
+          statusEl.textContent = '답변 내용을 입력해주세요.';
+          statusEl.className = 'status error';
+        }
+        return;
+      }
+      if (statusEl) {
+        statusEl.textContent = '저장 중...';
+        statusEl.className = 'status';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_reply_counseling_entry', { p_id: id, p_reply: reply });
+        if (!res.ok) throw new Error(res.error || 'reply_counseling_failed');
+        if (statusEl) {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '저장됐어요!';
+        }
+        setTimeout(loadAdminCounseling, 300);
+      } catch(e) {
+        if (statusEl) adminSetStatusError(statusEl, e);
+      }
+    }
+
+    async function clearCounselingReply(id) {
+      if (!confirm('답변을 삭제할까요?')) return;
+      try {
+        const res = await callSupabaseAdminRpc('admin_reply_counseling_entry', { p_id: id, p_reply: '' });
+        if (res.ok) loadAdminCounseling();
+        else alert('답변 삭제 실패: ' + (res.error || ''));
+      } catch(e) {
+        adminAlertError(e);
+      }
+    }
+
+    document.getElementById('refreshCounselingAdminBtn').addEventListener('click', loadAdminCounseling);
 
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
