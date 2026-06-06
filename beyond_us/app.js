@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260531a';
+    const APP_VERSION = '20260606a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -625,6 +625,7 @@
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       updateInquiryLoginUI();
+      updateCounselingLoginUI();
       if (localStorage.getItem('beyondus_trade_dot') === '1') {
         document.getElementById('tradeMenuDot').classList.add('visible');
         document.getElementById('drawerTradeDot').style.display = 'inline-block';
@@ -762,6 +763,7 @@
       renderCollection();
       updateScoreProgress();
       updateInquiryLoginUI();
+      updateCounselingLoginUI();
     }
 
     let pendingLegacyPasswordUpgrade = null;
@@ -1145,6 +1147,30 @@
       },
       async deleteInquiry(id) {
         return callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
+      },
+      async getCounselingEntries() {
+        return callSupabaseRpc('get_counseling_entries', { p_login_id: currentNickname }, { allowOkFalse: true });
+      },
+      async createCounselingEntry(content, publicVisible) {
+        return callSupabaseRpc('create_counseling_entry', {
+          p_login_id: currentNickname,
+          p_content: content,
+          p_public_visible: publicVisible === true,
+        }, { allowOkFalse: true });
+      },
+      async updateCounselingEntry(id, content, publicVisible) {
+        return callSupabaseRpc('update_counseling_entry', {
+          p_login_id: currentNickname,
+          p_id: id,
+          p_content: content,
+          p_public_visible: publicVisible === true,
+        }, { allowOkFalse: true });
+      },
+      async deleteCounselingEntry(id) {
+        return callSupabaseRpc('delete_counseling_entry', {
+          p_login_id: currentNickname,
+          p_id: id,
+        }, { allowOkFalse: true });
       },
       async getBBBMessages(nickname, forceRefresh) {
         return callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
@@ -3480,6 +3506,18 @@
         description: '오늘의 말씀 묵상 본문을 확인하는 공간이에요.',
         note: '오픈 전에는 본문이 보이지 않아요.',
       },
+      investigation: {
+        date: 'Coming Soon',
+        title: '광범위수사',
+        description: '프로그램팀 미션 안내와 수사 자료가 열리는 공간이에요.',
+        note: '오픈 전에는 포스터와 안내만 확인할 수 있어요.',
+      },
+      counseling: {
+        date: 'Coming Soon',
+        title: '익명 고민상담',
+        description: '내 고민을 조용히 적어두고, 원할 때만 익명으로 모두에게 공유할 수 있는 공간이에요.',
+        note: '오픈 전에는 고민 작성 기능이 잠겨 있어요.',
+      },
     };
 
     function applyTabSettings(data) {
@@ -3496,6 +3534,8 @@
         qt: settings.qt !== false,
         secret: settings.secret !== false,
         pilgrim: settings.pilgrim === true,
+        investigation: settings.investigation === true,
+        counseling: settings.counseling === true,
         chat: settings.chat === true,
         collection: settings.collection !== false,
         faq: settings.faq !== false,
@@ -4015,6 +4055,8 @@
       qt:         'sectionQt',
       secret:     'sectionSecret',
       pilgrim:    'sectionPilgrim',
+      investigation: 'sectionInvestigation',
+      counseling: 'sectionCounseling',
       comingSoon: 'sectionComingSoon',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
@@ -4074,6 +4116,7 @@
       });
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
+      if (name === 'counseling') loadCounselingEntries();
       if (name === 'prayer') {
         markHoldPraySeen();
         loadHoldPray(false).then(markHoldPraySeen).catch(() => {});
@@ -4486,6 +4529,187 @@
     });
 
     document.getElementById('refreshInquiryBtn').addEventListener('click', loadInquiries);
+
+    /* ════ 익명 고민상담 ════ */
+    function updateCounselingLoginUI() {
+      const loggedIn = !!currentNickname;
+      const wrap = document.getElementById('counselingComposeWrap');
+      const msg = document.getElementById('counselingLoginMsg');
+      if (wrap) wrap.style.display = loggedIn ? '' : 'none';
+      if (msg) msg.style.display = loggedIn ? 'none' : '';
+    }
+
+    async function loadCounselingEntries() {
+      const ownList = document.getElementById('counselingOwnList');
+      const publicList = document.getElementById('counselingPublicList');
+      if (!ownList || !publicList) return;
+      updateCounselingLoginUI();
+      if (!currentNickname) {
+        ownList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인 후 내 고민을 확인할 수 있어요.</p>';
+        publicList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인 후 공개된 고민을 확인할 수 있어요.</p>';
+        return;
+      }
+      ownList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      publicList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const data = await apiClient.getCounselingEntries();
+        if (!data.ok) throw new Error(data.error || 'load_failed');
+        renderCounselingOwnList(Array.isArray(data.mine) ? data.mine : []);
+        renderCounselingPublicList(Array.isArray(data.publicEntries) ? data.publicEntries : []);
+      } catch(e) {
+        ownList.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
+        publicList.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
+      }
+    }
+
+    function counselingVisibilityBadge(publicVisible) {
+      return publicVisible
+        ? '<span style="font-size:11px;font-weight:800;color:#047857;background:#ecfdf5;border-radius:999px;padding:2px 8px;">익명 공개</span>'
+        : '<span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:2px 8px;">본인만 보기</span>';
+    }
+
+    function renderCounselingOwnList(entries) {
+      const list = document.getElementById('counselingOwnList');
+      if (!entries.length) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 남긴 고민이 없어요.</p>';
+        return;
+      }
+      list.innerHTML = entries.map(entry => {
+        const dateStr = formatNoticeDate(entry.createdAt);
+        const publicVisible = entry.publicVisible === true;
+        return `
+          <div class="counseling-item" id="counselingItem_${entry.id}" data-id="${entry.id}" data-content="${escHtml(entry.content)}" data-public-visible="${publicVisible ? 'true' : 'false'}" style="padding:14px 0;border-bottom:1px solid var(--line);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(entry.content)}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                  ${counselingVisibilityBadge(publicVisible)}
+                  <span style="font-size:12px;color:var(--sub);">${dateStr}</span>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;" onclick="startCounselingEdit('${entry.id}')">수정</button>
+                <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;color:var(--danger);" onclick="startCounselingDelete('${entry.id}')">삭제</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCounselingPublicList(entries) {
+      const list = document.getElementById('counselingPublicList');
+      if (!entries.length) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 공개된 익명 고민이 없어요.</p>';
+        return;
+      }
+      list.innerHTML = entries.map(entry => `
+        <div style="padding:14px 0;border-bottom:1px solid var(--line);">
+          <div style="font-size:11px;font-weight:800;color:var(--primary);margin-bottom:5px;">익명 고민</div>
+          <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(entry.content)}</div>
+          <div style="font-size:12px;color:var(--sub);margin-top:6px;">${formatNoticeDate(entry.createdAt)}</div>
+        </div>
+      `).join('');
+    }
+
+    function startCounselingEdit(id) {
+      const item = document.getElementById(`counselingItem_${id}`);
+      if (!item) return;
+      const content = item.dataset.content || '';
+      const publicVisible = item.dataset.publicVisible === 'true';
+      item.innerHTML = `
+        <textarea id="counselingEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:96px;" maxlength="700">${escHtml(content)}</textarea>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:13px;font-weight:700;color:var(--text);line-height:1.45;">
+          <input type="checkbox" id="counselingEditPublic_${id}" ${publicVisible ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--primary);margin-top:1px;flex:none;" />
+          <span>익명은 유지하고 고민 내용만 모두에게 공개하기.</span>
+        </label>
+        <div id="counselingEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="loadCounselingEntries()">취소</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="saveCounselingEdit('${id}')">저장</button>
+        </div>`;
+    }
+
+    async function saveCounselingEdit(id) {
+      const textEl = document.getElementById(`counselingEditText_${id}`);
+      const statusEl = document.getElementById(`counselingEditStatus_${id}`);
+      const content = textEl.value.trim();
+      const publicVisible = document.getElementById(`counselingEditPublic_${id}`)?.checked === true;
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      const dotsTimer = animDots(statusEl, '저장 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.updateCounselingEntry(id, content, publicVisible);
+        if (!data.ok) throw new Error(data.error || 'save_failed');
+        stopAnimDots(dotsTimer, statusEl, '');
+        loadCounselingEntries();
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '저장에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    function startCounselingDelete(id) {
+      const item = document.getElementById(`counselingItem_${id}`);
+      if (!item || document.getElementById(`counselingDelWrap_${id}`)) return;
+      const delWrap = document.createElement('div');
+      delWrap.id = `counselingDelWrap_${id}`;
+      delWrap.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fee2e2;border-radius:10px;';
+      delWrap.innerHTML = `
+        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">정말 삭제할까요?</div>
+        <div id="counselingDelStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;" onclick="document.getElementById('counselingDelWrap_${id}').remove()">취소</button>
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;color:var(--danger);" onclick="confirmCounselingDelete('${id}')">삭제</button>
+        </div>`;
+      item.appendChild(delWrap);
+    }
+
+    async function confirmCounselingDelete(id) {
+      const statusEl = document.getElementById(`counselingDelStatus_${id}`);
+      const dotsTimer = animDots(statusEl, '삭제 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.deleteCounselingEntry(id);
+        if (!data.ok) throw new Error(data.error || 'delete_failed');
+        stopAnimDots(dotsTimer, statusEl, '');
+        loadCounselingEntries();
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '삭제에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    async function submitCounselingEntry() {
+      if (!currentNickname) return;
+      const input = document.getElementById('counselingInput');
+      const publicToggle = document.getElementById('counselingPublicToggle');
+      const statusEl = document.getElementById('counselingStatus');
+      const btn = document.getElementById('counselingSubmitBtn');
+      const content = input.value.trim();
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      btn.disabled = true;
+      const dotsTimer = animDots(statusEl, '등록 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.createCounselingEntry(content, publicToggle.checked === true);
+        if (!data.ok) throw new Error(data.error || 'create_failed');
+        input.value = '';
+        publicToggle.checked = false;
+        stopAnimDots(dotsTimer, statusEl, '등록됐어요!');
+        statusEl.style.color = 'var(--success)';
+        loadCounselingEntries();
+        setTimeout(() => { statusEl.textContent = ''; }, 2000);
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '등록에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('counselingSubmitBtn').addEventListener('click', submitCounselingEntry);
+    document.getElementById('refreshCounselingBtn').addEventListener('click', loadCounselingEntries);
 
     /* ════ B.B.B. ════ */
     let _bbbData = null;

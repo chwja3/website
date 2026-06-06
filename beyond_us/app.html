@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260531a" />
+  <link rel="stylesheet" href="app.css?v=20260606a" />
 </head>
 <body>
 
@@ -363,6 +363,8 @@
         <li class="drawer-item" data-section="qt"><span class="drawer-label">Q.T. 말씀 묵상</span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">B.B.B. 미션</span></li>
         <li class="drawer-item" data-section="pilgrim"><span class="drawer-label">천로역정</span></li>
+        <li class="drawer-item" data-section="investigation" style="display:none;"><span class="drawer-label">광범위수사</span></li>
+        <li class="drawer-item" data-section="counseling" style="display:none;"><span class="drawer-label">익명 고민상담</span></li>
         <li class="drawer-item" data-section="chat" style="display:none;"><span class="drawer-label">채팅방</span></li>
       </ul>
       <div class="drawer-utility">
@@ -1140,6 +1142,63 @@
         </div>
       </div>
 
+      <!-- 광범위수사 -->
+      <div id="sectionInvestigation" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;overflow:hidden;padding:0;">
+            <div style="padding:18px 18px 12px;">
+              <p style="font-size:12px;font-weight:800;color:var(--primary);letter-spacing:.08em;margin:0 0 6px;">CRIME SCENE</p>
+              <h2 class="card-title" style="margin:0;">광범위수사</h2>
+              <p class="card-sub" style="margin:8px 0 0;">프로그램팀 미션 안내 포스터를 확인해주세요.</p>
+            </div>
+            <img src="images/Police.jpg" alt="광범위수사 포스터" loading="eager" decoding="async" style="display:block;width:100%;height:auto;object-fit:contain;background:#111;" />
+          </section>
+        </div>
+      </div>
+
+      <!-- 익명 고민상담 -->
+      <div id="sectionCounseling" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+              <div>
+                <h2 class="card-title" style="margin:0;">익명 고민상담</h2>
+                <p class="card-sub" style="margin:6px 0 0;">기본적으로 이곳에 남긴 고민은 본인만 볼 수 있어요.</p>
+              </div>
+              <button class="btn btn-secondary" id="refreshCounselingBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">새로고침</button>
+            </div>
+            <div style="border:1px solid var(--line);background:var(--primary-soft);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:var(--text);">
+              공개 체크를 하지 않으면 관리자 화면에도 표시되지 않고, 작성자 본인만 확인할 수 있어요.<br>
+              공개 체크를 하면 닉네임과 이름은 숨긴 채 고민 내용만 모든 유저에게 보여요.
+            </div>
+            <div id="counselingComposeWrap" style="margin-bottom:16px;">
+              <textarea id="counselingInput" placeholder="고민을 적어주세요. 기본은 비공개예요. (최대 700자)" maxlength="700" rows="5"
+                style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;display:block;"></textarea>
+              <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:13px;font-weight:700;color:var(--text);line-height:1.45;">
+                <input type="checkbox" id="counselingPublicToggle" style="width:18px;height:18px;accent-color:var(--primary);margin-top:1px;flex:none;" />
+                <span>익명은 유지하고 고민 내용만 모두에게 공개하기.</span>
+              </label>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;">
+                <div id="counselingStatus" style="font-size:13px;font-weight:600;color:var(--danger);"></div>
+                <button class="btn btn-secondary" id="counselingSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">등록</button>
+              </div>
+            </div>
+            <p id="counselingLoginMsg" style="font-size:14px;color:var(--sub);margin:0 0 14px;display:none;">로그인 후 고민을 남길 수 있어요.</p>
+          </section>
+
+          <section class="card" style="margin-top:12px;">
+            <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">내 고민</h3>
+            <div id="counselingOwnList"><p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p></div>
+          </section>
+
+          <section class="card" style="margin-top:12px;">
+            <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">공개된 익명 고민</h3>
+            <p style="font-size:12px;color:var(--sub);line-height:1.5;margin:0 0 10px;">작성자가 공개를 선택한 고민만 이름 없이 보여요.</p>
+            <div id="counselingPublicList"><p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p></div>
+          </section>
+        </div>
+      </div>
+
       <!-- Coming Soon 안내 -->
       <div id="sectionComingSoon" class="section hidden">
         <div class="wrap">
@@ -1161,7 +1220,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260531a" defer></script>
+  <script src="app.js?v=20260606a" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
