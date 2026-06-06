@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260606b';
+    const APP_VERSION = '20260606c';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     (function checkVersion() {
@@ -764,6 +764,15 @@
       updateScoreProgress();
       updateInquiryLoginUI();
       updateCounselingLoginUI();
+      updateVisibleRadioLoginUI();
+      if (options && options.clearDom) {
+        const visibleRadioList = document.getElementById('visibleRadioOwnList');
+        const visibleRadioInput = document.getElementById('visibleRadioInput');
+        const visibleRadioStatus = document.getElementById('visibleRadioStatus');
+        if (visibleRadioList) visibleRadioList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+        if (visibleRadioInput) visibleRadioInput.value = '';
+        if (visibleRadioStatus) visibleRadioStatus.textContent = '';
+      }
     }
 
     let pendingLegacyPasswordUpgrade = null;
@@ -1168,6 +1177,28 @@
       },
       async deleteCounselingEntry(id) {
         return callSupabaseRpc('delete_counseling_entry', {
+          p_login_id: currentNickname,
+          p_id: id,
+        }, { allowOkFalse: true });
+      },
+      async getVisibleRadioStories() {
+        return callSupabaseRpc('get_visible_radio_stories', { p_login_id: currentNickname }, { allowOkFalse: true });
+      },
+      async createVisibleRadioStory(content) {
+        return callSupabaseRpc('create_visible_radio_story', {
+          p_login_id: currentNickname,
+          p_content: content,
+        }, { allowOkFalse: true });
+      },
+      async updateVisibleRadioStory(id, content) {
+        return callSupabaseRpc('update_visible_radio_story', {
+          p_login_id: currentNickname,
+          p_id: id,
+          p_content: content,
+        }, { allowOkFalse: true });
+      },
+      async deleteVisibleRadioStory(id) {
+        return callSupabaseRpc('delete_visible_radio_story', {
           p_login_id: currentNickname,
           p_id: id,
         }, { allowOkFalse: true });
@@ -3518,6 +3549,12 @@
         description: '내 고민을 조용히 적어두고, 원할 때만 익명으로 모두에게 공유할 수 있는 공간이에요.',
         note: '오픈 전에는 고민 작성 기능이 잠겨 있어요.',
       },
+      visibleRadio: {
+        date: 'Coming Soon',
+        title: '보이는 라디오',
+        description: '수련회에서 함께 나눌 익명 사연을 남기는 공간이에요.',
+        note: '오픈 전에는 사연 작성 기능이 잠겨 있어요.',
+      },
     };
 
     function applyTabSettings(data) {
@@ -3527,6 +3564,9 @@
       const nextSpecialPackOpen = data.tabSettings.specialPack === true;
       const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
       specialPackOpen = nextSpecialPackOpen;
+      const getTabStatus = (section) => section === 'visibleRadio'
+        ? (statuses.visibleRadio || statuses.visible_radio || 'open')
+        : (statuses[section] || 'open');
       const tabEnabled = {
         notice: settings.notice !== false,
         mission: settings.mission !== false,
@@ -3536,13 +3576,14 @@
         pilgrim: settings.pilgrim === true,
         investigation: settings.investigation === true,
         counseling: settings.counseling === true,
+        visibleRadio: settings.visibleRadio === true || settings.visible_radio === true,
         chat: settings.chat === true,
         collection: settings.collection !== false,
         faq: settings.faq !== false,
         inquiry: settings.inquiry !== false,
       };
       Object.keys(tabEnabled).forEach(section => {
-        const status = statuses[section] || 'open';
+        const status = getTabStatus(section);
         _tabStatusBySection[section] = {
           enabled: tabEnabled[section],
           status,
@@ -4057,6 +4098,7 @@
       pilgrim:    'sectionPilgrim',
       investigation: 'sectionInvestigation',
       counseling: 'sectionCounseling',
+      visibleRadio: 'sectionVisibleRadio',
       comingSoon: 'sectionComingSoon',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
@@ -4117,6 +4159,7 @@
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
       if (name === 'counseling') loadCounselingEntries();
+      if (name === 'visibleRadio') loadVisibleRadioStories();
       if (name === 'prayer') {
         markHoldPraySeen();
         loadHoldPray(false).then(markHoldPraySeen).catch(() => {});
@@ -4725,6 +4768,146 @@
 
     document.getElementById('counselingSubmitBtn').addEventListener('click', submitCounselingEntry);
     document.getElementById('refreshCounselingBtn').addEventListener('click', loadCounselingEntries);
+
+    /* ════ 보이는 라디오 ════ */
+    function updateVisibleRadioLoginUI() {
+      const loggedIn = !!currentNickname;
+      const wrap = document.getElementById('visibleRadioComposeWrap');
+      const msg = document.getElementById('visibleRadioLoginMsg');
+      if (wrap) wrap.style.display = loggedIn ? '' : 'none';
+      if (msg) msg.style.display = loggedIn ? 'none' : '';
+    }
+
+    async function loadVisibleRadioStories() {
+      const list = document.getElementById('visibleRadioOwnList');
+      if (!list) return;
+      updateVisibleRadioLoginUI();
+      if (!currentNickname) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인하면 내가 남긴 사연을 확인할 수 있어요.</p>';
+        return;
+      }
+      list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const data = await apiClient.getVisibleRadioStories();
+        if (!data.ok) throw new Error(data.error || 'load_failed');
+        renderVisibleRadioStories(Array.isArray(data.stories) ? data.stories : []);
+      } catch(e) {
+        list.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
+      }
+    }
+
+    function renderVisibleRadioStories(stories) {
+      const list = document.getElementById('visibleRadioOwnList');
+      if (!stories.length) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 남긴 사연이 없어요.</p>';
+        return;
+      }
+      list.innerHTML = stories.map(story => `
+        <div class="visible-radio-item" id="visibleRadioItem_${story.id}" data-id="${story.id}" data-content="${escHtml(story.content)}" style="padding:14px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(story.content)}</div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                <span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:2px 8px;">본인만 보기</span>
+                <span style="font-size:12px;color:var(--sub);">${formatNoticeDate(story.createdAt)}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;" onclick="startVisibleRadioEdit('${story.id}')">수정</button>
+              <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;color:var(--danger);" onclick="startVisibleRadioDelete('${story.id}')">삭제</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function startVisibleRadioEdit(id) {
+      const item = document.getElementById(`visibleRadioItem_${id}`);
+      if (!item) return;
+      const content = item.dataset.content || '';
+      item.innerHTML = `
+        <textarea id="visibleRadioEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:120px;" maxlength="1000">${escHtml(content)}</textarea>
+        <div id="visibleRadioEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="loadVisibleRadioStories()">취소</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="saveVisibleRadioEdit('${id}')">저장</button>
+        </div>`;
+    }
+
+    async function saveVisibleRadioEdit(id) {
+      const textEl = document.getElementById(`visibleRadioEditText_${id}`);
+      const statusEl = document.getElementById(`visibleRadioEditStatus_${id}`);
+      const content = textEl.value.trim();
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      const dotsTimer = animDots(statusEl, '저장 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.updateVisibleRadioStory(id, content);
+        if (!data.ok) throw new Error(data.error || 'save_failed');
+        stopAnimDots(dotsTimer, statusEl, '');
+        loadVisibleRadioStories();
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '저장에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    function startVisibleRadioDelete(id) {
+      const item = document.getElementById(`visibleRadioItem_${id}`);
+      if (!item || document.getElementById(`visibleRadioDelWrap_${id}`)) return;
+      const delWrap = document.createElement('div');
+      delWrap.id = `visibleRadioDelWrap_${id}`;
+      delWrap.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fee2e2;border-radius:10px;';
+      delWrap.innerHTML = `
+        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">정말 삭제할까요?</div>
+        <div id="visibleRadioDelStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;" onclick="document.getElementById('visibleRadioDelWrap_${id}').remove()">취소</button>
+          <button class="btn btn-primary" style="flex:1;height:36px;font-size:13px;background:var(--danger);" onclick="confirmVisibleRadioDelete('${id}')">삭제</button>
+        </div>`;
+      item.appendChild(delWrap);
+    }
+
+    async function confirmVisibleRadioDelete(id) {
+      const statusEl = document.getElementById(`visibleRadioDelStatus_${id}`);
+      statusEl.textContent = '삭제 중...';
+      try {
+        const data = await apiClient.deleteVisibleRadioStory(id);
+        if (!data.ok) throw new Error(data.error || 'delete_failed');
+        loadVisibleRadioStories();
+      } catch(e) {
+        statusEl.textContent = '삭제에 실패했어요.';
+      }
+    }
+
+    async function submitVisibleRadioStory() {
+      if (!currentNickname) return;
+      const input = document.getElementById('visibleRadioInput');
+      const statusEl = document.getElementById('visibleRadioStatus');
+      const btn = document.getElementById('visibleRadioSubmitBtn');
+      const content = input.value.trim();
+      if (!content) { statusEl.textContent = '사연을 입력해주세요.'; return; }
+      btn.disabled = true;
+      const dotsTimer = animDots(statusEl, '등록 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.createVisibleRadioStory(content);
+        if (!data.ok) throw new Error(data.error || 'submit_failed');
+        input.value = '';
+        stopAnimDots(dotsTimer, statusEl, '등록됐어요!');
+        statusEl.style.color = 'var(--success)';
+        loadVisibleRadioStories();
+        setTimeout(() => { statusEl.textContent = ''; }, 2000);
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '등록에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('visibleRadioSubmitBtn').addEventListener('click', submitVisibleRadioStory);
+    document.getElementById('refreshVisibleRadioBtn').addEventListener('click', loadVisibleRadioStories);
 
     /* ════ B.B.B. ════ */
     let _bbbData = null;

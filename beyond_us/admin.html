@@ -254,6 +254,7 @@
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="counseling">익명 고민상담</button>
+      <button class="drawer-item" data-panel="visibleradio">보이는 라디오</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <div class="drawer-section-divider"></div>
       <div class="drawer-section-label">개발자</div>
@@ -638,6 +639,23 @@
         <div class="card">
           <h2 class="card-title" style="margin-bottom:14px;">답변 완료 고민</h2>
           <div id="counselingDoneAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- 보이는 라디오 -->
+      <div id="tab-visibleradio" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">보이는 라디오</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">작성자 정보 없이 익명 사연 내용만 모아봅니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshVisibleRadioAdminBtn">새로고침</button>
+          </div>
+          <div class="stats-grid" style="margin-bottom:12px;">
+            <div class="stat-card"><div class="stat-label">접수 사연</div><div class="stat-value" id="visibleRadioStoryCount">-</div></div>
+          </div>
+          <div id="visibleRadioAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -1239,6 +1257,7 @@
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'counseling') loadAdminCounseling();
+      if (panelId === 'visibleradio') loadAdminVisibleRadioStories();
       if (panelId === 'bbb')     loadAdminBBB();
       if (panelId === 'eventlog') loadEventLogs();
     }
@@ -4601,6 +4620,47 @@
     document.getElementById('counselingDoneAdminList').addEventListener('click', handleCounselingAdminClick);
     document.getElementById('counselingAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
     document.getElementById('counselingDoneAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
+
+    async function loadAdminVisibleRadioStories() {
+      const listEl = document.getElementById('visibleRadioAdminList');
+      const countEl = document.getElementById('visibleRadioStoryCount');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (countEl) countEl.textContent = '-';
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_visible_radio_stories');
+        if (!res.ok) throw new Error(res.error || 'get_visible_radio_failed');
+        const stories = Array.isArray(res.stories) ? res.stories : [];
+        if (countEl) countEl.textContent = stories.length.toLocaleString('ko-KR');
+        renderAdminVisibleRadioStories(stories);
+      } catch(e) {
+        listEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
+      }
+    }
+
+    function renderAdminVisibleRadioStories(stories) {
+      const listEl = document.getElementById('visibleRadioAdminList');
+      if (!stories.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">접수된 사연이 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = stories.map((story, idx) => `
+        <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+          <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+            <div style="min-width:0;">
+              <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:620px;">${esc(story.content)}</div>
+              <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 사연 ${stories.length - idx} · ${formatDate(story.createdAt)}</div>
+            </div>
+            <span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:3px 9px;white-space:nowrap;">익명</span>
+          </summary>
+          <div style="padding:0 14px 14px;">
+            <div style="font-size:14px;line-height:1.7;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;">${esc(story.content)}</div>
+          </div>
+        </details>
+      `).join('');
+    }
+
+    document.getElementById('refreshVisibleRadioAdminBtn').addEventListener('click', loadAdminVisibleRadioStories);
 
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
