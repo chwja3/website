@@ -4490,7 +4490,6 @@
       }
       listEl.innerHTML = entries.map(entry => {
         const id = String(entry.id || '');
-        const idArg = jsArg(id);
         const content = String(entry.content || '');
         const reply = String(entry.reply || '');
         const publicVisible = entry.publicVisible === true;
@@ -4515,14 +4514,14 @@
               <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;">${esc(content)}</div>
               <div style="background:var(--primary-soft);border-radius:12px;padding:12px;">
                 <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:8px;">익명 답변</div>
-                <textarea id="counselingReplyInput_${esc(id)}" class="input" rows="4" maxlength="1200"
+                <textarea id="counselingReplyInput_${esc(id)}" class="input" rows="4" maxlength="1200" data-counseling-reply-input="1" data-id="${esc(id)}"
                   placeholder="${answered ? '답변을 수정하세요.' : '익명을 유지한 채 답변을 작성하세요.'}"
                   style="width:100%;resize:vertical;font-family:inherit;line-height:1.6;margin-bottom:8px;font-size:14px;background:var(--card);"
                 >${esc(reply)}</textarea>
                 ${answered && entry.repliedAt ? `<div style="font-size:12px;color:var(--sub);margin:-2px 0 8px;">마지막 답변: ${formatDate(entry.repliedAt)}</div>` : ''}
                 <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;">
-                  ${answered ? `<button class="btn btn-ghost btn-sm" onclick="clearCounselingReply(${idArg})">답변 삭제</button>` : ''}
-                  <button class="btn btn-primary btn-sm" style="width:auto;" onclick="submitCounselingReply(${idArg})">${answered ? '수정' : '저장'}</button>
+                  ${answered ? `<button type="button" class="btn btn-ghost btn-sm" data-counseling-clear="1" data-id="${esc(id)}">답변 삭제</button>` : ''}
+                  <button type="button" class="btn btn-primary btn-sm" style="width:auto;" data-counseling-save="1" data-id="${esc(id)}">${answered ? '수정' : '저장'}</button>
                 </div>
                 <div id="counselingReplyStatus_${esc(id)}" class="status" style="margin-top:6px;text-align:right;"></div>
               </div>
@@ -4571,7 +4570,37 @@
       }
     }
 
+    function handleCounselingAdminClick(e) {
+      const saveBtn = e.target.closest('[data-counseling-save]');
+      if (saveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitCounselingReply(saveBtn.dataset.id || '');
+        return;
+      }
+
+      const clearBtn = e.target.closest('[data-counseling-clear]');
+      if (clearBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearCounselingReply(clearBtn.dataset.id || '');
+      }
+    }
+
+    function handleCounselingAdminKeydown(e) {
+      const input = e.target.closest('[data-counseling-reply-input]');
+      if (!input) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        submitCounselingReply(input.dataset.id || '');
+      }
+    }
+
     document.getElementById('refreshCounselingAdminBtn').addEventListener('click', loadAdminCounseling);
+    document.getElementById('counselingAdminList').addEventListener('click', handleCounselingAdminClick);
+    document.getElementById('counselingDoneAdminList').addEventListener('click', handleCounselingAdminClick);
+    document.getElementById('counselingAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
+    document.getElementById('counselingDoneAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
 
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';

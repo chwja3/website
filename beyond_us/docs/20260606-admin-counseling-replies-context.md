@@ -5,3 +5,5 @@
 - 고민 본문이 수정되면 기존 답변과 내용이 어긋날 수 있어 답변을 초기화한다.
 - 사용자 앱에는 본인 고민과 공개 고민 모두에 관리자 답변을 표시하되, 작성자 정보는 추가하지 않는다.
 - 검증은 `node --check beyond_us\app.js`, admin inline script 파싱, `git diff --check`, 충돌 마커 검색으로 진행했다.
+- admin 답변 저장 버튼은 inline `onclick` 대신 `data-id` 기반 이벤트 위임으로 처리한다. 동적 렌더링된 답변 카드에서도 버튼 클릭이 안정적으로 먹도록 하기 위함이다.
+- 답변 textarea에서는 `Ctrl+Enter` 또는 `Cmd+Enter`로도 저장할 수 있게 했다.
