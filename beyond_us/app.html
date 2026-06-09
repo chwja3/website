@@ -1216,7 +1216,13 @@
               사연은 익명으로 제출되고, 앱에서는 본인만 다시 볼 수 있어요. 운영진은 방송 준비를 위해 사연 내용만 모아봅니다.
             </div>
             <div id="visibleRadioComposeWrap" style="margin-bottom:16px;">
-              <textarea id="visibleRadioInput" placeholder="사연을 적어주세요. (최대 1000자)" maxlength="1000" rows="6"
+              <div style="margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:900;color:var(--text);margin-bottom:7px;">카테고리</div>
+                <div id="visibleRadioCategoryOptions" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;"></div>
+              </div>
+              <input type="text" id="visibleRadioTargetInput" placeholder="대상자 이름, 조, 별명 등 (선택)" maxlength="80"
+                style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;line-height:1.4;display:block;margin-bottom:10px;" />
+              <textarea id="visibleRadioInput" placeholder="사연을 적어주세요. 20~500자 권장. (최대 1000자)" maxlength="1000" rows="6"
                 style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;display:block;"></textarea>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;">
                 <div id="visibleRadioStatus" style="font-size:13px;font-weight:600;color:var(--danger);"></div>
@@ -1254,7 +1260,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260606c" defer></script>
+  <script src="app.js?v=20260609a" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

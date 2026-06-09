@@ -655,6 +655,16 @@
           <div class="stats-grid" style="margin-bottom:12px;">
             <div class="stat-card"><div class="stat-label">접수 사연</div><div class="stat-value" id="visibleRadioStoryCount">-</div></div>
           </div>
+          <div id="visibleRadioAdminCategoryFilters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;margin-bottom:12px;">
+            <input type="search" id="visibleRadioAdminSearch" class="input" placeholder="사연, 대상, 카테고리 검색" style="margin-bottom:0;" />
+            <select id="visibleRadioAdminStatusFilter" class="input" style="margin-bottom:0;">
+              <option value="">전체 상태</option>
+              <option value="candidate">후보</option>
+              <option value="hold">보류</option>
+              <option value="excluded">제외</option>
+            </select>
+          </div>
           <div id="visibleRadioAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
@@ -791,8 +801,8 @@
               <option value="2">2 · 라라</option>
               <option value="3">3 · 달래</option>
               <option value="4">4 · 오참</option>
-              <option value="5">5 · 더무</option>
-              <option value="6">6 · 네해</option>
+              <option value="5">5 · 네헤</option>
+              <option value="6">6 · 더무</option>
               <option value="7">7 · 고</option>
               <option value="8">8 · 엔</option>
               <option value="9">9 · 버터</option>
@@ -1013,6 +1023,22 @@
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const PARISH_SORT_ORDER = ['1청', '2청', '3청', '4청', 'VIP', '교회학교', '목양교구'];
+    const VISIBLE_RADIO_CATEGORIES_ADMIN = [
+      { key: 'mvp', label: '우리 조 MVP', color: '#ef4444', bg: '#fef2f2' },
+      { key: 'buddy', label: '버디에게', color: '#8b5cf6', bg: '#f5f3ff' },
+      { key: 'moment', label: '감동의 순간', color: '#0ea5e9', bg: '#eff6ff' },
+      { key: 'sorry', label: '미안했어요', color: '#f97316', bg: '#fff7ed' },
+      { key: 'cheer', label: '응원 한마디', color: '#16a34a', bg: '#f0fdf4' },
+      { key: 'funny_praise', label: '익명 폭로(?) 칭찬', color: '#db2777', bg: '#fdf2f8' },
+    ];
+    const VISIBLE_RADIO_CATEGORY_ADMIN_BY_KEY = Object.fromEntries(
+      VISIBLE_RADIO_CATEGORIES_ADMIN.map(category => [category.key, category])
+    );
+    const VISIBLE_RADIO_STATUS_ADMIN = {
+      candidate: { label: '후보', color: '#0ea5e9', bg: '#eff6ff' },
+      hold: { label: '보류', color: '#f97316', bg: '#fff7ed' },
+      excluded: { label: '제외', color: '#64748b', bg: '#f1f5f9' },
+    };
     const TAB_SETTING_ID_MAP = {
       holdpray: 'togglePrayer',
       secret: 'toggleSecret',
@@ -1038,6 +1064,9 @@
     let _hpPrayerMatchingFilter = '';
     let _bbbOpsRows = [];
     let _bbbOpsFilter = '';
+    let _visibleRadioAdminCategory = '';
+    let _visibleRadioAdminSearchTimer = null;
+    let _visibleRadioAdminAutoTimer = null;
 
     function parishSortIndex(parish) {
       const idx = PARISH_SORT_ORDER.indexOf(String(parish || ''));
@@ -1257,7 +1286,13 @@
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'counseling') loadAdminCounseling();
-      if (panelId === 'visibleradio') loadAdminVisibleRadioStories();
+      if (panelId === 'visibleradio') {
+        renderVisibleRadioAdminFilters();
+        loadAdminVisibleRadioStories();
+        startVisibleRadioAdminAutoRefresh();
+      } else {
+        stopVisibleRadioAdminAutoRefresh();
+      }
       if (panelId === 'bbb')     loadAdminBBB();
       if (panelId === 'eventlog') loadEventLogs();
     }
@@ -2067,8 +2102,8 @@
       {id:2,name:'라라',virtue:'희락',emoji:'☀️',g1:'#f7971e',g2:'#c0850a',img:'images/앤카드희락최최종.webp'},
       {id:3,name:'달래',virtue:'화평',emoji:'🕊️',g1:'#185a9d',g2:'#43cea2',img:'images/앤카드화평최최종.webp'},
       {id:4,name:'오참',virtue:'오래참음',emoji:'⏳',g1:'#8b6914',g2:'#c8a96e',img:'images/앤카드오래참음최최종.webp'},
-      {id:5,name:'더무',virtue:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788',img:'images/앤카드자비최최종.webp'},
-      {id:6,name:'네해',virtue:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d',img:'images/앤카드양선최최종.webp'},
+      {id:5,name:'네헤',virtue:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788',img:'images/앤카드자비최최종.webp'},
+      {id:6,name:'더무',virtue:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d',img:'images/앤카드양선최최종.webp'},
       {id:7,name:'고',virtue:'충성',emoji:'⭐',g1:'#b5451b',g2:'#e8a87c',img:'images/앤카드충성최최종.webp'},
       {id:8,name:'엔',virtue:'온유',emoji:'🌸',g1:'#7b4fa6',g2:'#c084fc',img:'images/앤카드온유최최종.webp'},
       {id:9,name:'버터',virtue:'절제',emoji:'🛡️',g1:'#1a3a5c',g2:'#2e86c1',img:'images/앤카드절제최최종.webp'},
@@ -4621,14 +4656,71 @@
     document.getElementById('counselingAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
     document.getElementById('counselingDoneAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
 
-    async function loadAdminVisibleRadioStories() {
+    function getVisibleRadioAdminCategoryMeta(key) {
+      return VISIBLE_RADIO_CATEGORY_ADMIN_BY_KEY[key] || VISIBLE_RADIO_CATEGORIES_ADMIN[0];
+    }
+
+    function getVisibleRadioAdminStatusMeta(status) {
+      return VISIBLE_RADIO_STATUS_ADMIN[status] || VISIBLE_RADIO_STATUS_ADMIN.candidate;
+    }
+
+    function renderVisibleRadioAdminFilters() {
+      const wrap = document.getElementById('visibleRadioAdminCategoryFilters');
+      if (!wrap) return;
+      const buttons = [
+        { key: '', label: '전체', color: '#475569', bg: '#f8fafc' },
+        ...VISIBLE_RADIO_CATEGORIES_ADMIN,
+      ];
+      wrap.innerHTML = buttons.map(category => {
+        const active = category.key === _visibleRadioAdminCategory;
+        return `<button type="button" class="btn btn-ghost btn-sm"
+          onclick="setVisibleRadioAdminCategory('${category.key}')"
+          style="border-color:${active ? category.color : 'var(--line)'};background:${active ? category.bg : 'var(--card)'};color:${active ? category.color : 'var(--text)'};">
+          ${esc(category.label)}
+        </button>`;
+      }).join('');
+    }
+
+    function setVisibleRadioAdminCategory(key) {
+      _visibleRadioAdminCategory = key || '';
+      renderVisibleRadioAdminFilters();
+      loadAdminVisibleRadioStories();
+    }
+
+    function scheduleVisibleRadioAdminReload() {
+      clearTimeout(_visibleRadioAdminSearchTimer);
+      _visibleRadioAdminSearchTimer = setTimeout(() => loadAdminVisibleRadioStories(), 250);
+    }
+
+    function startVisibleRadioAdminAutoRefresh() {
+      stopVisibleRadioAdminAutoRefresh();
+      _visibleRadioAdminAutoTimer = setInterval(() => {
+        if (document.getElementById('tab-visibleradio')?.classList.contains('active')) {
+          loadAdminVisibleRadioStories({ silent: true });
+        }
+      }, 10000);
+    }
+
+    function stopVisibleRadioAdminAutoRefresh() {
+      if (_visibleRadioAdminAutoTimer) clearInterval(_visibleRadioAdminAutoTimer);
+      _visibleRadioAdminAutoTimer = null;
+    }
+
+    async function loadAdminVisibleRadioStories(options) {
+      const opts = options || {};
       const listEl = document.getElementById('visibleRadioAdminList');
       const countEl = document.getElementById('visibleRadioStoryCount');
+      const searchEl = document.getElementById('visibleRadioAdminSearch');
+      const statusEl = document.getElementById('visibleRadioAdminStatusFilter');
       if (!listEl) return;
-      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
-      if (countEl) countEl.textContent = '-';
+      if (!opts.silent) listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (countEl && !opts.silent) countEl.textContent = '-';
       try {
-        const res = await callSupabaseAdminRpc('admin_get_visible_radio_stories');
+        const res = await callSupabaseAdminRpc('admin_get_visible_radio_stories', {
+          p_category_key: _visibleRadioAdminCategory || null,
+          p_query: searchEl ? searchEl.value.trim() : '',
+          p_status: statusEl ? statusEl.value : '',
+        });
         if (!res.ok) throw new Error(res.error || 'get_visible_radio_failed');
         const stories = Array.isArray(res.stories) ? res.stories : [];
         if (countEl) countEl.textContent = stories.length.toLocaleString('ko-KR');
@@ -4641,26 +4733,62 @@
     function renderAdminVisibleRadioStories(stories) {
       const listEl = document.getElementById('visibleRadioAdminList');
       if (!stories.length) {
-        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">접수된 사연이 없어요.</p>';
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">조건에 맞는 사연이 없어요.</p>';
         return;
       }
-      listEl.innerHTML = stories.map((story, idx) => `
-        <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
-          <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
-            <div style="min-width:0;">
-              <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:620px;">${esc(story.content)}</div>
-              <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 사연 ${stories.length - idx} · ${formatDate(story.createdAt)}</div>
+      listEl.innerHTML = stories.map((story, idx) => {
+        const category = getVisibleRadioAdminCategoryMeta(story.categoryKey);
+        const status = getVisibleRadioAdminStatusMeta(story.status);
+        const preview = String(story.content || '').replace(/\s+/g, ' ').trim();
+        const target = String(story.targetText || '').trim();
+        return `
+          <details style="border:1px solid var(--line);border-left:6px solid ${category.color};border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div style="min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;">
+                  <span style="font-size:11px;font-weight:900;color:${category.color};background:${category.bg};border-radius:999px;padding:3px 9px;">${esc(category.label)}</span>
+                  <span style="font-size:11px;font-weight:900;color:${status.color};background:${status.bg};border-radius:999px;padding:3px 9px;">${esc(status.label)}</span>
+                  ${target ? `<span style="font-size:11px;font-weight:800;color:#475569;background:#f8fafc;border-radius:999px;padding:3px 9px;">대상 ${esc(target)}</span>` : ''}
+                </div>
+                <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:620px;">${esc(preview)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 사연 ${stories.length - idx} · ${formatDate(story.createdAt)}</div>
+              </div>
+              <span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:3px 9px;white-space:nowrap;">익명</span>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <div style="font-size:14px;line-height:1.7;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;">${esc(story.content)}</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+                ${Object.entries(VISIBLE_RADIO_STATUS_ADMIN).map(([key, meta]) => `
+                  <button class="btn btn-ghost btn-sm" onclick="updateVisibleRadioAdminStatus('${story.id}', '${key}', this)"
+                    style="${story.status === key ? `background:${meta.bg};color:${meta.color};border-color:${meta.color};` : ''}">
+                    ${esc(meta.label)}
+                  </button>
+                `).join('')}
+              </div>
             </div>
-            <span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:3px 9px;white-space:nowrap;">익명</span>
-          </summary>
-          <div style="padding:0 14px 14px;">
-            <div style="font-size:14px;line-height:1.7;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;">${esc(story.content)}</div>
-          </div>
-        </details>
-      `).join('');
+          </details>
+        `;
+      }).join('');
     }
 
-    document.getElementById('refreshVisibleRadioAdminBtn').addEventListener('click', loadAdminVisibleRadioStories);
+    async function updateVisibleRadioAdminStatus(id, status, btn) {
+      if (btn) btn.disabled = true;
+      try {
+        const res = await callSupabaseAdminRpc('admin_update_visible_radio_story_status', {
+          p_id: id,
+          p_status: status,
+        });
+        if (!res.ok) throw new Error(res.error || 'status_update_failed');
+        await loadAdminVisibleRadioStories({ silent: true });
+      } catch(e) {
+        adminAlertError(e, '상태 저장 실패');
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    document.getElementById('refreshVisibleRadioAdminBtn').addEventListener('click', () => loadAdminVisibleRadioStories());
+    document.getElementById('visibleRadioAdminSearch').addEventListener('input', scheduleVisibleRadioAdminReload);
+    document.getElementById('visibleRadioAdminStatusFilter').addEventListener('change', () => loadAdminVisibleRadioStories());
 
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
