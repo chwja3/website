@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260612i';
+    const APP_VERSION = '20260612j';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -3589,7 +3589,7 @@
         date: '6/20 Open',
         title: '별빛 우편함✨',
         description: '별이 보이는 밤에 우리 모두가 함께 참여할 수 있는 보이는 라디오 시간이 준비되어 있어요.',
-        note: '프로그램 시작 전에 사연 접수 창구가 열립니다. 여러분들의 재미있고 감동적인 사연을 기다립니다!',
+        note: '6/20에 사연 접수 창구가 열립니다. 여러분들의 재미있고 감동적인 사연을 기다립니다☺️',
       },
     };
 
