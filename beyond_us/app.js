@@ -2183,9 +2183,38 @@
       else if (_tradeStep === 2) { _tradeShowStep(1); }
     }
 
+    function tradeCardName(cardId) {
+      const card = SPIRIT_CARDS.find(c => c.id === Number(cardId));
+      return card ? card.name : '선택한 카드';
+    }
+
+    function tradeRequestErrorMessage(errorCode) {
+      const code = String(errorCode || '').trim();
+      const myCardName = tradeCardName(_tradeMyCardId);
+      const theirCardName = tradeCardName(_tradeTheirCardId);
+      const messages = {
+        target_not_found: '상대방을 찾을 수 없어요. 닉네임 대소문자를 확인해주세요.',
+        self_trade_not_allowed: '자기 자신과는 교환할 수 없어요.',
+        not_enough_requester_card: `내 ${myCardName} 카드 수량이 바뀌었어요. 컬렉션을 새로고침한 뒤 다시 시도해주세요.`,
+        not_enough_target_card: `${_tradeTargetNickname || '상대방'}님의 ${theirCardName} 카드 수량이 바뀌었어요. 다시 검색해서 최신 상태로 확인해주세요.`,
+        requester_card_missing: `내 ${myCardName} 카드 수량이 바뀌었어요. 컬렉션을 새로고침한 뒤 다시 시도해주세요.`,
+        target_card_missing: `${_tradeTargetNickname || '상대방'}님의 ${theirCardName} 카드 수량이 바뀌었어요. 다시 검색해서 최신 상태로 확인해주세요.`,
+        trade_not_found: '교환 요청을 찾을 수 없어요. 교환 현황을 새로고침해주세요.',
+        trade_not_pending: '이미 처리된 교환 요청이에요. 교환 현황을 새로고침해주세요.',
+        unauthorized: '로그인 정보가 만료됐어요. 다시 로그인한 뒤 시도해주세요.',
+        inactive_user: '현재 사용할 수 없는 계정이에요. 운영진에게 문의해주세요.'
+      };
+      return messages[code] || (code ? `교환 신청 실패. ${code}` : '오류가 발생했어요.');
+    }
+
     async function submitTradeRequest() {
       const btn = document.getElementById('tradeSubmitBtn');
       const statusEl = document.getElementById('tradeSubmitStatus');
+      if (!_tradeTargetNickname || !_tradeMyCardId || !_tradeTheirCardId) {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = '교환할 상대와 카드를 다시 선택해주세요.';
+        return;
+      }
       // 최종 제출 전 내 카드 중복 재검증
       const counts = {};
       (userStatus?.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
@@ -2197,6 +2226,23 @@
       btn.disabled = true;
       const dotsTimerTrade = animDots(statusEl, '전송 중');
       try {
+        const latestTarget = await apiClient.getPublicCollection(_tradeTargetNickname);
+        if (!latestTarget.ok) {
+          stopAnimDots(dotsTimerTrade, statusEl, tradeRequestErrorMessage(latestTarget.error || 'target_not_found'));
+          statusEl.style.color = 'var(--danger)';
+          btn.disabled = false;
+          return;
+        }
+
+        _tradeTargetColl = latestTarget.collection || {};
+        if (Number(_tradeTargetColl[_tradeTheirCardId] || 0) < 2) {
+          stopAnimDots(dotsTimerTrade, statusEl, tradeRequestErrorMessage('not_enough_target_card'));
+          statusEl.style.color = 'var(--danger)';
+          btn.disabled = false;
+          setTimeout(() => { _tradeShowStep(3); _renderTheirCards(); }, 900);
+          return;
+        }
+
         const res = await apiClient.requestTrade({
           requesterCardId: _tradeMyCardId,
           targetNickname: _tradeTargetNickname,
@@ -2207,11 +2253,17 @@
           statusEl.style.color = '#4ade80';
           setTimeout(() => { closeTradeModal(); loadTrades(); }, 1200);
         } else {
-          stopAnimDots(dotsTimerTrade, statusEl, res.error || '오류가 발생했어요.');
+          stopAnimDots(dotsTimerTrade, statusEl, tradeRequestErrorMessage(res.error));
           statusEl.style.color = 'var(--danger)';
           btn.disabled = false;
         }
-      } catch(e) { stopAnimDots(dotsTimerTrade, statusEl, '연결 오류'); btn.disabled = false; }
+      } catch(e) {
+        const code = e && e.message;
+        const authErrors = ['supabase_auth_required', 'unauthorized', 'inactive_user'];
+        stopAnimDots(dotsTimerTrade, statusEl, authErrors.includes(code) ? tradeRequestErrorMessage(code === 'supabase_auth_required' ? 'unauthorized' : code) : '연결 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
+        statusEl.style.color = 'var(--danger)';
+        btn.disabled = false;
+      }
     }
 
     let _loadTradesPromise = null;
