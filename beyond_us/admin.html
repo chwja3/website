@@ -1657,7 +1657,7 @@
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
               <button class="btn btn-ghost btn-sm user-reward-btn" data-nickname="${esc(u.nickname)}">누락 보상</button>
-              <button class="btn btn-primary btn-sm user-card-pack-btn" data-nickname="${esc(u.nickname)}">뽑기권 +1</button>
+              <button class="btn btn-primary btn-sm user-raffle-ticket-btn" data-nickname="${esc(u.nickname)}">추첨권 +1</button>
               <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
             </div>
           </td>
@@ -1675,8 +1675,8 @@
       tbody.querySelectorAll('.user-reward-btn').forEach(btn => {
         btn.addEventListener('click', () => loadManualRewardOpportunities(btn.dataset.nickname, btn));
       });
-      tbody.querySelectorAll('.user-card-pack-btn').forEach(btn => {
-        btn.addEventListener('click', () => issueDirectCardPackTicket(btn.dataset.nickname, btn));
+      tbody.querySelectorAll('.user-raffle-ticket-btn').forEach(btn => {
+        btn.addEventListener('click', () => issueDirectRaffleTicket(btn.dataset.nickname, btn));
       });
     }
 
@@ -1820,31 +1820,32 @@
       }
     }
 
-    async function issueDirectCardPackTicket(nickname, btn) {
+    async function issueDirectRaffleTicket(nickname, btn) {
       if (!nickname) return;
-      if (!confirm(`${nickname}님에게 카드 뽑기권 1장을 추가할까요?`)) return;
+      if (!confirm(`${nickname}님에게 추첨권 1장을 추가할까요?`)) return;
       const statusEl = document.getElementById('attendanceStatus');
       if (btn) btn.disabled = true;
       if (statusEl) {
-        statusEl.textContent = '카드 뽑기권 지급 중...';
+        statusEl.textContent = '추첨권 지급 중...';
         statusEl.className = 'status';
       }
       try {
-        const res = await callSupabaseAdminRpc('admin_grant_card_pack_ticket', {
+        const res = await callSupabaseAdminRpc('admin_grant_raffle_ticket', {
           p_login_id: nickname,
           p_reason: '앱 가입자 탭 수동 지급',
         });
-        if (!res.ok) throw new Error(res.error || 'grant_card_pack_failed');
+        if (!res.ok) throw new Error(res.error || 'grant_raffle_ticket_failed');
         await loadRaffleAttendance();
         if (_selectedManualRewardLoginId === nickname) {
           await loadManualRewardOpportunities(nickname);
         }
         if (statusEl) {
-          statusEl.textContent = `${nickname}님에게 카드 뽑기권 1장을 지급했어요. 현재 잔여 ${Number(res.normalPackRemaining) || 0}장.`;
+          const ticketNo = res.ticketNo ? ` #${res.ticketNo}` : '';
+          statusEl.textContent = `${nickname}님에게 추첨권${ticketNo} 1장을 지급했어요. 현재 추첨권 ${Number(res.activeCount) || 0}장.`;
           statusEl.className = 'status ok';
         }
       } catch(e) {
-        if (statusEl) adminSetStatusError(statusEl, e, '카드 뽑기권 지급 실패');
+        if (statusEl) adminSetStatusError(statusEl, e, '추첨권 지급 실패');
       } finally {
         if (btn) btn.disabled = false;
       }
