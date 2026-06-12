@@ -536,8 +536,8 @@
         <div class="card" id="manualRewardCard" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
             <div>
-              <h2 class="card-title" style="margin:0;">누락 보상 지급</h2>
-              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">조건을 이미 달성했지만 지급되지 않은 보상만 수동 지급합니다.</p>
+              <h2 class="card-title" style="margin:0;">뽑기권/추첨권 현황</h2>
+              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">유저의 보상 현황을 확인하고 추첨권을 추가하거나 회수합니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="closeManualRewardBtn">닫기</button>
           </div>
@@ -1656,8 +1656,7 @@
           </td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm user-reward-btn" data-nickname="${esc(u.nickname)}">누락 보상</button>
-              <button class="btn btn-primary btn-sm user-raffle-ticket-btn" data-nickname="${esc(u.nickname)}">추첨권 +1</button>
+              <button class="btn btn-ghost btn-sm user-reward-btn" data-nickname="${esc(u.nickname)}">뽑기권/추첨권 현황</button>
               <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
             </div>
           </td>
@@ -1674,9 +1673,6 @@
       });
       tbody.querySelectorAll('.user-reward-btn').forEach(btn => {
         btn.addEventListener('click', () => loadManualRewardOpportunities(btn.dataset.nickname, btn));
-      });
-      tbody.querySelectorAll('.user-raffle-ticket-btn').forEach(btn => {
-        btn.addEventListener('click', () => issueDirectRaffleTicket(btn.dataset.nickname, btn));
       });
     }
 
@@ -1716,7 +1712,9 @@
       const user = data.user || {};
       const inventory = data.inventory || {};
       const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+      const activeRaffleTickets = Array.isArray(data.activeRaffleTickets) ? data.activeRaffleTickets : [];
       const availableCount = rewards.filter(r => r.available).length;
+      const raffleExcluded = user.raffleExcluded === true;
       subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 보상 현황입니다. 지급 가능 ${availableCount}개.`;
       summaryEl.innerHTML = `
         <div class="stat-card" style="min-height:auto;padding:12px;">
@@ -1724,19 +1722,43 @@
           <div class="stat-value" style="font-size:22px;">${Number(inventory.normalPackRemaining) || 0}</div>
         </div>
         <div class="stat-card" style="min-height:auto;padding:12px;">
-          <div class="stat-label">추첨권</div>
-          <div class="stat-value" style="font-size:22px;">${Number(data.raffleTickets) || 0}</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+            <div>
+              <div class="stat-label">추첨권</div>
+              <div class="stat-value" style="font-size:22px;">${Number(data.raffleTickets) || 0}</div>
+            </div>
+            <button class="btn btn-primary btn-sm manual-raffle-add-btn" style="width:auto;white-space:nowrap;margin-top:0;" ${raffleExcluded ? 'disabled' : ''}>
+              ${raffleExcluded ? '발급 제외' : '추첨권 +1'}
+            </button>
+          </div>
         </div>
         <div class="stat-card" style="min-height:auto;padding:12px;">
           <div class="stat-label">보유 카드 종수</div>
           <div class="stat-value" style="font-size:22px;">${Number(data.uniqueCards) || 0}</div>
         </div>
       `;
-      if (!rewards.length) {
-        listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">표시할 보상 항목이 없어요.</p>';
-        return;
-      }
-      listEl.innerHTML = rewards.map(reward => {
+      summaryEl.querySelector('.manual-raffle-add-btn')?.addEventListener('click', btn => {
+        issueDirectRaffleTicket(user.nickname, btn.currentTarget);
+      });
+      const raffleListHtml = `
+        <div style="border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+            <strong style="font-size:14px;">현재 지급된 추첨권</strong>
+            <span class="badge" style="background:#fef3c7;color:#92400e;">${activeRaffleTickets.length}장</span>
+          </div>
+          ${activeRaffleTickets.length ? activeRaffleTickets.map(ticket => `
+            <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;border-top:1px solid var(--line);padding:9px 0;">
+              <strong style="font-variant-numeric:tabular-nums;">#${esc(ticket.ticketNo || '')}</strong>
+              <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(ticket.conditionLabel || ticket.conditionKey || '추첨권')}</div>
+                <div style="font-size:12px;color:var(--sub);">${ticket.issuedAt ? formatDateTime(ticket.issuedAt) : '-'}</div>
+              </div>
+              <button class="btn btn-danger btn-sm manual-raffle-revoke-btn" style="width:auto;margin-top:0;white-space:nowrap;" data-ticket-no="${esc(ticket.ticketNo || '')}">회수</button>
+            </div>
+          `).join('') : '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px 0 4px;">현재 지급된 추첨권이 없어요.</p>'}
+        </div>
+      `;
+      const rewardListHtml = rewards.length ? rewards.map(reward => {
         const available = reward.available === true;
         const reason = reward.disabledReason || '';
         return `
@@ -1753,9 +1775,19 @@
             </button>
           </div>
         `;
-      }).join('');
+      }).join('') : '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">표시할 보상 항목이 없어요.</p>';
+      listEl.innerHTML = `
+        ${raffleListHtml}
+        <div style="display:grid;gap:8px;">
+          <strong style="font-size:14px;margin-top:4px;">조건형 보상</strong>
+          ${rewardListHtml}
+        </div>
+      `;
       listEl.querySelectorAll('.manual-reward-issue-btn').forEach(btn => {
         btn.addEventListener('click', () => issueManualReward(btn.dataset.rewardKey, btn));
+      });
+      listEl.querySelectorAll('.manual-raffle-revoke-btn').forEach(btn => {
+        btn.addEventListener('click', () => revokeRaffleTicket(btn.dataset.ticketNo, btn));
       });
     }
 
@@ -1773,11 +1805,24 @@
       if (summaryEl) summaryEl.innerHTML = '';
       if (listEl) listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">불러오는 중...</p>';
       try {
-        const res = await callSupabaseAdminRpc('admin_get_user_reward_opportunities', {
-          p_login_id: nickname,
-        });
+        const [res, raffleRes] = await Promise.all([
+          callSupabaseAdminRpc('admin_get_user_reward_opportunities', {
+            p_login_id: nickname,
+          }),
+          callSupabaseAdminRpc('admin_get_profile_raffle_tickets', {
+            p_login_id: nickname,
+          }),
+        ]);
         if (!res.ok) throw new Error(res.error || 'load_failed');
-        renderManualRewardOpportunities(res);
+        if (!raffleRes.ok) throw new Error(raffleRes.error || 'load_raffle_failed');
+        const raffleCount = raffleRes.activeCount !== undefined && raffleRes.activeCount !== null
+          ? Number(raffleRes.activeCount) || 0
+          : Number(res.raffleTickets) || 0;
+        renderManualRewardOpportunities({
+          ...res,
+          raffleTickets: raffleCount,
+          activeRaffleTickets: Array.isArray(raffleRes.tickets) ? raffleRes.tickets : [],
+        });
         if (statusEl) statusEl.textContent = '';
         document.getElementById('manualRewardCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch(e) {
@@ -1790,7 +1835,7 @@
 
     async function issueManualReward(rewardKey, btn) {
       if (!_selectedManualRewardLoginId || !rewardKey) return;
-      if (!confirm(`${_selectedManualRewardLoginId}님에게 이 누락 보상을 지급할까요?`)) return;
+      if (!confirm(`${_selectedManualRewardLoginId}님에게 이 보상을 지급할까요?`)) return;
       const statusEl = document.getElementById('manualRewardStatus');
       btn.disabled = true;
       if (statusEl) {
@@ -1823,7 +1868,7 @@
     async function issueDirectRaffleTicket(nickname, btn) {
       if (!nickname) return;
       if (!confirm(`${nickname}님에게 추첨권 1장을 추가할까요?`)) return;
-      const statusEl = document.getElementById('attendanceStatus');
+      const statusEl = document.getElementById('manualRewardStatus') || document.getElementById('attendanceStatus');
       if (btn) btn.disabled = true;
       if (statusEl) {
         statusEl.textContent = '추첨권 지급 중...';
@@ -1848,6 +1893,36 @@
         if (statusEl) adminSetStatusError(statusEl, e, '추첨권 지급 실패');
       } finally {
         if (btn) btn.disabled = false;
+      }
+    }
+
+    async function revokeRaffleTicket(ticketNo, btn) {
+      if (!_selectedManualRewardLoginId || !ticketNo) return;
+      if (!confirm(`${_selectedManualRewardLoginId}님의 #${ticketNo} 추첨권을 회수할까요?`)) return;
+      const statusEl = document.getElementById('manualRewardStatus');
+      if (btn) btn.disabled = true;
+      if (statusEl) {
+        statusEl.textContent = '추첨권 회수 중...';
+        statusEl.className = 'status';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_revoke_raffle_ticket', {
+          p_login_id: _selectedManualRewardLoginId,
+          p_ticket_no: ticketNo,
+          p_reason: '앱 가입자 탭 수동 회수',
+        });
+        if (!res.ok) throw new Error(res.error || 'revoke_raffle_ticket_failed');
+        await Promise.all([
+          loadManualRewardOpportunities(_selectedManualRewardLoginId),
+          loadRaffleAttendance(),
+        ]);
+        if (statusEl) {
+          statusEl.textContent = `#${ticketNo} 추첨권을 회수했어요. 현재 추첨권 ${Number(res.activeCount) || 0}장.`;
+          statusEl.className = 'status ok';
+        }
+      } catch(e) {
+        if (btn) btn.disabled = false;
+        if (statusEl) adminSetStatusError(statusEl, e, '추첨권 회수 실패');
       }
     }
 
