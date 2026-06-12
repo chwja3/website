@@ -1221,9 +1221,13 @@
                 style="width:100%;padding:11px 13px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;line-height:1.4;display:block;margin-bottom:10px;" />
               <textarea id="visibleRadioInput" placeholder="사연을 적어주세요. 20~500자 권장. (최대 1000자)" maxlength="1000" rows="6"
                 style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;display:block;"></textarea>
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;">
-                <div id="visibleRadioStatus" style="font-size:13px;font-weight:600;color:var(--danger);"></div>
-                <button class="btn btn-secondary" id="visibleRadioSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">등록</button>
+              <p id="visibleRadioAuthorNotice" style="font-size:12px;color:var(--sub);margin:10px 0 0;line-height:1.5;">등록 시 <strong id="visibleRadioAuthorPreview" style="color:var(--text);">닉네임</strong>이 사회자에게 표시됩니다. 익명으로 보내려면 오른쪽 버튼을 눌러주세요.</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;">
+                <div id="visibleRadioStatus" style="font-size:13px;font-weight:600;color:var(--danger);flex:1;min-width:120px;"></div>
+                <div style="display:flex;gap:6px;flex-shrink:0;">
+                  <button class="btn btn-secondary" id="visibleRadioAnonBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;color:var(--sub);">익명으로 제출</button>
+                  <button class="btn btn-primary" id="visibleRadioSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">등록</button>
+                </div>
               </div>
             </div>
             <p id="visibleRadioLoginMsg" style="font-size:14px;color:var(--sub);margin:0 0 14px;display:none;">로그인 후 사연을 남길 수 있어요.</p>
@@ -1257,7 +1261,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260612b" defer></script>
+  <script src="app.js?v=20260612c" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
