@@ -537,7 +537,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
             <div>
               <h2 class="card-title" style="margin:0;">뽑기권/추첨권 현황</h2>
-              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">유저의 보상 현황을 확인하고 추첨권을 추가하거나 회수합니다.</p>
+              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">유저의 뽑기권과 추첨권 현황을 확인하고 추첨권을 추가하거나 회수합니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="closeManualRewardBtn">닫기</button>
           </div>
@@ -1715,7 +1715,7 @@
       const activeRaffleTickets = Array.isArray(data.activeRaffleTickets) ? data.activeRaffleTickets : [];
       const availableCount = rewards.filter(r => r.available).length;
       const raffleExcluded = user.raffleExcluded === true;
-      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 보상 현황입니다. 지급 가능 ${availableCount}개.`;
+      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 현황입니다.${rewards.length ? ` 조건형 지급 가능 ${availableCount}개.` : ''}`;
       summaryEl.innerHTML = `
         <div class="stat-card" style="min-height:auto;padding:12px;">
           <div class="stat-label">카드 뽑기권</div>
@@ -1775,13 +1775,13 @@
             </button>
           </div>
         `;
-      }).join('') : '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">표시할 보상 항목이 없어요.</p>';
+      }).join('') : '';
       listEl.innerHTML = `
         ${raffleListHtml}
-        <div style="display:grid;gap:8px;">
+        ${rewards.length ? `<div style="display:grid;gap:8px;">
           <strong style="font-size:14px;margin-top:4px;">조건형 보상</strong>
           ${rewardListHtml}
-        </div>
+        </div>` : ''}
       `;
       listEl.querySelectorAll('.manual-reward-issue-btn').forEach(btn => {
         btn.addEventListener('click', () => issueManualReward(btn.dataset.rewardKey, btn));
@@ -1805,24 +1805,11 @@
       if (summaryEl) summaryEl.innerHTML = '';
       if (listEl) listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">불러오는 중...</p>';
       try {
-        const [res, raffleRes] = await Promise.all([
-          callSupabaseAdminRpc('admin_get_user_reward_opportunities', {
-            p_login_id: nickname,
-          }),
-          callSupabaseAdminRpc('admin_get_profile_raffle_tickets', {
-            p_login_id: nickname,
-          }),
-        ]);
-        if (!res.ok) throw new Error(res.error || 'load_failed');
-        if (!raffleRes.ok) throw new Error(raffleRes.error || 'load_raffle_failed');
-        const raffleCount = raffleRes.activeCount !== undefined && raffleRes.activeCount !== null
-          ? Number(raffleRes.activeCount) || 0
-          : Number(res.raffleTickets) || 0;
-        renderManualRewardOpportunities({
-          ...res,
-          raffleTickets: raffleCount,
-          activeRaffleTickets: Array.isArray(raffleRes.tickets) ? raffleRes.tickets : [],
+        const res = await callSupabaseAdminRpc('admin_get_user_ticket_status', {
+          p_login_id: nickname,
         });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        renderManualRewardOpportunities(res);
         if (statusEl) statusEl.textContent = '';
         document.getElementById('manualRewardCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch(e) {

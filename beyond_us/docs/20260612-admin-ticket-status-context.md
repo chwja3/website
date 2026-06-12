@@ -12,8 +12,10 @@
 - 추첨권 직접 추가는 기존 `admin_grant_raffle_ticket`을 재사용한다.
 - 회수는 전체 회수가 아니라 단일 ticket number 회수로 구현한다.
 - 회수 시 `raffle.revoked` 이벤트를 남기고, 번호는 `active = false`로 돌려 재사용 가능하게 한다.
+- 실제 DB에 예전 `admin_get_user_reward_opportunities`가 없을 수 있어, 최신 UI는 `admin_get_user_ticket_status` 전용 RPC만 의존한다.
 
 ## 주의점
 
 - 조건형 추첨권을 회수하면 해당 조건은 다시 지급 가능 상태로 보일 수 있다.
 - 수동 지급 추첨권은 `admin_manual_*` 조건으로 발급되어 자동 backfill 대상이 아니다.
+- `admin_get_user_ticket_status`는 현황 조회 전용이다. 조건형 누락 보상 지급 UI가 다시 필요하면 별도 RPC를 최신 스키마 기준으로 복원해야 한다.
