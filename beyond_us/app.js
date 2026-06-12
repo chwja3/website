@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260609a';
+    const APP_VERSION = '20260612h';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -780,11 +780,11 @@
       if (options && options.clearDom) {
         const visibleRadioList = document.getElementById('visibleRadioOwnList');
         const visibleRadioInput = document.getElementById('visibleRadioInput');
-        const visibleRadioTargetInput = document.getElementById('visibleRadioTargetInput');
         const visibleRadioStatus = document.getElementById('visibleRadioStatus');
+        const visibleRadioAnonCheck = document.getElementById('visibleRadioAnonCheck');
         if (visibleRadioList) visibleRadioList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
         if (visibleRadioInput) visibleRadioInput.value = '';
-        if (visibleRadioTargetInput) visibleRadioTargetInput.value = '';
+        if (visibleRadioAnonCheck) visibleRadioAnonCheck.checked = false;
         if (visibleRadioStatus) visibleRadioStatus.textContent = '';
         _visibleRadioSelectedCategory = 'mvp';
         renderVisibleRadioCategoryOptions(_visibleRadioSelectedCategory);
@@ -1200,21 +1200,23 @@
       async getVisibleRadioStories() {
         return callSupabaseRpc('get_visible_radio_stories', { p_login_id: currentNickname }, { allowOkFalse: true });
       },
-      async createVisibleRadioStory(categoryKey, targetText, content) {
+      async createVisibleRadioStory(categoryKey, targetText, content, isAnonymous) {
         return callSupabaseRpc('create_visible_radio_story', {
           p_login_id: currentNickname,
           p_category_key: categoryKey || 'mvp',
           p_target_text: targetText || '',
           p_content: content,
+          p_is_anonymous: !!isAnonymous,
         }, { allowOkFalse: true });
       },
-      async updateVisibleRadioStory(id, categoryKey, targetText, content) {
+      async updateVisibleRadioStory(id, categoryKey, targetText, content, isAnonymous) {
         return callSupabaseRpc('update_visible_radio_story', {
           p_login_id: currentNickname,
           p_id: id,
           p_category_key: categoryKey || 'mvp',
           p_target_text: targetText || '',
           p_content: content,
+          p_is_anonymous: !!isAnonymous,
         }, { allowOkFalse: true });
       },
       async deleteVisibleRadioStory(id) {
@@ -3570,10 +3572,10 @@
         note: '오픈 전에는 고민 작성 기능이 잠겨 있어요.',
       },
       visibleRadio: {
-        date: 'Coming Soon',
-        title: '보이는 라디오',
-        description: '수련회에서 함께 나눌 익명 사연을 남기는 공간이에요.',
-        note: '오픈 전에는 사연 작성 기능이 잠겨 있어요.',
+        date: '6/20 Open',
+        title: '별빛 우편함✨',
+        description: '별이 보이는 밤에 우리 모두가 함께 참여할 수 있는 보이는 라디오 시간이 준비되어 있어요.',
+        note: '프로그램 시작 전에 사연 접수 창구가 열립니다. 여러분들의 재미있고 감동적인 사연을 기다립니다!',
       },
     };
 
@@ -3618,7 +3620,7 @@
       }
     }
 
-    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21' };
+    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', visibleRadio: '6/20' };
     function applyDrawerTabState(section, enabled, status) {
       const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
       if (!item) return;
@@ -4796,6 +4798,11 @@
       const msg = document.getElementById('visibleRadioLoginMsg');
       if (wrap) wrap.style.display = loggedIn ? '' : 'none';
       if (msg) msg.style.display = loggedIn ? 'none' : '';
+      const preview = document.getElementById('visibleRadioAuthorPreview');
+      if (preview && loggedIn) {
+        const parish = (typeof currentParish === 'string' && currentParish) ? currentParish + ' ' : '';
+        preview.textContent = parish + currentNickname;
+      }
       renderVisibleRadioCategoryOptions(_visibleRadioSelectedCategory);
     }
 
@@ -4861,14 +4868,16 @@
         return;
       }
       list.innerHTML = stories.map(story => `
-        <div class="visible-radio-item" id="visibleRadioItem_${story.id}" data-id="${story.id}" data-category-key="${escHtml(story.categoryKey || 'mvp')}" data-target-text="${escHtml(story.targetText || '')}" data-content="${escHtml(story.content)}" style="padding:14px 0;border-bottom:1px solid var(--line);">
+        <div class="visible-radio-item" id="visibleRadioItem_${story.id}" data-id="${story.id}" data-category-key="${escHtml(story.categoryKey || 'mvp')}" data-target-text="${escHtml(story.targetText || '')}" data-content="${escHtml(story.content)}" data-is-anonymous="${story.isAnonymous ? '1' : '0'}" style="padding:14px 0;border-bottom:1px solid var(--line);">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div style="flex:1;min-width:0;">
               <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(story.content)}</div>
               <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
                 ${visibleRadioCategoryChipHtml(story.categoryKey)}
                 ${story.targetText ? `<span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:2px 8px;">대상 ${escHtml(story.targetText)}</span>` : ''}
-                <span style="font-size:11px;font-weight:800;color:#475569;background:#f8fafc;border-radius:999px;padding:2px 8px;">본인만 보기</span>
+                ${story.isAnonymous
+                  ? `<span style="font-size:11px;font-weight:800;color:#64748b;background:#f1f5f9;border-radius:999px;padding:2px 8px;">익명 제출</span>`
+                  : `<span style="font-size:11px;font-weight:800;color:#0f766e;background:#ccfbf1;border-radius:999px;padding:2px 8px;">닉네임 공개</span>`}
                 <span style="font-size:12px;color:var(--sub);">${formatNoticeDate(story.createdAt)}</span>
               </div>
             </div>
@@ -4886,13 +4895,10 @@
       if (!item) return;
       const content = item.dataset.content || '';
       const categoryKey = item.dataset.categoryKey || 'mvp';
-      const targetText = item.dataset.targetText || '';
       item.innerHTML = `
         <select id="visibleRadioEditCategory_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;margin-bottom:8px;">
           ${visibleRadioCategoryOptionsHtml(categoryKey)}
         </select>
-        <input type="text" id="visibleRadioEditTarget_${id}" value="${escHtml(targetText)}" placeholder="대상자 이름, 조, 별명 등 (선택)" maxlength="80"
-          style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;margin-bottom:8px;" />
         <textarea id="visibleRadioEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:120px;" maxlength="1000">${escHtml(content)}</textarea>
         <div id="visibleRadioEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
         <div style="display:flex;gap:8px;margin-top:8px;">
@@ -4902,18 +4908,19 @@
     }
 
     async function saveVisibleRadioEdit(id) {
+      const item = document.getElementById(`visibleRadioItem_${id}`);
+      const isAnonymous = item ? item.dataset.isAnonymous === '1' : false;
+      const targetText = item ? (item.dataset.targetText || '') : '';
       const textEl = document.getElementById(`visibleRadioEditText_${id}`);
       const categoryEl = document.getElementById(`visibleRadioEditCategory_${id}`);
-      const targetEl = document.getElementById(`visibleRadioEditTarget_${id}`);
       const statusEl = document.getElementById(`visibleRadioEditStatus_${id}`);
       const content = textEl.value.trim();
       const categoryKey = categoryEl ? categoryEl.value : 'mvp';
-      const targetText = targetEl ? targetEl.value.trim() : '';
       if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
       const dotsTimer = animDots(statusEl, '저장 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const data = await apiClient.updateVisibleRadioStory(id, categoryKey, targetText, content);
+        const data = await apiClient.updateVisibleRadioStory(id, categoryKey, targetText, content, isAnonymous);
         if (!data.ok) throw new Error(data.error || 'save_failed');
         stopAnimDots(dotsTimer, statusEl, '');
         loadVisibleRadioStories();
@@ -4954,21 +4961,21 @@
     async function submitVisibleRadioStory() {
       if (!currentNickname) return;
       const input = document.getElementById('visibleRadioInput');
-      const targetEl = document.getElementById('visibleRadioTargetInput');
       const statusEl = document.getElementById('visibleRadioStatus');
       const btn = document.getElementById('visibleRadioSubmitBtn');
+      const anonCheck = document.getElementById('visibleRadioAnonCheck');
+      const isAnonymous = !!(anonCheck && anonCheck.checked);
       const content = input.value.trim();
-      const targetText = targetEl ? targetEl.value.trim() : '';
       if (!content) { statusEl.textContent = '사연을 입력해주세요.'; return; }
       btn.disabled = true;
-      const dotsTimer = animDots(statusEl, '등록 중');
+      const dotsTimer = animDots(statusEl, isAnonymous ? '익명 등록 중' : '등록 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const data = await apiClient.createVisibleRadioStory(_visibleRadioSelectedCategory, targetText, content);
+        const data = await apiClient.createVisibleRadioStory(_visibleRadioSelectedCategory, '', content, isAnonymous);
         if (!data.ok) throw new Error(data.error || 'submit_failed');
         input.value = '';
-        if (targetEl) targetEl.value = '';
-        stopAnimDots(dotsTimer, statusEl, '등록됐어요!');
+        if (anonCheck) anonCheck.checked = false;
+        stopAnimDots(dotsTimer, statusEl, isAnonymous ? '익명으로 등록됐어요!' : '등록됐어요!');
         statusEl.style.color = 'var(--success)';
         loadVisibleRadioStories();
         setTimeout(() => { statusEl.textContent = ''; }, 2000);
