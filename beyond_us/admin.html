@@ -535,7 +535,7 @@
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
             <div>
               <h2 class="card-title" style="margin:0;">누락 보상 지급</h2>
-              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">조건을 이미 달성했지만 지급되지 않은 보상만 수동 지급합니다.</p>
+              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">카드 뽑기권은 조건 미충족이어도 수동 지급할 수 있고, 추첨권은 조건 충족 시에만 지급합니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="closeManualRewardBtn">닫기</button>
           </div>
@@ -1638,7 +1638,7 @@
       const inventory = data.inventory || {};
       const rewards = Array.isArray(data.rewards) ? data.rewards : [];
       const availableCount = rewards.filter(r => r.available).length;
-      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 보상 현황입니다. 지급 가능 ${availableCount}개.`;
+      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 보상 현황입니다. 카드 뽑기권은 조건 미충족이어도 지급 가능하며, 현재 지급 가능 ${availableCount}개입니다.`;
       summaryEl.innerHTML = `
         <div class="stat-card" style="min-height:auto;padding:12px;">
           <div class="stat-label">카드 뽑기권</div>
@@ -1660,11 +1660,15 @@
       listEl.innerHTML = rewards.map(reward => {
         const available = reward.available === true;
         const reason = reward.disabledReason || '';
+        const manualOverrideHint = reward.type === 'card_pack' && reward.conditionMet === false && available
+          ? '<span class="badge" style="background:#fff7ed;color:#c2410c;">조건 미충족 · 수동 지급 가능</span>'
+          : '';
         return `
           <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;">
             <div style="min-width:0;">
               <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
                 <span class="badge" style="${rewardBadgeStyle(reward.type)}">${rewardTypeLabel(reward.type)}</span>
+                ${manualOverrideHint}
                 <strong>${esc(reward.label)}</strong>
               </div>
               <div style="font-size:12px;color:var(--sub);line-height:1.45;">${esc(reward.description)}</div>
