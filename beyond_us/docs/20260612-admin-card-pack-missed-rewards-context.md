@@ -16,3 +16,5 @@
 
 - `admin_get_user_ticket_status`가 현황과 카드 뽑기권 보상 목록을 함께 반환한다.
 - `admin_issue_user_missed_reward`는 `raffle_*` 보상 key를 처리하지 않는다.
+- 2026-06-12 후속 결정으로 카드 뽑기권 보상은 조건 미충족이어도 미지급이면 지급 가능하게 바뀌었다.
+- 수동 지급이 조건 미충족 상태에서 이루어진 경우 이벤트 payload의 `adminOverride`가 true가 된다.
