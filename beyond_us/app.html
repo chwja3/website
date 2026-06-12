@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260606c" />
+  <link rel="stylesheet" href="app.css?v=20260612i" />
 </head>
 <body>
 
@@ -659,6 +659,20 @@
                 <span>날짜별 PNG 파일을 확인해주세요.</span>
               </div>
             </div>
+            <div class="qt-response-panel">
+              <label class="qt-field">
+                <span>나의 답변</span>
+                <textarea id="qtAnswerInput" rows="5" maxlength="1200" placeholder="오늘 말씀을 묵상하며 떠오른 생각을 적어주세요."></textarea>
+              </label>
+              <label class="qt-field">
+                <span>기도제목</span>
+                <textarea id="qtPrayerInput" rows="4" maxlength="800" placeholder="함께 기도하고 싶은 제목을 적어주세요."></textarea>
+              </label>
+              <div class="qt-actions">
+                <div id="qtSubmitStatus" class="qt-submit-status"></div>
+                <button class="btn btn-primary qt-submit-btn" id="qtSubmitBtn" type="button">저장</button>
+              </div>
+            </div>
           </section>
         </div>
       </div>
@@ -1146,13 +1160,51 @@
       <!-- 광범위수사 -->
       <div id="sectionInvestigation" class="section hidden">
         <div class="wrap">
-          <section class="card" style="margin-top:16px;overflow:hidden;padding:0;">
-            <div style="padding:18px 18px 12px;">
-              <p style="font-size:12px;font-weight:800;color:var(--primary);letter-spacing:.08em;margin:0 0 6px;">CRIME SCENE</p>
+          <section class="card investigation-card" style="margin-top:16px;overflow:hidden;padding:0;">
+            <div class="investigation-header">
+              <p class="investigation-eyebrow">CRIME SCENE</p>
               <h2 class="card-title" style="margin:0;">광범위수사</h2>
               <p class="card-sub" style="margin:8px 0 0;">프로그램팀 미션 안내 포스터를 확인해주세요.</p>
             </div>
-            <img src="images/Police.webp" alt="광범위수사 포스터" loading="eager" decoding="async" style="display:block;width:100%;height:auto;object-fit:contain;background:#111;" />
+            <div class="investigation-tabs" role="tablist" aria-label="광범위수사 자료">
+              <button class="investigation-tab active" type="button" data-map-key="poster" onclick="switchInvestigationMap('poster')">포스터</button>
+              <button class="investigation-tab" type="button" data-map-key="overview" onclick="switchInvestigationMap('overview')">전체</button>
+              <button class="investigation-tab" type="button" data-map-key="galilee" onclick="switchInvestigationMap('galilee')">갈릴리동</button>
+              <button class="investigation-tab" type="button" data-map-key="jerusalem" onclick="switchInvestigationMap('jerusalem')">예루살렘동</button>
+              <button class="investigation-tab" type="button" data-map-key="booths" onclick="switchInvestigationMap('booths')">부스</button>
+            </div>
+            <div class="investigation-panels">
+              <div class="investigation-panel" data-map-panel="poster">
+                <div class="investigation-map-frame is-dark">
+                  <img class="investigation-map-image" src="images/Police.webp" alt="광범위수사 포스터" loading="eager" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>포스터를 불러오지 못했어요.</strong><span>images/Police.webp 파일을 확인해주세요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="overview">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/overview.webp" alt="전체 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>전체 안내도 준비 중</strong><span>images/maps/overview.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="galilee">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/galilee.webp" alt="갈릴리동 층별 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>갈릴리동 안내도 준비 중</strong><span>images/maps/galilee.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="jerusalem">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/jerusalem.webp" alt="예루살렘동 층별 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>예루살렘동 안내도 준비 중</strong><span>images/maps/jerusalem.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="booths">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/booths.webp" alt="카리타스 앞 부스 위치" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>부스 위치 안내도 준비 중</strong><span>images/maps/booths.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+            </div>
           </section>
         </div>
       </div>
@@ -1262,7 +1314,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260612h" defer></script>
+  <script src="app.js?v=20260612i" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
