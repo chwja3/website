@@ -4609,6 +4609,8 @@
 
     document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
 
+    let _counselingAdminIsPastor = false;
+
     async function loadAdminCounseling() {
       const listEl = document.getElementById('counselingAdminList');
       const doneListEl = document.getElementById('counselingDoneAdminList');
@@ -4618,6 +4620,7 @@
       try {
         const res = await callSupabaseAdminRpc('admin_get_counseling_entries');
         if (!res.ok) throw new Error(res.error || 'get_counseling_failed');
+        _counselingAdminIsPastor = !!(res.currentAdmin && res.currentAdmin.isPastor);
         renderAdminCounselingEntries(Array.isArray(res.entries) ? res.entries : []);
       } catch(e) {
         listEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
@@ -4639,32 +4642,16 @@
         listEl.innerHTML = `<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">${emptyText}</p>`;
         return;
       }
+      const isPastor = _counselingAdminIsPastor;
       listEl.innerHTML = entries.map(entry => {
         const id = String(entry.id || '');
         const content = String(entry.content || '');
         const reply = String(entry.reply || '');
-        const publicVisible = entry.publicVisible === true;
-        const visibilityLabel = publicVisible ? '익명 공개' : '본인만 보기';
-        const visibilityStyle = publicVisible
-          ? 'color:#047857;background:#ecfdf5;'
-          : 'color:#475569;background:#f1f5f9;';
         const answered = !!reply.trim();
-        return `
-          <details id="counselingAdmin_${esc(id)}" style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
-            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
-              <div style="min-width:0;">
-                <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:560px;">${esc(content)}</div>
-                <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 · ${visibilityLabel} · ${formatDate(entry.createdAt)}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
-                <span style="font-size:11px;font-weight:800;border-radius:999px;padding:3px 9px;white-space:nowrap;${visibilityStyle}">${visibilityLabel}</span>
-                ${answered ? '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변 완료</span>' : '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>'}
-              </div>
-            </summary>
-            <div style="padding:0 14px 14px;">
-              <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;">${esc(content)}</div>
+        const replyBlock = isPastor
+          ? `
               <div style="background:var(--primary-soft);border-radius:12px;padding:12px;">
-                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:8px;">익명 답변</div>
+                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:8px;">사역자 답변</div>
                 <textarea id="counselingReplyInput_${esc(id)}" class="input" rows="4" maxlength="1200" data-counseling-reply-input="1" data-id="${esc(id)}"
                   placeholder="${answered ? '답변을 수정하세요.' : '익명을 유지한 채 답변을 작성하세요.'}"
                   style="width:100%;resize:vertical;font-family:inherit;line-height:1.6;margin-bottom:8px;font-size:14px;background:var(--card);"
@@ -4676,6 +4663,28 @@
                 </div>
                 <div id="counselingReplyStatus_${esc(id)}" class="status" style="margin-top:6px;text-align:right;"></div>
               </div>
+            `
+          : (answered
+            ? `<div style="background:var(--primary-soft);border-radius:12px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px;">사역자 답변</div>
+                <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(reply)}</div>
+                ${entry.repliedAt ? `<div style="font-size:12px;color:var(--sub);margin-top:6px;">${formatDate(entry.repliedAt)}</div>` : ''}
+              </div>`
+            : `<p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">답변 작성은 사역자 계정만 가능해요.</p>`);
+        return `
+          <details id="counselingAdmin_${esc(id)}" style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div style="min-width:0;">
+                <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:560px;">${esc(content)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 · ${formatDate(entry.createdAt)}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+                ${answered ? '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변 완료</span>' : '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>'}
+              </div>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;">${esc(content)}</div>
+              ${replyBlock}
             </div>
           </details>
         `;

@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260612k" />
+  <link rel="stylesheet" href="app.css?v=20260612l" />
 </head>
 <body>
 
@@ -1216,24 +1216,16 @@
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
               <div>
                 <h2 class="card-title" style="margin:0;">익명 고민상담</h2>
-                <p class="card-sub" style="margin:6px 0 0;">기본적으로 이곳에 남긴 고민은 본인만 볼 수 있어요.</p>
+                <p class="card-sub" style="margin:6px 0 0;line-height:1.6;">익명으로 등록되며, 사역자만 내용을 확인하고 답변하실 수 있어요.<br>수련회 당일 담임목사님께 답변을 들으실 수 있고, 답변되지 않은 고민은 담당 교구 목사님께서 달아주실 거예요.</p>
               </div>
               <button class="btn btn-secondary" id="refreshCounselingBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">새로고침</button>
             </div>
-            <div style="border:1px solid var(--line);background:var(--primary-soft);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.6;color:var(--text);">
-              공개 체크를 하지 않으면 관리자 화면에도 표시되지 않고, 작성자 본인만 확인할 수 있어요.<br>
-              공개 체크를 하면 닉네임과 이름은 숨긴 채 고민 내용만 모든 유저에게 보여요.
-            </div>
             <div id="counselingComposeWrap" style="margin-bottom:16px;">
-              <textarea id="counselingInput" placeholder="고민을 적어주세요. 기본은 비공개예요. (최대 700자)" maxlength="700" rows="5"
+              <textarea id="counselingInput" placeholder="고민을 적어 보내주세요. (최대 700자)" maxlength="700" rows="5"
                 style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;display:block;"></textarea>
-              <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:13px;font-weight:700;color:var(--text);line-height:1.45;">
-                <input type="checkbox" id="counselingPublicToggle" style="width:18px;height:18px;accent-color:var(--primary);margin-top:1px;flex:none;" />
-                <span>익명은 유지하고 고민 내용만 모두에게 공개하기.</span>
-              </label>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;">
-                <div id="counselingStatus" style="font-size:13px;font-weight:600;color:var(--danger);"></div>
-                <button class="btn btn-secondary" id="counselingSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">등록</button>
+                <div id="counselingStatus" style="font-size:13px;font-weight:600;color:var(--danger);flex:1;min-width:120px;"></div>
+                <button class="btn btn-primary" id="counselingSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 12px;border-radius:8px;">등록</button>
               </div>
             </div>
             <p id="counselingLoginMsg" style="font-size:14px;color:var(--sub);margin:0 0 14px;display:none;">로그인 후 고민을 남길 수 있어요.</p>
@@ -1242,12 +1234,6 @@
           <section class="card" style="margin-top:12px;">
             <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">내 고민</h3>
             <div id="counselingOwnList"><p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p></div>
-          </section>
-
-          <section class="card" style="margin-top:12px;">
-            <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">공개된 익명 고민</h3>
-            <p style="font-size:12px;color:var(--sub);line-height:1.5;margin:0 0 10px;">작성자가 공개를 선택한 고민만 이름 없이 보여요.</p>
-            <div id="counselingPublicList"><p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p></div>
           </section>
         </div>
       </div>
@@ -1314,7 +1300,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260612k" defer></script>
+  <script src="app.js?v=20260612l" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

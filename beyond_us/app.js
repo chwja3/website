@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260612k';
+    const APP_VERSION = '20260612l';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -4732,31 +4732,20 @@
 
     async function loadCounselingEntries() {
       const ownList = document.getElementById('counselingOwnList');
-      const publicList = document.getElementById('counselingPublicList');
-      if (!ownList || !publicList) return;
+      if (!ownList) return;
       updateCounselingLoginUI();
       if (!currentNickname) {
         ownList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인 후 내 고민을 확인할 수 있어요.</p>';
-        publicList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인 후 공개된 고민을 확인할 수 있어요.</p>';
         return;
       }
       ownList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
-      publicList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
       try {
         const data = await apiClient.getCounselingEntries();
         if (!data.ok) throw new Error(data.error || 'load_failed');
         renderCounselingOwnList(Array.isArray(data.mine) ? data.mine : []);
-        renderCounselingPublicList(Array.isArray(data.publicEntries) ? data.publicEntries : []);
       } catch(e) {
         ownList.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
-        publicList.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
       }
-    }
-
-    function counselingVisibilityBadge(publicVisible) {
-      return publicVisible
-        ? '<span style="font-size:11px;font-weight:800;color:#047857;background:#ecfdf5;border-radius:999px;padding:2px 8px;">익명 공개</span>'
-        : '<span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:2px 8px;">본인만 보기</span>';
     }
 
     function counselingReplyBlock(entry) {
@@ -4765,7 +4754,7 @@
       const repliedAt = entry?.repliedAt ? formatNoticeDate(entry.repliedAt) : '';
       return `
         <div style="margin-top:10px;background:var(--primary-soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;">
-          <div style="font-size:11px;font-weight:900;color:var(--primary);margin-bottom:5px;">상담 답변</div>
+          <div style="font-size:11px;font-weight:900;color:var(--primary);margin-bottom:5px;">사역자 답변</div>
           <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(reply)}</div>
           ${repliedAt ? `<div style="font-size:12px;color:var(--sub);margin-top:6px;">${repliedAt}</div>` : ''}
         </div>
@@ -4780,14 +4769,12 @@
       }
       list.innerHTML = entries.map(entry => {
         const dateStr = formatNoticeDate(entry.createdAt);
-        const publicVisible = entry.publicVisible === true;
         return `
-          <div class="counseling-item" id="counselingItem_${entry.id}" data-id="${entry.id}" data-content="${escHtml(entry.content)}" data-public-visible="${publicVisible ? 'true' : 'false'}" style="padding:14px 0;border-bottom:1px solid var(--line);">
+          <div class="counseling-item" id="counselingItem_${entry.id}" data-id="${entry.id}" data-content="${escHtml(entry.content)}" style="padding:14px 0;border-bottom:1px solid var(--line);">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
               <div style="flex:1;min-width:0;">
                 <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(entry.content)}</div>
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
-                  ${counselingVisibilityBadge(publicVisible)}
                   <span style="font-size:12px;color:var(--sub);">${dateStr}</span>
                 </div>
                 ${counselingReplyBlock(entry)}
@@ -4802,33 +4789,12 @@
       }).join('');
     }
 
-    function renderCounselingPublicList(entries) {
-      const list = document.getElementById('counselingPublicList');
-      if (!entries.length) {
-        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 공개된 익명 고민이 없어요.</p>';
-        return;
-      }
-      list.innerHTML = entries.map(entry => `
-        <div style="padding:14px 0;border-bottom:1px solid var(--line);">
-          <div style="font-size:11px;font-weight:800;color:var(--primary);margin-bottom:5px;">익명 고민</div>
-          <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(entry.content)}</div>
-          <div style="font-size:12px;color:var(--sub);margin-top:6px;">${formatNoticeDate(entry.createdAt)}</div>
-          ${counselingReplyBlock(entry)}
-        </div>
-      `).join('');
-    }
-
     function startCounselingEdit(id) {
       const item = document.getElementById(`counselingItem_${id}`);
       if (!item) return;
       const content = item.dataset.content || '';
-      const publicVisible = item.dataset.publicVisible === 'true';
       item.innerHTML = `
         <textarea id="counselingEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:96px;" maxlength="700">${escHtml(content)}</textarea>
-        <label style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:13px;font-weight:700;color:var(--text);line-height:1.45;">
-          <input type="checkbox" id="counselingEditPublic_${id}" ${publicVisible ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--primary);margin-top:1px;flex:none;" />
-          <span>익명은 유지하고 고민 내용만 모두에게 공개하기.</span>
-        </label>
         <div id="counselingEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
         <div style="display:flex;gap:8px;margin-top:8px;">
           <button class="btn btn-secondary" style="flex:1;" onclick="loadCounselingEntries()">취소</button>
@@ -4840,12 +4806,11 @@
       const textEl = document.getElementById(`counselingEditText_${id}`);
       const statusEl = document.getElementById(`counselingEditStatus_${id}`);
       const content = textEl.value.trim();
-      const publicVisible = document.getElementById(`counselingEditPublic_${id}`)?.checked === true;
       if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
       const dotsTimer = animDots(statusEl, '저장 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const data = await apiClient.updateCounselingEntry(id, content, publicVisible);
+        const data = await apiClient.updateCounselingEntry(id, content, false);
         if (!data.ok) throw new Error(data.error || 'save_failed');
         stopAnimDots(dotsTimer, statusEl, '');
         loadCounselingEntries();
@@ -4889,7 +4854,6 @@
     async function submitCounselingEntry() {
       if (!currentNickname) return;
       const input = document.getElementById('counselingInput');
-      const publicToggle = document.getElementById('counselingPublicToggle');
       const statusEl = document.getElementById('counselingStatus');
       const btn = document.getElementById('counselingSubmitBtn');
       const content = input.value.trim();
@@ -4898,10 +4862,9 @@
       const dotsTimer = animDots(statusEl, '등록 중');
       statusEl.style.color = 'var(--sub)';
       try {
-        const data = await apiClient.createCounselingEntry(content, publicToggle.checked === true);
+        const data = await apiClient.createCounselingEntry(content, false);
         if (!data.ok) throw new Error(data.error || 'create_failed');
         input.value = '';
-        publicToggle.checked = false;
         stopAnimDots(dotsTimer, statusEl, '등록됐어요!');
         statusEl.style.color = 'var(--success)';
         loadCounselingEntries();
