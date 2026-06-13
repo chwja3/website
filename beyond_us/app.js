@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260613a';
+    const APP_VERSION = '20260613b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -3818,7 +3818,16 @@
         const res = await apiClient.submitQtReflection(meta.contentDate, answerTexts, prayerText);
         if (!res.ok) throw new Error(res.error || 'qt_reflection_submit_failed');
         _qtReflectionLoadedKey = `${currentNickname || ''}:${meta.contentDate}`;
-        setQtSubmitStatus('저장했어요.', 'ok');
+        if (res.rewarded) {
+          setQtSubmitStatus('미션 클리어! 카드팩 1장을 받았어요.', 'ok');
+          syncTicketBadgeFromServer();
+        } else if (res.missionCleared && res.alreadyRewarded) {
+          setQtSubmitStatus('미션 클리어 완료! 카드팩은 이미 지급됐어요.', 'ok');
+        } else if (meta.contentDate === '2026-06-20') {
+          setQtSubmitStatus('저장했어요. 답변 3개와 기도제목을 모두 적으면 미션이 완료돼요.', 'ok');
+        } else {
+          setQtSubmitStatus('저장했어요.', 'ok');
+        }
       } catch (e) {
         setQtSubmitStatus('저장하지 못했어요. 잠시 후 다시 시도해주세요.', 'error');
       } finally {
