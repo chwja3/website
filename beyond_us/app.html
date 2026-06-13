@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260612o" />
+  <link rel="stylesheet" href="app.css?v=20260613a" />
 </head>
 <body>
 
@@ -659,12 +659,20 @@
                 <span>날짜별 PNG 파일을 확인해주세요.</span>
               </div>
             </div>
-            <div class="qt-response-panel">
-              <label class="qt-field">
-                <span>나의 답변</span>
-                <textarea id="qtAnswerInput" rows="5" maxlength="1200" placeholder="오늘 말씀을 묵상하며 떠오른 생각을 적어주세요."></textarea>
+            <div id="qtResponsePanel" class="qt-response-panel hidden">
+              <label class="qt-field qt-answer-field">
+                <span>답변 1</span>
+                <textarea id="qtAnswer1Input" rows="2" maxlength="500" placeholder="첫 번째 질문에 대한 답변을 적어주세요."></textarea>
               </label>
-              <label class="qt-field">
+              <label class="qt-field qt-answer-field">
+                <span>답변 2</span>
+                <textarea id="qtAnswer2Input" rows="2" maxlength="500" placeholder="두 번째 질문에 대한 답변을 적어주세요."></textarea>
+              </label>
+              <label class="qt-field qt-answer-field">
+                <span>답변 3</span>
+                <textarea id="qtAnswer3Input" rows="2" maxlength="500" placeholder="세 번째 질문에 대한 답변을 적어주세요."></textarea>
+              </label>
+              <label class="qt-field qt-prayer-field">
                 <span>기도제목</span>
                 <textarea id="qtPrayerInput" rows="4" maxlength="800" placeholder="함께 기도하고 싶은 제목을 적어주세요."></textarea>
               </label>
@@ -1297,7 +1305,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260612o" defer></script>
+  <script src="app.js?v=20260613a" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

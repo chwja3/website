@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260612o';
+    const APP_VERSION = '20260613a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -1231,11 +1231,14 @@
           p_content_date: contentDate || null,
         }, { allowOkFalse: true });
       },
-      async submitQtReflection(contentDate, answerText, prayerText) {
-        return callSupabaseRpc('submit_qt_reflection', {
+      async submitQtReflection(contentDate, answerTexts, prayerText) {
+        const answers = Array.isArray(answerTexts) ? answerTexts : [answerTexts || ''];
+        return callSupabaseRpc('submit_qt_reflection_v2', {
           p_login_id: currentNickname,
           p_content_date: contentDate || null,
-          p_answer_text: answerText || '',
+          p_answer1_text: answers[0] || '',
+          p_answer2_text: answers[1] || '',
+          p_answer3_text: answers[2] || '',
           p_prayer_text: prayerText || '',
         }, { allowOkFalse: true });
       },
@@ -3663,6 +3666,8 @@
 
     let _qtRenderedKey = '';
     let _qtReflectionLoadedKey = '';
+    const QT_REFLECTION_DATES = new Set(['2026-06-20', '2026-06-21']);
+    const QT_ANSWER_INPUT_IDS = ['qtAnswer1Input', 'qtAnswer2Input', 'qtAnswer3Input'];
     function getAppAssetBaseUrl() {
       const script = document.querySelector('script[src*="app.js"]');
       return new URL('.', script ? script.src : location.href).href;
@@ -3713,6 +3718,16 @@
       };
     }
 
+    function isQtReflectionDate(contentDate) {
+      return QT_REFLECTION_DATES.has(String(contentDate || ''));
+    }
+
+    function getQtAnswerInputs() {
+      return QT_ANSWER_INPUT_IDS
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
+    }
+
     function loadImageProbe(src) {
       return new Promise((resolve, reject) => {
         const probe = new Image();
@@ -3743,22 +3758,22 @@
     }
 
     function setQtInputsDisabled(disabled) {
-      ['qtAnswerInput', 'qtPrayerInput', 'qtSubmitBtn'].forEach(id => {
+      [...QT_ANSWER_INPUT_IDS, 'qtPrayerInput', 'qtSubmitBtn'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.disabled = !!disabled;
       });
     }
 
     async function loadQtReflection(contentDate, force) {
-      const answerEl = document.getElementById('qtAnswerInput');
+      const answerEls = getQtAnswerInputs();
       const prayerEl = document.getElementById('qtPrayerInput');
-      if (!answerEl || !prayerEl || !contentDate) return;
+      if (answerEls.length < 3 || !prayerEl || !contentDate || !isQtReflectionDate(contentDate)) return;
       const cacheKey = `${currentNickname || ''}:${contentDate}`;
       if (!force && _qtReflectionLoadedKey === cacheKey) return;
       _qtReflectionLoadedKey = cacheKey;
 
       if (!currentNickname) {
-        answerEl.value = '';
+        answerEls.forEach(el => { el.value = ''; });
         prayerEl.value = '';
         setQtSubmitStatus('로그인 후 저장할 수 있어요.', 'error');
         return;
@@ -3768,11 +3783,14 @@
       try {
         const res = await apiClient.getQtReflection(contentDate);
         if (!res.ok) throw new Error(res.error || 'qt_reflection_load_failed');
-        answerEl.value = res.answerText || '';
+        const answers = Array.isArray(res.answerTexts)
+          ? res.answerTexts
+          : [res.answerText || '', '', ''];
+        answerEls.forEach((el, index) => { el.value = answers[index] || ''; });
         prayerEl.value = res.prayerText || '';
         setQtSubmitStatus(res.submittedAt ? '저장된 내용을 불러왔어요.' : '');
       } catch (e) {
-        answerEl.value = '';
+        answerEls.forEach(el => { el.value = ''; });
         prayerEl.value = '';
         setQtSubmitStatus('저장된 내용을 불러오지 못했어요. 다시 열어주세요.', 'error');
       }
@@ -3780,16 +3798,16 @@
 
     async function submitQtReflection() {
       const meta = getTodayQtMeta();
-      const answerEl = document.getElementById('qtAnswerInput');
+      const answerEls = getQtAnswerInputs();
       const prayerEl = document.getElementById('qtPrayerInput');
-      if (!answerEl || !prayerEl) return;
+      if (answerEls.length < 3 || !prayerEl || !isQtReflectionDate(meta.contentDate)) return;
       if (!currentNickname) {
         setQtSubmitStatus('로그인 후 저장할 수 있어요.', 'error');
         return;
       }
-      const answerText = answerEl.value.trim();
+      const answerTexts = answerEls.map(el => el.value.trim());
       const prayerText = prayerEl.value.trim();
-      if (!answerText && !prayerText) {
+      if (!answerTexts.some(Boolean) && !prayerText) {
         setQtSubmitStatus('답변이나 기도제목 중 하나는 적어주세요.', 'error');
         return;
       }
@@ -3797,7 +3815,7 @@
       setQtInputsDisabled(true);
       setQtSubmitStatus('저장 중...');
       try {
-        const res = await apiClient.submitQtReflection(meta.contentDate, answerText, prayerText);
+        const res = await apiClient.submitQtReflection(meta.contentDate, answerTexts, prayerText);
         if (!res.ok) throw new Error(res.error || 'qt_reflection_submit_failed');
         _qtReflectionLoadedKey = `${currentNickname || ''}:${meta.contentDate}`;
         setQtSubmitStatus('저장했어요.', 'ok');
@@ -3813,11 +3831,22 @@
       const imgEl = document.getElementById('qtTodayImage');
       const loadingEl = document.getElementById('qtLoading');
       const missingEl = document.getElementById('qtMissing');
+      const responsePanel = document.getElementById('qtResponsePanel');
       if (!labelEl || !imgEl || !loadingEl || !missingEl) return;
 
       const meta = getTodayQtMeta();
       labelEl.textContent = meta.label;
-      loadQtReflection(meta.contentDate, force).catch(() => {});
+      const shouldShowReflection = isQtReflectionDate(meta.contentDate);
+      if (responsePanel) responsePanel.classList.toggle('hidden', !shouldShowReflection);
+      if (shouldShowReflection) {
+        loadQtReflection(meta.contentDate, force).catch(() => {});
+      } else {
+        _qtReflectionLoadedKey = '';
+        getQtAnswerInputs().forEach(el => { el.value = ''; });
+        const prayerEl = document.getElementById('qtPrayerInput');
+        if (prayerEl) prayerEl.value = '';
+        setQtSubmitStatus('');
+      }
       if (!force && _qtRenderedKey === meta.key && imgEl.dataset.loaded === 'true') return;
 
       _qtRenderedKey = meta.key;

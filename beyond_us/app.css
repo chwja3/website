@@ -153,6 +153,13 @@
       font-weight: 500;
       line-height: 1.6;
     }
+    .qt-answer-field textarea {
+      min-height: 58px;
+      line-height: 1.45;
+    }
+    .qt-prayer-field textarea {
+      min-height: 96px;
+    }
     .qt-field textarea:focus {
       border-color: rgba(44,36,23,0.52);
       background: #fffaf0;
