@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260614b';
+    const APP_VERSION = '20260614c';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -3586,7 +3586,7 @@
         date: '6/20 Open',
         title: '목사님께 무엇이든 물어보세요',
         description: '모든 고민은 익명으로 등록되며, 진행자와 목사님만 내용을 확인할 수 있어요. 혼자 결론내기 어려운 고민들이 있다면 익명으로 고민을 제출해 주세요.',
-        note: '오픈 전에는 고민 작성 기능이 잠겨 있어요.',
+        note: '고민 상담에 접수된 내용은 수련회 당일에 담임 목사님께서 답변해 주실 예정입니다💬',
       },
       visibleRadio: {
         date: '6/20 Open',
