@@ -124,6 +124,150 @@
       color: var(--text);
       font-size: 15px;
     }
+    .qt-response-panel {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+    .qt-field {
+      display: grid;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .qt-field textarea {
+      width: 100%;
+      border: 1.5px solid var(--line);
+      border-radius: 12px;
+      background: var(--primary-soft);
+      color: var(--text);
+      outline: none;
+      resize: vertical;
+      min-height: 112px;
+      padding: 12px 14px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.6;
+    }
+    .qt-answer-field textarea {
+      min-height: 58px;
+      line-height: 1.45;
+    }
+    .qt-prayer-field textarea {
+      min-height: 96px;
+    }
+    .qt-field textarea:focus {
+      border-color: rgba(44,36,23,0.52);
+      background: #fffaf0;
+    }
+    .qt-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .qt-submit-status {
+      min-height: 20px;
+      flex: 1;
+      color: var(--sub);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+    .qt-submit-status.ok { color: var(--success); }
+    .qt-submit-status.error { color: var(--danger); }
+    .qt-submit-btn {
+      flex: none;
+      height: auto;
+      min-height: 36px;
+      padding: 7px 16px;
+      font-size: 13px;
+      border-radius: 10px;
+    }
+
+    .investigation-card {
+      background: #fffdf8;
+    }
+    .investigation-header {
+      padding: 18px 18px 12px;
+    }
+    .investigation-eyebrow {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: .08em;
+      margin: 0 0 6px;
+    }
+    .investigation-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 0 14px 14px;
+      scrollbar-width: none;
+    }
+    .investigation-tabs::-webkit-scrollbar { display: none; }
+    .investigation-tab {
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--sub);
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .investigation-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fffdf8;
+    }
+    .investigation-panels {
+      border-top: 1px solid var(--line);
+      background: #f7f1e6;
+    }
+    .investigation-map-frame {
+      position: relative;
+      min-height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f7f1e6;
+    }
+    .investigation-map-frame.is-dark {
+      background: #111;
+    }
+    .investigation-map-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      cursor: zoom-in;
+    }
+    .investigation-map-empty {
+      width: 100%;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 34px 18px;
+      color: var(--sub);
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: center;
+    }
+    .investigation-map-empty strong {
+      color: var(--text);
+      font-size: 15px;
+    }
 
     
     .week-badge {

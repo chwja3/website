@@ -35,9 +35,21 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260531a';
+    const APP_VERSION = '20260614c';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
+    const VISIBLE_RADIO_CATEGORIES = [
+      { key: 'mvp', label: '우리 조 MVP', hint: '고마웠던 조원 칭찬', color: '#ef4444', bg: '#fef2f2' },
+      { key: 'buddy', label: '버디에게', hint: '버디에게 전하는 마음', color: '#8b5cf6', bg: '#f5f3ff' },
+      { key: 'moment', label: '감동의 순간', hint: '기억에 남는 장면', color: '#0ea5e9', bg: '#eff6ff' },
+      { key: 'sorry', label: '미안했어요', hint: '전하지 못한 사과', color: '#f97316', bg: '#fff7ed' },
+      { key: 'cheer', label: '응원 한마디', hint: '누군가에게 보내는 응원', color: '#16a34a', bg: '#f0fdf4' },
+      { key: 'funny_praise', label: '익명 폭로(?) 칭찬', hint: '훈훈하고 재밌는 칭찬', color: '#db2777', bg: '#fdf2f8' },
+    ];
+    const VISIBLE_RADIO_CATEGORY_BY_KEY = Object.fromEntries(
+      VISIBLE_RADIO_CATEGORIES.map(category => [category.key, category])
+    );
+    let _visibleRadioSelectedCategory = 'mvp';
     (function checkVersion() {
       fetch('./version.txt?_=' + Date.now(), { cache: 'no-store' })
         .then(r => r.text())
@@ -625,6 +637,7 @@
       document.getElementById('authScreen').classList.add('hidden');
       document.getElementById('appScreen').classList.remove('hidden');
       updateInquiryLoginUI();
+      updateCounselingLoginUI();
       if (localStorage.getItem('beyondus_trade_dot') === '1') {
         document.getElementById('tradeMenuDot').classList.add('visible');
         document.getElementById('drawerTradeDot').style.display = 'inline-block';
@@ -762,6 +775,20 @@
       renderCollection();
       updateScoreProgress();
       updateInquiryLoginUI();
+      updateCounselingLoginUI();
+      updateVisibleRadioLoginUI();
+      if (options && options.clearDom) {
+        const visibleRadioList = document.getElementById('visibleRadioOwnList');
+        const visibleRadioInput = document.getElementById('visibleRadioInput');
+        const visibleRadioStatus = document.getElementById('visibleRadioStatus');
+        const visibleRadioAnonCheck = document.getElementById('visibleRadioAnonCheck');
+        if (visibleRadioList) visibleRadioList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+        if (visibleRadioInput) visibleRadioInput.value = '';
+        if (visibleRadioAnonCheck) visibleRadioAnonCheck.checked = false;
+        if (visibleRadioStatus) visibleRadioStatus.textContent = '';
+        _visibleRadioSelectedCategory = 'mvp';
+        renderVisibleRadioCategoryOptions(_visibleRadioSelectedCategory);
+      }
     }
 
     let pendingLegacyPasswordUpgrade = null;
@@ -1145,6 +1172,75 @@
       },
       async deleteInquiry(id) {
         return callSupabaseRpc('delete_inquiry', { p_login_id: currentNickname, p_id: id }, { allowOkFalse: true });
+      },
+      async getCounselingEntries() {
+        return callSupabaseRpc('get_counseling_entries', { p_login_id: currentNickname }, { allowOkFalse: true });
+      },
+      async createCounselingEntry(content, publicVisible) {
+        return callSupabaseRpc('create_counseling_entry', {
+          p_login_id: currentNickname,
+          p_content: content,
+          p_public_visible: publicVisible === true,
+        }, { allowOkFalse: true });
+      },
+      async updateCounselingEntry(id, content, publicVisible) {
+        return callSupabaseRpc('update_counseling_entry', {
+          p_login_id: currentNickname,
+          p_id: id,
+          p_content: content,
+          p_public_visible: publicVisible === true,
+        }, { allowOkFalse: true });
+      },
+      async deleteCounselingEntry(id) {
+        return callSupabaseRpc('delete_counseling_entry', {
+          p_login_id: currentNickname,
+          p_id: id,
+        }, { allowOkFalse: true });
+      },
+      async getVisibleRadioStories() {
+        return callSupabaseRpc('get_visible_radio_stories', { p_login_id: currentNickname }, { allowOkFalse: true });
+      },
+      async createVisibleRadioStory(categoryKey, targetText, content, isAnonymous) {
+        return callSupabaseRpc('create_visible_radio_story', {
+          p_login_id: currentNickname,
+          p_category_key: categoryKey || 'mvp',
+          p_target_text: targetText || '',
+          p_content: content,
+          p_is_anonymous: !!isAnonymous,
+        }, { allowOkFalse: true });
+      },
+      async updateVisibleRadioStory(id, categoryKey, targetText, content, isAnonymous) {
+        return callSupabaseRpc('update_visible_radio_story', {
+          p_login_id: currentNickname,
+          p_id: id,
+          p_category_key: categoryKey || 'mvp',
+          p_target_text: targetText || '',
+          p_content: content,
+          p_is_anonymous: !!isAnonymous,
+        }, { allowOkFalse: true });
+      },
+      async deleteVisibleRadioStory(id) {
+        return callSupabaseRpc('delete_visible_radio_story', {
+          p_login_id: currentNickname,
+          p_id: id,
+        }, { allowOkFalse: true });
+      },
+      async getQtReflection(contentDate) {
+        return callSupabaseRpc('get_qt_reflection', {
+          p_login_id: currentNickname,
+          p_content_date: contentDate || null,
+        }, { allowOkFalse: true });
+      },
+      async submitQtReflection(contentDate, answerTexts, prayerText) {
+        const answers = Array.isArray(answerTexts) ? answerTexts : [answerTexts || ''];
+        return callSupabaseRpc('submit_qt_reflection_v2', {
+          p_login_id: currentNickname,
+          p_content_date: contentDate || null,
+          p_answer1_text: answers[0] || '',
+          p_answer2_text: answers[1] || '',
+          p_answer3_text: answers[2] || '',
+          p_prayer_text: prayerText || '',
+        }, { allowOkFalse: true });
       },
       async getBBBMessages(nickname, forceRefresh) {
         return callSupabaseRpc('get_bbb_messages', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
@@ -3532,6 +3628,24 @@
         description: '오늘의 말씀 묵상 본문을 확인하는 공간이에요.',
         note: '오픈 전에는 본문이 보이지 않아요.',
       },
+      investigation: {
+        date: 'Coming Soon',
+        title: '광범위수사',
+        description: '프로그램팀 미션 안내와 수사 자료가 열리는 공간이에요.',
+        note: '오픈 전에는 포스터와 안내만 확인할 수 있어요.',
+      },
+      counseling: {
+        date: '6/20 Open',
+        title: '목사님께 무엇이든 물어보세요',
+        description: '모든 고민은 익명으로 등록되며, 진행자와 목사님만 내용을 확인할 수 있어요. 혼자 결론내기 어려운 고민들이 있다면 익명으로 고민을 제출해 주세요.',
+        note: '고민 상담에 접수된 내용은 수련회 당일에 담임 목사님께서 답변해 주실 예정입니다💬',
+      },
+      visibleRadio: {
+        date: '6/20 Open',
+        title: '별빛 우편함✨',
+        description: '별이 보이는 밤에 우리 모두가 함께 참여할 수 있는 보이는 라디오 시간이 준비되어 있어요.',
+        note: '수련회 당일 (6/20)에 사연 접수 창구가 열립니다. 별빛 우편함은 마지막 날 밤 (6/21)에 진행됩니다. 여러분들의 재미있고 감동적인 사연을 기다립니다☺️',
+      },
     };
 
     function applyTabSettings(data) {
@@ -3541,6 +3655,9 @@
       const nextSpecialPackOpen = data.tabSettings.specialPack === true;
       const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
       specialPackOpen = nextSpecialPackOpen;
+      const getTabStatus = (section) => section === 'visibleRadio'
+        ? (statuses.visibleRadio || statuses.visible_radio || 'open')
+        : (statuses[section] || 'open');
       const tabEnabled = {
         notice: settings.notice !== false,
         mission: settings.mission !== false,
@@ -3548,13 +3665,16 @@
         qt: settings.qt !== false,
         secret: settings.secret !== false,
         pilgrim: settings.pilgrim === true,
+        investigation: settings.investigation === true,
+        counseling: settings.counseling === true,
+        visibleRadio: settings.visibleRadio === true || settings.visible_radio === true,
         chat: settings.chat === true,
         collection: settings.collection !== false,
         faq: settings.faq !== false,
         inquiry: settings.inquiry !== false,
       };
       Object.keys(tabEnabled).forEach(section => {
-        const status = statuses[section] || 'open';
+        const status = getTabStatus(section);
         _tabStatusBySection[section] = {
           enabled: tabEnabled[section],
           status,
@@ -3569,7 +3689,7 @@
       }
     }
 
-    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21' };
+    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', visibleRadio: '6/20', counseling: '6/20' };
     function applyDrawerTabState(section, enabled, status) {
       const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
       if (!item) return;
@@ -3597,6 +3717,9 @@
     }
 
     let _qtRenderedKey = '';
+    let _qtReflectionLoadedKey = '';
+    const QT_REFLECTION_DATES = new Set(['2026-06-20', '2026-06-21']);
+    const QT_ANSWER_INPUT_IDS = ['qtAnswer1Input', 'qtAnswer2Input', 'qtAnswer3Input'];
     function getAppAssetBaseUrl() {
       const script = document.querySelector('script[src*="app.js"]');
       return new URL('.', script ? script.src : location.href).href;
@@ -3631,10 +3754,12 @@
       const mm = fileParts.month;
       const dd = fileParts.day;
       const fileName = `${yy}${mm}${dd}.png`;
+      const contentDate = `20${yy}-${mm}-${dd}`;
       const versionQuery = `?v=${APP_VERSION}`;
       const appAssetBaseUrl = getAppAssetBaseUrl();
       return {
         key: `${yy}${mm}${dd}`,
+        contentDate,
         sources: uniqueQtSources([
           `${SUPABASE_QT_PUBLIC_BASE}${fileName}${versionQuery}`,
           new URL(`QT/${fileName}${versionQuery}`, appAssetBaseUrl).href,
@@ -3643,6 +3768,16 @@
         ]),
         label: `${labelParts.year}년 ${labelParts.month} ${labelParts.day} ${labelParts.weekday}`,
       };
+    }
+
+    function isQtReflectionDate(contentDate) {
+      return QT_REFLECTION_DATES.has(String(contentDate || ''));
+    }
+
+    function getQtAnswerInputs() {
+      return QT_ANSWER_INPUT_IDS
+        .map(id => document.getElementById(id))
+        .filter(Boolean);
     }
 
     function loadImageProbe(src) {
@@ -3666,15 +3801,113 @@
       throw lastError || new Error('image_load_failed');
     }
 
+    function setQtSubmitStatus(message, type) {
+      const statusEl = document.getElementById('qtSubmitStatus');
+      if (!statusEl) return;
+      statusEl.textContent = message || '';
+      statusEl.classList.toggle('ok', type === 'ok');
+      statusEl.classList.toggle('error', type === 'error');
+    }
+
+    function setQtInputsDisabled(disabled) {
+      [...QT_ANSWER_INPUT_IDS, 'qtPrayerInput', 'qtSubmitBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !!disabled;
+      });
+    }
+
+    async function loadQtReflection(contentDate, force) {
+      const answerEls = getQtAnswerInputs();
+      const prayerEl = document.getElementById('qtPrayerInput');
+      if (answerEls.length < 3 || !prayerEl || !contentDate || !isQtReflectionDate(contentDate)) return;
+      const cacheKey = `${currentNickname || ''}:${contentDate}`;
+      if (!force && _qtReflectionLoadedKey === cacheKey) return;
+      _qtReflectionLoadedKey = cacheKey;
+
+      if (!currentNickname) {
+        answerEls.forEach(el => { el.value = ''; });
+        prayerEl.value = '';
+        setQtSubmitStatus('로그인 후 저장할 수 있어요.', 'error');
+        return;
+      }
+
+      setQtSubmitStatus('저장된 내용을 불러오는 중...');
+      try {
+        const res = await apiClient.getQtReflection(contentDate);
+        if (!res.ok) throw new Error(res.error || 'qt_reflection_load_failed');
+        const answers = Array.isArray(res.answerTexts)
+          ? res.answerTexts
+          : [res.answerText || '', '', ''];
+        answerEls.forEach((el, index) => { el.value = answers[index] || ''; });
+        prayerEl.value = res.prayerText || '';
+        setQtSubmitStatus(res.submittedAt ? '저장된 내용을 불러왔어요.' : '');
+      } catch (e) {
+        answerEls.forEach(el => { el.value = ''; });
+        prayerEl.value = '';
+        setQtSubmitStatus('저장된 내용을 불러오지 못했어요. 다시 열어주세요.', 'error');
+      }
+    }
+
+    async function submitQtReflection() {
+      const meta = getTodayQtMeta();
+      const answerEls = getQtAnswerInputs();
+      const prayerEl = document.getElementById('qtPrayerInput');
+      if (answerEls.length < 3 || !prayerEl || !isQtReflectionDate(meta.contentDate)) return;
+      if (!currentNickname) {
+        setQtSubmitStatus('로그인 후 저장할 수 있어요.', 'error');
+        return;
+      }
+      const answerTexts = answerEls.map(el => el.value.trim());
+      const prayerText = prayerEl.value.trim();
+      if (!answerTexts.some(Boolean) && !prayerText) {
+        setQtSubmitStatus('답변이나 기도제목 중 하나는 적어주세요.', 'error');
+        return;
+      }
+
+      setQtInputsDisabled(true);
+      setQtSubmitStatus('저장 중...');
+      try {
+        const res = await apiClient.submitQtReflection(meta.contentDate, answerTexts, prayerText);
+        if (!res.ok) throw new Error(res.error || 'qt_reflection_submit_failed');
+        _qtReflectionLoadedKey = `${currentNickname || ''}:${meta.contentDate}`;
+        if (res.rewarded) {
+          setQtSubmitStatus('미션 클리어! 카드팩 1장을 받았어요.', 'ok');
+          syncTicketBadgeFromServer();
+        } else if (res.missionCleared && res.alreadyRewarded) {
+          setQtSubmitStatus('미션 클리어 완료! 카드팩은 이미 지급됐어요.', 'ok');
+        } else if (meta.contentDate === '2026-06-20') {
+          setQtSubmitStatus('저장했어요. 답변 3개와 기도제목을 모두 적으면 미션이 완료돼요.', 'ok');
+        } else {
+          setQtSubmitStatus('저장했어요.', 'ok');
+        }
+      } catch (e) {
+        setQtSubmitStatus('저장하지 못했어요. 잠시 후 다시 시도해주세요.', 'error');
+      } finally {
+        setQtInputsDisabled(false);
+      }
+    }
+
     function renderTodayQt(force) {
       const labelEl = document.getElementById('qtTodayLabel');
       const imgEl = document.getElementById('qtTodayImage');
       const loadingEl = document.getElementById('qtLoading');
       const missingEl = document.getElementById('qtMissing');
+      const responsePanel = document.getElementById('qtResponsePanel');
       if (!labelEl || !imgEl || !loadingEl || !missingEl) return;
 
       const meta = getTodayQtMeta();
       labelEl.textContent = meta.label;
+      const shouldShowReflection = isQtReflectionDate(meta.contentDate);
+      if (responsePanel) responsePanel.classList.toggle('hidden', !shouldShowReflection);
+      if (shouldShowReflection) {
+        loadQtReflection(meta.contentDate, force).catch(() => {});
+      } else {
+        _qtReflectionLoadedKey = '';
+        getQtAnswerInputs().forEach(el => { el.value = ''; });
+        const prayerEl = document.getElementById('qtPrayerInput');
+        if (prayerEl) prayerEl.value = '';
+        setQtSubmitStatus('');
+      }
       if (!force && _qtRenderedKey === meta.key && imgEl.dataset.loaded === 'true') return;
 
       _qtRenderedKey = meta.key;
@@ -3703,6 +3936,38 @@
           imgEl.classList.add('hidden');
           missingEl.classList.remove('hidden');
         });
+    }
+
+    function switchInvestigationMap(key) {
+      const nextKey = key || 'poster';
+      document.querySelectorAll('.investigation-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mapKey === nextKey);
+      });
+      document.querySelectorAll('.investigation-panel').forEach(panel => {
+        panel.classList.toggle('hidden', panel.dataset.mapPanel !== nextKey);
+      });
+    }
+
+    function handleInvestigationMapMissing(img) {
+      if (!img) return;
+      img.classList.add('hidden');
+      const empty = img.parentElement?.querySelector('.investigation-map-empty');
+      if (empty) empty.classList.remove('hidden');
+    }
+
+    function handleInvestigationMapLoaded(img) {
+      if (!img) return;
+      img.classList.remove('hidden');
+      const empty = img.parentElement?.querySelector('.investigation-map-empty');
+      if (empty) empty.classList.add('hidden');
+    }
+
+    function initInvestigationMaps() {
+      const active = document.querySelector('.investigation-tab.active')?.dataset.mapKey || 'poster';
+      switchInvestigationMap(active);
+      document.querySelectorAll('.investigation-map-image').forEach(img => {
+        if (img.complete && img.naturalWidth === 0) handleInvestigationMapMissing(img);
+      });
     }
 
     function updateScoreProgress() {
@@ -4067,6 +4332,9 @@
       qt:         'sectionQt',
       secret:     'sectionSecret',
       pilgrim:    'sectionPilgrim',
+      investigation: 'sectionInvestigation',
+      counseling: 'sectionCounseling',
+      visibleRadio: 'sectionVisibleRadio',
       comingSoon: 'sectionComingSoon',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
@@ -4126,6 +4394,8 @@
       });
       if (name === 'notice') markAllSeen();
       if (name === 'inquiry') loadInquiries();
+      if (name === 'counseling') loadCounselingEntries();
+      if (name === 'visibleRadio') loadVisibleRadioStories();
       if (name === 'prayer') {
         markHoldPraySeen();
         loadHoldPray(false).then(markHoldPraySeen).catch(() => {});
@@ -4137,6 +4407,7 @@
         }
       }
       if (name === 'qt') renderTodayQt();
+      if (name === 'investigation') initInvestigationMaps();
       if (name === 'secret') { loadBBB(); }
       if (name === 'pilgrim') { loadBBB(); }
       if (name === 'chat') initChat();
@@ -4148,6 +4419,7 @@
     document.querySelectorAll('.drawer-item').forEach(el => {
       el.addEventListener('click', () => switchSection(el.dataset.section));
     });
+    document.getElementById('qtSubmitBtn')?.addEventListener('click', submitQtReflection);
 
     /* ════ 도움말 툴팁 ════ */
     function toggleHelpTip(btn) {
@@ -4538,6 +4810,363 @@
     });
 
     document.getElementById('refreshInquiryBtn').addEventListener('click', loadInquiries);
+
+    /* ════ 익명 고민상담 ════ */
+    function updateCounselingLoginUI() {
+      const loggedIn = !!currentNickname;
+      const wrap = document.getElementById('counselingComposeWrap');
+      const msg = document.getElementById('counselingLoginMsg');
+      if (wrap) wrap.style.display = loggedIn ? '' : 'none';
+      if (msg) msg.style.display = loggedIn ? 'none' : '';
+    }
+
+    async function loadCounselingEntries() {
+      const ownList = document.getElementById('counselingOwnList');
+      if (!ownList) return;
+      updateCounselingLoginUI();
+      if (!currentNickname) {
+        ownList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인 후 내 고민을 확인할 수 있어요.</p>';
+        return;
+      }
+      ownList.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const data = await apiClient.getCounselingEntries();
+        if (!data.ok) throw new Error(data.error || 'load_failed');
+        renderCounselingOwnList(Array.isArray(data.mine) ? data.mine : []);
+      } catch(e) {
+        ownList.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
+      }
+    }
+
+    function counselingReplyBlock(entry) {
+      const reply = String(entry?.reply || '').trim();
+      if (!reply) return '';
+      const repliedAt = entry?.repliedAt ? formatNoticeDate(entry.repliedAt) : '';
+      return `
+        <div style="margin-top:10px;background:var(--primary-soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px;">
+          <div style="font-size:11px;font-weight:900;color:var(--primary);margin-bottom:5px;">사역자 답변</div>
+          <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(reply)}</div>
+          ${repliedAt ? `<div style="font-size:12px;color:var(--sub);margin-top:6px;">${repliedAt}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderCounselingOwnList(entries) {
+      const list = document.getElementById('counselingOwnList');
+      if (!entries.length) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 남긴 고민이 없어요.</p>';
+        return;
+      }
+      list.innerHTML = entries.map(entry => {
+        const dateStr = formatNoticeDate(entry.createdAt);
+        return `
+          <div class="counseling-item" id="counselingItem_${entry.id}" data-id="${entry.id}" data-content="${escHtml(entry.content)}" style="padding:14px 0;border-bottom:1px solid var(--line);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(entry.content)}</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                  <span style="font-size:12px;color:var(--sub);">${dateStr}</span>
+                </div>
+                ${counselingReplyBlock(entry)}
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;" onclick="startCounselingEdit('${entry.id}')">수정</button>
+                <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;color:var(--danger);" onclick="startCounselingDelete('${entry.id}')">삭제</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function startCounselingEdit(id) {
+      const item = document.getElementById(`counselingItem_${id}`);
+      if (!item) return;
+      const content = item.dataset.content || '';
+      item.innerHTML = `
+        <textarea id="counselingEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:96px;" maxlength="700">${escHtml(content)}</textarea>
+        <div id="counselingEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="loadCounselingEntries()">취소</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="saveCounselingEdit('${id}')">저장</button>
+        </div>`;
+    }
+
+    async function saveCounselingEdit(id) {
+      const textEl = document.getElementById(`counselingEditText_${id}`);
+      const statusEl = document.getElementById(`counselingEditStatus_${id}`);
+      const content = textEl.value.trim();
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      const dotsTimer = animDots(statusEl, '저장 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.updateCounselingEntry(id, content, false);
+        if (!data.ok) throw new Error(data.error || 'save_failed');
+        stopAnimDots(dotsTimer, statusEl, '');
+        loadCounselingEntries();
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '저장에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    function startCounselingDelete(id) {
+      const item = document.getElementById(`counselingItem_${id}`);
+      if (!item || document.getElementById(`counselingDelWrap_${id}`)) return;
+      const delWrap = document.createElement('div');
+      delWrap.id = `counselingDelWrap_${id}`;
+      delWrap.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fee2e2;border-radius:10px;';
+      delWrap.innerHTML = `
+        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">정말 삭제할까요?</div>
+        <div id="counselingDelStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;" onclick="document.getElementById('counselingDelWrap_${id}').remove()">취소</button>
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;color:var(--danger);" onclick="confirmCounselingDelete('${id}')">삭제</button>
+        </div>`;
+      item.appendChild(delWrap);
+    }
+
+    async function confirmCounselingDelete(id) {
+      const statusEl = document.getElementById(`counselingDelStatus_${id}`);
+      const dotsTimer = animDots(statusEl, '삭제 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.deleteCounselingEntry(id);
+        if (!data.ok) throw new Error(data.error || 'delete_failed');
+        stopAnimDots(dotsTimer, statusEl, '');
+        loadCounselingEntries();
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '삭제에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    async function submitCounselingEntry() {
+      if (!currentNickname) return;
+      const input = document.getElementById('counselingInput');
+      const statusEl = document.getElementById('counselingStatus');
+      const btn = document.getElementById('counselingSubmitBtn');
+      const content = input.value.trim();
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      btn.disabled = true;
+      const dotsTimer = animDots(statusEl, '등록 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.createCounselingEntry(content, false);
+        if (!data.ok) throw new Error(data.error || 'create_failed');
+        input.value = '';
+        stopAnimDots(dotsTimer, statusEl, '등록됐어요!');
+        statusEl.style.color = 'var(--success)';
+        loadCounselingEntries();
+        setTimeout(() => { statusEl.textContent = ''; }, 2000);
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '등록에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('counselingSubmitBtn').addEventListener('click', submitCounselingEntry);
+
+    /* ════ 보이는 라디오 ════ */
+    function updateVisibleRadioLoginUI() {
+      const loggedIn = !!currentNickname;
+      const wrap = document.getElementById('visibleRadioComposeWrap');
+      const msg = document.getElementById('visibleRadioLoginMsg');
+      if (wrap) wrap.style.display = loggedIn ? '' : 'none';
+      if (msg) msg.style.display = loggedIn ? 'none' : '';
+      const preview = document.getElementById('visibleRadioAuthorPreview');
+      if (preview && loggedIn) {
+        const parish = (typeof currentParish === 'string' && currentParish) ? currentParish + ' ' : '';
+        preview.textContent = parish + currentNickname;
+      }
+      renderVisibleRadioCategoryOptions(_visibleRadioSelectedCategory);
+    }
+
+    function getVisibleRadioCategoryMeta(key) {
+      return VISIBLE_RADIO_CATEGORY_BY_KEY[key] || VISIBLE_RADIO_CATEGORIES[0];
+    }
+
+    function visibleRadioCategoryChipHtml(categoryKey) {
+      const meta = getVisibleRadioCategoryMeta(categoryKey);
+      return `<span style="font-size:11px;font-weight:900;color:${meta.color};background:${meta.bg};border:1px solid ${meta.color}33;border-radius:999px;padding:2px 8px;">${escHtml(meta.label)}</span>`;
+    }
+
+    function visibleRadioCategoryOptionsHtml(selectedKey) {
+      const current = getVisibleRadioCategoryMeta(selectedKey).key;
+      return VISIBLE_RADIO_CATEGORIES.map(category =>
+        `<option value="${category.key}" ${category.key === current ? 'selected' : ''}>${escHtml(category.label)}</option>`
+      ).join('');
+    }
+
+    function renderVisibleRadioCategoryOptions(selectedKey) {
+      const wrap = document.getElementById('visibleRadioCategoryOptions');
+      if (!wrap) return;
+      _visibleRadioSelectedCategory = getVisibleRadioCategoryMeta(selectedKey).key;
+      wrap.innerHTML = VISIBLE_RADIO_CATEGORIES.map(category => {
+        const active = category.key === _visibleRadioSelectedCategory;
+        return `
+          <button type="button" onclick="selectVisibleRadioCategory('${category.key}')"
+            style="text-align:left;border:1.5px solid ${active ? category.color : 'var(--line)'};background:${active ? category.bg : 'var(--card)'};color:var(--text);border-radius:12px;padding:9px 10px;cursor:pointer;min-height:58px;">
+            <div style="font-size:13px;font-weight:900;color:${category.color};line-height:1.25;">${escHtml(category.label)}</div>
+            <div style="font-size:11px;color:var(--sub);line-height:1.35;margin-top:3px;">${escHtml(category.hint)}</div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectVisibleRadioCategory(key) {
+      _visibleRadioSelectedCategory = getVisibleRadioCategoryMeta(key).key;
+      renderVisibleRadioCategoryOptions(_visibleRadioSelectedCategory);
+    }
+
+    async function loadVisibleRadioStories() {
+      const list = document.getElementById('visibleRadioOwnList');
+      if (!list) return;
+      updateVisibleRadioLoginUI();
+      if (!currentNickname) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인하면 내가 남긴 사연을 확인할 수 있어요.</p>';
+        return;
+      }
+      list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const data = await apiClient.getVisibleRadioStories();
+        if (!data.ok) throw new Error(data.error || 'load_failed');
+        renderVisibleRadioStories(Array.isArray(data.stories) ? data.stories : []);
+      } catch(e) {
+        list.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">서버 연결 오류</p>';
+      }
+    }
+
+    function renderVisibleRadioStories(stories) {
+      const list = document.getElementById('visibleRadioOwnList');
+      if (!stories.length) {
+        list.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">아직 남긴 사연이 없어요.</p>';
+        return;
+      }
+      list.innerHTML = stories.map(story => `
+        <div class="visible-radio-item" id="visibleRadioItem_${story.id}" data-id="${story.id}" data-category-key="${escHtml(story.categoryKey || 'mvp')}" data-target-text="${escHtml(story.targetText || '')}" data-content="${escHtml(story.content)}" data-is-anonymous="${story.isAnonymous ? '1' : '0'}" style="padding:14px 0;border-bottom:1px solid var(--line);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:700;line-height:1.6;white-space:pre-wrap;word-break:break-word;">${escHtml(story.content)}</div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;">
+                ${visibleRadioCategoryChipHtml(story.categoryKey)}
+                ${story.targetText ? `<span style="font-size:11px;font-weight:800;color:#475569;background:#f1f5f9;border-radius:999px;padding:2px 8px;">대상 ${escHtml(story.targetText)}</span>` : ''}
+                ${story.isAnonymous
+                  ? `<span style="font-size:11px;font-weight:800;color:#64748b;background:#f1f5f9;border-radius:999px;padding:2px 8px;">익명 제출</span>`
+                  : `<span style="font-size:11px;font-weight:800;color:#0f766e;background:#ccfbf1;border-radius:999px;padding:2px 8px;">닉네임 공개</span>`}
+                <span style="font-size:12px;color:var(--sub);">${formatNoticeDate(story.createdAt)}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;" onclick="startVisibleRadioEdit('${story.id}')">수정</button>
+              <button class="btn btn-secondary" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;color:var(--danger);" onclick="startVisibleRadioDelete('${story.id}')">삭제</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function startVisibleRadioEdit(id) {
+      const item = document.getElementById(`visibleRadioItem_${id}`);
+      if (!item) return;
+      const content = item.dataset.content || '';
+      const categoryKey = item.dataset.categoryKey || 'mvp';
+      item.innerHTML = `
+        <select id="visibleRadioEditCategory_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;margin-bottom:8px;">
+          ${visibleRadioCategoryOptionsHtml(categoryKey)}
+        </select>
+        <textarea id="visibleRadioEditText_${id}" style="width:100%;padding:10px 12px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:vertical;line-height:1.5;min-height:120px;" maxlength="1000">${escHtml(content)}</textarea>
+        <div id="visibleRadioEditStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:6px;"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary" style="flex:1;" onclick="loadVisibleRadioStories()">취소</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="saveVisibleRadioEdit('${id}')">저장</button>
+        </div>`;
+    }
+
+    async function saveVisibleRadioEdit(id) {
+      const item = document.getElementById(`visibleRadioItem_${id}`);
+      const isAnonymous = item ? item.dataset.isAnonymous === '1' : false;
+      const targetText = item ? (item.dataset.targetText || '') : '';
+      const textEl = document.getElementById(`visibleRadioEditText_${id}`);
+      const categoryEl = document.getElementById(`visibleRadioEditCategory_${id}`);
+      const statusEl = document.getElementById(`visibleRadioEditStatus_${id}`);
+      const content = textEl.value.trim();
+      const categoryKey = categoryEl ? categoryEl.value : 'mvp';
+      if (!content) { statusEl.textContent = '내용을 입력해주세요.'; return; }
+      const dotsTimer = animDots(statusEl, '저장 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.updateVisibleRadioStory(id, categoryKey, targetText, content, isAnonymous);
+        if (!data.ok) throw new Error(data.error || 'save_failed');
+        stopAnimDots(dotsTimer, statusEl, '');
+        loadVisibleRadioStories();
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '저장에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      }
+    }
+
+    function startVisibleRadioDelete(id) {
+      const item = document.getElementById(`visibleRadioItem_${id}`);
+      if (!item || document.getElementById(`visibleRadioDelWrap_${id}`)) return;
+      const delWrap = document.createElement('div');
+      delWrap.id = `visibleRadioDelWrap_${id}`;
+      delWrap.style.cssText = 'margin-top:10px;padding:10px 12px;background:#fee2e2;border-radius:10px;';
+      delWrap.innerHTML = `
+        <div style="font-size:13px;font-weight:800;color:var(--danger);margin-bottom:8px;">정말 삭제할까요?</div>
+        <div id="visibleRadioDelStatus_${id}" style="font-size:13px;font-weight:600;color:var(--danger);min-height:18px;margin-top:4px;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="flex:1;height:36px;font-size:13px;" onclick="document.getElementById('visibleRadioDelWrap_${id}').remove()">취소</button>
+          <button class="btn btn-primary" style="flex:1;height:36px;font-size:13px;background:var(--danger);" onclick="confirmVisibleRadioDelete('${id}')">삭제</button>
+        </div>`;
+      item.appendChild(delWrap);
+    }
+
+    async function confirmVisibleRadioDelete(id) {
+      const statusEl = document.getElementById(`visibleRadioDelStatus_${id}`);
+      statusEl.textContent = '삭제 중...';
+      try {
+        const data = await apiClient.deleteVisibleRadioStory(id);
+        if (!data.ok) throw new Error(data.error || 'delete_failed');
+        loadVisibleRadioStories();
+      } catch(e) {
+        statusEl.textContent = '삭제에 실패했어요.';
+      }
+    }
+
+    async function submitVisibleRadioStory() {
+      if (!currentNickname) return;
+      const input = document.getElementById('visibleRadioInput');
+      const statusEl = document.getElementById('visibleRadioStatus');
+      const btn = document.getElementById('visibleRadioSubmitBtn');
+      const anonCheck = document.getElementById('visibleRadioAnonCheck');
+      const isAnonymous = !!(anonCheck && anonCheck.checked);
+      const content = input.value.trim();
+      if (!content) { statusEl.textContent = '사연을 입력해주세요.'; return; }
+      btn.disabled = true;
+      const dotsTimer = animDots(statusEl, isAnonymous ? '익명 등록 중' : '등록 중');
+      statusEl.style.color = 'var(--sub)';
+      try {
+        const data = await apiClient.createVisibleRadioStory(_visibleRadioSelectedCategory, '', content, isAnonymous);
+        if (!data.ok) throw new Error(data.error || 'submit_failed');
+        input.value = '';
+        if (anonCheck) anonCheck.checked = false;
+        stopAnimDots(dotsTimer, statusEl, isAnonymous ? '익명으로 등록됐어요!' : '등록됐어요!');
+        statusEl.style.color = 'var(--success)';
+        loadVisibleRadioStories();
+        setTimeout(() => { statusEl.textContent = ''; }, 2000);
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, '등록에 실패했어요.');
+        statusEl.style.color = 'var(--danger)';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('visibleRadioSubmitBtn').addEventListener('click', submitVisibleRadioStory);
+    document.getElementById('refreshVisibleRadioBtn').addEventListener('click', loadVisibleRadioStories);
 
     /* ════ B.B.B. ════ */
     let _bbbData = null;

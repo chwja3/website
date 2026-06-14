@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260531a" />
+  <link rel="stylesheet" href="app.css?v=20260614c" />
 </head>
 <body>
 
@@ -363,6 +363,9 @@
         <li class="drawer-item" data-section="qt"><span class="drawer-label">Q.T. 말씀 묵상</span></li>
         <li class="drawer-item" data-section="secret"><span class="drawer-label">B.B.B. 미션</span></li>
         <li class="drawer-item" data-section="pilgrim"><span class="drawer-label">천로역정</span></li>
+        <li class="drawer-item" data-section="investigation" style="display:none;"><span class="drawer-label">광범위수사</span></li>
+        <li class="drawer-item" data-section="counseling" style="display:none;"><span class="drawer-label">목사님께 무물</span></li>
+        <li class="drawer-item" data-section="visibleRadio" style="display:none;"><span class="drawer-label">별빛 우편함</span></li>
         <li class="drawer-item" data-section="chat" style="display:none;"><span class="drawer-label">채팅방</span></li>
       </ul>
       <div class="drawer-utility">
@@ -654,6 +657,28 @@
               <div id="qtMissing" class="qt-empty hidden">
                 <strong>오늘 Q.T.가 아직 준비되지 않았어요.</strong>
                 <span>날짜별 PNG 파일을 확인해주세요.</span>
+              </div>
+            </div>
+            <div id="qtResponsePanel" class="qt-response-panel hidden">
+              <label class="qt-field qt-answer-field">
+                <span>답변 1</span>
+                <textarea id="qtAnswer1Input" rows="2" maxlength="500" placeholder="첫 번째 질문에 대한 답변을 적어주세요."></textarea>
+              </label>
+              <label class="qt-field qt-answer-field">
+                <span>답변 2</span>
+                <textarea id="qtAnswer2Input" rows="2" maxlength="500" placeholder="두 번째 질문에 대한 답변을 적어주세요."></textarea>
+              </label>
+              <label class="qt-field qt-answer-field">
+                <span>답변 3</span>
+                <textarea id="qtAnswer3Input" rows="2" maxlength="500" placeholder="세 번째 질문에 대한 답변을 적어주세요."></textarea>
+              </label>
+              <label class="qt-field qt-prayer-field">
+                <span>기도제목</span>
+                <textarea id="qtPrayerInput" rows="4" maxlength="800" placeholder="함께 기도하고 싶은 제목을 적어주세요."></textarea>
+              </label>
+              <div class="qt-actions">
+                <div id="qtSubmitStatus" class="qt-submit-status"></div>
+                <button class="btn btn-primary qt-submit-btn" id="qtSubmitBtn" type="button">저장</button>
               </div>
             </div>
           </section>
@@ -1140,6 +1165,125 @@
         </div>
       </div>
 
+      <!-- 광범위수사 -->
+      <div id="sectionInvestigation" class="section hidden">
+        <div class="wrap">
+          <section class="card investigation-card" style="margin-top:16px;overflow:hidden;padding:0;">
+            <div class="investigation-header">
+              <p class="investigation-eyebrow">CRIME SCENE</p>
+              <h2 class="card-title" style="margin:0;">광범위수사</h2>
+              <p class="card-sub" style="margin:8px 0 0;">프로그램팀 미션 안내 포스터를 확인해주세요.</p>
+            </div>
+            <div class="investigation-tabs" role="tablist" aria-label="광범위수사 자료">
+              <button class="investigation-tab active" type="button" data-map-key="poster" onclick="switchInvestigationMap('poster')">포스터</button>
+              <button class="investigation-tab" type="button" data-map-key="overview" onclick="switchInvestigationMap('overview')">전체</button>
+              <button class="investigation-tab" type="button" data-map-key="galilee" onclick="switchInvestigationMap('galilee')">갈릴리동</button>
+              <button class="investigation-tab" type="button" data-map-key="jerusalem" onclick="switchInvestigationMap('jerusalem')">예루살렘동</button>
+              <button class="investigation-tab" type="button" data-map-key="booths" onclick="switchInvestigationMap('booths')">부스</button>
+            </div>
+            <div class="investigation-panels">
+              <div class="investigation-panel" data-map-panel="poster">
+                <div class="investigation-map-frame is-dark">
+                  <img class="investigation-map-image" src="images/Police.webp" alt="광범위수사 포스터" loading="eager" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>포스터를 불러오지 못했어요.</strong><span>images/Police.webp 파일을 확인해주세요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="overview">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/overview.webp" alt="전체 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>전체 안내도 준비 중</strong><span>images/maps/overview.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="galilee">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/galilee.webp" alt="갈릴리동 층별 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>갈릴리동 안내도 준비 중</strong><span>images/maps/galilee.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="jerusalem">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/jerusalem.webp" alt="예루살렘동 층별 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>예루살렘동 안내도 준비 중</strong><span>images/maps/jerusalem.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+              <div class="investigation-panel hidden" data-map-panel="booths">
+                <div class="investigation-map-frame">
+                  <img class="investigation-map-image" src="images/maps/booths.webp" alt="카리타스 앞 부스 위치" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>부스 위치 안내도 준비 중</strong><span>images/maps/booths.webp 파일을 넣으면 여기에 표시돼요.</span></div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 익명 고민상담 -->
+      <div id="sectionCounseling" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <div style="margin-bottom:8px;">
+              <h2 class="card-title" style="margin:0;">목사님께 무물</h2>
+              <p class="card-sub" style="margin:6px 0 0;line-height:1.6;">모든 고민은 익명으로 등록되며, 진행자와 목사님만 내용을 확인할 수 있어요. 혼자 결론내기 어려운 고민들이 있다면 익명으로 고민을 제출해 주세요.</p>
+            </div>
+            <div id="counselingComposeWrap" style="margin-bottom:16px;">
+              <textarea id="counselingInput" placeholder="고민을 적어 보내주세요. (최대 700자)" maxlength="700" rows="5"
+                style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;display:block;"></textarea>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;">
+                <div id="counselingStatus" style="font-size:13px;font-weight:600;color:var(--danger);flex:1;min-width:120px;"></div>
+                <button class="btn btn-primary" id="counselingSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 12px;border-radius:8px;">등록</button>
+              </div>
+            </div>
+            <p id="counselingLoginMsg" style="font-size:14px;color:var(--sub);margin:0 0 14px;display:none;">로그인 후 고민을 남길 수 있어요.</p>
+          </section>
+
+          <section class="card" style="margin-top:12px;">
+            <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">내 고민</h3>
+            <div id="counselingOwnList"><p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- 보이는 라디오 -->
+      <div id="sectionVisibleRadio" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+              <div>
+                <p style="font-size:12px;font-weight:800;color:var(--primary);letter-spacing:.08em;margin:0 0 6px;">보이는 라디오</p>
+                <h2 class="card-title" style="margin:0;">별빛 우편함✨</h2>
+                <p class="card-sub" style="margin:6px 0 0;">아래 카테고리를 선택해 자유롭게 사연을 보내주세요.</p>
+              </div>
+              <button class="btn btn-secondary" id="refreshVisibleRadioBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">새로고침</button>
+            </div>
+            <div id="visibleRadioComposeWrap" style="margin-bottom:16px;">
+              <div style="margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:900;color:var(--text);margin-bottom:7px;">카테고리</div>
+                <div id="visibleRadioCategoryOptions" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;"></div>
+              </div>
+              <textarea id="visibleRadioInput" placeholder="사연을 적어 보내주세요. 20~500자 권장. (최대 1000자)" maxlength="1000" rows="6"
+                style="width:100%;padding:12px 14px;font-size:14px;border:1.5px solid var(--line);border-radius:12px;background:var(--primary-soft);color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;display:block;"></textarea>
+              <p id="visibleRadioAuthorNotice" style="font-size:12px;color:var(--sub);margin:10px 0 0;line-height:1.5;">등록 시 <strong id="visibleRadioAuthorPreview" style="color:var(--text);">닉네임</strong>이 사회자에게 표시됩니다.</p>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap;">
+                <div id="visibleRadioStatus" style="font-size:13px;font-weight:600;color:var(--danger);flex:1;min-width:120px;"></div>
+                <div style="display:flex;gap:12px;align-items:center;flex-shrink:0;">
+                  <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text);cursor:pointer;user-select:none;">
+                    <input type="checkbox" id="visibleRadioAnonCheck" style="width:16px;height:16px;cursor:pointer;" />
+                    익명으로 제출
+                  </label>
+                  <button class="btn btn-primary" id="visibleRadioSubmitBtn" style="flex:none;height:auto;font-size:12px;padding:4px 12px;border-radius:8px;">등록</button>
+                </div>
+              </div>
+            </div>
+            <p id="visibleRadioLoginMsg" style="font-size:14px;color:var(--sub);margin:0 0 14px;display:none;">로그인 후 사연을 남길 수 있어요.</p>
+          </section>
+
+          <section class="card" style="margin-top:12px;">
+            <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">내 사연</h3>
+            <div id="visibleRadioOwnList"><p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p></div>
+          </section>
+        </div>
+      </div>
+
       <!-- Coming Soon 안내 -->
       <div id="sectionComingSoon" class="section hidden">
         <div class="wrap">
@@ -1161,7 +1305,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260612a" defer></script>
+  <script src="app.js?v=20260614c" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

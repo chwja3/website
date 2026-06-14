@@ -253,6 +253,8 @@
       <button class="drawer-item" data-panel="raffle">추첨권 번호</button>
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
+      <button class="drawer-item" data-panel="counseling">목사님께 무물</button>
+      <button class="drawer-item" data-panel="visibleradio">별빛 우편함</button>
       <button class="drawer-item" data-panel="users">유저 비밀번호 초기화</button>
       <div class="drawer-section-divider"></div>
       <div class="drawer-section-label">개발자</div>
@@ -534,8 +536,8 @@
         <div class="card" id="manualRewardCard" style="display:none;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
             <div>
-              <h2 class="card-title" style="margin:0;">누락 보상 지급</h2>
-              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">카드 뽑기권은 조건 미충족이어도 수동 지급할 수 있고, 추첨권은 조건 충족 시에만 지급합니다.</p>
+              <h2 class="card-title" style="margin:0;">뽑기권/추첨권 현황</h2>
+              <p id="manualRewardSubtitle" style="font-size:12px;color:var(--sub);margin:4px 0 0;">유저의 뽑기권과 추첨권 현황을 확인합니다. 카드 뽑기권은 조건 미충족이어도 수동 지급할 수 있고, 추첨권은 추가하거나 회수할 수 있습니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="closeManualRewardBtn">닫기</button>
           </div>
@@ -618,6 +620,52 @@
         <div class="card">
           <h2 class="card-title" style="margin-bottom:14px;">답변 완료 문의</h2>
           <div id="inquiryDoneAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- 익명 고민상담 -->
+      <div id="tab-counseling" class="tab-panel">
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">목사님께 무물</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">작성자 정보는 표시하지 않습니다. 고민 내용에만 익명으로 답변합니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshCounselingAdminBtn">새로고침</button>
+          </div>
+          <h3 style="font-size:13px;font-weight:900;margin:0 0 8px;color:var(--danger);">미답변 고민</h3>
+          <div id="counselingAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+        <div class="card">
+          <h2 class="card-title" style="margin-bottom:14px;">답변 완료 고민</h2>
+          <div id="counselingDoneAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
+        </div>
+      </div>
+
+      <!-- 보이는 라디오 -->
+      <div id="tab-visibleradio" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">보이는 라디오</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">작성자 정보 없이 익명 사연 내용만 모아봅니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshVisibleRadioAdminBtn">새로고침</button>
+          </div>
+          <div class="stats-grid" style="margin-bottom:12px;">
+            <div class="stat-card"><div class="stat-label">접수 사연</div><div class="stat-value" id="visibleRadioStoryCount">-</div></div>
+          </div>
+          <div id="visibleRadioAdminCategoryFilters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:8px;margin-bottom:12px;">
+            <input type="search" id="visibleRadioAdminSearch" class="input" placeholder="사연, 대상, 카테고리 검색" style="margin-bottom:0;" />
+            <select id="visibleRadioAdminStatusFilter" class="input" style="margin-bottom:0;">
+              <option value="">전체 상태</option>
+              <option value="candidate">후보</option>
+              <option value="hold">보류</option>
+              <option value="excluded">제외</option>
+            </select>
+          </div>
+          <div id="visibleRadioAdminList"><p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p></div>
         </div>
       </div>
 
@@ -753,8 +801,8 @@
               <option value="2">2 · 라라</option>
               <option value="3">3 · 달래</option>
               <option value="4">4 · 오참</option>
-              <option value="5">5 · 더무</option>
-              <option value="6">6 · 네해</option>
+              <option value="5">5 · 네헤</option>
+              <option value="6">6 · 더무</option>
               <option value="7">7 · 고</option>
               <option value="8">8 · 엔</option>
               <option value="9">9 · 버터</option>
@@ -975,6 +1023,22 @@
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const PARISH_SORT_ORDER = ['1청', '2청', '3청', '4청', 'VIP', '교회학교', '목양교구'];
+    const VISIBLE_RADIO_CATEGORIES_ADMIN = [
+      { key: 'mvp', label: '우리 조 MVP', color: '#ef4444', bg: '#fef2f2' },
+      { key: 'buddy', label: '버디에게', color: '#8b5cf6', bg: '#f5f3ff' },
+      { key: 'moment', label: '감동의 순간', color: '#0ea5e9', bg: '#eff6ff' },
+      { key: 'sorry', label: '미안했어요', color: '#f97316', bg: '#fff7ed' },
+      { key: 'cheer', label: '응원 한마디', color: '#16a34a', bg: '#f0fdf4' },
+      { key: 'funny_praise', label: '익명 폭로(?) 칭찬', color: '#db2777', bg: '#fdf2f8' },
+    ];
+    const VISIBLE_RADIO_CATEGORY_ADMIN_BY_KEY = Object.fromEntries(
+      VISIBLE_RADIO_CATEGORIES_ADMIN.map(category => [category.key, category])
+    );
+    const VISIBLE_RADIO_STATUS_ADMIN = {
+      candidate: { label: '후보', color: '#0ea5e9', bg: '#eff6ff' },
+      hold: { label: '보류', color: '#f97316', bg: '#fff7ed' },
+      excluded: { label: '제외', color: '#64748b', bg: '#f1f5f9' },
+    };
     const TAB_SETTING_ID_MAP = {
       holdpray: 'togglePrayer',
       secret: 'toggleSecret',
@@ -1000,6 +1064,9 @@
     let _hpPrayerMatchingFilter = '';
     let _bbbOpsRows = [];
     let _bbbOpsFilter = '';
+    let _visibleRadioAdminCategory = '';
+    let _visibleRadioAdminSearchTimer = null;
+    let _visibleRadioAdminAutoTimer = null;
 
     function parishSortIndex(parish) {
       const idx = PARISH_SORT_ORDER.indexOf(String(parish || ''));
@@ -1218,6 +1285,14 @@
       if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
       if (panelId === 'inquiry') loadAdminInquiries();
+      if (panelId === 'counseling') loadAdminCounseling();
+      if (panelId === 'visibleradio') {
+        renderVisibleRadioAdminFilters();
+        loadAdminVisibleRadioStories();
+        startVisibleRadioAdminAutoRefresh();
+      } else {
+        stopVisibleRadioAdminAutoRefresh();
+      }
       if (panelId === 'bbb')     loadAdminBBB();
       if (panelId === 'eventlog') loadEventLogs();
     }
@@ -1581,7 +1656,7 @@
           </td>
           <td>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button class="btn btn-ghost btn-sm user-reward-btn" data-nickname="${esc(u.nickname)}">누락 보상</button>
+              <button class="btn btn-ghost btn-sm user-reward-btn" data-nickname="${esc(u.nickname)}">뽑기권/추첨권 현황</button>
               <button class="btn btn-danger btn-sm user-delete-btn" data-nickname="${esc(u.nickname)}">삭제</button>
             </div>
           </td>
@@ -1637,27 +1712,53 @@
       const user = data.user || {};
       const inventory = data.inventory || {};
       const rewards = Array.isArray(data.rewards) ? data.rewards : [];
+      const activeRaffleTickets = Array.isArray(data.activeRaffleTickets) ? data.activeRaffleTickets : [];
       const availableCount = rewards.filter(r => r.available).length;
-      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 보상 현황입니다. 카드 뽑기권은 조건 미충족이어도 지급 가능하며, 현재 지급 가능 ${availableCount}개입니다.`;
+      const raffleExcluded = user.raffleExcluded === true;
+      subtitleEl.textContent = `${user.name || '-'} · ${user.nickname || '-'} · ${user.parish || '-'} 현황입니다. 카드 뽑기권은 조건 미충족이어도 지급 가능하며${rewards.length ? `, 현재 지급 가능 ${availableCount}개입니다.` : '.'}`;
       summaryEl.innerHTML = `
         <div class="stat-card" style="min-height:auto;padding:12px;">
           <div class="stat-label">카드 뽑기권</div>
           <div class="stat-value" style="font-size:22px;">${Number(inventory.normalPackRemaining) || 0}</div>
         </div>
         <div class="stat-card" style="min-height:auto;padding:12px;">
-          <div class="stat-label">추첨권</div>
-          <div class="stat-value" style="font-size:22px;">${Number(data.raffleTickets) || 0}</div>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+            <div>
+              <div class="stat-label">추첨권</div>
+              <div class="stat-value" style="font-size:22px;">${Number(data.raffleTickets) || 0}</div>
+            </div>
+            <button class="btn btn-primary btn-sm manual-raffle-add-btn" style="width:auto;white-space:nowrap;margin-top:0;" ${raffleExcluded ? 'disabled' : ''}>
+              ${raffleExcluded ? '발급 제외' : '추첨권 +1'}
+            </button>
+          </div>
         </div>
         <div class="stat-card" style="min-height:auto;padding:12px;">
           <div class="stat-label">보유 카드 종수</div>
           <div class="stat-value" style="font-size:22px;">${Number(data.uniqueCards) || 0}</div>
         </div>
       `;
-      if (!rewards.length) {
-        listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">표시할 보상 항목이 없어요.</p>';
-        return;
-      }
-      listEl.innerHTML = rewards.map(reward => {
+      summaryEl.querySelector('.manual-raffle-add-btn')?.addEventListener('click', btn => {
+        issueDirectRaffleTicket(user.nickname, btn.currentTarget);
+      });
+      const raffleListHtml = `
+        <div style="border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
+            <strong style="font-size:14px;">현재 지급된 추첨권</strong>
+            <span class="badge" style="background:#fef3c7;color:#92400e;">${activeRaffleTickets.length}장</span>
+          </div>
+          ${activeRaffleTickets.length ? activeRaffleTickets.map(ticket => `
+            <div style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;border-top:1px solid var(--line);padding:9px 0;">
+              <strong style="font-variant-numeric:tabular-nums;">#${esc(ticket.ticketNo || '')}</strong>
+              <div style="min-width:0;">
+                <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(ticket.conditionLabel || ticket.conditionKey || '추첨권')}</div>
+                <div style="font-size:12px;color:var(--sub);">${ticket.issuedAt ? formatDateTime(ticket.issuedAt) : '-'}</div>
+              </div>
+              <button class="btn btn-danger btn-sm manual-raffle-revoke-btn" style="width:auto;margin-top:0;white-space:nowrap;" data-ticket-no="${esc(ticket.ticketNo || '')}">회수</button>
+            </div>
+          `).join('') : '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px 0 4px;">현재 지급된 추첨권이 없어요.</p>'}
+        </div>
+      `;
+      const rewardListHtml = rewards.length ? rewards.map(reward => {
         const available = reward.available === true;
         const reason = reward.disabledReason || '';
         const manualOverrideHint = reward.type === 'card_pack' && reward.conditionMet === false && available
@@ -1678,9 +1779,19 @@
             </button>
           </div>
         `;
-      }).join('');
+      }).join('') : '';
+      listEl.innerHTML = `
+        ${raffleListHtml}
+        ${rewards.length ? `<div style="display:grid;gap:8px;">
+          <strong style="font-size:14px;margin-top:4px;">카드 뽑기권 누락 보상</strong>
+          ${rewardListHtml}
+        </div>` : ''}
+      `;
       listEl.querySelectorAll('.manual-reward-issue-btn').forEach(btn => {
         btn.addEventListener('click', () => issueManualReward(btn.dataset.rewardKey, btn));
+      });
+      listEl.querySelectorAll('.manual-raffle-revoke-btn').forEach(btn => {
+        btn.addEventListener('click', () => revokeRaffleTicket(btn.dataset.ticketNo, btn));
       });
     }
 
@@ -1698,7 +1809,7 @@
       if (summaryEl) summaryEl.innerHTML = '';
       if (listEl) listEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;margin:0;padding:12px;">불러오는 중...</p>';
       try {
-        const res = await callSupabaseAdminRpc('admin_get_user_reward_opportunities', {
+        const res = await callSupabaseAdminRpc('admin_get_user_ticket_status', {
           p_login_id: nickname,
         });
         if (!res.ok) throw new Error(res.error || 'load_failed');
@@ -1715,7 +1826,7 @@
 
     async function issueManualReward(rewardKey, btn) {
       if (!_selectedManualRewardLoginId || !rewardKey) return;
-      if (!confirm(`${_selectedManualRewardLoginId}님에게 이 누락 보상을 지급할까요?`)) return;
+      if (!confirm(`${_selectedManualRewardLoginId}님에게 이 보상을 지급할까요?`)) return;
       const statusEl = document.getElementById('manualRewardStatus');
       btn.disabled = true;
       if (statusEl) {
@@ -1742,6 +1853,67 @@
           adminSetStatusError(statusEl, e, '보상 지급 실패');
           statusEl.className = 'status';
         }
+      }
+    }
+
+    async function issueDirectRaffleTicket(nickname, btn) {
+      if (!nickname) return;
+      if (!confirm(`${nickname}님에게 추첨권 1장을 추가할까요?`)) return;
+      const statusEl = document.getElementById('manualRewardStatus') || document.getElementById('attendanceStatus');
+      if (btn) btn.disabled = true;
+      if (statusEl) {
+        statusEl.textContent = '추첨권 지급 중...';
+        statusEl.className = 'status';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_grant_raffle_ticket', {
+          p_login_id: nickname,
+          p_reason: '앱 가입자 탭 수동 지급',
+        });
+        if (!res.ok) throw new Error(res.error || 'grant_raffle_ticket_failed');
+        await loadRaffleAttendance();
+        if (_selectedManualRewardLoginId === nickname) {
+          await loadManualRewardOpportunities(nickname);
+        }
+        if (statusEl) {
+          const ticketNo = res.ticketNo ? ` #${res.ticketNo}` : '';
+          statusEl.textContent = `${nickname}님에게 추첨권${ticketNo} 1장을 지급했어요. 현재 추첨권 ${Number(res.activeCount) || 0}장.`;
+          statusEl.className = 'status ok';
+        }
+      } catch(e) {
+        if (statusEl) adminSetStatusError(statusEl, e, '추첨권 지급 실패');
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function revokeRaffleTicket(ticketNo, btn) {
+      if (!_selectedManualRewardLoginId || !ticketNo) return;
+      if (!confirm(`${_selectedManualRewardLoginId}님의 #${ticketNo} 추첨권을 회수할까요?`)) return;
+      const statusEl = document.getElementById('manualRewardStatus');
+      if (btn) btn.disabled = true;
+      if (statusEl) {
+        statusEl.textContent = '추첨권 회수 중...';
+        statusEl.className = 'status';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_revoke_raffle_ticket', {
+          p_login_id: _selectedManualRewardLoginId,
+          p_ticket_no: ticketNo,
+          p_reason: '앱 가입자 탭 수동 회수',
+        });
+        if (!res.ok) throw new Error(res.error || 'revoke_raffle_ticket_failed');
+        await Promise.all([
+          loadManualRewardOpportunities(_selectedManualRewardLoginId),
+          loadRaffleAttendance(),
+        ]);
+        if (statusEl) {
+          statusEl.textContent = `#${ticketNo} 추첨권을 회수했어요. 현재 추첨권 ${Number(res.activeCount) || 0}장.`;
+          statusEl.className = 'status ok';
+        }
+      } catch(e) {
+        if (btn) btn.disabled = false;
+        if (statusEl) adminSetStatusError(statusEl, e, '추첨권 회수 실패');
       }
     }
 
@@ -2031,8 +2203,8 @@
       {id:2,name:'라라',virtue:'희락',emoji:'☀️',g1:'#f7971e',g2:'#c0850a',img:'images/앤카드희락최최종.webp'},
       {id:3,name:'달래',virtue:'화평',emoji:'🕊️',g1:'#185a9d',g2:'#43cea2',img:'images/앤카드화평최최종.webp'},
       {id:4,name:'오참',virtue:'오래참음',emoji:'⏳',g1:'#8b6914',g2:'#c8a96e',img:'images/앤카드오래참음최최종.webp'},
-      {id:5,name:'더무',virtue:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788',img:'images/앤카드자비최최종.webp'},
-      {id:6,name:'네해',virtue:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d',img:'images/앤카드양선최최종.webp'},
+      {id:5,name:'네헤',virtue:'자비',emoji:'🤲',g1:'#2d6a4f',g2:'#52b788',img:'images/앤카드자비최최종.webp'},
+      {id:6,name:'더무',virtue:'양선',emoji:'🌿',g1:'#11998e',g2:'#38ef7d',img:'images/앤카드양선최최종.webp'},
       {id:7,name:'고',virtue:'충성',emoji:'⭐',g1:'#b5451b',g2:'#e8a87c',img:'images/앤카드충성최최종.webp'},
       {id:8,name:'엔',virtue:'온유',emoji:'🌸',g1:'#7b4fa6',g2:'#c084fc',img:'images/앤카드온유최최종.webp'},
       {id:9,name:'버터',virtue:'절제',emoji:'🛡️',g1:'#1a3a5c',g2:'#2e86c1',img:'images/앤카드절제최최종.webp'},
@@ -4440,6 +4612,298 @@
     }
 
     document.getElementById('refreshInquiryAdminBtn').addEventListener('click', loadAdminInquiries);
+
+    let _counselingAdminIsPastor = false;
+
+    async function loadAdminCounseling() {
+      const listEl = document.getElementById('counselingAdminList');
+      const doneListEl = document.getElementById('counselingDoneAdminList');
+      if (!listEl || !doneListEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      doneListEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_counseling_entries');
+        if (!res.ok) throw new Error(res.error || 'get_counseling_failed');
+        _counselingAdminIsPastor = !!(res.currentAdmin && res.currentAdmin.isPastor);
+        renderAdminCounselingEntries(Array.isArray(res.entries) ? res.entries : []);
+      } catch(e) {
+        listEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
+        doneListEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
+      }
+    }
+
+    function renderAdminCounselingEntries(entries) {
+      const listEl = document.getElementById('counselingAdminList');
+      const doneListEl = document.getElementById('counselingDoneAdminList');
+      const waiting = entries.filter(entry => !String(entry.reply || '').trim());
+      const done = entries.filter(entry => String(entry.reply || '').trim());
+      renderAdminCounselingList(listEl, waiting, '미답변 고민이 없어요.');
+      renderAdminCounselingList(doneListEl, done, '답변 완료된 고민이 없어요.');
+    }
+
+    function renderAdminCounselingList(listEl, entries, emptyText) {
+      if (!entries.length) {
+        listEl.innerHTML = `<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">${emptyText}</p>`;
+        return;
+      }
+      const isPastor = _counselingAdminIsPastor;
+      listEl.innerHTML = entries.map(entry => {
+        const id = String(entry.id || '');
+        const content = String(entry.content || '');
+        const reply = String(entry.reply || '');
+        const answered = !!reply.trim();
+        const replyBlock = isPastor
+          ? `
+              <div style="background:var(--primary-soft);border-radius:12px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:8px;">사역자 답변</div>
+                <textarea id="counselingReplyInput_${esc(id)}" class="input" rows="4" maxlength="1200" data-counseling-reply-input="1" data-id="${esc(id)}"
+                  placeholder="${answered ? '답변을 수정하세요.' : '익명을 유지한 채 답변을 작성하세요.'}"
+                  style="width:100%;resize:vertical;font-family:inherit;line-height:1.6;margin-bottom:8px;font-size:14px;background:var(--card);"
+                >${esc(reply)}</textarea>
+                ${answered && entry.repliedAt ? `<div style="font-size:12px;color:var(--sub);margin:-2px 0 8px;">마지막 답변: ${formatDate(entry.repliedAt)}</div>` : ''}
+                <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;">
+                  ${answered ? `<button type="button" class="btn btn-ghost btn-sm" data-counseling-clear="1" data-id="${esc(id)}">답변 삭제</button>` : ''}
+                  <button type="button" class="btn btn-primary btn-sm" style="width:auto;" data-counseling-save="1" data-id="${esc(id)}">${answered ? '수정' : '저장'}</button>
+                </div>
+                <div id="counselingReplyStatus_${esc(id)}" class="status" style="margin-top:6px;text-align:right;"></div>
+              </div>
+            `
+          : (answered
+            ? `<div style="background:var(--primary-soft);border-radius:12px;padding:12px;">
+                <div style="font-size:11px;font-weight:700;color:var(--sub);margin-bottom:6px;">사역자 답변</div>
+                <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(reply)}</div>
+                ${entry.repliedAt ? `<div style="font-size:12px;color:var(--sub);margin-top:6px;">${formatDate(entry.repliedAt)}</div>` : ''}
+              </div>`
+            : `<p style="font-size:13px;color:var(--sub);margin:0;padding:8px 0;">답변 작성은 사역자 계정만 가능해요.</p>`);
+        return `
+          <details id="counselingAdmin_${esc(id)}" style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
+              <div style="min-width:0;">
+                <div style="font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:560px;">${esc(content)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">익명 · ${formatDate(entry.createdAt)}</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+                ${answered ? '<span style="font-size:11px;font-weight:700;color:var(--success);background:#dcfce7;border-radius:999px;padding:3px 9px;white-space:nowrap;">답변 완료</span>' : '<span style="font-size:11px;font-weight:700;color:var(--danger);background:#fee2e2;border-radius:999px;padding:3px 9px;white-space:nowrap;">미답변</span>'}
+              </div>
+            </summary>
+            <div style="padding:0 14px 14px;">
+              <div style="font-size:14px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px;">${esc(content)}</div>
+              ${replyBlock}
+            </div>
+          </details>
+        `;
+      }).join('');
+    }
+
+    async function submitCounselingReply(id) {
+      const input = document.getElementById(`counselingReplyInput_${id}`);
+      const statusEl = document.getElementById(`counselingReplyStatus_${id}`);
+      const reply = input ? input.value.trim() : '';
+      if (!reply) {
+        if (statusEl) {
+          statusEl.textContent = '답변 내용을 입력해주세요.';
+          statusEl.className = 'status error';
+        }
+        return;
+      }
+      if (statusEl) {
+        statusEl.textContent = '저장 중...';
+        statusEl.className = 'status';
+      }
+      try {
+        const res = await callSupabaseAdminRpc('admin_reply_counseling_entry', { p_id: id, p_reply: reply });
+        if (!res.ok) throw new Error(res.error || 'reply_counseling_failed');
+        if (statusEl) {
+          statusEl.className = 'status ok';
+          statusEl.textContent = '저장됐어요!';
+        }
+        setTimeout(loadAdminCounseling, 300);
+      } catch(e) {
+        if (statusEl) adminSetStatusError(statusEl, e);
+      }
+    }
+
+    async function clearCounselingReply(id) {
+      if (!confirm('답변을 삭제할까요?')) return;
+      try {
+        const res = await callSupabaseAdminRpc('admin_reply_counseling_entry', { p_id: id, p_reply: '' });
+        if (res.ok) loadAdminCounseling();
+        else alert('답변 삭제 실패: ' + (res.error || ''));
+      } catch(e) {
+        adminAlertError(e);
+      }
+    }
+
+    function handleCounselingAdminClick(e) {
+      const saveBtn = e.target.closest('[data-counseling-save]');
+      if (saveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        submitCounselingReply(saveBtn.dataset.id || '');
+        return;
+      }
+
+      const clearBtn = e.target.closest('[data-counseling-clear]');
+      if (clearBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearCounselingReply(clearBtn.dataset.id || '');
+      }
+    }
+
+    function handleCounselingAdminKeydown(e) {
+      const input = e.target.closest('[data-counseling-reply-input]');
+      if (!input) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        submitCounselingReply(input.dataset.id || '');
+      }
+    }
+
+    document.getElementById('refreshCounselingAdminBtn').addEventListener('click', loadAdminCounseling);
+    document.getElementById('counselingAdminList').addEventListener('click', handleCounselingAdminClick);
+    document.getElementById('counselingDoneAdminList').addEventListener('click', handleCounselingAdminClick);
+    document.getElementById('counselingAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
+    document.getElementById('counselingDoneAdminList').addEventListener('keydown', handleCounselingAdminKeydown);
+
+    function getVisibleRadioAdminCategoryMeta(key) {
+      return VISIBLE_RADIO_CATEGORY_ADMIN_BY_KEY[key] || VISIBLE_RADIO_CATEGORIES_ADMIN[0];
+    }
+
+    function getVisibleRadioAdminStatusMeta(status) {
+      return VISIBLE_RADIO_STATUS_ADMIN[status] || VISIBLE_RADIO_STATUS_ADMIN.candidate;
+    }
+
+    function renderVisibleRadioAdminFilters() {
+      const wrap = document.getElementById('visibleRadioAdminCategoryFilters');
+      if (!wrap) return;
+      const buttons = [
+        { key: '', label: '전체', color: '#475569', bg: '#f8fafc' },
+        ...VISIBLE_RADIO_CATEGORIES_ADMIN,
+      ];
+      wrap.innerHTML = buttons.map(category => {
+        const active = category.key === _visibleRadioAdminCategory;
+        return `<button type="button" class="btn btn-ghost btn-sm"
+          onclick="setVisibleRadioAdminCategory('${category.key}')"
+          style="border-color:${active ? category.color : 'var(--line)'};background:${active ? category.bg : 'var(--card)'};color:${active ? category.color : 'var(--text)'};">
+          ${esc(category.label)}
+        </button>`;
+      }).join('');
+    }
+
+    function setVisibleRadioAdminCategory(key) {
+      _visibleRadioAdminCategory = key || '';
+      renderVisibleRadioAdminFilters();
+      loadAdminVisibleRadioStories();
+    }
+
+    function scheduleVisibleRadioAdminReload() {
+      clearTimeout(_visibleRadioAdminSearchTimer);
+      _visibleRadioAdminSearchTimer = setTimeout(() => loadAdminVisibleRadioStories(), 250);
+    }
+
+    function startVisibleRadioAdminAutoRefresh() {
+      stopVisibleRadioAdminAutoRefresh();
+      _visibleRadioAdminAutoTimer = setInterval(() => {
+        if (document.getElementById('tab-visibleradio')?.classList.contains('active')) {
+          loadAdminVisibleRadioStories({ silent: true });
+        }
+      }, 10000);
+    }
+
+    function stopVisibleRadioAdminAutoRefresh() {
+      if (_visibleRadioAdminAutoTimer) clearInterval(_visibleRadioAdminAutoTimer);
+      _visibleRadioAdminAutoTimer = null;
+    }
+
+    async function loadAdminVisibleRadioStories(options) {
+      const opts = options || {};
+      const listEl = document.getElementById('visibleRadioAdminList');
+      const countEl = document.getElementById('visibleRadioStoryCount');
+      const searchEl = document.getElementById('visibleRadioAdminSearch');
+      const statusEl = document.getElementById('visibleRadioAdminStatusFilter');
+      if (!listEl) return;
+      if (!opts.silent) listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (countEl && !opts.silent) countEl.textContent = '-';
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_visible_radio_stories', {
+          p_category_key: _visibleRadioAdminCategory || null,
+          p_query: searchEl ? searchEl.value.trim() : '',
+          p_status: statusEl ? statusEl.value : '',
+        });
+        if (!res.ok) throw new Error(res.error || 'get_visible_radio_failed');
+        const stories = Array.isArray(res.stories) ? res.stories : [];
+        if (countEl) countEl.textContent = stories.length.toLocaleString('ko-KR');
+        renderAdminVisibleRadioStories(stories);
+      } catch(e) {
+        listEl.innerHTML = adminErrorBlock(e, '서버 연결 오류');
+      }
+    }
+
+    function renderAdminVisibleRadioStories(stories) {
+      const listEl = document.getElementById('visibleRadioAdminList');
+      if (!stories.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">조건에 맞는 사연이 없어요.</p>';
+        return;
+      }
+      listEl.innerHTML = stories.map((story, idx) => {
+        const category = getVisibleRadioAdminCategoryMeta(story.categoryKey);
+        const status = getVisibleRadioAdminStatusMeta(story.status);
+        const preview = String(story.content || '').replace(/\s+/g, ' ').trim();
+        const target = String(story.targetText || '').trim();
+        const isAnon = !!story.isAnonymous;
+        const parish = String(story.authorParish || '').trim();
+        const nickname = String(story.authorNickname || '').trim();
+        const authorDisplay = isAnon ? '익명' : ((parish ? parish + ' ' : '') + (nickname || '알 수 없음'));
+        const authorChip = isAnon
+          ? `<span style="font-size:12px;font-weight:900;color:#64748b;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:999px;padding:4px 11px;white-space:nowrap;">익명</span>`
+          : `<span style="font-size:12px;font-weight:900;color:#0f766e;background:#ccfbf1;border:1px solid #5eead4;border-radius:999px;padding:4px 11px;white-space:nowrap;">${esc(authorDisplay)}</span>`;
+        return `
+          <details style="border:1px solid var(--line);border-left:6px solid ${category.color};border-radius:14px;margin-bottom:14px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;padding:14px 16px;list-style:none;">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                <span style="font-size:12px;font-weight:900;color:${category.color};background:${category.bg};border-radius:999px;padding:4px 11px;">${esc(category.label)}</span>
+                <span style="font-size:12px;font-weight:900;color:${status.color};background:${status.bg};border-radius:999px;padding:4px 11px;">${esc(status.label)}</span>
+                ${authorChip}
+                ${target ? `<span style="font-size:12px;font-weight:800;color:#475569;background:#f8fafc;border:1px solid #e2e8f0;border-radius:999px;padding:4px 11px;">→ ${esc(target)}</span>` : ''}
+              </div>
+              <div style="font-size:16px;font-weight:800;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">${esc(preview)}</div>
+              <div style="font-size:12px;color:var(--sub);margin-top:6px;">사연 ${stories.length - idx} · ${formatDate(story.createdAt)}</div>
+            </summary>
+            <div style="padding:0 16px 16px;">
+              <div style="font-size:17px;line-height:1.85;white-space:pre-wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:18px 20px;color:#1f2937;font-weight:500;">${esc(story.content)}</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+                ${Object.entries(VISIBLE_RADIO_STATUS_ADMIN).map(([key, meta]) => `
+                  <button class="btn btn-ghost btn-sm" onclick="updateVisibleRadioAdminStatus('${story.id}', '${key}', this)"
+                    style="${story.status === key ? `background:${meta.bg};color:${meta.color};border-color:${meta.color};font-weight:900;` : ''}">
+                    ${esc(meta.label)}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </details>
+        `;
+      }).join('');
+    }
+
+    async function updateVisibleRadioAdminStatus(id, status, btn) {
+      if (btn) btn.disabled = true;
+      try {
+        const res = await callSupabaseAdminRpc('admin_update_visible_radio_story_status', {
+          p_id: id,
+          p_status: status,
+        });
+        if (!res.ok) throw new Error(res.error || 'status_update_failed');
+        await loadAdminVisibleRadioStories({ silent: true });
+      } catch(e) {
+        adminAlertError(e, '상태 저장 실패');
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    document.getElementById('refreshVisibleRadioAdminBtn').addEventListener('click', () => loadAdminVisibleRadioStories());
+    document.getElementById('visibleRadioAdminSearch').addEventListener('input', scheduleVisibleRadioAdminReload);
+    document.getElementById('visibleRadioAdminStatusFilter').addEventListener('change', () => loadAdminVisibleRadioStories());
 
     /* ── 세션 복원 ── */
     const savedLoginId = sessionStorage.getItem('adminLoginId') || localStorage.getItem('beyondus_supabase_login_id') || '';
