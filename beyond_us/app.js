@@ -3689,7 +3689,7 @@
       }
     }
 
-    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', visibleRadio: '6/20', counseling: '6/20' };
+    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', investigation: '6/20', visibleRadio: '6/20', counseling: '6/20' };
     function applyDrawerTabState(section, enabled, status) {
       const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
       if (!item) return;
