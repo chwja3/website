@@ -243,6 +243,17 @@
     .investigation-map-frame.is-dark {
       background: #111;
     }
+    .investigation-map-frame.is-stacked {
+      display: block;
+      padding-bottom: 10px;
+    }
+    .investigation-map-stack-label {
+      margin: 0;
+      padding: 12px 14px 8px;
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--text);
+    }
     .investigation-map-image {
       display: block;
       width: 100%;

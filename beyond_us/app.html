@@ -13,7 +13,7 @@
   <link id="pwaManifest" rel="manifest" href="manifest.json" />
   <meta name="description" content="2026 청년교구 수련회 준비 — Beyond Us. 빛으로 살기 위해 오늘의 실천 항목을 함께 체크하고 공동체의 흐름을 확인하세요." />
   <meta name="theme-color" content="#2c2417" />
-  <link rel="stylesheet" href="app.css?v=20260614c" />
+  <link rel="stylesheet" href="app.css?v=20260616b" />
 </head>
 <body>
 
@@ -1178,8 +1178,7 @@
               <button class="investigation-tab active" type="button" data-map-key="poster" onclick="switchInvestigationMap('poster')">포스터</button>
               <button class="investigation-tab" type="button" data-map-key="overview" onclick="switchInvestigationMap('overview')">전체배치도</button>
               <button class="investigation-tab" type="button" data-map-key="jerusalem" onclick="switchInvestigationMap('jerusalem')">예루살렘동</button>
-              <button class="investigation-tab" type="button" data-map-key="galilee12" onclick="switchInvestigationMap('galilee12')">갈릴리동 1·2층</button>
-              <button class="investigation-tab" type="button" data-map-key="galilee34" onclick="switchInvestigationMap('galilee34')">갈릴리동 3·4층</button>
+              <button class="investigation-tab" type="button" data-map-key="galilee" onclick="switchInvestigationMap('galilee')">갈릴리동</button>
             </div>
             <div class="investigation-panels">
               <div class="investigation-panel" data-map-panel="poster">
@@ -1200,16 +1199,14 @@
                   <div class="investigation-map-empty hidden"><strong>예루살렘동 안내도를 불러오지 못했어요.</strong><span>images/maps/예루살렘동.jpg 파일을 확인해주세요.</span></div>
                 </div>
               </div>
-              <div class="investigation-panel hidden" data-map-panel="galilee12">
-                <div class="investigation-map-frame">
-                  <img class="investigation-map-image" src="images/maps/갈릴리동12층.jpg" alt="갈릴리동 1·2층 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
-                  <div class="investigation-map-empty hidden"><strong>갈릴리동 1·2층 안내도를 불러오지 못했어요.</strong><span>images/maps/갈릴리동12층.jpg 파일을 확인해주세요.</span></div>
-                </div>
-              </div>
-              <div class="investigation-panel hidden" data-map-panel="galilee34">
-                <div class="investigation-map-frame">
+              <div class="investigation-panel hidden" data-map-panel="galilee">
+                <div class="investigation-map-frame is-stacked">
+                  <p class="investigation-map-stack-label">갈릴리동 3·4층</p>
                   <img class="investigation-map-image" src="images/maps/갈릴리동34층.jpg" alt="갈릴리동 3·4층 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
                   <div class="investigation-map-empty hidden"><strong>갈릴리동 3·4층 안내도를 불러오지 못했어요.</strong><span>images/maps/갈릴리동34층.jpg 파일을 확인해주세요.</span></div>
+                  <p class="investigation-map-stack-label">갈릴리동 1·2층</p>
+                  <img class="investigation-map-image" src="images/maps/갈릴리동12층.jpg" alt="갈릴리동 1·2층 안내도" loading="lazy" decoding="async" onclick="openLightbox(this.src)" onload="handleInvestigationMapLoaded(this)" onerror="handleInvestigationMapMissing(this)" />
+                  <div class="investigation-map-empty hidden"><strong>갈릴리동 1·2층 안내도를 불러오지 못했어요.</strong><span>images/maps/갈릴리동12층.jpg 파일을 확인해주세요.</span></div>
                 </div>
               </div>
             </div>
