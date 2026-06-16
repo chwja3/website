@@ -758,14 +758,21 @@
 
         <!-- 매칭 관리 -->
         <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;">
+            <div style="min-width:0;">
               <h2 class="card-title" style="margin:0;">B.B.B. 매칭</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">조별, 티어 기반 매칭 재설계 전까지 기존 랜덤 매칭 실행은 중지합니다.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 유저의 케어버디를 지정하면 상대방의 시크릿버디가 자동으로 연결됩니다.</p>
             </div>
-            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="runBBBMatching()">매칭 준비중</button>
+            <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;flex-shrink:0;" onclick="loadAdminBBB()">새로고침</button>
           </div>
-          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">조별, 티어 기반 매칭 재설계 후 결과가 표시됩니다.</p></div>
+          <div style="display:grid;grid-template-columns:minmax(0,140px) minmax(0,1fr);gap:8px;margin-bottom:12px;">
+            <select id="bbbMatchingGroupFilter" class="input" onchange="renderBBBMatchingRows()">
+              <option value="all">전체 조</option>
+            </select>
+            <input type="search" id="bbbMatchingSearch" class="input" placeholder="닉네임, 이름, 교구 검색" oninput="filterBBBMatching(this.value)" />
+          </div>
+          <div id="bbbMatchStatus" style="min-height:16px;font-size:12px;color:var(--sub);margin-bottom:8px;"></div>
+          <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 현황을 불러오면 조별 목록이 표시됩니다.</p></div>
         </div>
 
         <!-- 섹션 오픈 설정 -->
@@ -4109,29 +4116,233 @@
     }
 
     /* ── B.B.B. ── */
+    let _bbbMatchingRows = [];
+    let _bbbMatchingQuery = '';
+
+    function bbbMatchingDisplayName(row) {
+      if (!row) return '-';
+      const name = row.name || row.displayName || row.loginId || row.userId || '-';
+      const loginId = row.loginId || row.userId || '';
+      return loginId && loginId !== name ? `${name} (${loginId})` : name;
+    }
+
+    function bbbMatchingGroupKey(row) {
+      return row && row.groupNo ? `group:${row.groupNo}` : 'ungrouped';
+    }
+
+    function bbbMatchingGroupLabel(row) {
+      if (row && row.groupNo) return `${row.groupNo}조${row.groupName ? ` · ${row.groupName}` : ''}`;
+      return '조 미배정';
+    }
+
+    function bbbMatchingMeta(row) {
+      const parts = [];
+      if (row.participantCode) parts.push(`#${row.participantCode}`);
+      if (row.parish) parts.push(row.parish);
+      if (row.groupRole === 'leader') parts.push('조장');
+      if (row.groupRole === 'assistant') parts.push('부조장');
+      if (row.participationTier) parts.push(row.participationTier);
+      return parts.join(' · ') || '-';
+    }
+
+    function renderBBBMatchingGroupOptions(rows) {
+      const select = document.getElementById('bbbMatchingGroupFilter');
+      if (!select) return;
+      const previous = select.value || 'all';
+      const groups = new Map();
+      (rows || []).forEach(row => {
+        const key = bbbMatchingGroupKey(row);
+        if (!groups.has(key)) groups.set(key, bbbMatchingGroupLabel(row));
+      });
+      select.innerHTML = '<option value="all">전체 조</option>' + Array.from(groups.entries()).map(([key, label]) =>
+        `<option value="${esc(key)}">${esc(label)}</option>`
+      ).join('');
+      select.value = groups.has(previous) || previous === 'all' ? previous : 'all';
+    }
+
+    function filterBBBMatching(value) {
+      _bbbMatchingQuery = String(value || '').trim().toLowerCase();
+      renderBBBMatchingRows();
+    }
+
+    function bbbMatchingCandidatesFor(row) {
+      const ownGroupKey = bbbMatchingGroupKey(row);
+      let candidates = _bbbMatchingRows.filter(candidate =>
+        candidate.profileId !== row.profileId && bbbMatchingGroupKey(candidate) === ownGroupKey
+      );
+      if (!candidates.length) {
+        candidates = _bbbMatchingRows.filter(candidate => candidate.profileId !== row.profileId);
+      }
+      if (row.careBuddyId && !candidates.some(candidate => candidate.profileId === row.careBuddyId)) {
+        const selected = _bbbMatchingRows.find(candidate => candidate.profileId === row.careBuddyId);
+        if (selected) candidates = [selected].concat(candidates);
+      }
+      return candidates;
+    }
+
+    function renderBBBMatchingSelect(row) {
+      const options = bbbMatchingCandidatesFor(row).map(candidate => `
+        <option value="${esc(candidate.profileId)}" ${candidate.profileId === row.careBuddyId ? 'selected' : ''}>
+          ${esc(bbbMatchingDisplayName(candidate))}
+        </option>
+      `).join('');
+      return `
+        <select class="input" data-bbb-care-for="${esc(row.profileId)}" onchange="markBBBMatchingDirty(${jsArg(row.profileId)})" style="font-size:12px;padding:7px 9px;">
+          <option value="">미지정</option>
+          ${options}
+        </select>`;
+    }
+
+    function markBBBMatchingDirty(profileId) {
+      const status = document.getElementById(`bbbMatchRowStatus_${profileId}`);
+      if (!status) return;
+      status.textContent = '저장 필요';
+      status.style.color = '#b45309';
+    }
+
+    function renderBBBMatchingRows() {
+      const matchEl = document.getElementById('bbbMatchBody');
+      const statusEl = document.getElementById('bbbMatchStatus');
+      if (!matchEl) return;
+      const groupFilter = document.getElementById('bbbMatchingGroupFilter')?.value || 'all';
+      const query = _bbbMatchingQuery;
+      const rows = (_bbbMatchingRows || []).filter(row => {
+        if (groupFilter !== 'all' && bbbMatchingGroupKey(row) !== groupFilter) return false;
+        if (!query) return true;
+        return [
+          row.loginId,
+          row.userId,
+          row.name,
+          row.displayName,
+          row.parish,
+          row.groupName,
+          row.participantCode,
+          row.careBuddyName,
+          row.careBuddyLoginId,
+          row.secretBuddyName,
+          row.secretBuddyLoginId,
+        ].some(value => String(value || '').toLowerCase().includes(query));
+      });
+
+      if (statusEl) {
+        const assigned = (_bbbMatchingRows || []).filter(row => row.careBuddyId).length;
+        statusEl.textContent = `총 ${(_bbbMatchingRows || []).length}명 · 케어버디 지정 ${assigned}명`;
+      }
+
+      if (!rows.length) {
+        matchEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;padding:14px;">표시할 매칭 대상이 없습니다.</p>';
+        return;
+      }
+
+      const grouped = new Map();
+      rows.forEach(row => {
+        const key = bbbMatchingGroupKey(row);
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(row);
+      });
+
+      matchEl.innerHTML = Array.from(grouped.entries()).map(([, groupRows]) => {
+        const groupLabel = bbbMatchingGroupLabel(groupRows[0]);
+        const groupAssigned = groupRows.filter(row => row.careBuddyId).length;
+        return `
+          <details open style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
+            <summary style="cursor:pointer;list-style:none;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;">
+              <strong style="font-size:14px;">${esc(groupLabel)}</strong>
+              <span style="font-size:12px;color:var(--sub);">${groupAssigned}/${groupRows.length}명 지정</span>
+            </summary>
+            <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;">
+              ${groupRows.map(row => `
+                <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;">
+                  <div style="min-width:0;">
+                    <div style="font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingDisplayName(row))}</div>
+                    <div style="font-size:11px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingMeta(row))}</div>
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">케어버디</div>
+                    ${renderBBBMatchingSelect(row)}
+                  </div>
+                  <div style="min-width:0;">
+                    <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">시크릿버디</div>
+                    <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.secretBuddyId ? bbbMatchingDisplayName({
+                      name: row.secretBuddyName,
+                      displayName: row.secretBuddyDisplayName,
+                      loginId: row.secretBuddyLoginId,
+                      userId: row.secretBuddyLoginId,
+                    }) : '미지정')}</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+                    <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.profileId)})">저장</button>
+                    <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </details>`;
+      }).join('');
+    }
+
+    async function saveBBBMatchingRow(profileId) {
+      const select = document.querySelector(`select[data-bbb-care-for="${profileId}"]`);
+      const status = document.getElementById(`bbbMatchRowStatus_${profileId}`);
+      if (!select) return;
+      if (status) {
+        status.textContent = '저장 중';
+        status.style.color = 'var(--sub)';
+      }
+      try {
+        await callSupabaseAdminRpc('admin_set_bbb_care_buddy', {
+          p_profile_id: profileId,
+          p_care_buddy_id: select.value || null,
+        });
+        if (status) {
+          status.textContent = '저장됨';
+          status.style.color = 'var(--success)';
+        }
+        await loadAdminBBB();
+        if (typeof loadBBBPilgrimStatus === 'function') loadBBBPilgrimStatus();
+      } catch(e) {
+        if (status) {
+          status.textContent = '실패';
+          status.style.color = 'var(--danger)';
+        }
+        adminAlertError(e, '매칭 저장 실패');
+      }
+    }
+
     async function loadAdminBBB() {
       const matchEl = document.getElementById('bbbMatchBody');
       const msgEl   = document.getElementById('bbbMsgBody');
+      const statusEl = document.getElementById('bbbMatchStatus');
+      if (matchEl) matchEl.innerHTML = '<p style="color:var(--sub);font-size:13px;text-align:center;padding:14px;">매칭 현황을 불러오는 중...</p>';
+      if (statusEl) statusEl.textContent = '';
       try {
-        const [res, tabRes] = await Promise.all([
+        const [matrixResult, resResult, tabResult] = await Promise.allSettled([
+          callSupabaseAdminRpc('admin_get_bbb_matching_matrix'),
           get({ action: 'adminGetBBB', adminPw }),
           get({ action: 'getTabSettings', adminPw }),
         ]);
-        if (!res.ok) { matchEl.innerHTML = adminErrorBlock({ response: res }, '불러오기 실패', '12px'); return; }
 
         // 섹션 오픈 설정 로드
-        if (tabRes.ok && tabRes.bbbSections) renderBBBSectionRows(tabRes.bbbSections);
+        if (tabResult.status === 'fulfilled' && tabResult.value.ok && tabResult.value.bbbSections) {
+          renderBBBSectionRows(tabResult.value.bbbSections);
+        }
 
         // 매칭 테이블
-        const matches = res.matches || [];
-        matchEl.innerHTML = matches.length
-          ? '<p style="font-size:13px;color:var(--sub);margin:0;">Supabase에 저장된 매칭 내역이 있습니다. 조별, 티어 기반 재설계 전까지 새 매칭 실행은 중지합니다.</p>'
-          : '<p style="color:var(--sub);font-size:13px;">매칭 내역이 없어요. 조별, 티어 기반 매칭 재설계 후 다시 연결합니다.</p>';
+        if (matrixResult.status === 'fulfilled' && matrixResult.value.ok) {
+          _bbbMatchingRows = matrixResult.value.rows || [];
+          renderBBBMatchingGroupOptions(_bbbMatchingRows);
+          renderBBBMatchingRows();
+        } else if (matchEl) {
+          matchEl.innerHTML = adminErrorBlock(matrixResult.reason || { response: matrixResult.value }, '매칭 불러오기 실패', '12px');
+        }
 
         // 메시지 로그
-        const messages = res.messages || [];
+        const res = resResult.status === 'fulfilled' ? resResult.value : null;
+        const messages = res && res.ok ? (res.messages || []) : [];
         if (!messages.length) {
-          msgEl.innerHTML = '<p style="color:var(--sub);font-size:13px;">메시지 내역이 없어요.</p>';
+          msgEl.innerHTML = resResult.status === 'rejected'
+            ? adminErrorBlock(resResult.reason, '메시지 불러오기 실패', '12px')
+            : '<p style="color:var(--sub);font-size:13px;">메시지 내역이 없어요.</p>';
         } else {
           msgEl.innerHTML = `<div style="overflow-x:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:13px;">
@@ -4158,7 +4369,7 @@
     }
 
     async function runBBBMatching() {
-      alert('기존 랜덤 매칭은 중지했습니다. 조별, 티어 기반 BBB 매칭 재설계 때 Supabase 기준으로 다시 연결합니다.');
+      await loadAdminBBB();
     }
 
     /* ── 섹션 오픈 설정 (천로역정만 — B.B.B 미션은 탭 활성화 'secret' 상태가 제어) ── */
