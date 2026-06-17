@@ -39,7 +39,17 @@
       "Bash(curl *)",
       "Read(//c/c/Users/jkjk9/OneDrive/Documents/00_Work/01_AGC/AGC/2026_Youth_treat/website/beyond_us/**)",
       "Read(//tmp/**)",
-      "Read(//c/c/Users/jkjk9/OneDrive/Documents/00_Work/01_AGC/AGC/2026_Youth_treat/website/**)"
+      "Read(//c/c/Users/jkjk9/OneDrive/Documents/00_Work/01_AGC/AGC/2026_Youth_treat/website/**)",
+      "Read(//c/Users/jkjk9/Downloads/**)",
+      "Bash(py --version)",
+      "PowerShell(py -m pip install python-pptx --quiet 2>&1)",
+      "Bash(py -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 py -c ' *)",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget",
+      "Read(//c/Users/jkjk9/OneDrive/Documents/00_Work/00_ABS/03_Projects/01_Internal/2026_AI_Based VEC Request Process Automation Tool Developments/900_Working_Files/code/**)",
+      "Bash(py -c \"import sqlite3;c=sqlite3.connect\\('data/vec.db'\\);print\\(sorted\\(r[0] for r in c.execute\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\)\\)\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 py -)"
     ]
   }
 }
