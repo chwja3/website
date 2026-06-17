@@ -3652,26 +3652,51 @@
       if (!data || !data.tabSettings) return;
       const settings = data.tabSettings;
       const statuses = settings.statuses || {};
+      const items = Array.isArray(settings.items) ? settings.items : [];
+      const itemByKey = {};
+      items.forEach(item => {
+        if (!item || typeof item !== 'object') return;
+        const key = String(item.key || '').trim();
+        const apiKey = String(item.apiKey || '').trim();
+        if (key) itemByKey[key] = item;
+        if (apiKey) itemByKey[apiKey] = item;
+        if (key === 'visible_radio' || apiKey === 'visible_radio') itemByKey.visibleRadio = item;
+      });
       const nextSpecialPackOpen = data.tabSettings.specialPack === true;
       const specialPackChanged = specialPackOpen !== nextSpecialPackOpen;
       specialPackOpen = nextSpecialPackOpen;
-      const getTabStatus = (section) => section === 'visibleRadio'
-        ? (statuses.visibleRadio || statuses.visible_radio || 'open')
-        : (statuses[section] || 'open');
+      const getTabItem = (section) => itemByKey[section] || (section === 'visibleRadio' ? itemByKey.visible_radio : null);
+      const getItemEnabled = (section, fallback) => {
+        const item = getTabItem(section);
+        if (!item) return fallback;
+        if (typeof item.enabled === 'boolean') return item.enabled;
+        if (typeof item.enabled === 'string') return item.enabled === 'true';
+        return fallback;
+      };
+      const getItemStatus = (section) => {
+        const item = getTabItem(section);
+        return item && item.status ? String(item.status) : '';
+      };
+      const getTabStatus = (section) => {
+        const status = section === 'visibleRadio'
+          ? (statuses.visibleRadio || statuses.visible_radio)
+          : statuses[section];
+        return status || getItemStatus(section) || 'open';
+      };
       const tabEnabled = {
-        notice: settings.notice !== false,
-        mission: settings.mission !== false,
-        prayer: settings.prayer !== false,
-        qt: settings.qt !== false,
-        secret: settings.secret !== false,
-        pilgrim: settings.pilgrim === true,
-        investigation: settings.investigation === true,
-        counseling: settings.counseling === true,
-        visibleRadio: settings.visibleRadio === true || settings.visible_radio === true,
-        chat: settings.chat === true,
-        collection: settings.collection !== false,
-        faq: settings.faq !== false,
-        inquiry: settings.inquiry !== false,
+        notice: getItemEnabled('notice', settings.notice !== false),
+        mission: getItemEnabled('mission', settings.mission !== false),
+        prayer: getItemEnabled('prayer', settings.prayer !== false),
+        qt: getItemEnabled('qt', settings.qt !== false),
+        secret: getItemEnabled('secret', settings.secret !== false),
+        pilgrim: getItemEnabled('pilgrim', settings.pilgrim === true),
+        investigation: getItemEnabled('investigation', settings.investigation === true),
+        counseling: getItemEnabled('counseling', settings.counseling === true),
+        visibleRadio: getItemEnabled('visibleRadio', settings.visibleRadio === true || settings.visible_radio === true),
+        chat: getItemEnabled('chat', settings.chat === true),
+        collection: getItemEnabled('collection', settings.collection !== false),
+        faq: getItemEnabled('faq', settings.faq !== false),
+        inquiry: getItemEnabled('inquiry', settings.inquiry !== false),
       };
       Object.keys(tabEnabled).forEach(section => {
         const status = getTabStatus(section);
