@@ -35,7 +35,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260614c';
+    const APP_VERSION = '20260618b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -93,6 +93,25 @@
         };
       };
       mount();
+    }
+
+    function readCachedConfig() {
+      try {
+        const raw = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
+        if (!raw) return null;
+        if (raw.clientVersion === APP_VERSION && raw.data) return raw.data;
+        localStorage.removeItem('beyondus_cache_config');
+      } catch(e) {
+        localStorage.removeItem('beyondus_cache_config');
+      }
+      return null;
+    }
+
+    function writeCachedConfig(data) {
+      localStorage.setItem('beyondus_cache_config', JSON.stringify({
+        clientVersion: APP_VERSION,
+        data,
+      }));
     }
 
     /* ── 성령의 열매 카드 데이터 ── */
@@ -1377,7 +1396,7 @@
         return;
       }
       showApp();
-      const cachedConfig = JSON.parse(localStorage.getItem('beyondus_cache_config') || 'null');
+      const cachedConfig = readCachedConfig();
       if (cachedConfig) { lastConfigData = cachedConfig; renderConfig(cachedConfig); renderCounts(cachedConfig); applyTabSettings(cachedConfig); }
       const cachedUS = JSON.parse(localStorage.getItem('beyondus_cache_userStatus_' + savedNickname) || 'null');
       if (cachedUS) { userStatus = cachedUS; renderDrawSection(); renderCollection(); updateScoreProgress(); }
@@ -4165,7 +4184,7 @@
       const silent = opts.silent === true;
       if (!silent) setStatus('현황을 불러오고 있어요...');
       const data = await fetchDashboard({ force: opts.force === true });
-      localStorage.setItem('beyondus_cache_config', JSON.stringify(data));
+      writeCachedConfig(data);
       renderConfig(data);   // 내부에서 updateCheckUI 호출
       renderCounts(data);
       applyTabSettings(data);

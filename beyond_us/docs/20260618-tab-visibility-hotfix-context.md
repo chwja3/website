@@ -7,3 +7,4 @@
 - 따라서 앱도 top-level boolean만 보지 않고 `items[].key`와 `items[].apiKey`를 함께 해석해야 한다.
 - service worker cache 이름이 오래 유지되면 일부 기기에서 이전 앱 파일을 들고 있을 수 있으므로 이번 패치에서 캐시 이름도 갱신한다.
 - PowerShell `Get-Content` 출력은 한글이 깨져 보일 수 있지만, 파일 자체는 UTF-8로 정상 저장되어 있다.
+- 후속 확인에서 `app.html`과 `sw.js` 버전은 올라갔지만 앱 내부 `APP_VERSION`과 `version.txt`가 `20260614c`로 남아 있음을 확인했다. 이 경우 오래된 앱을 쓰는 사용자에게 업데이트 안내가 뜨지 않고, 기존 `beyondus_cache_config`가 먼저 적용되어 일부 탭이 계속 숨김처럼 보일 수 있다.
