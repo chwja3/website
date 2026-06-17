@@ -769,7 +769,7 @@
             <select id="bbbMatchingGroupFilter" class="input" onchange="renderBBBMatchingRows()">
               <option value="all">전체 조</option>
             </select>
-            <input type="search" id="bbbMatchingSearch" class="input" placeholder="닉네임, 이름, 교구 검색" oninput="filterBBBMatching(this.value)" />
+            <input type="search" id="bbbMatchingSearch" class="input" placeholder="이름, 교구, 조 검색" oninput="filterBBBMatching(this.value)" />
           </div>
           <div id="bbbMatchStatus" style="min-height:16px;font-size:12px;color:var(--sub);margin-bottom:8px;"></div>
           <div id="bbbMatchBody"><p style="color:var(--sub);font-size:13px;">매칭 현황을 불러오면 조별 목록이 표시됩니다.</p></div>
@@ -4125,9 +4125,17 @@
 
     function bbbMatchingDisplayName(row) {
       if (!row) return '-';
-      const name = row.name || row.displayName || row.loginId || row.userId || '-';
-      const loginId = row.loginId || row.userId || '';
-      return loginId && loginId !== name ? `${name} (${loginId})` : name;
+      return row.name || row.displayName || '이름 없음';
+    }
+
+    function bbbMatchingOptionLabel(row) {
+      if (!row) return '-';
+      const parts = [bbbMatchingDisplayName(row)];
+      const meta = [];
+      if (row.groupNo) meta.push(`${row.groupNo}조`);
+      if (row.parish) meta.push(row.parish);
+      if (row.participantCode) meta.push(`#${row.participantCode}`);
+      return meta.length ? `${parts[0]} · ${meta.join(' · ')}` : parts[0];
     }
 
     function bbbMatchingGroupKey(row) {
@@ -4187,7 +4195,7 @@
     function renderBBBMatchingSelect(row) {
       const options = bbbMatchingCandidatesFor(row).map(candidate => `
         <option value="${esc(candidate.profileId)}" ${candidate.profileId === row.careBuddyId ? 'selected' : ''}>
-          ${esc(bbbMatchingDisplayName(candidate))}
+          ${esc(bbbMatchingOptionLabel(candidate))}
         </option>
       `).join('');
       return `
@@ -4214,17 +4222,14 @@
         if (groupFilter !== 'all' && bbbMatchingGroupKey(row) !== groupFilter) return false;
         if (!query) return true;
         return [
-          row.loginId,
-          row.userId,
           row.name,
           row.displayName,
           row.parish,
           row.groupName,
+          row.groupNo ? `${row.groupNo}조` : '',
           row.participantCode,
           row.careBuddyName,
-          row.careBuddyLoginId,
           row.secretBuddyName,
-          row.secretBuddyLoginId,
         ].some(value => String(value || '').toLowerCase().includes(query));
       });
 

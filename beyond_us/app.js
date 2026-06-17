@@ -5753,7 +5753,7 @@
       const guess = document.getElementById('bbbGuessInput').value.trim();
       const msgEl = document.getElementById('bbbGuessMsg');
       const btn = document.querySelector('#bbbSecretGuess button');
-      if (!guess) { msgEl.style.color = '#f87171'; msgEl.textContent = '닉네임 또는 이름을 입력해주세요.'; return; }
+      if (!guess) { msgEl.style.color = '#f87171'; msgEl.textContent = '이름을 입력해주세요.'; return; }
 
       if (btn) btn.disabled = true;
       msgEl.style.color = 'var(--sub)';
