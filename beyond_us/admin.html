@@ -4133,6 +4133,7 @@
       const parts = [bbbMatchingDisplayName(row)];
       const meta = [];
       if (row.groupNo) meta.push(`${row.groupNo}조`);
+      meta.push(bbbMatchingTier(row));
       if (row.parish) meta.push(row.parish);
       if (row.participantCode) meta.push(`#${row.participantCode}`);
       return meta.length ? `${parts[0]} · ${meta.join(' · ')}` : parts[0];
@@ -4147,13 +4148,29 @@
       return '조 미배정';
     }
 
+    function bbbMatchingTier(row) {
+      const raw = String((row && (row.matchingTier || row.participationTier || row.groupTier)) || '').replace(/\s+/g, '').toLowerCase();
+      if (/전참|전체|전일|금토일|full|all/.test(raw)) return '전참';
+      if (/토참|토요일|토|sat|saturday/.test(raw)) return '토참';
+      if (/일참|일요일|일|sun|sunday/.test(raw)) return '일참';
+      return '전참';
+    }
+
+    function bbbMatchingTierOrder(label) {
+      return { '전참': 0, '토참': 1, '일참': 2 }[label] ?? 9;
+    }
+
+    function bbbMatchingBucketKey(row) {
+      return `${bbbMatchingGroupKey(row)}|${bbbMatchingTier(row)}`;
+    }
+
     function bbbMatchingMeta(row) {
       const parts = [];
       if (row.participantCode) parts.push(`#${row.participantCode}`);
       if (row.parish) parts.push(row.parish);
       if (row.groupRole === 'leader') parts.push('조장');
       if (row.groupRole === 'assistant') parts.push('부조장');
-      if (row.participationTier) parts.push(row.participationTier);
+      parts.push(bbbMatchingTier(row));
       return parts.join(' · ') || '-';
     }
 
@@ -4178,13 +4195,10 @@
     }
 
     function bbbMatchingCandidatesFor(row) {
-      const ownGroupKey = bbbMatchingGroupKey(row);
+      const ownBucketKey = bbbMatchingBucketKey(row);
       let candidates = _bbbMatchingRows.filter(candidate =>
-        candidate.profileId !== row.profileId && bbbMatchingGroupKey(candidate) === ownGroupKey
+        candidate.profileId !== row.profileId && bbbMatchingBucketKey(candidate) === ownBucketKey
       );
-      if (!candidates.length) {
-        candidates = _bbbMatchingRows.filter(candidate => candidate.profileId !== row.profileId);
-      }
       if (row.careBuddyId && !candidates.some(candidate => candidate.profileId === row.careBuddyId)) {
         const selected = _bbbMatchingRows.find(candidate => candidate.profileId === row.careBuddyId);
         if (selected) candidates = [selected].concat(candidates);
@@ -4227,6 +4241,7 @@
           row.parish,
           row.groupName,
           row.groupNo ? `${row.groupNo}조` : '',
+          bbbMatchingTier(row),
           row.participantCode,
           row.careBuddyName,
           row.secretBuddyName,
@@ -4253,6 +4268,51 @@
       matchEl.innerHTML = Array.from(grouped.entries()).map(([, groupRows]) => {
         const groupLabel = bbbMatchingGroupLabel(groupRows[0]);
         const groupAssigned = groupRows.filter(row => row.careBuddyId).length;
+        const tiered = new Map();
+        groupRows.forEach(row => {
+          const tier = bbbMatchingTier(row);
+          if (!tiered.has(tier)) tiered.set(tier, []);
+          tiered.get(tier).push(row);
+        });
+        const tierBlocks = Array.from(tiered.entries())
+          .sort(([a], [b]) => bbbMatchingTierOrder(a) - bbbMatchingTierOrder(b))
+          .map(([tier, tierRows]) => {
+            const tierAssigned = tierRows.filter(row => row.careBuddyId).length;
+            return `
+              <div style="border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--primary-soft);">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
+                  <strong style="font-size:13px;">${esc(tier)}</strong>
+                  <span style="font-size:11px;color:var(--sub);">${tierAssigned}/${tierRows.length}명 지정</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  ${tierRows.map(row => `
+                    <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;">
+                      <div style="min-width:0;">
+                        <div style="font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingDisplayName(row))}</div>
+                        <div style="font-size:11px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingMeta(row))}</div>
+                      </div>
+                      <div style="min-width:0;">
+                        <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">케어버디</div>
+                        ${renderBBBMatchingSelect(row)}
+                      </div>
+                      <div style="min-width:0;">
+                        <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">시크릿버디</div>
+                        <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.secretBuddyId ? bbbMatchingDisplayName({
+                          name: row.secretBuddyName,
+                          displayName: row.secretBuddyDisplayName,
+                          loginId: row.secretBuddyLoginId,
+                          userId: row.secretBuddyLoginId,
+                        }) : '미지정')}</div>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
+                        <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.profileId)})">저장</button>
+                        <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>`;
+          }).join('');
         return `
           <details open style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
             <summary style="cursor:pointer;list-style:none;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;">
@@ -4260,31 +4320,7 @@
               <span style="font-size:12px;color:var(--sub);">${groupAssigned}/${groupRows.length}명 지정</span>
             </summary>
             <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;">
-              ${groupRows.map(row => `
-                <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;">
-                  <div style="min-width:0;">
-                    <div style="font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingDisplayName(row))}</div>
-                    <div style="font-size:11px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingMeta(row))}</div>
-                  </div>
-                  <div style="min-width:0;">
-                    <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">케어버디</div>
-                    ${renderBBBMatchingSelect(row)}
-                  </div>
-                  <div style="min-width:0;">
-                    <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">시크릿버디</div>
-                    <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.secretBuddyId ? bbbMatchingDisplayName({
-                      name: row.secretBuddyName,
-                      displayName: row.secretBuddyDisplayName,
-                      loginId: row.secretBuddyLoginId,
-                      userId: row.secretBuddyLoginId,
-                    }) : '미지정')}</div>
-                  </div>
-                  <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
-                    <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.profileId)})">저장</button>
-                    <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>
-                  </div>
-                </div>
-              `).join('')}
+              ${tierBlocks}
             </div>
           </details>`;
       }).join('');
