@@ -4189,7 +4189,7 @@
 
     function bbbMatchingMatchLabel(row) {
       const status = String((row && row.matchStatus) || '');
-      if (status === 'matched') return '매칭';
+      if (status === 'matched' || status === 'matched_manual') return '매칭';
       if (status === 'matched_by_parish') return '교구 기준 매칭';
       if (status === 'nickname_missing') return '닉네임 없음';
       if (status === 'duplicate_same_parish' || status === 'duplicate_roster_same_parish') return '이름 중복 확인필요 · 같은 청';
@@ -4211,6 +4211,11 @@
       if (!row || !row.profileId || row.canMatch === false) return false;
       const status = String(row.matchStatus || '');
       return status !== 'nickname_missing' && status !== 'non_attendee' && !status.startsWith('duplicate');
+    }
+
+    function bbbMatchingCanResolve(row) {
+      const status = String((row && row.matchStatus) || '');
+      return !!(row && row.rosterId && status.startsWith('duplicate') && bbbMatchingCandidateProfiles(row).length);
     }
 
     function bbbMatchingCandidateProfiles(row) {
@@ -4241,11 +4246,35 @@
     function renderBBBMatchingIssue(row) {
       const candidateSummary = bbbMatchingCandidateSummary(row);
       const detail = row?.matchDetail || bbbMatchingMatchLabel(row);
+      const canResolve = bbbMatchingCanResolve(row);
+      const candidateOptions = canResolve ? bbbMatchingCandidateProfiles(row).map(candidate => {
+        const label = bbbMatchingOptionLabel({
+          profileId: candidate.profileId,
+          loginId: candidate.loginId,
+          userId: candidate.loginId,
+          name: candidate.name,
+          displayName: candidate.displayName,
+          parish: candidate.parish,
+          participantCode: candidate.participantCode,
+          groupNo: row.groupNo,
+          matchingTier: row.matchingTier,
+        });
+        return `<option value="${esc(candidate.profileId)}">${esc(label)}</option>`;
+      }).join('') : '';
       return `
         <div style="border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--card);font-size:12px;line-height:1.45;">
           <span style="display:inline-flex;border:1px solid;border-radius:999px;padding:2px 7px;font-weight:900;font-size:11px;${bbbMatchingStatusStyle(row)}">${esc(bbbMatchingMatchLabel(row))}</span>
           <div style="margin-top:5px;color:var(--sub);">${esc(detail)}</div>
-          ${candidateSummary ? `<div style="margin-top:5px;color:var(--text);font-weight:700;">후보 ${esc(candidateSummary)}</div>` : ''}
+          ${canResolve ? `
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:7px;align-items:center;">
+              <select class="input" data-bbb-roster-resolve="${esc(row.rosterId)}" style="font-size:12px;padding:7px 9px;">
+                <option value="">후보 선택</option>
+                ${candidateOptions}
+              </select>
+              <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRoster(${jsArg(row.rosterId)})">확정</button>
+            </div>
+            <div id="bbbResolveRowStatus_${esc(row.rosterId)}" style="font-size:11px;color:var(--sub);margin-top:5px;">후보 중 실제 앱 계정을 선택해주세요.</div>
+          ` : candidateSummary ? `<div style="margin-top:5px;color:var(--text);font-weight:700;">후보 ${esc(candidateSummary)}</div>` : ''}
         </div>`;
     }
 
@@ -4379,6 +4408,7 @@
                 <div style="display:flex;flex-direction:column;gap:8px;">
                   ${tierRows.map(row => {
                     const editable = bbbMatchingCanEdit(row);
+                    const resolvable = bbbMatchingCanResolve(row);
                     return `
                     <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;">
                       <div style="min-width:0;">
@@ -4400,7 +4430,7 @@
                       </div>
                       <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
                         ${editable ? `<button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.profileId)})">저장</button>
-                        <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>` : `<span style="font-size:11px;color:var(--sub);white-space:nowrap;">저장 불가</span>`}
+                        <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>` : `<span style="font-size:11px;color:var(--sub);white-space:nowrap;">${resolvable ? '후보 선택' : '저장 불가'}</span>`}
                       </div>
                     </div>
                   `}).join('')}
@@ -4445,6 +4475,41 @@
           status.style.color = 'var(--danger)';
         }
         adminAlertError(e, '매칭 저장 실패');
+      }
+    }
+
+    async function saveBBBMatchingRoster(rosterId) {
+      const select = document.querySelector(`select[data-bbb-roster-resolve="${rosterId}"]`);
+      const status = document.getElementById(`bbbResolveRowStatus_${rosterId}`);
+      if (!select) return;
+      if (!select.value) {
+        if (status) {
+          status.textContent = '후보를 먼저 선택해주세요.';
+          status.style.color = 'var(--danger)';
+        }
+        return;
+      }
+      if (status) {
+        status.textContent = '매칭 저장 중';
+        status.style.color = 'var(--sub)';
+      }
+      try {
+        await callSupabaseAdminRpc('admin_resolve_group_roster_profile', {
+          p_roster_id: rosterId,
+          p_profile_id: select.value,
+        });
+        if (status) {
+          status.textContent = '매칭됨';
+          status.style.color = 'var(--success)';
+        }
+        await loadAdminBBB();
+        if (typeof loadBBBPilgrimStatus === 'function') loadBBBPilgrimStatus();
+      } catch(e) {
+        if (status) {
+          status.textContent = '실패';
+          status.style.color = 'var(--danger)';
+        }
+        adminAlertError(e, '조 명단 매칭 확정 실패');
       }
     }
 
