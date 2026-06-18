@@ -980,6 +980,152 @@ $$;
 revoke all on function public.admin_set_bbb_care_buddy_roster(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.admin_set_bbb_care_buddy_roster(uuid, uuid) to authenticated;
 
+create or replace function public.admin_auto_assign_bbb_buddies(
+  p_group_no integer default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_admin public.profiles%rowtype;
+  v_batch text := {sql_string(BATCH_KEY)};
+  v_assigned_rows integer := 0;
+  v_secret_rows integer := 0;
+  v_group_members integer := 0;
+  v_assignments integer := 0;
+  v_bucket_count integer := 0;
+  v_skipped_singletons integer := 0;
+begin
+  v_admin := public.bu_admin_profile();
+
+  with buckets as (
+    select
+      group_id,
+      coalesce(participation_tier, '전참') as participation_tier,
+      count(*)::integer as member_count
+    from public.retreat_group_roster
+    where source_batch = v_batch
+      and group_id is not null
+      and (p_group_no is null or group_no = p_group_no)
+    group by group_id, coalesce(participation_tier, '전참')
+  )
+  select
+    count(*)::integer,
+    count(*) filter (where member_count = 1)::integer
+  into v_bucket_count, v_skipped_singletons
+  from buckets;
+
+  with scope as (
+    select id, matched_profile_id
+    from public.retreat_group_roster
+    where source_batch = v_batch
+      and group_id is not null
+      and (p_group_no is null or group_no = p_group_no)
+  ),
+  cleared as (
+    update public.retreat_group_roster r
+    set care_buddy_roster_id = null,
+        secret_buddy_roster_id = null,
+        updated_at = now()
+    from scope s
+    where r.id = s.id
+    returning s.matched_profile_id
+  )
+  update public.bbb_assignments ba
+  set care_buddy_id = null,
+      secret_buddy_id = null,
+      updated_at = now()
+  from cleared
+  where cleared.matched_profile_id is not null
+    and ba.profile_id = cleared.matched_profile_id;
+
+  with ordered as (
+    select
+      r.id,
+      r.group_id,
+      coalesce(r.participation_tier, '전참') as participation_tier,
+      row_number() over (
+        partition by r.group_id, coalesce(r.participation_tier, '전참')
+        order by
+          case r.group_role when 'leader' then 0 when 'assistant' then 1 else 2 end,
+          r.roster_order,
+          r.participant_name
+      )::integer as rn,
+      count(*) over (
+        partition by r.group_id, coalesce(r.participation_tier, '전참')
+      )::integer as cnt
+    from public.retreat_group_roster r
+    where r.source_batch = v_batch
+      and r.group_id is not null
+      and (p_group_no is null or r.group_no = p_group_no)
+  ),
+  paired as (
+    select
+      owner.id,
+      buddy.id as care_buddy_roster_id
+    from ordered owner
+    join ordered buddy
+      on buddy.group_id = owner.group_id
+     and buddy.participation_tier = owner.participation_tier
+     and buddy.rn = case when owner.rn = owner.cnt then 1 else owner.rn + 1 end
+    where owner.cnt > 1
+  ),
+  updated as (
+    update public.retreat_group_roster r
+    set care_buddy_roster_id = paired.care_buddy_roster_id,
+        updated_at = now()
+    from paired
+    where r.id = paired.id
+    returning r.id
+  )
+  select count(*)::integer into v_assigned_rows from updated;
+
+  with owners as (
+    select id, care_buddy_roster_id
+    from public.retreat_group_roster
+    where source_batch = v_batch
+      and group_id is not null
+      and care_buddy_roster_id is not null
+      and (p_group_no is null or group_no = p_group_no)
+  ),
+  updated as (
+    update public.retreat_group_roster target
+    set secret_buddy_roster_id = owners.id,
+        updated_at = now()
+    from owners
+    where target.id = owners.care_buddy_roster_id
+    returning target.id
+  )
+  select count(*)::integer into v_secret_rows from updated;
+
+  select (result->>'groupMembersTouched')::integer,
+         (result->>'assignmentsTouched')::integer
+  into v_group_members,
+       v_assignments
+  from (
+    select public.bu_sync_group_roster_profile_matches(v_batch) as result
+  ) synced;
+
+  return jsonb_build_object(
+    'ok', true,
+    'source', 'supabase',
+    'sourceBatch', v_batch,
+    'groupNo', p_group_no,
+    'bucketCount', coalesce(v_bucket_count, 0),
+    'skippedSingletonBuckets', coalesce(v_skipped_singletons, 0),
+    'assignedRows', coalesce(v_assigned_rows, 0),
+    'secretRows', coalesce(v_secret_rows, 0),
+    'groupMembersTouched', coalesce(v_group_members, 0),
+    'assignmentsTouched', coalesce(v_assignments, 0)
+  );
+end;
+$$;
+
+revoke all on function public.admin_auto_assign_bbb_buddies(integer) from public, anon, authenticated;
+grant execute on function public.admin_auto_assign_bbb_buddies(integer) to authenticated;
+
 create or replace function public.admin_resolve_group_roster_profile(
   p_roster_id uuid,
   p_profile_id uuid
