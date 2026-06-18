@@ -831,6 +831,105 @@ $$;
 revoke all on function public.admin_set_bbb_care_buddy(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.admin_set_bbb_care_buddy(uuid, uuid) to authenticated;
 
+create or replace function public.admin_resolve_group_roster_profile(
+  p_roster_id uuid,
+  p_profile_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_admin public.profiles%rowtype;
+  v_roster public.retreat_group_roster%rowtype;
+  v_profile public.profiles%rowtype;
+  v_existing_roster_id uuid;
+begin
+  v_admin := public.bu_admin_profile();
+
+  select *
+  into v_roster
+  from public.retreat_group_roster
+  where id = p_roster_id;
+
+  if v_roster.id is null then
+    return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'roster_not_found');
+  end if;
+
+  select *
+  into v_profile
+  from public.profiles
+  where id = p_profile_id
+    and account_status = 'active'
+    and is_dev = false
+    and is_test = false;
+
+  if v_profile.id is null then
+    return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'profile_not_found');
+  end if;
+
+  if public.bu_group_roster_normalize_name(v_profile.name) is distinct from v_roster.name_norm then
+    return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'name_mismatch');
+  end if;
+
+  select r.id
+  into v_existing_roster_id
+  from public.retreat_group_roster r
+  where r.source_batch = v_roster.source_batch
+    and r.matched_profile_id = p_profile_id
+    and r.id <> p_roster_id
+  order by r.roster_order
+  limit 1;
+
+  if v_existing_roster_id is not null then
+    return jsonb_build_object(
+      'ok', false,
+      'source', 'supabase',
+      'error', 'profile_already_matched',
+      'existingRosterId', v_existing_roster_id
+    );
+  end if;
+
+  update public.retreat_group_roster
+  set matched_profile_id = p_profile_id,
+      match_status = 'matched_manual',
+      match_detail = '관리자 수동 매칭',
+      updated_at = now()
+  where id = p_roster_id;
+
+  if v_roster.group_id is not null then
+    insert into public.group_members (
+      group_id,
+      profile_id,
+      group_role,
+      assigned_at
+    )
+    values (
+      v_roster.group_id,
+      p_profile_id,
+      v_roster.group_role,
+      now()
+    )
+    on conflict (profile_id) do update
+    set group_id = excluded.group_id,
+        group_role = excluded.group_role,
+        assigned_at = now();
+  end if;
+
+  return jsonb_build_object(
+    'ok', true,
+    'source', 'supabase',
+    'rosterId', p_roster_id,
+    'profileId', p_profile_id,
+    'matchStatus', 'matched_manual'
+  );
+end;
+$$;
+
+revoke all on function public.admin_resolve_group_roster_profile(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.admin_resolve_group_roster_profile(uuid, uuid) to authenticated;
+
 select pg_notify('pgrst', 'reload schema');
 
 commit;
