@@ -20,3 +20,6 @@
 - 케어버디와 시크릿버디 매칭은 앱 프로필 id가 아니라 `retreat_group_roster` row id 기준으로 저장한다.
 - 닉네임 없는 조원도 `care_buddy_roster_id`, `secret_buddy_roster_id`로 매칭할 수 있고, 이름 아래에 `닉네임 없음`으로 표시한다.
 - 새 가입자가 생기거나 이름과 교구 정보가 수정되면 `profiles` trigger가 `bu_sync_group_roster_profile_matches`를 실행해 조 명단의 앱 계정 매칭과 `bbb_assignments`를 동기화한다.
+- admin BBB 화면의 `자동 매칭`은 현재 선택한 조 또는 전체 조를 대상으로, 각 조 안의 `전참`, `토참`, `일참` 묶음별로 순환 매칭한다.
+- 한 묶음에 1명뿐이면 자동 매칭하지 않고 비워둔다.
+- 자동 매칭은 기존 매칭을 다시 배정하지만, 이후 각 행의 케어버디 select로 수동 수정할 수 있다.
