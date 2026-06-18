@@ -11,7 +11,7 @@ create table if not exists public.retreat_group_roster (
   group_role public.group_role not null default 'member',
   raw_role text,
   participant_name text not null,
-  name_norm text not null,
+  name_norm text not null default '',
   birth_year text,
   parish_raw text,
   parish_norm text,
