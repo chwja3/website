@@ -17,3 +17,6 @@
 - 원본 엑셀에는 전화번호가 있지만 BBB 매칭과 admin 표시에는 필요 없으므로 `retreat_group_roster`에는 import하지 않는다.
 - `이름 중복 확인필요` 행은 admin BBB 화면에서 후보 앱 계정 중 하나를 선택해 `matched_manual`로 확정할 수 있다.
 - 수동 확정된 행은 `group_members`에도 연결되며, 이후 케어버디 선택 대상이 된다.
+- 케어버디와 시크릿버디 매칭은 앱 프로필 id가 아니라 `retreat_group_roster` row id 기준으로 저장한다.
+- 닉네임 없는 조원도 `care_buddy_roster_id`, `secret_buddy_roster_id`로 매칭할 수 있고, 이름 아래에 `닉네임 없음`으로 표시한다.
+- 새 가입자가 생기거나 이름과 교구 정보가 수정되면 `profiles` trigger가 `bu_sync_group_roster_profile_matches`를 실행해 조 명단의 앱 계정 매칭과 `bbb_assignments`를 동기화한다.
