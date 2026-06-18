@@ -1,0 +1,17 @@
+# 2026-06-18 조별 명단과 앱 가입자 매칭 컨텍스트
+
+- 원본 조 편성 파일은 `C:\Users\jkjk9\Downloads\조별 데이터 정리 6_14.xlsx`다.
+- 시트는 `1~8조`, `9~16조`, `2차설문 추가 필요 명단`으로 구성되어 있다.
+- 조 시트는 왼쪽 블록과 오른쪽 블록에 각각 4개 조씩 들어 있다.
+- PROD 앱 가입자 명단은 Supabase `profiles`에서 읽었다.
+- 앱 가입자 중 `account_status != active`는 기본 매칭 대상에서 제외한다.
+- 개발자와 테스트 계정은 결과 검토용 목록에서는 제외한다.
+- `미참`은 앱 가입자에는 있으나 조 편성/추가 필요 명단 어디에도 이름이 없는 active 계정이다. 사역자 계정도 앱 가입자이면 포함될 수 있으므로 `권한` 컬럼을 같이 둔다.
+- 기존 `groups/group_members`만으로는 앱 미가입자를 조 안에 표시할 수 없다. 원본 조 명단용 `retreat_group_roster` 테이블을 추가해 앱 가입 여부와 무관하게 조 행을 보존한다.
+- `group_members`는 앱 프로필이 확실히 하나로 매칭된 사람에게만 연결한다. 이름 중복 또는 앱 미가입 행은 원본 명단에 남겨 admin에서 확인한다.
+- Supabase 적용 SQL은 `beyond_us/supabase/migrations/20260618000200_group_roster_import.sql`이다.
+- SQL은 `retreat_group_roster`를 만들고, 엑셀 원본 250명을 import하며, `admin_get_bbb_matching_matrix`와 `admin_set_bbb_care_buddy`를 새 명단 기준으로 덮어쓴다.
+- 조 명단 안에서 같은 이름과 같은 교구가 중복되면 앱 프로필 후보가 하나여도 자동 연결하지 않고 `duplicate_roster_same_parish`로 남긴다.
+- 조 명단에는 있지만 앱 가입자가 없으면 admin BBB 화면에서 해당 조에 그대로 남고 `닉네임 없음`으로 표시된다.
+- 앱에는 가입했지만 조 명단에는 없는 active 비개발, 비테스트 계정은 admin BBB 화면의 `미참` 그룹에 표시된다.
+- 원본 엑셀에는 전화번호가 있지만 BBB 매칭과 admin 표시에는 필요 없으므로 `retreat_group_roster`에는 import하지 않는다.

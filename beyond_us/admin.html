@@ -4125,27 +4125,39 @@
 
     function bbbMatchingDisplayName(row) {
       if (!row) return '-';
-      return row.name || row.displayName || '이름 없음';
+      return row.name || row.displayName || row.loginId || row.userId || '이름 없음';
+    }
+
+    function bbbMatchingNickname(row) {
+      if (!row) return '';
+      return row.loginId || row.userId || '';
     }
 
     function bbbMatchingOptionLabel(row) {
       if (!row) return '-';
-      const parts = [bbbMatchingDisplayName(row)];
+      const login = bbbMatchingNickname(row);
+      const primary = login ? `${bbbMatchingDisplayName(row)} (${login})` : bbbMatchingDisplayName(row);
       const meta = [];
       if (row.groupNo) meta.push(`${row.groupNo}조`);
       meta.push(bbbMatchingTier(row));
       if (row.parish) meta.push(row.parish);
       if (row.participantCode) meta.push(`#${row.participantCode}`);
-      return meta.length ? `${parts[0]} · ${meta.join(' · ')}` : parts[0];
+      return meta.length ? `${primary} · ${meta.join(' · ')}` : primary;
     }
 
     function bbbMatchingGroupKey(row) {
-      return row && row.groupNo ? `group:${row.groupNo}` : 'ungrouped';
+      if (!row) return 'ungrouped';
+      if (row.rowType === 'non_attendee' || row.matchStatus === 'non_attendee') return 'non_attendee';
+      if (row.groupNo) return `group:${row.groupNo}`;
+      if (row.groupLabel) return `label:${row.groupLabel}`;
+      return 'ungrouped';
     }
 
     function bbbMatchingGroupLabel(row) {
-      if (row && row.groupNo) return `${row.groupNo}조${row.groupName ? ` · ${row.groupName}` : ''}`;
-      return '조 미배정';
+      if (!row) return '조 미배정';
+      if (row.rowType === 'non_attendee' || row.matchStatus === 'non_attendee') return '미참';
+      if (row.groupNo) return `${row.groupNo}조${row.groupName ? ` · ${row.groupName}` : ''}`;
+      return row.groupLabel || row.groupName || '조 미배정';
     }
 
     function bbbMatchingTier(row) {
@@ -4153,11 +4165,12 @@
       if (/전참|전체|전일|금토일|full|all/.test(raw)) return '전참';
       if (/토참|토요일|토|sat|saturday/.test(raw)) return '토참';
       if (/일참|일요일|일|sun|sunday/.test(raw)) return '일참';
+      if (raw === '미참' || /non.?attendee|미참/.test(raw)) return '미참';
       return '전참';
     }
 
     function bbbMatchingTierOrder(label) {
-      return { '전참': 0, '토참': 1, '일참': 2 }[label] ?? 9;
+      return { '전참': 0, '토참': 1, '일참': 2, '미참': 9 }[label] ?? 8;
     }
 
     function bbbMatchingBucketKey(row) {
@@ -4166,12 +4179,78 @@
 
     function bbbMatchingMeta(row) {
       const parts = [];
+      const login = bbbMatchingNickname(row);
+      if (login) parts.push(`닉네임 ${login}`);
+      else if (row && row.rowType === 'roster') parts.push('닉네임 없음');
       if (row.participantCode) parts.push(`#${row.participantCode}`);
       if (row.parish) parts.push(row.parish);
+      if (row.rosterParish && row.rosterParish !== row.parish) parts.push(`원본 ${row.rosterParish}`);
       if (row.groupRole === 'leader') parts.push('조장');
       if (row.groupRole === 'assistant') parts.push('부조장');
       parts.push(bbbMatchingTier(row));
       return parts.join(' · ') || '-';
+    }
+
+    function bbbMatchingMatchLabel(row) {
+      const status = String((row && row.matchStatus) || '');
+      if (status === 'matched') return '매칭';
+      if (status === 'matched_by_parish') return '교구 기준 매칭';
+      if (status === 'nickname_missing') return '닉네임 없음';
+      if (status === 'duplicate_same_parish' || status === 'duplicate_roster_same_parish') return '이름 중복 확인필요 · 같은 청';
+      if (status === 'duplicate_needs_check') return '이름 중복 확인필요';
+      if (status === 'non_attendee') return '미참';
+      return row?.matchDetail || '확인 필요';
+    }
+
+    function bbbMatchingStatusStyle(row) {
+      const status = String((row && row.matchStatus) || '');
+      if (status === 'matched' || status === 'matched_by_parish') return 'background:#dcfce7;color:#166534;border-color:#bbf7d0;';
+      if (status === 'nickname_missing') return 'background:#fef3c7;color:#92400e;border-color:#fde68a;';
+      if (status === 'non_attendee') return 'background:#f1f5f9;color:#475569;border-color:#cbd5e1;';
+      if (status.startsWith('duplicate')) return 'background:#fee2e2;color:#991b1b;border-color:#fecaca;';
+      return 'background:#f8fafc;color:#475569;border-color:#e2e8f0;';
+    }
+
+    function bbbMatchingCanEdit(row) {
+      if (!row || !row.profileId || row.canMatch === false) return false;
+      const status = String(row.matchStatus || '');
+      return status !== 'nickname_missing' && status !== 'non_attendee' && !status.startsWith('duplicate');
+    }
+
+    function bbbMatchingCandidateProfiles(row) {
+      const value = row?.candidateProfiles;
+      if (Array.isArray(value)) return value;
+      if (typeof value === 'string' && value.trim()) {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+          return [];
+        }
+      }
+      return [];
+    }
+
+    function bbbMatchingCandidateSummary(row) {
+      const candidates = bbbMatchingCandidateProfiles(row);
+      if (!candidates.length) return '';
+      return candidates.map(candidate => {
+        const name = candidate.name || candidate.displayName || '이름 없음';
+        const login = candidate.loginId || candidate.userId || '닉네임 없음';
+        const parish = candidate.parish ? ` · ${candidate.parish}` : '';
+        return `${name} (${login})${parish}`;
+      }).join(' / ');
+    }
+
+    function renderBBBMatchingIssue(row) {
+      const candidateSummary = bbbMatchingCandidateSummary(row);
+      const detail = row?.matchDetail || bbbMatchingMatchLabel(row);
+      return `
+        <div style="border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--card);font-size:12px;line-height:1.45;">
+          <span style="display:inline-flex;border:1px solid;border-radius:999px;padding:2px 7px;font-weight:900;font-size:11px;${bbbMatchingStatusStyle(row)}">${esc(bbbMatchingMatchLabel(row))}</span>
+          <div style="margin-top:5px;color:var(--sub);">${esc(detail)}</div>
+          ${candidateSummary ? `<div style="margin-top:5px;color:var(--text);font-weight:700;">후보 ${esc(candidateSummary)}</div>` : ''}
+        </div>`;
     }
 
     function renderBBBMatchingGroupOptions(rows) {
@@ -4195,18 +4274,20 @@
     }
 
     function bbbMatchingCandidatesFor(row) {
+      if (!bbbMatchingCanEdit(row)) return [];
       const ownBucketKey = bbbMatchingBucketKey(row);
       let candidates = _bbbMatchingRows.filter(candidate =>
-        candidate.profileId !== row.profileId && bbbMatchingBucketKey(candidate) === ownBucketKey
+        bbbMatchingCanEdit(candidate) && candidate.profileId !== row.profileId && bbbMatchingBucketKey(candidate) === ownBucketKey
       );
       if (row.careBuddyId && !candidates.some(candidate => candidate.profileId === row.careBuddyId)) {
         const selected = _bbbMatchingRows.find(candidate => candidate.profileId === row.careBuddyId);
-        if (selected) candidates = [selected].concat(candidates);
+        if (selected && bbbMatchingCanEdit(selected)) candidates = [selected].concat(candidates);
       }
       return candidates;
     }
 
     function renderBBBMatchingSelect(row) {
+      if (!bbbMatchingCanEdit(row)) return renderBBBMatchingIssue(row);
       const options = bbbMatchingCandidatesFor(row).map(candidate => `
         <option value="${esc(candidate.profileId)}" ${candidate.profileId === row.careBuddyId ? 'selected' : ''}>
           ${esc(bbbMatchingOptionLabel(candidate))}
@@ -4238,19 +4319,32 @@
         return [
           row.name,
           row.displayName,
+          row.loginId,
+          row.userId,
           row.parish,
+          row.rosterParish,
           row.groupName,
+          row.groupLabel,
           row.groupNo ? `${row.groupNo}조` : '',
           bbbMatchingTier(row),
           row.participantCode,
           row.careBuddyName,
           row.secretBuddyName,
+          row.matchStatus,
+          row.matchDetail,
+          bbbMatchingCandidateSummary(row),
         ].some(value => String(value || '').toLowerCase().includes(query));
       });
 
       if (statusEl) {
-        const assigned = (_bbbMatchingRows || []).filter(row => row.careBuddyId).length;
-        statusEl.textContent = `총 ${(_bbbMatchingRows || []).length}명 · 케어버디 지정 ${assigned}명`;
+        const allRows = _bbbMatchingRows || [];
+        const rosterCount = allRows.filter(row => row.rowType !== 'non_attendee').length;
+        const editableCount = allRows.filter(row => bbbMatchingCanEdit(row)).length;
+        const assigned = allRows.filter(row => bbbMatchingCanEdit(row) && row.careBuddyId).length;
+        const noNickname = allRows.filter(row => row.matchStatus === 'nickname_missing').length;
+        const duplicate = allRows.filter(row => String(row.matchStatus || '').startsWith('duplicate')).length;
+        const nonAttendee = allRows.filter(row => row.rowType === 'non_attendee' || row.matchStatus === 'non_attendee').length;
+        statusEl.textContent = `조 명단 ${rosterCount}명 · 앱 매칭 ${editableCount}명 · 케어버디 지정 ${assigned}명 · 닉네임 없음 ${noNickname}명 · 중복 확인 ${duplicate}명 · 미참 ${nonAttendee}명`;
       }
 
       if (!rows.length) {
@@ -4267,7 +4361,8 @@
 
       matchEl.innerHTML = Array.from(grouped.entries()).map(([, groupRows]) => {
         const groupLabel = bbbMatchingGroupLabel(groupRows[0]);
-        const groupAssigned = groupRows.filter(row => row.careBuddyId).length;
+        const groupAssigned = groupRows.filter(row => bbbMatchingCanEdit(row) && row.careBuddyId).length;
+        const groupEditable = groupRows.filter(row => bbbMatchingCanEdit(row)).length;
         const tiered = new Map();
         groupRows.forEach(row => {
           const tier = bbbMatchingTier(row);
@@ -4277,39 +4372,42 @@
         const tierBlocks = Array.from(tiered.entries())
           .sort(([a], [b]) => bbbMatchingTierOrder(a) - bbbMatchingTierOrder(b))
           .map(([tier, tierRows]) => {
-            const tierAssigned = tierRows.filter(row => row.careBuddyId).length;
+            const tierAssigned = tierRows.filter(row => bbbMatchingCanEdit(row) && row.careBuddyId).length;
+            const tierEditable = tierRows.filter(row => bbbMatchingCanEdit(row)).length;
             return `
               <div style="border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--primary-soft);">
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
                   <strong style="font-size:13px;">${esc(tier)}</strong>
-                  <span style="font-size:11px;color:var(--sub);">${tierAssigned}/${tierRows.length}명 지정</span>
+                  <span style="font-size:11px;color:var(--sub);">${tierAssigned}/${tierEditable}명 지정 · 표시 ${tierRows.length}명</span>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                  ${tierRows.map(row => `
+                  ${tierRows.map(row => {
+                    const editable = bbbMatchingCanEdit(row);
+                    return `
                     <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;">
                       <div style="min-width:0;">
                         <div style="font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingDisplayName(row))}</div>
                         <div style="font-size:11px;color:var(--sub);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(bbbMatchingMeta(row))}</div>
                       </div>
                       <div style="min-width:0;">
-                        <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">케어버디</div>
+                        <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">${editable ? '케어버디' : '매칭 상태'}</div>
                         ${renderBBBMatchingSelect(row)}
                       </div>
                       <div style="min-width:0;">
                         <div style="font-size:11px;color:var(--sub);font-weight:800;margin-bottom:4px;">시크릿버디</div>
-                        <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(row.secretBuddyId ? bbbMatchingDisplayName({
+                        <div style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(editable && row.secretBuddyId ? bbbMatchingDisplayName({
                           name: row.secretBuddyName,
                           displayName: row.secretBuddyDisplayName,
                           loginId: row.secretBuddyLoginId,
                           userId: row.secretBuddyLoginId,
-                        }) : '미지정')}</div>
+                        }) : editable ? '미지정' : '-')}</div>
                       </div>
                       <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
-                        <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.profileId)})">저장</button>
-                        <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>
+                        ${editable ? `<button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.profileId)})">저장</button>
+                        <span id="bbbMatchRowStatus_${esc(row.profileId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>` : `<span style="font-size:11px;color:var(--sub);white-space:nowrap;">저장 불가</span>`}
                       </div>
                     </div>
-                  `).join('')}
+                  `}).join('')}
                 </div>
               </div>`;
           }).join('');
@@ -4317,7 +4415,7 @@
           <details open style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
             <summary style="cursor:pointer;list-style:none;padding:12px 14px;display:flex;justify-content:space-between;gap:10px;align-items:center;">
               <strong style="font-size:14px;">${esc(groupLabel)}</strong>
-              <span style="font-size:12px;color:var(--sub);">${groupAssigned}/${groupRows.length}명 지정</span>
+              <span style="font-size:12px;color:var(--sub);">${groupAssigned}/${groupEditable}명 지정 · 표시 ${groupRows.length}명</span>
             </summary>
             <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:8px;">
               ${tierBlocks}
