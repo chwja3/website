@@ -96,10 +96,18 @@ create table if not exists public.retreat_group_roster (
   match_status text not null default 'pending',
   match_detail text,
   candidate_profiles jsonb not null default '[]'::jsonb,
+  care_buddy_roster_id uuid,
+  secret_buddy_roster_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (source_batch, roster_order)
 );
+
+alter table public.retreat_group_roster
+add column if not exists care_buddy_roster_id uuid;
+
+alter table public.retreat_group_roster
+add column if not exists secret_buddy_roster_id uuid;
 
 create index if not exists retreat_group_roster_batch_idx
 on public.retreat_group_roster (source_batch, group_no, roster_order);
@@ -283,6 +291,207 @@ set candidate_profiles = c.candidates,
 from candidate_stats c
 where r.id = c.roster_id;
 
+create or replace function public.bu_sync_group_roster_profile_matches(
+  p_source_batch text default {sql_string(BATCH_KEY)}
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_matched integer := 0;
+  v_group_members integer := 0;
+  v_assignments integer := 0;
+begin
+  with roster_duplicates as (
+    select
+      r.id as roster_id,
+      count(*) over (partition by r.name_norm)::integer as roster_name_count,
+      count(*) over (partition by r.name_norm, r.parish_norm)::integer as roster_same_parish_count
+    from public.retreat_group_roster r
+    where r.source_batch = p_source_batch
+  ),
+  candidate_stats as (
+    select
+      r.id as roster_id,
+      max(rd.roster_name_count)::integer as roster_name_count,
+      max(rd.roster_same_parish_count)::integer as roster_same_parish_count,
+      count(p.id)::integer as candidate_count,
+      count(p.id) filter (
+        where public.bu_group_roster_normalize_parish(p.parish) = r.parish_norm
+      )::integer as same_parish_count,
+      (array_agg(p.id order by p.parish, p.name, p.login_id::text) filter (
+        where p.id is not null
+      ))[1] as single_candidate_id,
+      (array_agg(p.id order by p.parish, p.name, p.login_id::text) filter (
+        where p.id is not null
+          and public.bu_group_roster_normalize_parish(p.parish) = r.parish_norm
+      ))[1] as same_parish_candidate_id,
+      coalesce(jsonb_agg(
+        jsonb_build_object(
+          'profileId', p.id,
+          'loginId', p.login_id,
+          'name', p.name,
+          'displayName', p.display_name,
+          'parish', p.parish,
+          'participantCode', p.participant_code
+        )
+        order by p.parish, p.name, p.login_id::text
+      ) filter (where p.id is not null), '[]'::jsonb) as candidates
+    from public.retreat_group_roster r
+    join roster_duplicates rd on rd.roster_id = r.id
+    left join public.profiles p
+      on public.bu_group_roster_normalize_name(p.name) = r.name_norm
+     and p.account_status = 'active'
+     and p.is_dev = false
+     and p.is_test = false
+    where r.source_batch = p_source_batch
+    group by r.id
+  ),
+  updated as (
+    update public.retreat_group_roster r
+    set candidate_profiles = c.candidates,
+        matched_profile_id = case
+          when r.match_status = 'matched_manual' then r.matched_profile_id
+          when c.roster_same_parish_count > 1 then null
+          when c.candidate_count = 1 and c.roster_name_count = 1 then c.single_candidate_id
+          when c.same_parish_count = 1 then c.same_parish_candidate_id
+          else null
+        end,
+        match_status = case
+          when r.match_status = 'matched_manual' then r.match_status
+          when c.roster_same_parish_count > 1 then 'duplicate_roster_same_parish'
+          when c.candidate_count = 0 then 'nickname_missing'
+          when c.candidate_count = 1 and c.roster_name_count = 1 then 'matched'
+          when c.same_parish_count = 1 then 'matched_by_parish'
+          when c.same_parish_count > 1 then 'duplicate_same_parish'
+          else 'duplicate_needs_check'
+        end,
+        match_detail = case
+          when r.match_status = 'matched_manual' then r.match_detail
+          when c.roster_same_parish_count > 1 then '이름 중복 확인필요 - 조 명단 같은 청 중복'
+          when c.candidate_count = 0 then '닉네임 없음'
+          when c.candidate_count = 1 and c.roster_name_count = 1 then '매칭'
+          when c.same_parish_count = 1 then '교구 기준 매칭'
+          when c.same_parish_count > 1 then '이름 중복 확인필요 - 같은 청'
+          else '이름 중복 확인필요 - 다른 청 후보'
+        end,
+        updated_at = now()
+    from candidate_stats c
+    where r.id = c.roster_id
+    returning r.id
+  )
+  select count(*)::integer into v_matched from updated;
+
+  insert into public.group_members (
+    group_id,
+    profile_id,
+    group_role,
+    assigned_at
+  )
+  select
+    r.group_id,
+    r.matched_profile_id,
+    r.group_role,
+    now()
+  from public.retreat_group_roster r
+  where r.source_batch = p_source_batch
+    and r.group_id is not null
+    and r.matched_profile_id is not null
+  on conflict (profile_id) do update
+  set group_id = excluded.group_id,
+      group_role = excluded.group_role,
+      assigned_at = now();
+
+  get diagnostics v_group_members = row_count;
+
+  insert into public.bbb_assignments (
+    profile_id,
+    care_buddy_id,
+    group_id,
+    tier,
+    updated_at
+  )
+  select
+    r.matched_profile_id,
+    care.matched_profile_id,
+    r.group_id,
+    coalesce(r.participation_tier, '전참'),
+    now()
+  from public.retreat_group_roster r
+  join public.retreat_group_roster care
+    on care.id = r.care_buddy_roster_id
+  where r.source_batch = p_source_batch
+    and r.matched_profile_id is not null
+    and care.matched_profile_id is not null
+  on conflict (profile_id) do update
+  set care_buddy_id = excluded.care_buddy_id,
+      group_id = excluded.group_id,
+      tier = excluded.tier,
+      updated_at = now();
+
+  get diagnostics v_assignments = row_count;
+
+  insert into public.bbb_assignments (
+    profile_id,
+    secret_buddy_id,
+    group_id,
+    tier,
+    updated_at
+  )
+  select
+    secret.matched_profile_id,
+    r.matched_profile_id,
+    secret.group_id,
+    coalesce(secret.participation_tier, '전참'),
+    now()
+  from public.retreat_group_roster r
+  join public.retreat_group_roster secret
+    on secret.id = r.care_buddy_roster_id
+  where r.source_batch = p_source_batch
+    and r.matched_profile_id is not null
+    and secret.matched_profile_id is not null
+  on conflict (profile_id) do update
+  set secret_buddy_id = excluded.secret_buddy_id,
+      group_id = excluded.group_id,
+      tier = excluded.tier,
+      updated_at = now();
+
+  return jsonb_build_object(
+    'ok', true,
+    'source', 'supabase',
+    'sourceBatch', p_source_batch,
+    'matchedRowsTouched', v_matched,
+    'groupMembersTouched', v_group_members,
+    'assignmentsTouched', v_assignments
+  );
+end;
+$$;
+
+revoke all on function public.bu_sync_group_roster_profile_matches(text) from public, anon, authenticated;
+grant execute on function public.bu_sync_group_roster_profile_matches(text) to authenticated;
+
+create or replace function public.bu_sync_group_roster_profile_matches_trigger()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.bu_sync_group_roster_profile_matches({sql_string(BATCH_KEY)});
+  return new;
+end;
+$$;
+
+drop trigger if exists sync_group_roster_profile_after_change on public.profiles;
+create trigger sync_group_roster_profile_after_change
+after insert or update of name, parish, account_status, is_dev, is_test
+on public.profiles
+for each row execute function public.bu_sync_group_roster_profile_matches_trigger();
+
+select public.bu_sync_group_roster_profile_matches({sql_string(BATCH_KEY)});
+
 delete from public.group_members gm
 using public.groups g
 where gm.group_id = g.id
@@ -335,7 +544,8 @@ begin
         'rosterId', r.id,
         'sourceBatch', r.source_batch,
         'profileId', u.id,
-        'canMatch', u.id is not null,
+        'canMatch', true,
+        'hasProfile', u.id is not null,
         'loginId', u.login_id,
         'userId', u.login_id,
         'name', r.participant_name,
@@ -358,14 +568,18 @@ begin
         'matchStatus', r.match_status,
         'matchDetail', coalesce(r.match_detail, ''),
         'candidateProfiles', r.candidate_profiles,
-        'careBuddyId', ba.care_buddy_id,
-        'careBuddyLoginId', care.login_id,
-        'careBuddyName', coalesce(care.name, ''),
-        'careBuddyDisplayName', coalesce(care.display_name, ''),
-        'secretBuddyId', ba.secret_buddy_id,
-        'secretBuddyLoginId', secret.login_id,
-        'secretBuddyName', coalesce(secret.name, ''),
-        'secretBuddyDisplayName', coalesce(secret.display_name, ''),
+        'careBuddyRosterId', r.care_buddy_roster_id,
+        'careBuddyId', coalesce(ba.care_buddy_id, care_roster.matched_profile_id),
+        'careBuddyLoginId', coalesce(care.login_id, care_roster_profile.login_id),
+        'careBuddyName', coalesce(care.name, care_roster.participant_name, ''),
+        'careBuddyDisplayName', coalesce(care.display_name, care_roster_profile.display_name, ''),
+        'careBuddyMatchStatus', coalesce(care_roster.match_status, ''),
+        'secretBuddyRosterId', r.secret_buddy_roster_id,
+        'secretBuddyId', coalesce(ba.secret_buddy_id, secret_roster.matched_profile_id),
+        'secretBuddyLoginId', coalesce(secret.login_id, secret_roster_profile.login_id),
+        'secretBuddyName', coalesce(secret.name, secret_roster.participant_name, ''),
+        'secretBuddyDisplayName', coalesce(secret.display_name, secret_roster_profile.display_name, ''),
+        'secretBuddyMatchStatus', coalesce(secret_roster.match_status, ''),
         'updatedAt', ba.updated_at,
         'sortGroup', coalesce(r.group_no, 998),
         'sortRole', case r.group_role when 'leader' then 0 when 'assistant' then 1 else 2 end,
@@ -381,6 +595,10 @@ begin
     left join public.bbb_assignments ba on ba.profile_id = u.id
     left join public.profiles care on care.id = ba.care_buddy_id
     left join public.profiles secret on secret.id = ba.secret_buddy_id
+    left join public.retreat_group_roster care_roster on care_roster.id = r.care_buddy_roster_id
+    left join public.profiles care_roster_profile on care_roster_profile.id = care_roster.matched_profile_id
+    left join public.retreat_group_roster secret_roster on secret_roster.id = r.secret_buddy_roster_id
+    left join public.profiles secret_roster_profile on secret_roster_profile.id = secret_roster.matched_profile_id
     where r.source_batch = v_batch
   ),
   roster_names as (
@@ -639,6 +857,129 @@ $$;
 revoke all on function public.admin_set_bbb_care_buddy(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.admin_set_bbb_care_buddy(uuid, uuid) to authenticated;
 
+create or replace function public.admin_set_bbb_care_buddy_roster(
+  p_roster_id uuid,
+  p_care_buddy_roster_id uuid default null
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_admin public.profiles%rowtype;
+  v_roster public.retreat_group_roster%rowtype;
+  v_care_roster public.retreat_group_roster%rowtype;
+  v_old_care_roster_id uuid;
+  v_old_care_profile_id uuid;
+begin
+  v_admin := public.bu_admin_profile();
+
+  select *
+  into v_roster
+  from public.retreat_group_roster
+  where id = p_roster_id;
+
+  if v_roster.id is null then
+    return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'roster_not_found');
+  end if;
+
+  v_old_care_roster_id := v_roster.care_buddy_roster_id;
+
+  if p_care_buddy_roster_id is not null then
+    select *
+    into v_care_roster
+    from public.retreat_group_roster
+    where id = p_care_buddy_roster_id
+      and source_batch = v_roster.source_batch;
+
+    if v_care_roster.id is null then
+      return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'care_buddy_roster_not_found');
+    end if;
+
+    if p_roster_id = p_care_buddy_roster_id then
+      return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'self_matching_not_allowed');
+    end if;
+
+    if v_roster.group_id is distinct from v_care_roster.group_id then
+      return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'different_group_not_allowed');
+    end if;
+
+    if coalesce(v_roster.participation_tier, '전참') is distinct from coalesce(v_care_roster.participation_tier, '전참') then
+      return jsonb_build_object('ok', false, 'source', 'supabase', 'error', 'different_tier_not_allowed');
+    end if;
+  end if;
+
+  if v_old_care_roster_id is not null and v_old_care_roster_id is distinct from p_care_buddy_roster_id then
+    select matched_profile_id
+    into v_old_care_profile_id
+    from public.retreat_group_roster
+    where id = v_old_care_roster_id;
+
+    update public.retreat_group_roster
+    set secret_buddy_roster_id = null,
+        updated_at = now()
+    where id = v_old_care_roster_id
+      and secret_buddy_roster_id = p_roster_id;
+
+    if v_roster.matched_profile_id is not null and v_old_care_profile_id is not null then
+      update public.bbb_assignments
+      set secret_buddy_id = null,
+          updated_at = now()
+      where profile_id = v_old_care_profile_id
+        and secret_buddy_id = v_roster.matched_profile_id;
+    end if;
+  end if;
+
+  if p_care_buddy_roster_id is not null then
+    with cleared as (
+      update public.retreat_group_roster
+      set care_buddy_roster_id = null,
+          updated_at = now()
+      where source_batch = v_roster.source_batch
+        and care_buddy_roster_id = p_care_buddy_roster_id
+        and id <> p_roster_id
+      returning matched_profile_id
+    )
+    update public.bbb_assignments ba
+    set care_buddy_id = null,
+        updated_at = now()
+    from cleared
+    where cleared.matched_profile_id is not null
+      and ba.profile_id = cleared.matched_profile_id;
+
+    update public.retreat_group_roster
+    set secret_buddy_roster_id = p_roster_id,
+        updated_at = now()
+    where id = p_care_buddy_roster_id;
+  end if;
+
+  update public.retreat_group_roster
+  set care_buddy_roster_id = p_care_buddy_roster_id,
+      updated_at = now()
+  where id = p_roster_id;
+
+  if v_roster.matched_profile_id is not null then
+    update public.bbb_assignments
+    set care_buddy_id = null,
+        updated_at = now()
+    where profile_id = v_roster.matched_profile_id;
+  end if;
+
+  perform public.bu_sync_group_roster_profile_matches(v_roster.source_batch);
+
+  return jsonb_build_object(
+    'ok', true,
+    'source', 'supabase',
+    'rosterId', p_roster_id,
+    'careBuddyRosterId', p_care_buddy_roster_id
+  );
+end;
+$$;
+
+revoke all on function public.admin_set_bbb_care_buddy_roster(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.admin_set_bbb_care_buddy_roster(uuid, uuid) to authenticated;
+
 create or replace function public.admin_resolve_group_roster_profile(
   p_roster_id uuid,
   p_profile_id uuid
@@ -724,6 +1065,8 @@ begin
         group_role = excluded.group_role,
         assigned_at = now();
   end if;
+
+  perform public.bu_sync_group_roster_profile_matches(v_roster.source_batch);
 
   return jsonb_build_object(
     'ok', true,
