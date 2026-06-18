@@ -419,10 +419,13 @@ candidate_stats as (
     count(p.id) filter (
       where public.bu_group_roster_normalize_parish(p.parish) = r.parish_norm
     )::integer as same_parish_count,
-    min(p.id) as single_candidate_id,
-    min(p.id) filter (
-      where public.bu_group_roster_normalize_parish(p.parish) = r.parish_norm
-    ) as same_parish_candidate_id,
+    (array_agg(p.id order by p.parish, p.name, p.login_id::text) filter (
+      where p.id is not null
+    ))[1] as single_candidate_id,
+    (array_agg(p.id order by p.parish, p.name, p.login_id::text) filter (
+      where p.id is not null
+        and public.bu_group_roster_normalize_parish(p.parish) = r.parish_norm
+    ))[1] as same_parish_candidate_id,
     coalesce(jsonb_agg(
       jsonb_build_object(
         'profileId', p.id,
