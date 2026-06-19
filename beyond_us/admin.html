@@ -3261,6 +3261,22 @@
       return `https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&margin=10&data=${encodeURIComponent(url || '')}`;
     }
 
+    function pilgrimQrPngTitle(spotNumber, label) {
+      const n = Number(spotNumber || 0);
+      const name = String(label || '').trim() || '이름 없음';
+      return `천로역정 스팟 ${n} / ${name} / 인증 QR`;
+    }
+
+    function loadImageForCanvas(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
     async function copyPilgrimQrUrl(url, btn) {
       try {
         await navigator.clipboard.writeText(url);
@@ -3274,9 +3290,82 @@
       }
     }
 
-    function openPilgrimQrPng(url) {
-      const qrUrl = pilgrimQrImageUrl(url, 720);
-      window.open(qrUrl, '_blank', 'noopener,noreferrer');
+    async function openPilgrimQrPng(url, spotNumber, label) {
+      const title = pilgrimQrPngTitle(spotNumber, label);
+      const win = window.open('', '_blank', 'width=760,height=900');
+      if (!win) {
+        alert('팝업이 차단되었습니다. 팝업 허용 후 다시 눌러주세요.');
+        return;
+      }
+      win.document.open();
+      win.document.write('<!doctype html><html lang="ko"><head><meta charset="UTF-8"><title>' + esc(title) + '</title></head><body style="margin:0;display:grid;place-items:center;min-height:100vh;font-family:sans-serif;color:#111;">PNG를 만드는 중...</body></html>');
+      win.document.close();
+
+      try {
+        const qrSize = 720;
+        const pad = 56;
+        const titleHeight = 118;
+        const canvas = document.createElement('canvas');
+        canvas.width = qrSize + pad * 2;
+        canvas.height = qrSize + titleHeight + pad;
+        const ctx = canvas.getContext('2d');
+        const qrImg = await loadImageForCanvas(pilgrimQrImageUrl(url, qrSize));
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#111827';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '700 30px "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif';
+        ctx.fillText(title, canvas.width / 2, 50);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '500 18px "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif';
+        ctx.fillText('해당 장소에 붙여두는 천로역정 인증 QR입니다.', canvas.width / 2, 88);
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pad - 1, titleHeight - 1, qrSize + 2, qrSize + 2);
+        ctx.drawImage(qrImg, pad, titleHeight, qrSize, qrSize);
+
+        const dataUrl = canvas.toDataURL('image/png');
+        win.document.open();
+        win.document.write(`<!doctype html>
+          <html lang="ko">
+          <head>
+            <meta charset="UTF-8" />
+            <title>${esc(title)}</title>
+            <style>
+              body { margin:0; min-height:100vh; display:grid; place-items:center; background:#f3f4f6; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+              img { max-width:min(96vw,860px); height:auto; background:#fff; box-shadow:0 14px 36px rgba(0,0,0,.16); }
+            </style>
+          </head>
+          <body>
+            <img src="${dataUrl}" alt="${esc(title)}" />
+          </body>
+          </html>`);
+        win.document.close();
+      } catch(e) {
+        const qrUrl = pilgrimQrImageUrl(url, 720);
+        win.document.open();
+        win.document.write(`<!doctype html>
+          <html lang="ko">
+          <head>
+            <meta charset="UTF-8" />
+            <title>${esc(title)}</title>
+            <style>
+              body { margin:0; padding:36px; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#111827; text-align:center; }
+              h1 { margin:0 0 10px; font-size:28px; }
+              p { margin:0 0 18px; color:#6b7280; }
+              img { width:720px; max-width:92vw; height:auto; image-rendering:pixelated; }
+            </style>
+          </head>
+          <body>
+            <h1>${esc(title)}</h1>
+            <p>해당 장소에 붙여두는 천로역정 인증 QR입니다.</p>
+            <img src="${esc(qrUrl)}" alt="${esc(title)}" />
+          </body>
+          </html>`);
+        win.document.close();
+      }
     }
 
     function printPilgrimQrCodes() {
@@ -3387,7 +3476,7 @@
             <input class="pilgrim-qr-url" readonly value="${esc(row.qrUrl || '')}" onclick="this.select()" />
             <div class="pilgrim-qr-actions">
               <button class="btn btn-primary btn-sm" onclick="copyPilgrimQrUrl(${jsArg(row.qrUrl || '')}, this)">URL 복사</button>
-              <button class="btn btn-ghost btn-sm" onclick="openPilgrimQrPng(${jsArg(row.qrUrl || '')})">PNG 열기</button>
+              <button class="btn btn-ghost btn-sm" onclick="openPilgrimQrPng(${jsArg(row.qrUrl || '')}, ${Number(row.spotNumber || 0)}, ${jsArg(row.label || '')})">PNG 열기</button>
             </div>
           </div>
         `).join('');
