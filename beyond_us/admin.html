@@ -111,6 +111,41 @@
       .tab-setting-controls { justify-content:flex-start; }
     }
 
+    /* ── 천로역정 QR 출력 ── */
+    .pilgrim-qr-toolbar {
+      display:flex; align-items:center; justify-content:flex-end;
+      gap:8px; flex-wrap:wrap; margin-bottom:12px;
+    }
+    .pilgrim-qr-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+      gap:12px;
+    }
+    .pilgrim-qr-card {
+      border:1px solid var(--line); border-radius:12px; background:var(--bg);
+      padding:12px; display:flex; flex-direction:column; gap:10px; min-width:0;
+    }
+    .pilgrim-qr-card-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+    .pilgrim-qr-card-title { font-size:14px; font-weight:900; color:var(--text); }
+    .pilgrim-qr-card-label { font-size:12px; color:var(--sub); margin-top:2px; word-break:keep-all; }
+    .pilgrim-qr-badge {
+      flex-shrink:0; border-radius:999px; background:#fff7ed; color:#9a3412;
+      border:1px solid #fed7aa; padding:4px 8px; font-size:11px; font-weight:900;
+    }
+    .pilgrim-qr-img-wrap {
+      background:#fff; border:1px solid var(--line); border-radius:10px;
+      display:flex; justify-content:center; align-items:center; padding:10px;
+    }
+    .pilgrim-qr-img { width:156px; height:156px; image-rendering:pixelated; }
+    .pilgrim-qr-url {
+      width:100%; border:1px solid var(--line); border-radius:8px; background:#fff;
+      color:var(--sub); font-size:10px; padding:7px 8px; overflow:hidden; text-overflow:ellipsis;
+    }
+    .pilgrim-qr-actions { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    @media (max-width: 520px) {
+      .pilgrim-qr-grid { grid-template-columns:1fr; }
+      .pilgrim-qr-img { width:180px; height:180px; }
+    }
+
     /* ── 패널 ── */
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
@@ -412,9 +447,12 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
             <div>
               <h2 class="card-title" style="margin:0;">천로역정 QR 출력</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 장소에 붙일 QR URL 7개입니다. 복사한 URL로 QR 이미지를 생성해서 인쇄해주세요.</p>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 장소에 붙일 QR 7개입니다. 사용자가 자기 배정 장소에서 찍으면 미션 성공으로 처리됩니다.</p>
             </div>
-            <button class="btn btn-ghost btn-sm" id="refreshPilgrimQrBtn" onclick="loadPilgrimQrCodes()">새로고침</button>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-ghost btn-sm" id="refreshPilgrimQrBtn" onclick="loadPilgrimQrCodes()">새로고침</button>
+              <button class="btn btn-primary btn-sm" id="printPilgrimQrBtn" onclick="printPilgrimQrCodes()" disabled>전체 인쇄</button>
+            </div>
           </div>
           <div id="pilgrimQrCodeList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
@@ -3207,9 +3245,15 @@
 
     let _bbbPhotoApprovals = [];
     let _bbbPhotoApprovalFilter = '';
+    let _pilgrimQrRows = [];
 
     function userAppUrlForQr() {
       return new URL('app.html', location.href).href;
+    }
+
+    function pilgrimQrImageUrl(url, size = 260) {
+      const px = Math.max(120, Math.min(600, Number(size) || 260));
+      return `https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&margin=10&data=${encodeURIComponent(url || '')}`;
     }
 
     async function copyPilgrimQrUrl(url, btn) {
@@ -3225,31 +3269,128 @@
       }
     }
 
+    function openPilgrimQrPng(url) {
+      const qrUrl = pilgrimQrImageUrl(url, 720);
+      window.open(qrUrl, '_blank', 'noopener,noreferrer');
+    }
+
+    function printPilgrimQrCodes() {
+      const rows = Array.isArray(_pilgrimQrRows) ? _pilgrimQrRows.filter(row => row && row.qrUrl) : [];
+      if (!rows.length) {
+        alert('인쇄할 QR이 없습니다. 먼저 새로고침을 눌러주세요.');
+        return;
+      }
+      const cards = rows.map(row => {
+        const spotNumber = Number(row.spotNumber || 0);
+        const label = esc(row.label || '');
+        const qrUrl = esc(row.qrUrl || '');
+        const imgUrl = esc(pilgrimQrImageUrl(row.qrUrl || '', 320));
+        return `
+          <section class="qr-card">
+            <div class="qr-meta">
+              <strong>천로역정 스팟 ${spotNumber}</strong>
+              <span>${label}</span>
+            </div>
+            <img src="${imgUrl}" alt="천로역정 스팟 ${spotNumber} QR" />
+            <p>${qrUrl}</p>
+          </section>
+        `;
+      }).join('');
+      const win = window.open('', '_blank', 'width=960,height=900');
+      if (!win) {
+        alert('팝업이 차단되었습니다. 팝업 허용 후 다시 눌러주세요.');
+        return;
+      }
+      win.document.open();
+      win.document.write(`<!doctype html>
+        <html lang="ko">
+        <head>
+          <meta charset="UTF-8" />
+          <title>천로역정 QR 출력</title>
+          <style>
+            * { box-sizing:border-box; }
+            body { margin:0; padding:24px; font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; color:#1f2937; background:#fff; }
+            h1 { margin:0 0 6px; font-size:22px; }
+            .desc { margin:0 0 18px; color:#6b7280; font-size:13px; }
+            .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+            .qr-card { border:1px solid #d1d5db; border-radius:12px; padding:16px; text-align:center; page-break-inside:avoid; break-inside:avoid; }
+            .qr-meta { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; margin-bottom:10px; text-align:left; }
+            .qr-meta strong { font-size:16px; }
+            .qr-meta span { color:#6b7280; font-size:13px; }
+            img { width:230px; height:230px; image-rendering:pixelated; }
+            p { margin:8px 0 0; color:#9ca3af; font-size:8px; word-break:break-all; }
+            @media print {
+              body { padding:12mm; }
+              .grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10mm; }
+              .qr-card { border-color:#111827; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>천로역정 QR</h1>
+          <p class="desc">각 장소에 해당 QR을 출력해 붙여주세요.</p>
+          <main class="grid">${cards}</main>
+        </body>
+        </html>`);
+      win.document.close();
+      win.focus();
+      const startedAt = Date.now();
+      const waitForImages = () => {
+        const imgs = Array.from(win.document.images || []);
+        const ready = imgs.length > 0 && imgs.every(img => img.complete);
+        if (ready || Date.now() - startedAt > 4500) {
+          win.print();
+          return;
+        }
+        setTimeout(waitForImages, 200);
+      };
+      setTimeout(waitForImages, 250);
+    }
+
     async function loadPilgrimQrCodes() {
       const listEl = document.getElementById('pilgrimQrCodeList');
       const btn = document.getElementById('refreshPilgrimQrBtn');
+      const printBtn = document.getElementById('printPilgrimQrBtn');
       if (!listEl) return;
+      listEl.className = '';
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       if (btn) btn.disabled = true;
+      if (printBtn) printBtn.disabled = true;
       try {
         const res = await callSupabaseAdminRpc('admin_get_pilgrim_qr_codes', { p_app_url: userAppUrlForQr() });
         if (!res.ok) throw new Error(res.error || 'load_failed');
         const rows = Array.isArray(res.rows) ? res.rows : [];
+        _pilgrimQrRows = rows;
         if (!rows.length) {
+          listEl.className = '';
           listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">QR 스팟이 없습니다.</p>';
           return;
         }
+        if (printBtn) printBtn.disabled = false;
         listEl.innerHTML = rows.map(row => `
-          <div style="display:grid;grid-template-columns:92px minmax(0,1fr) 72px;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px;background:var(--bg);">
-            <div style="min-width:0;">
-              <div style="font-size:12px;font-weight:900;color:var(--text);">스팟 ${Number(row.spotNumber || 0)}</div>
-              <div style="font-size:11px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(row.label || '')}</div>
+          <div class="pilgrim-qr-card">
+            <div class="pilgrim-qr-card-head">
+              <div>
+                <div class="pilgrim-qr-card-title">천로역정 스팟 ${Number(row.spotNumber || 0)}</div>
+                <div class="pilgrim-qr-card-label">${esc(row.label || '')}</div>
+              </div>
+              <span class="pilgrim-qr-badge">장소 QR</span>
             </div>
-            <input class="input" readonly value="${esc(row.qrUrl || '')}" style="font-size:11px;padding:7px 8px;" onclick="this.select()" />
-            <button class="btn btn-primary btn-sm" onclick="copyPilgrimQrUrl(${jsArg(row.qrUrl || '')}, this)">복사</button>
+            <div class="pilgrim-qr-img-wrap">
+              <img class="pilgrim-qr-img" src="${esc(pilgrimQrImageUrl(row.qrUrl || '', 260))}" alt="천로역정 스팟 ${Number(row.spotNumber || 0)} QR" loading="lazy" />
+            </div>
+            <input class="pilgrim-qr-url" readonly value="${esc(row.qrUrl || '')}" onclick="this.select()" />
+            <div class="pilgrim-qr-actions">
+              <button class="btn btn-primary btn-sm" onclick="copyPilgrimQrUrl(${jsArg(row.qrUrl || '')}, this)">URL 복사</button>
+              <button class="btn btn-ghost btn-sm" onclick="openPilgrimQrPng(${jsArg(row.qrUrl || '')})">PNG 열기</button>
+            </div>
           </div>
         `).join('');
+        listEl.className = 'pilgrim-qr-grid';
       } catch(e) {
+        _pilgrimQrRows = [];
+        if (printBtn) printBtn.disabled = true;
+        listEl.className = '';
         listEl.innerHTML = adminErrorBlock(e);
       } finally {
         if (btn) btn.disabled = false;
