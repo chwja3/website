@@ -75,13 +75,23 @@
         .then(r => r.text())
         .then(remote => {
           const remoteVer = remote.trim();
-          if (remoteVer && remoteVer !== APP_VERSION) {
+          if (remoteVer && isRemoteVersionNewer(remoteVer, APP_VERSION)) {
             console.warn('[DIAG] new version detected. local=', APP_VERSION, 'remote=', remoteVer);
             showUpdateBanner();
           }
         })
         .catch(() => {});
     })();
+
+    function isRemoteVersionNewer(remoteVer, localVer) {
+      const remote = String(remoteVer || '').trim();
+      const local = String(localVer || '').trim();
+      if (!remote || !local || remote === local) return false;
+      if (/^\d{8}[a-z]?$/i.test(remote) && /^\d{8}[a-z]?$/i.test(local)) {
+        return remote.toLowerCase() > local.toLowerCase();
+      }
+      return remote !== local;
+    }
 
     function showUpdateBanner() {
       if (document.getElementById('updateBanner')) return; // 중복 방지
