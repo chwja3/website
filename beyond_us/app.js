@@ -55,7 +55,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260619c';
+    const APP_VERSION = '20260619d';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5663,6 +5663,165 @@
       statusEl.style.fontWeight = '700';
     }
 
+    const _pilgrimQrScanner = {
+      spotIndex: null,
+      stream: null,
+      detector: null,
+      scanning: false,
+      busy: false,
+    };
+
+    function setPilgrimQrScanStatus(message, color) {
+      const el = document.getElementById('pilgrimQrScanStatus');
+      if (!el) return;
+      el.textContent = message || '';
+      el.style.color = color || 'var(--sub)';
+    }
+
+    function parsePilgrimQrValue(rawValue, fallbackSpotIndex) {
+      const raw = String(rawValue || '').trim();
+      if (!raw) return { ok: false, error: 'QR 코드나 URL을 입력해주세요.' };
+      let spotIndex = Number(fallbackSpotIndex);
+      let code = raw;
+      try {
+        const url = new URL(raw, location.href);
+        const spotRaw = url.searchParams.get('pilgrimSpot') || url.searchParams.get('pSpot');
+        const codeRaw = url.searchParams.get('pilgrimCode') || url.searchParams.get('pCode');
+        if (spotRaw !== null) spotIndex = Number(spotRaw);
+        if (codeRaw) code = codeRaw.trim();
+      } catch(e) {}
+      if (!Number.isInteger(spotIndex) || spotIndex < 0 || spotIndex > 6) {
+        return { ok: false, error: '스팟 번호를 확인할 수 없어요.' };
+      }
+      if (!code) return { ok: false, error: 'QR 코드를 확인할 수 없어요.' };
+      return { ok: true, spotIndex, code };
+    }
+
+    async function stopPilgrimQrCamera() {
+      _pilgrimQrScanner.scanning = false;
+      const stream = _pilgrimQrScanner.stream;
+      _pilgrimQrScanner.stream = null;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      const video = document.getElementById('pilgrimQrVideo');
+      if (video) video.srcObject = null;
+    }
+
+    async function openPilgrimQrScanner(spotIndex) {
+      _pilgrimQrScanner.spotIndex = Number(spotIndex);
+      _pilgrimQrScanner.busy = false;
+      const modal = document.getElementById('pilgrimQrScanModal');
+      const title = document.getElementById('pilgrimQrScanTitle');
+      const input = document.getElementById('pilgrimQrManualInput');
+      if (!modal) return;
+      if (title) title.textContent = `천로역정 스팟 ${Number(spotIndex) + 1} QR 인증`;
+      if (input) input.value = '';
+      modal.style.display = 'flex';
+      setPilgrimQrScanStatus('카메라를 준비하고 있어요.', 'var(--sub)');
+      await startPilgrimQrCamera();
+    }
+
+    async function closePilgrimQrScanner() {
+      await stopPilgrimQrCamera();
+      const modal = document.getElementById('pilgrimQrScanModal');
+      if (modal) modal.style.display = 'none';
+    }
+
+    async function startPilgrimQrCamera() {
+      const video = document.getElementById('pilgrimQrVideo');
+      if (!video || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setPilgrimQrScanStatus('카메라를 열 수 없어요. QR URL이나 코드를 직접 입력해주세요.', 'var(--danger)');
+        return;
+      }
+      try {
+        await stopPilgrimQrCamera();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } },
+          audio: false,
+        });
+        _pilgrimQrScanner.stream = stream;
+        video.srcObject = stream;
+        await video.play();
+        if (!('BarcodeDetector' in window)) {
+          setPilgrimQrScanStatus('이 브라우저는 자동 QR 인식을 지원하지 않아요. QR URL이나 코드를 직접 입력해주세요.', 'var(--sub)');
+          return;
+        }
+        _pilgrimQrScanner.detector = new BarcodeDetector({ formats: ['qr_code'] });
+        _pilgrimQrScanner.scanning = true;
+        setPilgrimQrScanStatus('QR을 화면 중앙에 맞춰주세요.', 'var(--primary)');
+        scanPilgrimQrFrame();
+      } catch(e) {
+        setPilgrimQrScanStatus('카메라 권한을 허용하거나 QR URL/코드를 직접 입력해주세요.', 'var(--danger)');
+      }
+    }
+
+    async function scanPilgrimQrFrame() {
+      if (!_pilgrimQrScanner.scanning || _pilgrimQrScanner.busy) return;
+      const video = document.getElementById('pilgrimQrVideo');
+      const detector = _pilgrimQrScanner.detector;
+      if (!video || !detector) return;
+      try {
+        const codes = await detector.detect(video);
+        const value = codes && codes[0] && codes[0].rawValue;
+        if (value) {
+          await submitPilgrimQrValue(value);
+          return;
+        }
+      } catch(e) {}
+      if (_pilgrimQrScanner.scanning) {
+        setTimeout(scanPilgrimQrFrame, 350);
+      }
+    }
+
+    async function submitPilgrimQrManual() {
+      const input = document.getElementById('pilgrimQrManualInput');
+      await submitPilgrimQrValue(input ? input.value : '');
+    }
+
+    async function submitPilgrimQrValue(rawValue) {
+      if (_pilgrimQrScanner.busy) return;
+      const selectedSpotIndex = Number(_pilgrimQrScanner.spotIndex);
+      const parsed = parsePilgrimQrValue(rawValue, selectedSpotIndex);
+      if (!parsed.ok) {
+        setPilgrimQrScanStatus(parsed.error, 'var(--danger)');
+        return;
+      }
+      if (parsed.spotIndex !== selectedSpotIndex) {
+        setPilgrimQrScanStatus('선택한 스팟과 다른 QR이에요. 해당 스팟의 QR을 찍어주세요.', 'var(--danger)');
+        return;
+      }
+      _pilgrimQrScanner.busy = true;
+      setPilgrimQrScanStatus('QR 인증 중이에요.', 'var(--primary)');
+      try {
+        const res = await apiClient.verifyPilgrimQr(parsed.spotIndex, parsed.code);
+        if (res.ok) {
+          _bbbData = Object.assign({}, _bbbData || {}, res);
+          _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
+          _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : (_bbbData.m3AssignedSpots || []);
+          if (res.rewarded || res.m3Rewarded) _bbbData.m3Rewarded = true;
+          _bbbLoadedOnce = false;
+          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
+          const statusEl = document.getElementById('bbbM3Status');
+          if (statusEl) {
+            statusEl.textContent = res.rewarded ? '레어 카드가 지급됐어요!' : '천로역정 스팟 인증 완료!';
+            statusEl.style.color = 'var(--primary)';
+            statusEl.style.fontWeight = '800';
+          }
+          await closePilgrimQrScanner();
+          syncServerChanges(true).catch(() => {});
+        } else {
+          setPilgrimQrScanStatus(pilgrimQrErrorText(res.error), 'var(--danger)');
+          _pilgrimQrScanner.busy = false;
+          if (_pilgrimQrScanner.scanning) setTimeout(scanPilgrimQrFrame, 700);
+        }
+      } catch(e) {
+        setPilgrimQrScanStatus(pilgrimQrErrorText(e.message), 'var(--danger)');
+        _pilgrimQrScanner.busy = false;
+        if (_pilgrimQrScanner.scanning) setTimeout(scanPilgrimQrFrame, 700);
+      }
+    }
+
     async function handlePendingPilgrimQr() {
       if (!pendingPilgrimQr || _pendingPilgrimQrHandled || !currentNickname) return;
       _pendingPilgrimQrHandled = true;
@@ -5730,7 +5889,7 @@
           ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(216,111,116,0.22);background:rgba(216,111,116,0.78);color:#fff;`
           : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
         const actionAttr = isAssigned
-          ? `onclick="${hasPhotoPreview ? `openBbbM3Modal(${i})` : `showPilgrimQrInstruction('${isCompleted ? '이미 인증된 스팟이에요.' : '각 장소의 QR을 찍으면 자동으로 인증돼요.'}')`}"`
+          ? `onclick="${hasPhotoPreview ? `openBbbM3Modal(${i})` : (isCompleted ? `showPilgrimQrInstruction('이미 인증된 스팟이에요.')` : `openPilgrimQrScanner(${i})`)}"`
           : '';
         const marker = isCompleted
           ? `<span style="font-size:21px;color:#fff;font-weight:900;line-height:1;">✓</span>`
