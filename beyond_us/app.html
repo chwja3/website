@@ -366,6 +366,7 @@
         <li class="drawer-item" data-section="investigation" style="display:none;"><span class="drawer-label">광범위수사</span></li>
         <li class="drawer-item" data-section="counseling" style="display:none;"><span class="drawer-label">목사님께 무물</span></li>
         <li class="drawer-item" data-section="visibleRadio" style="display:none;"><span class="drawer-label">별빛 우편함</span></li>
+        <li class="drawer-item" data-section="logistics" style="display:none;"><span class="drawer-label">숙소/차량</span></li>
         <li class="drawer-item" data-section="chat" style="display:none;"><span class="drawer-label">채팅방</span></li>
       </ul>
       <div class="drawer-utility">
@@ -1301,6 +1302,26 @@
         </div>
       </div>
 
+      <!-- 숙소/차량 배정표 -->
+      <div id="sectionLogistics" class="section hidden">
+        <div class="wrap">
+          <section class="card" style="margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;">
+              <div>
+                <p style="font-size:12px;font-weight:900;color:var(--primary);letter-spacing:.08em;margin:0 0 6px;">RETREAT GUIDE</p>
+                <h2 class="card-title" style="margin:0;">숙소/차량 배정표</h2>
+                <p class="card-sub" style="margin:6px 0 0;line-height:1.6;">내 숙소와 차량 배정 정보를 확인해주세요.</p>
+              </div>
+              <button class="btn btn-secondary" id="refreshLogisticsBtn" style="flex:none;height:auto;font-size:12px;padding:4px 10px;border-radius:8px;">새로고침</button>
+            </div>
+            <div id="logisticsStatus" style="font-size:13px;font-weight:700;color:var(--danger);min-height:18px;margin-bottom:10px;"></div>
+            <div id="logisticsContent">
+              <p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>
+            </div>
+          </section>
+        </div>
+      </div>
+
       <!-- Coming Soon 안내 -->
       <div id="sectionComingSoon" class="section hidden">
         <div class="wrap">
@@ -1322,7 +1343,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260619d" defer></script>
+  <script src="app.js?v=20260619e" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">

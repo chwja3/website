@@ -55,7 +55,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260619d';
+    const APP_VERSION = '20260619e';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -809,6 +809,7 @@
       if (typeof _lastTradeCollectionRenderSig !== 'undefined') _lastTradeCollectionRenderSig = '';
       resetHoldPrayState(options);
       resetBBBState(options);
+      resetLogisticsState(options);
       updateTicketBadge(null);
       renderDrawSection();
       renderCollection();
@@ -1268,6 +1269,9 @@
           p_login_id: currentNickname,
           p_id: id,
         }, { allowOkFalse: true });
+      },
+      async getLogisticsAssignment() {
+        return callSupabaseRpc('get_my_logistics_assignment', { p_login_id: currentNickname }, { allowOkFalse: true });
       },
       async getQtReflection(contentDate) {
         return callSupabaseRpc('get_qt_reflection', {
@@ -3698,6 +3702,12 @@
         description: '별이 보이는 밤에 우리 모두가 함께 참여할 수 있는 보이는 라디오 시간이 준비되어 있어요.',
         note: '수련회 당일 (6/20)에 사연 접수 창구가 열립니다. 별빛 우편함은 마지막 날 밤 (6/21)에 진행됩니다. 여러분들의 재미있고 감동적인 사연을 기다립니다☺️',
       },
+      logistics: {
+        date: 'Coming Soon',
+        title: '숙소/차량 배정표',
+        description: '수련회 숙소와 차량 배정 정보를 확인하는 공간이에요.',
+        note: '운영진이 배정표를 확정하면 내 숙소와 차량 정보가 표시됩니다.',
+      },
     };
 
     function applyTabSettings(data) {
@@ -3745,6 +3755,7 @@
         investigation: getItemEnabled('investigation', settings.investigation === true),
         counseling: getItemEnabled('counseling', settings.counseling === true),
         visibleRadio: getItemEnabled('visibleRadio', settings.visibleRadio === true || settings.visible_radio === true),
+        logistics: getItemEnabled('logistics', settings.logistics === true),
         chat: getItemEnabled('chat', settings.chat === true),
         collection: getItemEnabled('collection', settings.collection !== false),
         faq: getItemEnabled('faq', settings.faq !== false),
@@ -3766,7 +3777,7 @@
       }
     }
 
-    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', investigation: '6/20', visibleRadio: '6/20', counseling: '6/20' };
+    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', investigation: '6/20', visibleRadio: '6/20', counseling: '6/20', logistics: 'Coming Soon' };
     function applyDrawerTabState(section, enabled, status) {
       const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
       if (!item) return;
@@ -4412,6 +4423,7 @@
       investigation: 'sectionInvestigation',
       counseling: 'sectionCounseling',
       visibleRadio: 'sectionVisibleRadio',
+      logistics: 'sectionLogistics',
       comingSoon: 'sectionComingSoon',
       inquiry:    'sectionInquiry',
       chat:       'sectionChat',
@@ -4473,6 +4485,7 @@
       if (name === 'inquiry') loadInquiries();
       if (name === 'counseling') loadCounselingEntries();
       if (name === 'visibleRadio') loadVisibleRadioStories();
+      if (name === 'logistics') loadLogisticsAssignment();
       if (name === 'prayer') {
         markHoldPraySeen();
         loadHoldPray(false).then(markHoldPraySeen).catch(() => {});
@@ -5244,6 +5257,124 @@
 
     document.getElementById('visibleRadioSubmitBtn').addEventListener('click', submitVisibleRadioStory);
     document.getElementById('refreshVisibleRadioBtn').addEventListener('click', loadVisibleRadioStories);
+
+    /* ════ 숙소/차량 배정표 ════ */
+    let _logisticsLoadedFor = '';
+
+    function resetLogisticsState(options) {
+      _logisticsLoadedFor = '';
+      if (options && options.clearDom) {
+        const statusEl = document.getElementById('logisticsStatus');
+        const contentEl = document.getElementById('logisticsContent');
+        if (statusEl) statusEl.textContent = '';
+        if (contentEl) contentEl.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      }
+    }
+
+    function logisticsValue(value) {
+      return String(value || '').trim();
+    }
+
+    function logisticsInfoRow(label, value) {
+      const text = logisticsValue(value);
+      if (!text) return '';
+      return `
+        <div style="display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px;padding:8px 0;border-bottom:1px solid var(--line);">
+          <div style="font-size:12px;color:var(--sub);font-weight:800;">${escHtml(label)}</div>
+          <div style="font-size:14px;color:var(--text);font-weight:800;line-height:1.45;word-break:keep-all;">${escHtml(text)}</div>
+        </div>
+      `;
+    }
+
+    function logisticsCardHtml(title, rows, emptyText) {
+      const body = rows.filter(Boolean).join('');
+      return `
+        <div style="border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.03);">
+          <h3 style="font-size:16px;font-weight:900;color:var(--text);margin:0 0 10px;">${escHtml(title)}</h3>
+          ${body || `<p style="font-size:13px;color:var(--sub);margin:0;line-height:1.6;">${escHtml(emptyText || '아직 배정 정보가 없어요.')}</p>`}
+        </div>
+      `;
+    }
+
+    function renderLogisticsAssignment(data) {
+      const statusEl = document.getElementById('logisticsStatus');
+      const contentEl = document.getElementById('logisticsContent');
+      if (!contentEl) return;
+      if (statusEl) statusEl.textContent = '';
+      const assignment = data && data.assignment;
+      const profile = (data && data.profile) || {};
+      if (!assignment) {
+        contentEl.innerHTML = `
+          <div style="border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center;background:var(--primary-soft);">
+            <div style="font-size:28px;margin-bottom:8px;">🏠</div>
+            <div style="font-size:15px;font-weight:900;color:var(--text);">아직 배정 정보가 없어요.</div>
+            <p style="font-size:13px;color:var(--sub);line-height:1.6;margin:8px 0 0;">
+              ${escHtml(profile.name || currentNickname || '내 계정')}님의 숙소와 차량 배정표가 등록되면 이곳에 표시됩니다.
+            </p>
+          </div>
+        `;
+        return;
+      }
+      const lodging = assignment.lodging || {};
+      const vehicle = assignment.vehicle || {};
+      contentEl.innerHTML = `
+        <div style="display:grid;gap:12px;">
+          ${logisticsCardHtml('내 정보', [
+            logisticsInfoRow('이름', assignment.name || profile.name),
+            logisticsInfoRow('닉네임', assignment.nickname || profile.nickname),
+            logisticsInfoRow('소속', assignment.parish || profile.parish),
+            logisticsInfoRow('조', assignment.groupName),
+          ], '기본 정보가 아직 연결되지 않았어요.')}
+          ${logisticsCardHtml('숙소', [
+            logisticsInfoRow('건물', lodging.building),
+            logisticsInfoRow('방', lodging.room),
+            logisticsInfoRow('숙소 조', lodging.group),
+            logisticsInfoRow('비고', lodging.note),
+          ], '숙소 배정이 아직 등록되지 않았어요.')}
+          ${logisticsCardHtml('차량', [
+            logisticsInfoRow('차량 조', vehicle.group),
+            logisticsInfoRow('노선', vehicle.route),
+            logisticsInfoRow('차량', vehicle.no),
+            logisticsInfoRow('출발', vehicle.departure),
+            logisticsInfoRow('좌석', vehicle.seat),
+            logisticsInfoRow('비고', vehicle.note),
+          ], '차량 배정이 아직 등록되지 않았어요.')}
+          ${assignment.rawNote ? logisticsCardHtml('안내', [logisticsInfoRow('비고', assignment.rawNote)], '') : ''}
+        </div>
+      `;
+    }
+
+    async function loadLogisticsAssignment(force) {
+      const statusEl = document.getElementById('logisticsStatus');
+      const contentEl = document.getElementById('logisticsContent');
+      if (!contentEl) return;
+      if (!currentNickname) {
+        if (statusEl) statusEl.textContent = '';
+        contentEl.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;font-size:13px;">로그인하면 내 숙소와 차량 배정표를 확인할 수 있어요.</p>';
+        return;
+      }
+      if (!force && _logisticsLoadedFor === currentNickname) return;
+      _logisticsLoadedFor = currentNickname;
+      if (statusEl) {
+        statusEl.textContent = '불러오는 중...';
+        statusEl.style.color = 'var(--sub)';
+      }
+      contentEl.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
+      try {
+        const data = await apiClient.getLogisticsAssignment();
+        if (!data.ok) throw new Error(data.error || 'load_failed');
+        renderLogisticsAssignment(data);
+      } catch(e) {
+        _logisticsLoadedFor = '';
+        if (statusEl) {
+          statusEl.textContent = '서버 연결 오류';
+          statusEl.style.color = 'var(--danger)';
+        }
+        contentEl.innerHTML = '<p style="color:var(--danger);text-align:center;padding:16px;">배정표를 불러오지 못했어요. 잠시 후 다시 시도해주세요.</p>';
+      }
+    }
+
+    document.getElementById('refreshLogisticsBtn')?.addEventListener('click', () => loadLogisticsAssignment(true));
 
     /* ════ B.B.B. ════ */
     let _bbbData = null;

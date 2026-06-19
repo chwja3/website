@@ -287,6 +287,7 @@
       <button class="drawer-item" data-panel="hpmatching">H&amp;P 기도 매칭</button>
       <button class="drawer-item" data-panel="raffle">추첨권 번호</button>
       <button class="drawer-item" data-panel="attendance">앱 가입자</button>
+      <button class="drawer-item" data-panel="logistics">숙소/차량</button>
       <button class="drawer-item" data-panel="inquiry">개발자 문의</button>
       <button class="drawer-item" data-panel="counseling">목사님께 무물</button>
       <button class="drawer-item" data-panel="visibleradio">별빛 우편함</button>
@@ -605,6 +606,44 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- 숙소/차량 배정표 -->
+      <div id="tab-logistics" class="tab-panel">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">전체 배정</div><div class="stat-value" id="logisticsTotalCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">앱 미연결</div><div class="stat-value" id="logisticsMissingCount">-</div></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">숙소/차량 배정표</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">유저별 숙소와 차량 배정을 조회합니다. 실제 배정 데이터는 Supabase `retreat_logistics_assignments` 테이블 기준입니다.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshLogisticsAdminBtn">새로고침</button>
+          </div>
+          <input type="search" id="logisticsSearch" placeholder="🔍 이름, 닉네임, 교구, 조, 숙소, 차량 검색" class="input" style="margin-bottom:12px;" />
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>교구</th>
+                  <th>이름</th>
+                  <th>닉네임</th>
+                  <th>조</th>
+                  <th>숙소</th>
+                  <th>차량</th>
+                  <th>비고</th>
+                </tr>
+              </thead>
+              <tbody id="logisticsTableBody">
+                <tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="logisticsMoreBtn" style="display:none;width:100%;margin-top:10px;">더 보기</button>
+          <div class="status" id="logisticsAdminStatus"></div>
         </div>
       </div>
 
@@ -1119,6 +1158,8 @@
     };
     let _attendanceLimit = ADMIN_TABLE_INITIAL_LIMIT;
     let _attendanceSearchTimer = null;
+    let _logisticsLimit = ADMIN_TABLE_INITIAL_LIMIT;
+    let _logisticsSearchTimer = null;
     let _raffleTicketLimit = ADMIN_TABLE_INITIAL_LIMIT;
     let _raffleTicketSearchTimer = null;
     let _eventLogLoaded = false;
@@ -1351,6 +1392,7 @@
       if (panelId === 'hpmatching') loadHPPrayerMatching();
       if (panelId === 'raffle') loadRaffleTickets();
       if (panelId === 'attendance') loadRaffleAttendance();
+      if (panelId === 'logistics') loadLogisticsAssignments();
       if (panelId === 'inquiry') loadAdminInquiries();
       if (panelId === 'counseling') loadAdminCounseling();
       if (panelId === 'visibleradio') {
@@ -2112,12 +2154,103 @@
       }
     }
 
+    /* ── 숙소/차량 배정표 ── */
+    function logisticsAdminText(value) {
+      return String(value || '').trim();
+    }
+
+    function logisticsAdminJoin(parts) {
+      const list = (Array.isArray(parts) ? parts : []).map(logisticsAdminText).filter(Boolean);
+      return list.length ? list.join(' · ') : '-';
+    }
+
+    function updateLogisticsMoreButton(res, rows) {
+      const btn = document.getElementById('logisticsMoreBtn');
+      if (!btn) return;
+      const shown = Array.isArray(rows) ? rows.length : 0;
+      const total = Number(res && res.total) || shown;
+      btn.style.display = shown < total ? 'block' : 'none';
+      btn.textContent = `더 보기 (${shown}/${total})`;
+    }
+
+    function renderLogisticsRows(rows) {
+      const tbody = document.getElementById('logisticsTableBody');
+      const list = Array.isArray(rows) ? rows : [];
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">표시할 배정 정보가 없어요.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(row => {
+        const lodging = row.lodging || {};
+        const vehicle = row.vehicle || {};
+        const lodgingText = logisticsAdminJoin([lodging.building, lodging.room, lodging.group, lodging.note]);
+        const vehicleText = logisticsAdminJoin([vehicle.group, vehicle.route, vehicle.no, vehicle.departure, vehicle.seat, vehicle.note]);
+        const note = logisticsAdminText(row.rawNote);
+        return `
+          <tr>
+            <td><span class="badge badge-${esc(row.parish)}">${esc(row.parish || '-')}</span></td>
+            <td>${esc(row.name || '-')}</td>
+            <td>
+              <strong>${esc(row.nickname || '-')}</strong>
+              ${row.matched === false ? '<div style="font-size:11px;color:var(--danger);font-weight:800;margin-top:3px;">앱 미연결</div>' : ''}
+            </td>
+            <td>${esc(row.groupName || '-')}</td>
+            <td style="min-width:170px;line-height:1.5;">${esc(lodgingText)}</td>
+            <td style="min-width:190px;line-height:1.5;">${esc(vehicleText)}</td>
+            <td style="min-width:140px;line-height:1.5;">${esc(note || '-')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function loadLogisticsAssignments(options) {
+      const opts = options || {};
+      if (opts.resetLimit) _logisticsLimit = ADMIN_TABLE_INITIAL_LIMIT;
+      const tbody = document.getElementById('logisticsTableBody');
+      const statusEl = document.getElementById('logisticsAdminStatus');
+      const moreBtn = document.getElementById('logisticsMoreBtn');
+      const query = document.getElementById('logisticsSearch')?.value || '';
+      if (!tbody) return;
+      if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.className = 'status';
+      }
+      if (moreBtn) moreBtn.style.display = 'none';
+      tbody.innerHTML = '<tr><td colspan="7" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>';
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_logistics_assignments', {
+          p_search: query,
+          p_limit: _logisticsLimit,
+        });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        const rows = Array.isArray(res.rows) ? res.rows : [];
+        document.getElementById('logisticsTotalCount').textContent = Number(res.total) || 0;
+        document.getElementById('logisticsMissingCount').textContent = Number(res.missingProfileCount) || 0;
+        renderLogisticsRows(rows);
+        updateLogisticsMoreButton(res, rows);
+      } catch(e) {
+        tbody.innerHTML = adminErrorRow(7, e);
+        if (statusEl) adminSetStatusError(statusEl, e, '배정표 불러오기 실패');
+      }
+    }
+
+    function filterLogisticsAssignments() {
+      clearTimeout(_logisticsSearchTimer);
+      _logisticsSearchTimer = setTimeout(() => loadLogisticsAssignments({ resetLimit: true }), 250);
+    }
+
     document.getElementById('refreshAttendanceBtn').addEventListener('click', () => loadRaffleAttendance({ resetLimit: true }));
     document.getElementById('attendanceSearch').addEventListener('input', e => filterRaffleAttendance(e.target.value));
     document.getElementById('closeManualRewardBtn').addEventListener('click', hideManualRewardCard);
     document.getElementById('attendanceMoreBtn').addEventListener('click', () => {
       _attendanceLimit += ADMIN_TABLE_INITIAL_LIMIT;
       loadRaffleAttendance();
+    });
+    document.getElementById('refreshLogisticsAdminBtn')?.addEventListener('click', () => loadLogisticsAssignments({ resetLimit: true }));
+    document.getElementById('logisticsSearch')?.addEventListener('input', filterLogisticsAssignments);
+    document.getElementById('logisticsMoreBtn')?.addEventListener('click', () => {
+      _logisticsLimit += ADMIN_TABLE_INITIAL_LIMIT;
+      loadLogisticsAssignments();
     });
 
     /* ── 카드 현황 ── */
