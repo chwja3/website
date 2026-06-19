@@ -4145,6 +4145,10 @@
       meta.push(bbbMatchingTier(row));
       if (row.parish) meta.push(row.parish);
       if (row.participantCode) meta.push(`#${row.participantCode}`);
+      if (row.rawRole) meta.push(row.rawRole);
+      else if (row.groupRole === 'leader') meta.push('조장');
+      else if (row.groupRole === 'assistant') meta.push('부조장');
+      if (row.sortOrder) meta.push(`명단 ${row.sortOrder}`);
       return meta.length ? `${primary} · ${meta.join(' · ')}` : primary;
     }
 
@@ -4349,18 +4353,65 @@
       return candidates;
     }
 
+    function bbbMatchingCareBuddyLabel(row) {
+      if (!row || !row.careBuddyRosterId) return '';
+      const selected = _bbbMatchingRows.find(candidate => candidate.rosterId === row.careBuddyRosterId);
+      if (selected) return bbbMatchingOptionLabel(selected);
+      if (row.careBuddyName || row.careBuddyLoginId) {
+        return bbbMatchingOptionLabel({
+          name: row.careBuddyName,
+          displayName: row.careBuddyDisplayName,
+          loginId: row.careBuddyLoginId,
+          userId: row.careBuddyLoginId,
+          groupNo: row.groupNo,
+          matchingTier: row.matchingTier,
+        });
+      }
+      return '';
+    }
+
+    function bbbMatchingCandidateSearchValues(candidate) {
+      return [
+        bbbMatchingOptionLabel(candidate),
+        candidate.name,
+        candidate.displayName,
+        candidate.loginId,
+        candidate.userId,
+        candidate.parish,
+        candidate.participantCode,
+      ].map(value => String(value || '').trim()).filter(Boolean);
+    }
+
+    function bbbMatchingResolveCareBuddyInput(row, inputValue) {
+      const query = String(inputValue || '').trim();
+      if (!query) return { ok: true, rosterId: null };
+      const lower = query.toLowerCase();
+      const candidates = bbbMatchingCandidatesFor(row);
+      const exact = candidates.filter(candidate =>
+        bbbMatchingCandidateSearchValues(candidate).some(value => value.toLowerCase() === lower)
+      );
+      if (exact.length === 1) return { ok: true, rosterId: exact[0].rosterId };
+      if (exact.length > 1) return { ok: false, error: 'multiple', count: exact.length };
+
+      const partial = candidates.filter(candidate =>
+        bbbMatchingCandidateSearchValues(candidate).some(value => value.toLowerCase().includes(lower))
+      );
+      if (partial.length === 1) return { ok: true, rosterId: partial[0].rosterId };
+      if (partial.length > 1) return { ok: false, error: 'multiple', count: partial.length };
+      return { ok: false, error: 'not_found' };
+    }
+
     function renderBBBMatchingSelect(row) {
       if (!bbbMatchingCanEdit(row)) return renderBBBMatchingIssue(row);
-      const options = bbbMatchingCandidatesFor(row).map(candidate => `
-        <option value="${esc(candidate.rosterId)}" ${candidate.rosterId === row.careBuddyRosterId ? 'selected' : ''}>
-          ${esc(bbbMatchingOptionLabel(candidate))}
-        </option>
-      `).join('');
+      const listId = `bbbCareOptions_${String(row.rosterId || '').replace(/[^a-zA-Z0-9_-]/g, '')}`;
+      const options = bbbMatchingCandidatesFor(row).map(candidate => {
+        const label = bbbMatchingOptionLabel(candidate);
+        return `<option value="${esc(label)}"></option>`;
+      }).join('');
+      const currentValue = bbbMatchingCareBuddyLabel(row);
       return `
-        <select class="input" data-bbb-care-for="${esc(row.rosterId)}" onchange="markBBBMatchingDirty(${jsArg(row.rosterId)})" style="font-size:12px;padding:7px 9px;">
-          <option value="">미지정</option>
-          ${options}
-        </select>`;
+        <input class="input" data-bbb-care-for="${esc(row.rosterId)}" list="${esc(listId)}" value="${esc(currentValue)}" placeholder="이름 또는 닉네임 검색" oninput="markBBBMatchingDirty(${jsArg(row.rosterId)})" style="font-size:12px;padding:7px 9px;" />
+        <datalist id="${esc(listId)}">${options}</datalist>`;
     }
 
     function markBBBMatchingDirty(profileId) {
@@ -4491,9 +4542,18 @@
     }
 
     async function saveBBBMatchingRow(rosterId) {
-      const select = document.querySelector(`select[data-bbb-care-for="${rosterId}"]`);
+      const input = document.querySelector(`input[data-bbb-care-for="${rosterId}"]`);
       const status = document.getElementById(`bbbMatchRowStatus_${rosterId}`);
-      if (!select) return;
+      if (!input) return;
+      const row = (_bbbMatchingRows || []).find(item => item.rosterId === rosterId);
+      const resolved = bbbMatchingResolveCareBuddyInput(row, input.value);
+      if (!resolved.ok) {
+        if (status) {
+          status.textContent = resolved.error === 'multiple' ? `검색 결과 ${resolved.count}명` : '검색 결과 없음';
+          status.style.color = 'var(--danger)';
+        }
+        return;
+      }
       if (status) {
         status.textContent = '저장 중';
         status.style.color = 'var(--sub)';
@@ -4501,7 +4561,7 @@
       try {
         await callSupabaseAdminRpc('admin_set_bbb_care_buddy_roster', {
           p_roster_id: rosterId,
-          p_care_buddy_roster_id: select.value || null,
+          p_care_buddy_roster_id: resolved.rosterId,
         });
         if (status) {
           status.textContent = '저장됨';
