@@ -1150,6 +1150,26 @@
                 <img src="images/천로역정맵.webp" alt="필그림하우스 지도" style="width:100%;max-height:90vh;object-fit:contain;" />
                 <button onclick="closeBbbM3MapModal()" style="margin-top:16px;background:none;border:none;color:rgba(255,255,255,0.5);font-size:13px;cursor:pointer;">닫기</button>
               </div>
+              <div id="pilgrimQrScanModal" style="display:none;position:fixed;inset:0;z-index:760;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:18px;" onclick="if(event.target===this)closePilgrimQrScanner()">
+                <div style="width:min(440px,100%);max-height:92vh;overflow:auto;border-radius:18px;background:var(--bg);border:1px solid var(--line);box-shadow:0 16px 45px rgba(0,0,0,0.35);padding:18px;">
+                  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px;">
+                    <div>
+                      <p style="margin:0 0 4px;font-size:11px;font-weight:800;color:var(--primary);letter-spacing:0.12em;">PILGRIM QR</p>
+                      <h3 id="pilgrimQrScanTitle" style="margin:0;font-size:18px;color:var(--text);font-weight:900;">천로역정 QR 인증</h3>
+                    </div>
+                    <button onclick="closePilgrimQrScanner()" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:20px;line-height:1;cursor:pointer;">×</button>
+                  </div>
+                  <div style="position:relative;border-radius:14px;overflow:hidden;background:#111;aspect-ratio:1/1;margin-bottom:12px;">
+                    <video id="pilgrimQrVideo" playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+                    <div style="position:absolute;inset:18%;border:2px solid rgba(255,255,255,0.9);border-radius:18px;box-shadow:0 0 0 999px rgba(0,0,0,0.18);pointer-events:none;"></div>
+                  </div>
+                  <p id="pilgrimQrScanStatus" style="min-height:18px;margin:0 0 10px;font-size:12px;line-height:1.5;color:var(--sub);font-weight:700;">카메라를 준비하고 있어요.</p>
+                  <div style="display:flex;gap:8px;">
+                    <input id="pilgrimQrManualInput" type="text" inputmode="text" autocomplete="off" placeholder="QR URL 또는 코드 입력" style="flex:1;min-width:0;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;font-family:inherit;" />
+                    <button onclick="submitPilgrimQrManual()" style="flex:none;padding:10px 14px;border:none;border-radius:10px;background:var(--primary);color:#fff;font-size:13px;font-weight:800;cursor:pointer;">인증</button>
+                  </div>
+                </div>
+              </div>
               <!-- M3 스팟 사진 확대 모달 -->
               <div id="bbbM3Modal" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,0.85);flex-direction:column;align-items:center;justify-content:center;padding:24px;" onclick="if(event.target===this)closeBbbM3Modal()">
                 <img id="bbbM3ModalImg" src="" alt="" style="max-width:100%;max-height:65vh;border-radius:16px;object-fit:contain;" />
@@ -1302,7 +1322,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
-  <script src="app.js?v=20260619a" defer></script>
+  <script src="app.js?v=20260619b" defer></script>
 
   <!-- ▣ 이미지 라이트박스 -->
   <div id="lightboxOverlay" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:none;align-items:center;justify-content:center;padding:16px;">
