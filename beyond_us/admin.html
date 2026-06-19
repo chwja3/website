@@ -614,6 +614,7 @@
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-label">전체 배정</div><div class="stat-value" id="logisticsTotalCount">-</div></div>
           <div class="stat-card"><div class="stat-label">앱 미연결</div><div class="stat-value" id="logisticsMissingCount">-</div></div>
+          <div class="stat-card"><div class="stat-label">확인 필요</div><div class="stat-value" id="logisticsDuplicateCount">-</div></div>
         </div>
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
@@ -2164,6 +2165,54 @@
       return list.length ? list.join(' · ') : '-';
     }
 
+    function logisticsMatchStatusLabel(status) {
+      const value = String(status || '').trim();
+      if (value === 'matched') return '연결됨';
+      if (value === 'duplicate_needs_check') return '동명이인 확인 필요';
+      if (value === 'nickname_missing') return '앱 미가입/후보 없음';
+      if (value === 'manual_unmatched') return '관리자 연결 해제';
+      if (value === 'manual') return '수동 입력';
+      return value || '미확인';
+    }
+
+    function logisticsCandidateProfiles(row) {
+      return Array.isArray(row && row.candidateProfiles) ? row.candidateProfiles : [];
+    }
+
+    function logisticsCandidateLabel(candidate) {
+      const name = logisticsAdminText(candidate && candidate.name);
+      const nickname = logisticsAdminText(candidate && candidate.nickname);
+      const parish = logisticsAdminText(candidate && candidate.parish);
+      return logisticsAdminJoin([name, nickname, parish]);
+    }
+
+    function logisticsMatchControls(row) {
+      const status = String(row.matchStatus || '').trim();
+      const candidates = logisticsCandidateProfiles(row);
+      const currentProfileId = String(row.profileId || '');
+      const needsAttention = status && status !== 'matched';
+      const statusHtml = needsAttention
+        ? `<div style="font-size:11px;color:var(--danger);font-weight:800;margin-top:3px;">${esc(logisticsMatchStatusLabel(status))}</div>`
+        : '';
+      const selectHtml = candidates.length
+        ? `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:7px;">
+            <select class="input" data-logistics-candidate-select style="min-width:150px;width:auto;height:32px;padding:4px 8px;font-size:12px;">
+              <option value="">후보 선택</option>
+              ${candidates.map(candidate => {
+                const profileId = String(candidate.profileId || '');
+                const selected = profileId && profileId === currentProfileId ? 'selected' : '';
+                return `<option value="${esc(profileId)}" ${selected}>${esc(logisticsCandidateLabel(candidate))}</option>`;
+              }).join('')}
+            </select>
+            <button class="btn btn-primary btn-sm" data-logistics-match="${esc(row.id)}">${row.matched ? '변경' : '확정'}</button>
+          </div>`
+        : '';
+      const clearHtml = row.matched
+        ? `<button class="btn btn-ghost btn-sm" data-logistics-clear="${esc(row.id)}" style="margin-top:7px;">연결 해제</button>`
+        : '';
+      return `${statusHtml}${selectHtml}${clearHtml}`;
+    }
+
     function updateLogisticsMoreButton(res, rows) {
       const btn = document.getElementById('logisticsMoreBtn');
       if (!btn) return;
@@ -2193,6 +2242,7 @@
             <td>
               <strong>${esc(row.nickname || '-')}</strong>
               ${row.matched === false ? '<div style="font-size:11px;color:var(--danger);font-weight:800;margin-top:3px;">앱 미연결</div>' : ''}
+              ${logisticsMatchControls(row)}
             </td>
             <td>${esc(row.groupName || '-')}</td>
             <td style="min-width:170px;line-height:1.5;">${esc(lodgingText)}</td>
@@ -2226,11 +2276,80 @@
         const rows = Array.isArray(res.rows) ? res.rows : [];
         document.getElementById('logisticsTotalCount').textContent = Number(res.total) || 0;
         document.getElementById('logisticsMissingCount').textContent = Number(res.missingProfileCount) || 0;
+        const duplicateCountEl = document.getElementById('logisticsDuplicateCount');
+        if (duplicateCountEl) duplicateCountEl.textContent = Number(res.duplicateProfileCount) || 0;
         renderLogisticsRows(rows);
         updateLogisticsMoreButton(res, rows);
       } catch(e) {
         tbody.innerHTML = adminErrorRow(7, e);
         if (statusEl) adminSetStatusError(statusEl, e, '배정표 불러오기 실패');
+      }
+    }
+
+    async function saveLogisticsProfileMatch(button) {
+      const statusEl = document.getElementById('logisticsAdminStatus');
+      const assignmentId = button?.dataset?.logisticsMatch || '';
+      const select = button?.closest('td')?.querySelector('[data-logistics-candidate-select]');
+      const profileId = select ? select.value : '';
+      if (!assignmentId || !profileId) {
+        if (statusEl) {
+          statusEl.textContent = '후보를 선택해주세요.';
+          statusEl.className = 'status';
+        }
+        return;
+      }
+      button.disabled = true;
+      try {
+        const res = await callSupabaseAdminRpc('admin_set_logistics_assignment_profile', {
+          p_assignment_id: assignmentId,
+          p_profile_id: profileId,
+        });
+        if (!res.ok) throw new Error(res.error || 'match_failed');
+        if (statusEl) {
+          statusEl.textContent = '배정 row의 앱 가입자 연결을 확정했습니다.';
+          statusEl.className = 'status ok';
+        }
+        await loadLogisticsAssignments();
+      } catch(e) {
+        if (statusEl) adminSetStatusError(statusEl, e, '매칭 저장 실패');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function clearLogisticsProfileMatch(button) {
+      const statusEl = document.getElementById('logisticsAdminStatus');
+      const assignmentId = button?.dataset?.logisticsClear || '';
+      if (!assignmentId) return;
+      if (!confirm('이 배정 row의 앱 가입자 연결을 해제할까요?')) return;
+      button.disabled = true;
+      try {
+        const res = await callSupabaseAdminRpc('admin_set_logistics_assignment_profile', {
+          p_assignment_id: assignmentId,
+          p_profile_id: null,
+        });
+        if (!res.ok) throw new Error(res.error || 'clear_failed');
+        if (statusEl) {
+          statusEl.textContent = '배정 row의 앱 가입자 연결을 해제했습니다.';
+          statusEl.className = 'status ok';
+        }
+        await loadLogisticsAssignments();
+      } catch(e) {
+        if (statusEl) adminSetStatusError(statusEl, e, '매칭 해제 실패');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function handleLogisticsTableClick(event) {
+      const matchButton = event.target.closest('[data-logistics-match]');
+      if (matchButton) {
+        saveLogisticsProfileMatch(matchButton);
+        return;
+      }
+      const clearButton = event.target.closest('[data-logistics-clear]');
+      if (clearButton) {
+        clearLogisticsProfileMatch(clearButton);
       }
     }
 
@@ -2248,6 +2367,7 @@
     });
     document.getElementById('refreshLogisticsAdminBtn')?.addEventListener('click', () => loadLogisticsAssignments({ resetLimit: true }));
     document.getElementById('logisticsSearch')?.addEventListener('input', filterLogisticsAssignments);
+    document.getElementById('logisticsTableBody')?.addEventListener('click', handleLogisticsTableClick);
     document.getElementById('logisticsMoreBtn')?.addEventListener('click', () => {
       _logisticsLimit += ADMIN_TABLE_INITIAL_LIMIT;
       loadLogisticsAssignments();
