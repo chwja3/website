@@ -295,6 +295,7 @@
       <div class="drawer-section-label">개발자</div>
       <button class="drawer-item" data-panel="tabtoggle">탭 활성화</button>
       <button class="drawer-item" data-panel="bbb">B.B.B. 미션</button>
+      <button class="drawer-item" data-panel="pilgrimqr">천로역정 QR</button>
       <button class="drawer-item" data-panel="events">Events·시스템</button>
       <button class="drawer-item" data-panel="eventlog">Event 로그</button>
       <button class="drawer-item" data-panel="settings">주차·미션 설정</button>
@@ -441,22 +442,6 @@
           <div class="stat-card"><div class="stat-label">승인 대기</div><div class="stat-value" id="bbbPhotoPendingCount">-</div></div>
           <div class="stat-card"><div class="stat-label">승인 완료</div><div class="stat-value" id="bbbPhotoApprovedCount">-</div></div>
           <div class="stat-card"><div class="stat-label">승인 거절</div><div class="stat-value" id="bbbPhotoRejectedCount">-</div></div>
-        </div>
-
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
-            <div>
-              <h2 class="card-title" style="margin:0;">천로역정 QR 출력</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 장소에 붙일 QR 7개입니다. 사용자가 자기 배정 장소에서 찍으면 미션 성공으로 처리됩니다.</p>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-              <button class="btn btn-ghost btn-sm" id="refreshPilgrimQrBtn" onclick="loadPilgrimQrCodes()">새로고침</button>
-              <button class="btn btn-primary btn-sm" id="printPilgrimQrBtn" onclick="printPilgrimQrCodes()" disabled>전체 인쇄</button>
-            </div>
-          </div>
-          <div id="pilgrimQrCodeList">
-            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
-          </div>
         </div>
 
         <div class="card">
@@ -916,6 +901,25 @@
 
       </div>
 
+      <!-- 천로역정 QR 탭 -->
+      <div id="tab-pilgrimqr" class="tab-panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">천로역정 QR 7개</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 장소에 붙일 고정 QR입니다. 유저가 자기 배정 장소에서 QR을 찍으면 미션 성공으로 처리됩니다.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-ghost btn-sm" id="refreshPilgrimQrBtn" onclick="loadPilgrimQrCodes()">새로고침</button>
+              <button class="btn btn-primary btn-sm" id="printPilgrimQrBtn" onclick="printPilgrimQrCodes()" disabled>전체 인쇄</button>
+            </div>
+          </div>
+          <div id="pilgrimQrCodeList">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Event 로그 탭 -->
       <div id="tab-eventlog" class="tab-panel">
         <div class="card">
@@ -1341,7 +1345,8 @@
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'checkin') loadCheckin();
-      if (panelId === 'bbbphotos') { loadPilgrimQrCodes(); loadBBBPhotoApprovals(); loadBBBPilgrimStatus(); }
+      if (panelId === 'bbbphotos') { loadBBBPhotoApprovals(); loadBBBPilgrimStatus(); }
+      if (panelId === 'pilgrimqr') loadPilgrimQrCodes();
       if (panelId === 'hpholdpray') loadAdminHPStatus();
       if (panelId === 'hpmatching') loadHPPrayerMatching();
       if (panelId === 'raffle') loadRaffleTickets();
