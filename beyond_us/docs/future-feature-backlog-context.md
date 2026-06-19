@@ -91,6 +91,13 @@
 - 사진은 현장 인증 보조 자료로 유지할 수 있지만, 완료 판정의 핵심은 스팟별 QR 검증으로 둔다.
 - 추가 확인이 필요하다. QR 입력/스캔 UI 방식, QR 값 저장 테이블, 운영진 수동 완료 처리 허용 여부.
 
+## 2026-06-19 천로역정 QR 검증 구현
+
+- `20260619000100_pilgrim_qr_verification.sql`에서 `pilgrim_spots.qr_token`, `verify_pilgrim_qr`, `admin_get_pilgrim_qr_codes`를 추가했다.
+- 천로역정 완료는 QR URL의 `pilgrimSpot`, `pilgrimCode`가 서버 토큰과 일치할 때만 생성된다.
+- 기존 `submit_mission_photo`의 천로역정 사진 업로드 경로는 `qr_required`로 차단한다.
+- 관리자 `BBB/천로역정` 탭에서 7개 스팟별 QR URL을 복사할 수 있다. 실제 QR 이미지는 DB 토큰 생성 후 해당 URL로 생성한다.
+
 ## 2026-05-21 Q.T. 날짜별 PNG 게시
 
 - Q.T. 매일 본문 게시는 `beyond_us/QT/YYMMDD.png` 정적 이미지 자동 표시 방식으로 1차 완료했다.
@@ -101,7 +108,7 @@
 ## 2026-05-21 TODO 재정리
 
 - Q.T.는 Supabase Storage `beyond-us-photos/QT/YYMMDD.png`를 우선 표시하고, 없으면 로컬 `beyond_us/QT/YYMMDD.png`로 fallback하는 구조까지 반영됐다.
-- 천로역정은 유저별 2스팟 랜덤 배정과 빨간 원 표시가 적용됐다. 남은 작업은 스팟별 QR 검증이다.
+- 천로역정은 유저별 2스팟 랜덤 배정, 빨간 원 표시, 스팟별 QR 검증이 적용됐다. 남은 작업은 실제 현장 QR 이미지 생성과 부착 확인이다.
 - H&P 데이터 하드코딩 제거는 완료로 본다. 기도제목, 작성자 매칭, 익명 여부, 공개 상태, 정답 판정, 초성 힌트는 Supabase 테이블과 RPC, admin 화면 기준으로 운영한다.
 - admin 로그아웃 버튼을 추가했다.
-- 현재 남은 개발 우선순위는 천로역정 QR 검증, 레어카드 연출, 프로그램팀 요청 퀴즈, 크라임씬/내 안의 빛 유형 검사, BBB 조별 매칭이다.
+- 현재 남은 개발 우선순위는 레어카드 연출, 프로그램팀 요청 퀴즈, 크라임씬/내 안의 빛 유형 검사, BBB 조별 매칭이다.

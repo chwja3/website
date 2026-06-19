@@ -409,6 +409,19 @@
         </div>
 
         <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
+            <div>
+              <h2 class="card-title" style="margin:0;">천로역정 QR 출력</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">각 장소에 붙일 QR URL 7개입니다. 복사한 URL로 QR 이미지를 생성해서 인쇄해주세요.</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="refreshPilgrimQrBtn" onclick="loadPilgrimQrCodes()">새로고침</button>
+          </div>
+          <div id="pilgrimQrCodeList">
+            <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
+          </div>
+        </div>
+
+        <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
             <div>
               <h2 class="card-title" style="margin:0;">BBB 사진 승인</h2>
@@ -989,6 +1002,7 @@
     const ADMIN_RESET_PASSWORD_URL = `${SUPABASE_PROJECT_URL}/functions/v1/admin-reset-password`;
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
+    const PILGRIM_QR_VERIFIED_PREFIX = 'pilgrim_qr_verified/';
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'invalid_new_password',
@@ -1289,7 +1303,7 @@
       closeDrawer();
       if (panelId === 'cards')   { Promise.all([loadTicketStats(), loadCardStats()]).then(() => renderCardUserRows(_cardUserStats)); loadAdminTrades(); }
       if (panelId === 'checkin') loadCheckin();
-      if (panelId === 'bbbphotos') { loadBBBPhotoApprovals(); loadBBBPilgrimStatus(); }
+      if (panelId === 'bbbphotos') { loadPilgrimQrCodes(); loadBBBPhotoApprovals(); loadBBBPilgrimStatus(); }
       if (panelId === 'hpholdpray') loadAdminHPStatus();
       if (panelId === 'hpmatching') loadHPPrayerMatching();
       if (panelId === 'raffle') loadRaffleTickets();
@@ -2393,11 +2407,15 @@
     function supabasePhotoUrl(value) {
       const raw = String(value || '').trim();
       if (!raw || raw.startsWith('data:')) return raw;
+      if (raw.startsWith(PILGRIM_QR_VERIFIED_PREFIX)) return raw;
       if (raw.includes('/storage/v1/object/') && !raw.includes('/storage/v1/object/public/')) {
         return raw.replace('/storage/v1/object/', '/storage/v1/object/public/');
       }
       if (/^https?:\/\//i.test(raw)) return raw;
       return SUPABASE_PHOTO_PUBLIC_BASE + raw.replace(/^\/+/, '').split('/').map(encodeURIComponent).join('/');
+    }
+    function isPilgrimQrVerifiedPath(value) {
+      return String(value || '').startsWith(PILGRIM_QR_VERIFIED_PREFIX);
     }
     function normalizeNoticeImageUrl(value) {
       const raw = String(value || '').trim();
@@ -3190,6 +3208,54 @@
     let _bbbPhotoApprovals = [];
     let _bbbPhotoApprovalFilter = '';
 
+    function userAppUrlForQr() {
+      return new URL('app.html', location.href).href;
+    }
+
+    async function copyPilgrimQrUrl(url, btn) {
+      try {
+        await navigator.clipboard.writeText(url);
+        if (btn) {
+          const prev = btn.textContent;
+          btn.textContent = '복사됨';
+          setTimeout(() => { btn.textContent = prev || '복사'; }, 1200);
+        }
+      } catch(e) {
+        window.prompt('QR URL을 복사해주세요.', url);
+      }
+    }
+
+    async function loadPilgrimQrCodes() {
+      const listEl = document.getElementById('pilgrimQrCodeList');
+      const btn = document.getElementById('refreshPilgrimQrBtn');
+      if (!listEl) return;
+      listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
+      if (btn) btn.disabled = true;
+      try {
+        const res = await callSupabaseAdminRpc('admin_get_pilgrim_qr_codes', { p_app_url: userAppUrlForQr() });
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        const rows = Array.isArray(res.rows) ? res.rows : [];
+        if (!rows.length) {
+          listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">QR 스팟이 없습니다.</p>';
+          return;
+        }
+        listEl.innerHTML = rows.map(row => `
+          <div style="display:grid;grid-template-columns:92px minmax(0,1fr) 72px;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-bottom:8px;background:var(--bg);">
+            <div style="min-width:0;">
+              <div style="font-size:12px;font-weight:900;color:var(--text);">스팟 ${Number(row.spotNumber || 0)}</div>
+              <div style="font-size:11px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(row.label || '')}</div>
+            </div>
+            <input class="input" readonly value="${esc(row.qrUrl || '')}" style="font-size:11px;padding:7px 8px;" onclick="this.select()" />
+            <button class="btn btn-primary btn-sm" onclick="copyPilgrimQrUrl(${jsArg(row.qrUrl || '')}, this)">복사</button>
+          </div>
+        `).join('');
+      } catch(e) {
+        listEl.innerHTML = adminErrorBlock(e);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
     async function loadBBBPhotoApprovals() {
       const listEl = document.getElementById('bbbPhotoApprovalList');
       const refreshBtn = document.getElementById('refreshBBBPhotoApprovalsBtn');
@@ -3500,14 +3566,18 @@
     }
 
     function renderOpsPhotoMini(photo, label) {
-      const src = photo && photo.storagePath ? supabasePhotoUrl(photo.storagePath) : '';
+      const rawPath = photo && photo.storagePath ? String(photo.storagePath) : '';
+      const isQrVerified = isPilgrimQrVerifiedPath(rawPath);
+      const src = rawPath && !isQrVerified ? supabasePhotoUrl(rawPath) : '';
       return `
         <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);min-width:0;">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
             <strong style="font-size:13px;">${esc(label)}</strong>
             <span style="font-size:11px;font-weight:800;color:${bbbStatusColor(photo)};background:var(--primary-soft);border-radius:999px;padding:3px 8px;white-space:nowrap;">${bbbStatusText(photo)}</span>
           </div>
-          ${src
+          ${isQrVerified
+            ? '<div style="height:82px;border:1px solid #bbf7d0;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#166534;background:#dcfce7;font-size:12px;font-weight:900;">QR 인증 완료</div>'
+            : src
             ? `<button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;"><img src="${esc(src)}" alt="${esc(label)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);" /></button>`
             : '<div style="height:82px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:12px;">사진 없음</div>'
           }
