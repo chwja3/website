@@ -8,6 +8,9 @@
     }
     const IS_DEV_ENV = isDevEnvironment();
     const RAFFLE_PREVIEW_MODE = IS_DEV_ENV && new URLSearchParams(location.search).get('rafflePreview') === '1';
+    const PILGRIM_QR_VERIFIED_PREFIX = 'pilgrim_qr_verified/';
+    const pendingPilgrimQr = readPilgrimQrParams();
+    let _pendingPilgrimQrHandled = false;
 
     const DEV_SUPABASE_PROJECT_URL = 'https://qjwtkvfdzpeovjabdwxv.supabase.co';
     const DEV_SUPABASE_ANON_KEY = 'sb_publishable_S55JPpbZgZQNm_qbF1rAug_ZcdDaJZg';
@@ -28,6 +31,23 @@
       'legacy_password_reset_required',
     ]);
 
+    function readPilgrimQrParams() {
+      const params = new URLSearchParams(location.search);
+      const spotRaw = params.get('pilgrimSpot') || params.get('pSpot');
+      const code = (params.get('pilgrimCode') || params.get('pCode') || '').trim();
+      if (spotRaw === null || !code) return null;
+      const spotIndex = Number(spotRaw);
+      if (!Number.isInteger(spotIndex) || spotIndex < 0 || spotIndex > 6) return null;
+      return { spotIndex, code };
+    }
+
+    function clearPilgrimQrParamsFromUrl() {
+      if (!pendingPilgrimQr || !window.history || !window.history.replaceState) return;
+      const url = new URL(location.href);
+      ['pilgrimSpot', 'pilgrimCode', 'pSpot', 'pCode'].forEach(key => url.searchParams.delete(key));
+      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+
     function isSupabaseAuthConfigured() {
       return Boolean(SUPABASE_PROJECT_URL && SUPABASE_ANON_KEY);
     }
@@ -35,7 +55,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260618b';
+    const APP_VERSION = '20260619a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -1039,6 +1059,7 @@
     function supabasePhotoUrl(value) {
       const raw = String(value || '').trim();
       if (!raw || raw.startsWith('data:')) return raw;
+      if (raw.startsWith(PILGRIM_QR_VERIFIED_PREFIX)) return raw;
       if (raw.includes('/storage/v1/object/') && !raw.includes('/storage/v1/object/public/')) {
         return raw.replace('/storage/v1/object/', '/storage/v1/object/public/');
       }
@@ -1057,6 +1078,10 @@
         }));
       }
       return next;
+    }
+
+    function isPilgrimQrVerifiedSrc(src) {
+      return String(src || '').startsWith(PILGRIM_QR_VERIFIED_PREFIX);
     }
 
     function normalizeNoticeImageUrl(value) {
@@ -1294,6 +1319,14 @@
         }, { allowOkFalse: true });
         return normalizeMissionPhotoUrls(data);
       },
+      async verifyPilgrimQr(spotIndex, qrCode) {
+        const data = await callSupabaseRpc('verify_pilgrim_qr', {
+          p_login_id: currentNickname,
+          p_spot_index: Number(spotIndex),
+          p_qr_token: qrCode || '',
+        }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
+      },
       async getHoldPray(weekKey) {
         const nick = currentNickname || localStorage.getItem('beyondus_nickname') || '';
         return callSupabaseRpc('get_hold_pray', {
@@ -1366,7 +1399,7 @@
 
       if (shouldEnterApp(isStaff, appOpenDate)) {
         showApp();
-        syncInitialData().catch(() => {});
+        syncInitialData().catch(() => {}).finally(() => handlePendingPilgrimQr());
       } else {
         showComingSoon();
       }
@@ -1416,7 +1449,7 @@
           showMaintenanceNotice();
           return;
         }
-        syncInitialData({ silent: true }).catch(() => {});
+        syncInitialData({ silent: true }).catch(() => {}).finally(() => handlePendingPilgrimQr());
       } catch(e) {
         console.warn('[DIAG] Supabase autoLogin auth-fail', e);
         clearSupabaseSession();
@@ -2298,9 +2331,38 @@
       else if (_tradeStep === 2) { _tradeShowStep(1); }
     }
 
+    function tradeCardName(cardId) {
+      const card = SPIRIT_CARDS.find(c => c.id === Number(cardId));
+      return card ? card.name : '선택한 카드';
+    }
+
+    function tradeRequestErrorMessage(errorCode) {
+      const code = String(errorCode || '').trim();
+      const myCardName = tradeCardName(_tradeMyCardId);
+      const theirCardName = tradeCardName(_tradeTheirCardId);
+      const messages = {
+        target_not_found: '상대방을 찾을 수 없어요. 닉네임 대소문자를 확인해주세요.',
+        self_trade_not_allowed: '자기 자신과는 교환할 수 없어요.',
+        not_enough_requester_card: `내 ${myCardName} 카드 수량이 바뀌었어요. 컬렉션을 새로고침한 뒤 다시 시도해주세요.`,
+        not_enough_target_card: `${_tradeTargetNickname || '상대방'}님의 ${theirCardName} 카드 수량이 바뀌었어요. 다시 검색해서 최신 상태로 확인해주세요.`,
+        requester_card_missing: `내 ${myCardName} 카드 수량이 바뀌었어요. 컬렉션을 새로고침한 뒤 다시 시도해주세요.`,
+        target_card_missing: `${_tradeTargetNickname || '상대방'}님의 ${theirCardName} 카드 수량이 바뀌었어요. 다시 검색해서 최신 상태로 확인해주세요.`,
+        trade_not_found: '교환 요청을 찾을 수 없어요. 교환 현황을 새로고침해주세요.',
+        trade_not_pending: '이미 처리된 교환 요청이에요. 교환 현황을 새로고침해주세요.',
+        unauthorized: '로그인 정보가 만료됐어요. 다시 로그인한 뒤 시도해주세요.',
+        inactive_user: '현재 사용할 수 없는 계정이에요. 운영진에게 문의해주세요.'
+      };
+      return messages[code] || (code ? `교환 신청 실패. ${code}` : '오류가 발생했어요.');
+    }
+
     async function submitTradeRequest() {
       const btn = document.getElementById('tradeSubmitBtn');
       const statusEl = document.getElementById('tradeSubmitStatus');
+      if (!_tradeTargetNickname || !_tradeMyCardId || !_tradeTheirCardId) {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = '교환할 상대와 카드를 다시 선택해주세요.';
+        return;
+      }
       // 최종 제출 전 내 카드 중복 재검증
       const counts = {};
       (userStatus?.collection || []).forEach(c => { counts[c.id] = (counts[c.id] || 0) + 1; });
@@ -2312,6 +2374,23 @@
       btn.disabled = true;
       const dotsTimerTrade = animDots(statusEl, '전송 중');
       try {
+        const latestTarget = await apiClient.getPublicCollection(_tradeTargetNickname);
+        if (!latestTarget.ok) {
+          stopAnimDots(dotsTimerTrade, statusEl, tradeRequestErrorMessage(latestTarget.error || 'target_not_found'));
+          statusEl.style.color = 'var(--danger)';
+          btn.disabled = false;
+          return;
+        }
+
+        _tradeTargetColl = latestTarget.collection || {};
+        if (Number(_tradeTargetColl[_tradeTheirCardId] || 0) < 2) {
+          stopAnimDots(dotsTimerTrade, statusEl, tradeRequestErrorMessage('not_enough_target_card'));
+          statusEl.style.color = 'var(--danger)';
+          btn.disabled = false;
+          setTimeout(() => { _tradeShowStep(3); _renderTheirCards(); }, 900);
+          return;
+        }
+
         const res = await apiClient.requestTrade({
           requesterCardId: _tradeMyCardId,
           targetNickname: _tradeTargetNickname,
@@ -2322,11 +2401,17 @@
           statusEl.style.color = '#4ade80';
           setTimeout(() => { closeTradeModal(); loadTrades(); }, 1200);
         } else {
-          stopAnimDots(dotsTimerTrade, statusEl, res.error || '오류가 발생했어요.');
+          stopAnimDots(dotsTimerTrade, statusEl, tradeRequestErrorMessage(res.error));
           statusEl.style.color = 'var(--danger)';
           btn.disabled = false;
         }
-      } catch(e) { stopAnimDots(dotsTimerTrade, statusEl, '연결 오류'); btn.disabled = false; }
+      } catch(e) {
+        const code = e && e.message;
+        const authErrors = ['supabase_auth_required', 'unauthorized', 'inactive_user'];
+        stopAnimDots(dotsTimerTrade, statusEl, authErrors.includes(code) ? tradeRequestErrorMessage(code === 'supabase_auth_required' ? 'unauthorized' : code) : '연결 오류가 발생했어요. 잠시 후 다시 시도해주세요.');
+        statusEl.style.color = 'var(--danger)';
+        btn.disabled = false;
+      }
     }
 
     let _loadTradesPromise = null;
@@ -3681,7 +3766,7 @@
       }
     }
 
-    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', visibleRadio: '6/20', counseling: '6/20' };
+    const COMING_SOON_DATES = { secret: '6/20', pilgrim: '6/21', investigation: '6/20', visibleRadio: '6/20', counseling: '6/20' };
     function applyDrawerTabState(section, enabled, status) {
       const item = document.querySelector(`.drawer-item[data-section="${section}"]`);
       if (!item) return;
@@ -5561,6 +5646,56 @@
       };
     }
 
+    function pilgrimQrErrorText(error) {
+      if (error === 'not_open') return '천로역정 미션은 아직 열리지 않았어요.';
+      if (error === 'invalid_qr') return '이 장소의 QR이 아니에요. 스팟 번호를 다시 확인해주세요.';
+      if (error === 'not_assigned_spot') return '내 미션 스팟만 인증할 수 있어요.';
+      if (error === 'invalid_spot') return '알 수 없는 천로역정 스팟이에요.';
+      if (error === 'supabase_auth_required' || error === 'unauthorized') return '로그인 후 다시 QR을 찍어주세요.';
+      return error || 'QR 확인에 실패했어요.';
+    }
+
+    function showPilgrimQrInstruction(message) {
+      const statusEl = document.getElementById('bbbM3Status');
+      if (!statusEl) return;
+      statusEl.textContent = message || '각 장소의 QR을 찍으면 자동으로 인증돼요.';
+      statusEl.style.color = 'var(--primary)';
+      statusEl.style.fontWeight = '700';
+    }
+
+    async function handlePendingPilgrimQr() {
+      if (!pendingPilgrimQr || _pendingPilgrimQrHandled || !currentNickname) return;
+      _pendingPilgrimQrHandled = true;
+      switchSection('pilgrim');
+      const statusEl = document.getElementById('bbbM3Status');
+      const dotsTimer = statusEl ? animDots(statusEl, 'QR 확인 중') : null;
+      try {
+        const res = await apiClient.verifyPilgrimQr(pendingPilgrimQr.spotIndex, pendingPilgrimQr.code);
+        if (res.ok) {
+          _bbbData = Object.assign({}, _bbbData || {}, res);
+          _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
+          _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : (_bbbData.m3AssignedSpots || []);
+          if (res.rewarded || res.m3Rewarded) _bbbData.m3Rewarded = true;
+          _bbbLoadedOnce = false;
+          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
+          stopAnimDots(dotsTimer, statusEl, res.rewarded ? '레어 카드가 지급됐어요!' : '천로역정 스팟 인증 완료!');
+          if (statusEl) {
+            statusEl.style.color = 'var(--primary)';
+            statusEl.style.fontWeight = '800';
+          }
+          syncServerChanges(true).catch(() => {});
+        } else {
+          stopAnimDots(dotsTimer, statusEl, pilgrimQrErrorText(res.error));
+          if (statusEl) statusEl.style.color = 'var(--danger)';
+        }
+      } catch(e) {
+        stopAnimDots(dotsTimer, statusEl, pilgrimQrErrorText(e.message));
+        if (statusEl) statusEl.style.color = 'var(--danger)';
+      } finally {
+        clearPilgrimQrParamsFromUrl();
+      }
+    }
+
     /* ── MISSION 3 ── */
     const BBB_M3_SPOTS = [
       { label: '좁은문',               top: 48, left: 45 }, // #6
@@ -5588,13 +5723,14 @@
         const src = safePhotos[i];
         const isAssigned = assignedMap[i] === true;
         const isCompleted = isAssigned && !!src;
+        const hasPhotoPreview = isCompleted && !isPilgrimQrVerifiedSrc(src);
         const circleStyle = isCompleted
           ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(116,181,142,0.22);background:rgba(116,181,142,0.78);color:#fff;`
           : isAssigned
           ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(216,111,116,0.22);background:rgba(216,111,116,0.78);color:#fff;`
           : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
         const actionAttr = isAssigned
-          ? `onclick="${src ? `openBbbM3Modal(${i})` : `document.getElementById('bbbM3Input${i}').click()`}"`
+          ? `onclick="${hasPhotoPreview ? `openBbbM3Modal(${i})` : `showPilgrimQrInstruction('${isCompleted ? '이미 인증된 스팟이에요.' : '각 장소의 QR을 찍으면 자동으로 인증돼요.'}')`}"`
           : '';
         const marker = isCompleted
           ? `<span style="font-size:21px;color:#fff;font-weight:900;line-height:1;">✓</span>`
@@ -5608,7 +5744,6 @@
               ${marker}
             </div>
             <span style="font-size:9px;font-weight:700;color:#333;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:6px;white-space:nowrap;">${spot.label}</span>
-            <input type="file" id="bbbM3Input${i}" accept="image/*" style="display:none;" onchange="bbbM3Upload(${i}, this)" />
           </div>`;
       }).join('');
       const filled = assigned.filter(idx => !!safePhotos[Number(idx)]).length;
@@ -5641,7 +5776,7 @@
           _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
           stopAnimDots(dotsTimer, statusEl, '');
           if (res.rewarded) { syncTicketBadgeFromServer(); }
-        } else { stopAnimDots(dotsTimer, statusEl, res.error === 'not_assigned_spot' ? '내 미션 스팟만 인증할 수 있어요.' : (res.error || '업로드 실패')); }
+        } else { stopAnimDots(dotsTimer, statusEl, res.error === 'qr_required' ? '각 장소의 QR을 찍어 인증해주세요.' : (res.error === 'not_assigned_spot' ? '내 미션 스팟만 인증할 수 있어요.' : (res.error || '업로드 실패'))); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
     }
     function openBbbM3Modal(spotIdx) {
