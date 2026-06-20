@@ -62,7 +62,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260621c';
+    const APP_VERSION = '20260621d';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -1323,7 +1323,7 @@
           p_content_date: contentDate || null,
           p_answer1_text: answers[0] || '',
           p_answer2_text: answers[1] || '',
-          p_answer3_text: answers[2] || '',
+          p_answer3_text: '',
           p_prayer_text: prayerText || '',
         }, { allowOkFalse: true });
       },
@@ -3852,7 +3852,7 @@
     let _qtRenderedKey = '';
     let _qtReflectionLoadedKey = '';
     const QT_REFLECTION_DATES = new Set(['2026-06-20', '2026-06-21']);
-    const QT_ANSWER_INPUT_IDS = ['qtAnswer1Input', 'qtAnswer2Input', 'qtAnswer3Input'];
+    const QT_ANSWER_INPUT_IDS = ['qtAnswer1Input', 'qtAnswer2Input'];
     function getAppAssetBaseUrl() {
       const script = document.querySelector('script[src*="app.js"]');
       return new URL('.', script ? script.src : location.href).href;
@@ -3952,7 +3952,7 @@
     async function loadQtReflection(contentDate, force) {
       const answerEls = getQtAnswerInputs();
       const prayerEl = document.getElementById('qtPrayerInput');
-      if (answerEls.length < 3 || !prayerEl || !contentDate || !isQtReflectionDate(contentDate)) return;
+      if (answerEls.length < 2 || !prayerEl || !contentDate || !isQtReflectionDate(contentDate)) return;
       const cacheKey = `${currentNickname || ''}:${contentDate}`;
       if (!force && _qtReflectionLoadedKey === cacheKey) return;
       _qtReflectionLoadedKey = cacheKey;
@@ -3970,7 +3970,7 @@
         if (!res.ok) throw new Error(res.error || 'qt_reflection_load_failed');
         const answers = Array.isArray(res.answerTexts)
           ? res.answerTexts
-          : [res.answerText || '', '', ''];
+          : [res.answerText || '', ''];
         answerEls.forEach((el, index) => { el.value = answers[index] || ''; });
         prayerEl.value = res.prayerText || '';
         setQtSubmitStatus(res.submittedAt ? '저장된 내용을 불러왔어요.' : '');
@@ -3985,7 +3985,7 @@
       const meta = getTodayQtMeta();
       const answerEls = getQtAnswerInputs();
       const prayerEl = document.getElementById('qtPrayerInput');
-      if (answerEls.length < 3 || !prayerEl || !isQtReflectionDate(meta.contentDate)) return;
+      if (answerEls.length < 2 || !prayerEl || !isQtReflectionDate(meta.contentDate)) return;
       if (!currentNickname) {
         setQtSubmitStatus('로그인 후 저장할 수 있어요.', 'error');
         return;
@@ -4009,7 +4009,7 @@
         } else if (res.missionCleared && res.alreadyRewarded) {
           setQtSubmitStatus('미션 클리어 완료! 카드팩은 이미 지급됐어요.', 'ok');
         } else if (meta.contentDate === '2026-06-20') {
-          setQtSubmitStatus('저장했어요. 답변 3개와 기도제목을 모두 적으면 미션이 완료돼요.', 'ok');
+          setQtSubmitStatus('저장했어요. 답변 1, 2와 기도제목을 모두 적으면 미션이 완료돼요.', 'ok');
         } else {
           setQtSubmitStatus('저장했어요.', 'ok');
         }
