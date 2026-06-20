@@ -57,7 +57,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620c';
+    const APP_VERSION = '20260620d';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -1117,8 +1117,37 @@
         .replace(/^_+|_+$/g, '') || 'user';
     }
 
+    function safeAsciiStoragePathPart(value, fallback) {
+      const text = String(value || '')
+        .trim()
+        .normalize('NFKD')
+        .replace(/[^\w.-]+/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .slice(0, 40);
+      return text || fallback || 'part';
+    }
+
+    async function storageUserPathPart(loginId) {
+      const raw = String(loginId || 'anonymous').trim() || 'anonymous';
+      const hash = await sha256Hex(raw);
+      const ascii = safeAsciiStoragePathPart(raw, '');
+      return ascii ? `${ascii}_${hash.slice(0, 10)}` : `user_${hash.slice(0, 16)}`;
+    }
+
     function encodeStorageObjectPath(path) {
       return String(path || '').split('/').map(encodeURIComponent).join('/');
+    }
+
+    async function readStorageUploadError(res) {
+      const text = await res.text().catch(() => '');
+      if (!text) return `photo_upload_failed_${res.status || 'unknown'}`;
+      try {
+        const data = JSON.parse(text);
+        return data.message || data.error || text;
+      } catch (_) {
+        return text;
+      }
     }
 
     async function uploadSupabaseMissionPhoto(dataUrl, missionType) {
@@ -1126,10 +1155,11 @@
       if (!token) throw new Error('supabase_auth_required');
       const blob = dataUrlToBlob(dataUrl);
       const ext = blob.type === 'image/png' ? 'png' : (blob.type === 'image/webp' ? 'webp' : 'jpg');
+      const userPathPart = await storageUserPathPart(currentNickname);
       const path = [
         'BBB_missions',
-        safeStoragePathPart(currentNickname),
-        safeStoragePathPart(missionType || 'mission'),
+        userPathPart,
+        safeAsciiStoragePathPart(missionType || 'mission', 'mission'),
         `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
       ].join('/');
       const res = await fetch(`${SUPABASE_PROJECT_URL}/storage/v1/object/${SUPABASE_PHOTO_BUCKET}/${encodeStorageObjectPath(path)}`, {
@@ -1143,7 +1173,7 @@
         body: blob,
       });
       if (!res.ok) {
-        const detail = await res.text().catch(() => '');
+        const detail = await readStorageUploadError(res);
         throw new Error(detail || 'photo_upload_failed');
       }
       return path;
@@ -5724,12 +5754,13 @@
             } else {
               stopAnimDots(dotsTimer, statusEl, _bbbPhotoErrorText(res.error));
             }
-          } catch(e) {
-            stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message);
-          } finally {
-            label.style.pointerEvents = '';
-          }
-        };
+        } catch(e) {
+          stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message);
+        } finally {
+          this.value = '';
+          label.style.pointerEvents = '';
+        }
+      };
 
         // MISSION 2
         _bbbInitMission2(bbbRes);
@@ -5837,7 +5868,10 @@
             if (res.rewarded) syncTicketBadgeFromServer();
           } else { stopAnimDots(dotsTimer, statusEl, _bbbPhotoErrorText(res.error)); }
         } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
-        finally { label.style.pointerEvents = ''; }
+        finally {
+          this.value = '';
+          label.style.pointerEvents = '';
+        }
       };
     }
 
