@@ -4772,7 +4772,7 @@
                 <option value="">후보 선택</option>
                 ${candidateOptions}
               </select>
-              <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRoster(${jsArg(row.rosterId)})">확정</button>
+              <button class="btn btn-primary btn-sm" type="button" data-bbb-roster-confirm="${esc(row.rosterId)}">확정</button>
             </div>
             <div id="bbbResolveRowStatus_${esc(row.rosterId)}" style="font-size:11px;color:var(--sub);margin-top:5px;">후보 중 실제 앱 계정을 선택해주세요.</div>
           ` : candidateSummary ? `<div style="margin-top:5px;color:var(--text);font-weight:700;">후보 ${esc(candidateSummary)}</div>` : ''}
@@ -4806,7 +4806,7 @@
             <option value="">앱 계정 후보 선택</option>
             ${candidateOptions}
           </select>
-          <button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRoster(${jsArg(row.rosterId)})">확정</button>
+          <button class="btn btn-primary btn-sm" type="button" data-bbb-roster-confirm="${esc(row.rosterId)}">확정</button>
         </div>
         <div id="bbbResolveRowStatus_${esc(row.rosterId)}" style="font-size:11px;color:var(--sub);margin-top:5px;">이름 중복 확인 후 앱 계정을 확정해주세요.</div>`;
     }
@@ -5011,7 +5011,7 @@
                         }) : editable ? '미지정' : '-')}</div>
                       </div>
                       <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;">
-                        ${editable ? `<button class="btn btn-primary btn-sm" type="button" onclick="saveBBBMatchingRow(${jsArg(row.rosterId)})">저장</button>
+                        ${editable ? `<button class="btn btn-primary btn-sm" type="button" data-bbb-care-save="${esc(row.rosterId)}">저장</button>
                         <span id="bbbMatchRowStatus_${esc(row.rosterId)}" style="font-size:11px;color:var(--sub);white-space:nowrap;">-</span>` : `<span style="font-size:11px;color:var(--sub);white-space:nowrap;">${resolvable ? '후보 선택' : '저장 불가'}</span>`}
                       </div>
                     </div>
@@ -5103,6 +5103,20 @@
         adminAlertError(e, '조 명단 매칭 확정 실패');
       }
     }
+
+    function handleBBBMatchingClick(event) {
+      const confirmBtn = event.target.closest('[data-bbb-roster-confirm]');
+      if (confirmBtn) {
+        saveBBBMatchingRoster(confirmBtn.dataset.bbbRosterConfirm || '');
+        return;
+      }
+      const saveBtn = event.target.closest('[data-bbb-care-save]');
+      if (saveBtn) {
+        saveBBBMatchingRow(saveBtn.dataset.bbbCareSave || '');
+      }
+    }
+
+    document.getElementById('bbbMatchBody')?.addEventListener('click', handleBBBMatchingClick);
 
     async function autoAssignBBBMatching() {
       const statusEl = document.getElementById('bbbMatchStatus');
