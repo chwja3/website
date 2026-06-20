@@ -57,7 +57,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620d';
+    const APP_VERSION = '20260620e';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5550,7 +5550,23 @@
     function _bbbPhotoErrorText(error) {
       if (error === 'already_approved') return '이미 승인된 사진은 변경할 수 없어요.';
       if (error === 'approved_photo_locked') return '이미 승인된 사진은 삭제할 수 없어요.';
+      if (error === 'no_match') return 'B.B.B. 매칭 정보를 확인 중이에요. 운영진에게 문의해주세요.';
       return error || '업로드 실패';
+    }
+    function _bbbCleanDisplayText(value) {
+      const text = String(value ?? '').trim();
+      if (!text) return '';
+      const lowered = text.toLowerCase();
+      if (lowered === 'null' || lowered === 'undefined') return '';
+      return text;
+    }
+    function _bbbPersonName(row, fallback = '이름 확인 중') {
+      if (!row) return fallback;
+      return _bbbCleanDisplayText(row.name)
+        || _bbbCleanDisplayText(row.participantName)
+        || _bbbCleanDisplayText(row.displayName)
+        || _bbbCleanDisplayText(row.nickname)
+        || fallback;
     }
     function _bbbApprovalStatusText(status, rewarded) {
       if (rewarded || status === 'approved') return '✓ 카드팩 획득 완료';
@@ -5725,7 +5741,7 @@
         document.getElementById('bbbContent').style.display = 'flex';
 
         // 케어버디
-        document.getElementById('bbbCareBuddyName').textContent = bbbRes.careBuddy.name + ' 🗣️👂';
+        document.getElementById('bbbCareBuddyName').textContent = _bbbPersonName(bbbRes.careBuddy) + ' 🗣️👂';
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
@@ -5774,7 +5790,7 @@
             document.getElementById('bbbSecretRevealed').style.display = '';
             document.getElementById('bbbSecretGuess').style.display = 'none';
             document.getElementById('bbbSecretName').textContent =
-              bbbRes.secretBuddy.name || bbbRes.secretBuddy.nickname || '—';
+              _bbbPersonName(bbbRes.secretBuddy, '—');
           } else {
             document.getElementById('bbbSecretRevealed').style.display = 'none';
             document.getElementById('bbbSecretGuess').style.display = '';
