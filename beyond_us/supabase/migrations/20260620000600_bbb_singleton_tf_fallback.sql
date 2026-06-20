@@ -69,7 +69,7 @@ begin
     r.matched_profile_id,
     case r.group_role
       when 'leader' then 0
-      when 'coleader' then 1
+      when 'assistant' then 1
       else 2
     end,
     r.group_no nulls last,
@@ -206,7 +206,7 @@ begin
     r.matched_profile_id,
     case r.group_role
       when 'leader' then 0
-      when 'coleader' then 1
+      when 'assistant' then 1
       else 2
     end,
     r.group_no nulls last,
