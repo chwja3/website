@@ -1129,6 +1129,7 @@
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const PARISH_SORT_ORDER = ['1청', '2청', '3청', '4청', 'VIP', '교회학교', '목양교구'];
+    const ATTENDANCE_PARISH_OPTIONS = [...PARISH_SORT_ORDER, '교회학교/목양교구'];
     const VISIBLE_RADIO_CATEGORIES_ADMIN = [
       { key: 'mvp', label: '우리 조 MVP', color: '#ef4444', bg: '#fef2f2' },
       { key: 'buddy', label: '버디에게', color: '#8b5cf6', bg: '#f5f3ff' },
@@ -1754,7 +1755,7 @@
       }
       tbody.innerHTML = list.map(u => `
         <tr>
-          <td><span class="badge badge-${esc(u.parish)}">${esc(u.parish)}</span></td>
+          <td>${renderAttendanceParishSelect(u)}</td>
           <td>${esc(u.name)}</td>
           <td><strong>${esc(u.nickname)}</strong></td>
           <td><span class="badge" data-raffle-ticket-count style="background:var(--primary-soft);color:var(--primary);">${Number(u.raffleTickets) || 0}장</span></td>
@@ -1772,6 +1773,9 @@
           </td>
         </tr>
       `).join('');
+      tbody.querySelectorAll('.attendance-parish-select').forEach(select => {
+        select.addEventListener('change', () => setAttendanceParish(select.dataset.nickname, select.value, select));
+      });
       tbody.querySelectorAll('.attendance-toggle').forEach(input => {
         input.addEventListener('change', () => setRaffleAttendance(input.dataset.nickname, input.checked, input));
       });
@@ -1784,6 +1788,25 @@
       tbody.querySelectorAll('.user-reward-btn').forEach(btn => {
         btn.addEventListener('click', () => loadManualRewardOpportunities(btn.dataset.nickname, btn));
       });
+    }
+
+    function attendanceParishOptions(currentParish) {
+      const current = String(currentParish || '').trim();
+      const options = ATTENDANCE_PARISH_OPTIONS.slice();
+      if (current && !options.includes(current)) options.push(current);
+      return options;
+    }
+
+    function renderAttendanceParishSelect(user) {
+      const nickname = user && user.nickname ? String(user.nickname) : '';
+      const current = user && user.parish ? String(user.parish) : '';
+      const options = attendanceParishOptions(current).map(option => (
+        `<option value="${esc(option)}" ${option === current ? 'selected' : ''}>${esc(option)}</option>`
+      )).join('');
+      return `
+        <select class="input attendance-parish-select" data-nickname="${esc(nickname)}" data-original-parish="${esc(current)}" aria-label="${esc(nickname)} 교구 선택" style="min-width:112px;margin:0;padding:7px 9px;font-size:12px;">
+          ${options}
+        </select>`;
     }
 
     function rewardTypeLabel(type) {
@@ -2152,6 +2175,36 @@
         statusEl.className = 'status';
       } finally {
         checkbox.disabled = false;
+      }
+    }
+
+    async function setAttendanceParish(nickname, parish, select) {
+      const statusEl = document.getElementById('attendanceStatus');
+      const originalParish = select.dataset.originalParish || '';
+      if (!nickname || parish === originalParish) return;
+      select.disabled = true;
+      statusEl.textContent = '교구 저장 중...';
+      statusEl.className = 'status';
+      try {
+        const res = await callSupabaseAdminRpc('admin_update_profile_parish', {
+          p_login_id: nickname,
+          p_parish: parish,
+        });
+        if (!res.ok) throw new Error(res.error || 'save_failed');
+        const user = _raffleAttendanceUsers.find(u => u.nickname === nickname);
+        if (user) user.parish = res.parish || parish;
+        if (_selectedManualRewardLoginId === nickname) {
+          await loadManualRewardOpportunities(nickname);
+        }
+        await loadRaffleAttendance();
+        statusEl.textContent = `${res.name || nickname}님의 교구를 ${res.parish || parish}(으)로 저장했어요.`;
+        statusEl.className = 'status ok';
+      } catch(e) {
+        select.value = originalParish;
+        adminSetStatusError(statusEl, e, '교구 저장 실패');
+        statusEl.className = 'status';
+      } finally {
+        if (document.body.contains(select)) select.disabled = false;
       }
     }
 
