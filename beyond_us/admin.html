@@ -840,6 +840,7 @@
               <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">조와 전참/토참/일참 기준으로 자동 매칭하거나, 각 행에서 수동으로 수정할 수 있습니다.</p>
             </div>
             <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="autoFillMissingBBBMatching()">미배정만 자동 매칭</button>
               <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="autoAssignBBBMatching()">자동 매칭</button>
               <button class="btn btn-secondary" style="font-size:12px;padding:6px 14px;" onclick="loadAdminBBB()">새로고침</button>
             </div>
@@ -5219,6 +5220,36 @@
       } catch(e) {
         if (statusEl) statusEl.textContent = '자동 매칭 실패';
         adminAlertError(e, 'BBB 자동 매칭 실패');
+      }
+    }
+
+    async function autoFillMissingBBBMatching() {
+      const statusEl = document.getElementById('bbbMatchStatus');
+      const groupFilter = document.getElementById('bbbMatchingGroupFilter')?.value || 'all';
+      const groupMatch = /^group:(\d+)$/.exec(groupFilter);
+      const groupNo = groupMatch ? Number(groupMatch[1]) : null;
+      if (groupFilter !== 'all' && !groupMatch) {
+        alert('미배정 자동 매칭은 전체 조 또는 숫자 조에서만 실행할 수 있습니다.');
+        return;
+      }
+      const targetLabel = groupNo ? `${groupNo}조` : '전체 조';
+      if (!confirm(`${targetLabel}에서 케어버디 또는 시크릿버디가 비어 있는 인원만 자동 배정할까요?\n기존 배정은 유지됩니다.`)) {
+        return;
+      }
+      if (statusEl) statusEl.textContent = `${targetLabel} 미배정 자동 매칭 중...`;
+      try {
+        const result = await callSupabaseAdminRpc('admin_auto_fill_missing_bbb_buddies', {
+          p_group_no: groupNo,
+        });
+        const value = result?.value || result || {};
+        if (statusEl) {
+          statusEl.textContent = `${targetLabel} 미배정 자동 매칭 완료 · 케어 ${value.filledCareRows ?? 0}명 · 시크릿 ${value.filledSecretRows ?? 0}명 · 단독 부분참여 ${value.singletonFallbackRows ?? 0}명 · TF 추가케어 ${value.tfExtraCareRows ?? 0}명 · 남은 미배정 케어 ${value.remainingMissingCareRows ?? 0}명 · 남은 미배정 시크릿 ${value.remainingMissingSecretRows ?? 0}명`;
+        }
+        await loadAdminBBB();
+        if (typeof loadBBBPilgrimStatus === 'function') loadBBBPilgrimStatus();
+      } catch(e) {
+        if (statusEl) statusEl.textContent = '미배정 자동 매칭 실패';
+        adminAlertError(e, 'BBB 미배정 자동 매칭 실패');
       }
     }
 
