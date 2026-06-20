@@ -25,6 +25,8 @@
     const SUPABASE_PHOTO_BUCKET = 'beyond-us-photos';
     const SUPABASE_PHOTO_PUBLIC_BASE = `${SUPABASE_PROJECT_URL}/storage/v1/object/public/${SUPABASE_PHOTO_BUCKET}/`;
     const SUPABASE_QT_PUBLIC_BASE = `${SUPABASE_PHOTO_PUBLIC_BASE}QT/`;
+    const LOGISTICS_PUBLIC_PDF_PATH = 'logistics/lodging_assignment.pdf';
+    const LOGISTICS_PUBLIC_PDF_URL = `${SUPABASE_PHOTO_PUBLIC_BASE}${LOGISTICS_PUBLIC_PDF_PATH}`;
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'password_migration_required',
@@ -55,7 +57,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620b';
+    const APP_VERSION = '20260620c';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5365,6 +5367,43 @@
       `;
     }
 
+    async function hasPublicLogisticsPdf() {
+      try {
+        const res = await fetch(`${LOGISTICS_PUBLIC_PDF_URL}?_=${Date.now()}`, {
+          method: 'HEAD',
+          cache: 'no-store',
+        });
+        return res.ok;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function renderGlobalLogisticsPdf() {
+      const statusEl = document.getElementById('logisticsStatus');
+      const contentEl = document.getElementById('logisticsContent');
+      if (!contentEl) return;
+      if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.style.color = 'var(--sub)';
+      }
+      const pdfUrl = `${LOGISTICS_PUBLIC_PDF_URL}?v=${APP_VERSION}`;
+      contentEl.innerHTML = `
+        <div style="display:grid;gap:12px;">
+          <div style="border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--primary-soft);">
+            <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">전체 숙소/차량 배정표</div>
+            <p style="font-size:13px;color:var(--sub);line-height:1.6;margin:0 0 12px;">
+              전체 배정표 PDF입니다. 화면에서 잘 보이지 않으면 아래 버튼으로 새 창에서 열어주세요.
+            </p>
+            <a href="${escHtml(pdfUrl)}" target="_blank" rel="noopener" class="btn btn-primary" style="display:inline-flex;align-items:center;justify-content:center;width:auto;margin:0;text-decoration:none;padding:10px 16px;border-radius:10px;">PDF 열기</a>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card);min-height:520px;">
+            <iframe src="${escHtml(pdfUrl)}" title="숙소/차량 배정표 PDF" style="width:100%;height:min(72vh,760px);min-height:520px;border:0;background:var(--card);"></iframe>
+          </div>
+        </div>
+      `;
+    }
+
     async function loadLogisticsAssignment(force) {
       const statusEl = document.getElementById('logisticsStatus');
       const contentEl = document.getElementById('logisticsContent');
@@ -5382,6 +5421,10 @@
       }
       contentEl.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
       try {
+        if (await hasPublicLogisticsPdf()) {
+          renderGlobalLogisticsPdf();
+          return;
+        }
         const data = await apiClient.getLogisticsAssignment();
         if (!data.ok) throw new Error(data.error || 'load_failed');
         renderLogisticsAssignment(data);
