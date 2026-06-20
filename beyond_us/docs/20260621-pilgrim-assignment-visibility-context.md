@@ -7,3 +7,7 @@
 해결은 `bu_photo_payload()`에서 `public.bu_ensure_pilgrim_assignment(profile_id)`를 호출해 배정을 보장하는 것이다. 기존 배정이 있으면 그대로 반환하고, 없으면 `pilgrim_spots`의 활성 스팟 중 유저별 안정적 랜덤 2개를 생성한다.
 
 `20260621000300_pilgrim_assignment_visibility_hotfix.sql`은 이 보강과 함께 활성 유저 전체에 대해 누락 배정을 한 번 backfill한다.
+
+추가 확인 결과, 앱은 `pilgrim` 탭 상태가 `open`이 아니면 실제 천로역정 화면 대신 Coming Soon 설명 화면으로 전환한다. 또한 `bbb_settings.m3.open`이 false면 천로역정 라이브 영역이 숨겨진다.
+
+`20260621000400_pilgrim_visibility_and_assignment_force.sql`은 배정 보장에 더해 `tab_settings.pilgrim`과 `bbb_settings.m3`를 함께 open으로 맞춘다. SQL 마지막에는 활성 유저 수와 2스팟 배정 유저 수를 확인할 수 있는 결과 JSON을 반환한다.
