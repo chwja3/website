@@ -62,7 +62,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620j';
+    const APP_VERSION = '20260621a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5794,7 +5794,7 @@
             }
             if (_isDev || m3Open) {
               _bbbData = bbbRes;
-              _bbbRenderM3Spots(bbbRes.myPhotoM3 || _bbbEmptyM3Photos(), bbbRes.m3Rewarded, bbbRes.m3AssignedSpots || []);
+              _bbbRenderM3Spots(bbbRes.myPhotoM3 || _bbbEmptyM3Photos(), bbbRes.m3Rewarded, bbbRes.m3AssignedSpots || [], bbbRes.myPhotoM3Statuses || []);
             }
           } else {
             document.getElementById('bbbNoMatch').style.display = '';
@@ -6138,32 +6138,12 @@
       _pendingPilgrimQrHandled = true;
       switchSection('pilgrim');
       const statusEl = document.getElementById('bbbM3Status');
-      const dotsTimer = statusEl ? animDots(statusEl, 'QR 확인 중') : null;
-      try {
-        const res = await apiClient.verifyPilgrimQr(pendingPilgrimQr.spotIndex, pendingPilgrimQr.code);
-        if (res.ok) {
-          _bbbData = Object.assign({}, _bbbData || {}, res);
-          _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
-          _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : (_bbbData.m3AssignedSpots || []);
-          if (res.rewarded || res.m3Rewarded) _bbbData.m3Rewarded = true;
-          _bbbLoadedOnce = false;
-          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
-          stopAnimDots(dotsTimer, statusEl, res.rewarded ? '레어 카드가 지급됐어요!' : '천로역정 스팟 인증 완료!');
-          if (statusEl) {
-            statusEl.style.color = 'var(--primary)';
-            statusEl.style.fontWeight = '800';
-          }
-          syncServerChanges(true).catch(() => {});
-        } else {
-          stopAnimDots(dotsTimer, statusEl, pilgrimQrErrorText(res.error));
-          if (statusEl) statusEl.style.color = 'var(--danger)';
-        }
-      } catch(e) {
-        stopAnimDots(dotsTimer, statusEl, pilgrimQrErrorText(e.message));
-        if (statusEl) statusEl.style.color = 'var(--danger)';
-      } finally {
-        clearPilgrimQrParamsFromUrl();
+      if (statusEl) {
+        statusEl.textContent = '이제 QR 대신 배정된 스팟에서 인증사진을 올려주세요.';
+        statusEl.style.color = 'var(--primary)';
+        statusEl.style.fontWeight = '800';
       }
+      clearPilgrimQrParamsFromUrl();
     }
 
     /* ── MISSION 3 ── */
@@ -6181,29 +6161,36 @@
       return [null, null, null, null, null, null, null];
     }
 
-    function _bbbRenderM3Spots(photos, m3Rewarded, assignedSpots) {
+    function _bbbRenderM3Spots(photos, m3Rewarded, assignedSpots, spotStatuses) {
       const container = document.getElementById('bbbM3Spots');
       if (!container) return;
       const safePhotos = Array.isArray(photos) ? photos : _bbbEmptyM3Photos();
+      const safeStatuses = Array.isArray(spotStatuses) ? spotStatuses : [];
       const assigned = Array.isArray(assignedSpots) ? assignedSpots : [];
       const assignedMap = {};
       assigned.forEach(idx => { assignedMap[Number(idx)] = true; });
       const SIZE = 46; // px
       container.innerHTML = BBB_M3_SPOTS.map((spot, i) => {
         const src = safePhotos[i];
+        const status = String(safeStatuses[i] || '').toLowerCase();
         const isAssigned = assignedMap[i] === true;
-        const isCompleted = isAssigned && !!src;
-        const hasPhotoPreview = isCompleted && !isPilgrimQrVerifiedSrc(src);
+        const isPending = isAssigned && status === 'pending';
+        const isCompleted = isAssigned && status === 'approved';
+        const hasPhotoPreview = !!src && !isPilgrimQrVerifiedSrc(src);
         const circleStyle = isCompleted
           ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(116,181,142,0.22);background:rgba(116,181,142,0.78);color:#fff;`
+          : isPending
+          ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(245,158,11,0.22);background:rgba(245,158,11,0.76);color:#fff;`
           : isAssigned
           ? `border:1px solid rgba(255,255,255,0.82);box-shadow:0 2px 8px rgba(0,0,0,0.22),0 0 0 2px rgba(216,111,116,0.22);background:rgba(216,111,116,0.78);color:#fff;`
           : `border:1px dashed rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.18);background:rgba(255,255,255,0.55);`;
         const actionAttr = isAssigned
-          ? `onclick="${hasPhotoPreview ? `openBbbM3Modal(${i})` : (isCompleted ? `showPilgrimQrInstruction('이미 인증된 스팟이에요.')` : `openPilgrimQrScanner(${i})`)}"`
+          ? `onclick="${hasPhotoPreview ? `openBbbM3Modal(${i})` : (isCompleted ? `showPilgrimQrInstruction('이미 인증된 스팟이에요.')` : `document.getElementById('bbbM3Input${i}')?.click()`)}"`
           : '';
         const marker = isCompleted
           ? `<span style="font-size:21px;color:#fff;font-weight:900;line-height:1;">✓</span>`
+          : isPending
+          ? `<span style="font-size:18px;color:#fff;font-weight:900;line-height:1;">…</span>`
           : isAssigned
           ? `<span style="font-size:20px;color:#fff;font-weight:900;line-height:1;">+</span>`
           : '';
@@ -6213,20 +6200,22 @@
                  ${actionAttr}>
               ${marker}
             </div>
+            ${isAssigned ? `<input id="bbbM3Input${i}" type="file" accept="image/*" style="display:none" onchange="bbbM3Upload(${i}, this)" />` : ''}
             <span style="font-size:9px;font-weight:700;color:#333;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:6px;white-space:nowrap;">${spot.label}</span>
           </div>`;
       }).join('');
-      const filled = assigned.filter(idx => !!safePhotos[Number(idx)]).length;
+      const filled = assigned.filter(idx => String(safeStatuses[Number(idx)] || '').toLowerCase() === 'approved').length;
+      const pending = assigned.filter(idx => String(safeStatuses[Number(idx)] || '').toLowerCase() === 'pending').length;
       const required = assigned.length || 2;
       const statusEl = document.getElementById('bbbM3Status');
       if (statusEl) {
-        statusEl.textContent = m3Rewarded ? '✓ 레어 카드 획득 완료' : filled > 0 ? `${filled}/${required} 완료` : '';
+        statusEl.textContent = m3Rewarded ? '✓ 레어 카드 획득 완료' : pending > 0 ? `${pending}개 승인 대기 · ${filled}/${required} 완료` : filled > 0 ? `${filled}/${required} 완료` : '';
         statusEl.style.color = m3Rewarded ? 'var(--sub)' : 'var(--primary)';
       }
     }
     function _bbbInitMission3(bbbRes) {
       const safeRes = bbbRes || {};
-      _bbbRenderM3Spots(safeRes.myPhotoM3 || _bbbEmptyM3Photos(), safeRes.m3Rewarded, safeRes.m3AssignedSpots || []);
+      _bbbRenderM3Spots(safeRes.myPhotoM3 || _bbbEmptyM3Photos(), safeRes.m3Rewarded, safeRes.m3AssignedSpots || [], safeRes.myPhotoM3Statuses || []);
     }
     async function bbbM3Upload(spotIdx, input) {
       const file = input.files[0];
@@ -6241,13 +6230,16 @@
           _bbbData = _bbbData || {};
           _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : (_bbbData.myPhotoM3 || _bbbEmptyM3Photos());
           if (!Array.isArray(res.myPhotoM3)) _bbbData.myPhotoM3[spotIdx] = base64;
+          _bbbData.myPhotoM3Statuses = Array.isArray(res.myPhotoM3Statuses) ? res.myPhotoM3Statuses : (_bbbData.myPhotoM3Statuses || []);
+          if (!Array.isArray(res.myPhotoM3Statuses)) _bbbData.myPhotoM3Statuses[spotIdx] = 'pending';
           _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : (_bbbData.m3AssignedSpots || []);
           if (res.rewarded || res.m3Rewarded) _bbbData.m3Rewarded = true;
-          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots);
-          stopAnimDots(dotsTimer, statusEl, '');
+          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots, _bbbData.myPhotoM3Statuses);
+          stopAnimDots(dotsTimer, statusEl, '사진이 올라갔어요. 운영진 승인 후 완료 처리됩니다.');
           if (res.rewarded) { syncTicketBadgeFromServer(); }
-        } else { stopAnimDots(dotsTimer, statusEl, res.error === 'qr_required' ? '각 장소의 QR을 찍어 인증해주세요.' : (res.error === 'not_assigned_spot' ? '내 미션 스팟만 인증할 수 있어요.' : (res.error || '업로드 실패'))); }
+        } else { stopAnimDots(dotsTimer, statusEl, res.error === 'not_assigned_spot' ? '내 미션 스팟만 인증할 수 있어요.' : (res.error || '업로드 실패')); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류: ' + e.message); }
+      finally { input.value = ''; }
     }
     function openBbbM3Modal(spotIdx) {
       const src = _bbbData && _bbbData.myPhotoM3 && _bbbData.myPhotoM3[spotIdx];
@@ -6272,7 +6264,8 @@
         const res = await apiClient.deleteMissionPhoto('m3_' + spotIdx);
         if (res.ok) {
           if (_bbbData && _bbbData.myPhotoM3) _bbbData.myPhotoM3[spotIdx] = null;
-          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded, (_bbbData && _bbbData.m3AssignedSpots) || []);
+          if (_bbbData && _bbbData.myPhotoM3Statuses) _bbbData.myPhotoM3Statuses[spotIdx] = '';
+          _bbbRenderM3Spots(_bbbData ? _bbbData.myPhotoM3 : [], _bbbData && _bbbData.m3Rewarded, (_bbbData && _bbbData.m3AssignedSpots) || [], (_bbbData && _bbbData.myPhotoM3Statuses) || []);
           stopAnimDots(dotsTimer, statusEl, '');
         } else { stopAnimDots(dotsTimer, statusEl, '삭제 실패'); }
       } catch(e) { stopAnimDots(dotsTimer, statusEl, '오류'); }
