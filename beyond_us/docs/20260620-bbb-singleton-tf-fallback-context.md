@@ -12,3 +12,4 @@ New rule.
 - Manual SQL order matters. Run `20260620000600_bbb_singleton_tf_fallback.sql` before the latest roster patch SQL so roster sync uses the conflict-safe function.
 - Roster sync now deduplicates `group_members` and `bbb_assignments` by `matched_profile_id` before upsert, which prevents duplicate matched roster rows from causing PostgreSQL `ON CONFLICT ... cannot affect row a second time`.
 - `public.group_role` enum values are `leader`, `assistant`, and `member`. Co-leader style rows must be ordered as `assistant`; using `coleader` in SQL makes PostgreSQL raise `invalid input value for enum group_role`.
+- `manual_unmatched` rows are intentionally left empty by admins. Roster sync must preserve that status instead of auto-matching those rows again.

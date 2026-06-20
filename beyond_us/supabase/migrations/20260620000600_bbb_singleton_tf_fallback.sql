@@ -157,6 +157,7 @@ begin
     set candidate_profiles = c.candidates,
         matched_profile_id = case
           when r.match_status = 'matched_manual' then r.matched_profile_id
+          when r.match_status = 'manual_unmatched' then null
           when c.roster_same_parish_count > 1 then null
           when c.candidate_count = 1 and c.roster_name_count = 1 then c.single_candidate_id
           when c.same_parish_count = 1 then c.same_parish_candidate_id
@@ -164,6 +165,7 @@ begin
         end,
         match_status = case
           when r.match_status = 'matched_manual' then r.match_status
+          when r.match_status = 'manual_unmatched' then r.match_status
           when c.roster_same_parish_count > 1 then 'duplicate_roster_same_parish'
           when c.candidate_count = 0 then 'nickname_missing'
           when c.candidate_count = 1 and c.roster_name_count = 1 then 'matched'
@@ -173,6 +175,7 @@ begin
         end,
         match_detail = case
           when r.match_status = 'matched_manual' then r.match_detail
+          when r.match_status = 'manual_unmatched' then r.match_detail
           when c.roster_same_parish_count > 1 then '이름 중복 확인필요 - 조 명단 같은 청 중복'
           when c.candidate_count = 0 then '닉네임 없음'
           when c.candidate_count = 1 and c.roster_name_count = 1 then '매칭'
