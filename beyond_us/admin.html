@@ -145,6 +145,29 @@
       .pilgrim-qr-grid { grid-template-columns:1fr; }
       .pilgrim-qr-img { width:180px; height:180px; }
     }
+    .mission-review-card {
+      border:1px solid var(--line); border-radius:14px; margin-bottom:12px;
+      background:var(--card); overflow:hidden;
+    }
+    .mission-review-card summary {
+      cursor:pointer; padding:14px; display:flex; align-items:center;
+      justify-content:space-between; gap:12px; list-style:none;
+    }
+    .mission-review-card summary::-webkit-details-marker { display:none; }
+    .mission-review-body { padding:0 14px 14px; }
+    .mission-review-section {
+      border:1px solid var(--line); border-radius:12px; background:var(--bg);
+      padding:12px; margin-bottom:10px;
+    }
+    .mission-review-section-title {
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      font-size:13px; font-weight:900; color:var(--text); margin-bottom:9px;
+    }
+    .mission-review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    @media (max-width: 680px) {
+      .mission-review-card summary { align-items:flex-start; flex-direction:column; }
+      .mission-review-grid { grid-template-columns:1fr; }
+    }
 
     /* ── 패널 ── */
     .tab-panel { display: none; }
@@ -448,12 +471,12 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
             <div>
-              <h2 class="card-title" style="margin:0;">BBB 사진 승인</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">MISSION 1, 2 사진을 확인하고 승인하면 미보유 카드 지급권 1장이 발급됩니다.</p>
+              <h2 class="card-title" style="margin:0;">BBB/천로역정 Mission 승인</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">유저별로 Mission 1, Mission 2, Mission 3 천로역정 스팟 2개를 한 번에 확인하고 승인합니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshBBBPhotoApprovalsBtn" onclick="loadBBBPhotoApprovals()">새로고침</button>
           </div>
-          <input type="search" id="bbbPhotoApprovalSearch" placeholder="🔍 닉네임 또는 이름 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterBBBPhotoApprovals(this.value)" />
+          <input type="search" id="bbbPhotoApprovalSearch" placeholder="🔍 닉네임, 이름, 교구, 조 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterBBBPhotoApprovals(this.value)" />
           <div id="bbbPhotoApprovalList">
             <p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>
           </div>
@@ -462,8 +485,8 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;">
             <div>
-              <h2 class="card-title" style="margin:0;">BBB/천로역정 운영 현황</h2>
-              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">케어버디, 시크릿버디, Mission 1/2 승인, 천로역정 배정 스팟과 완료 여부를 유저별로 확인합니다.</p>
+              <h2 class="card-title" style="margin:0;">BBB/천로역정 매칭 요약</h2>
+              <p style="font-size:12px;color:var(--sub);margin:4px 0 0;">케어버디, 시크릿버디, 조 정보와 전체 완료 상태를 보조로 확인합니다.</p>
             </div>
             <button class="btn btn-ghost btn-sm" id="refreshBBBPilgrimStatusBtn" onclick="loadBBBPilgrimStatus()">새로고침</button>
           </div>
@@ -3555,7 +3578,6 @@
       return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
 
-    let _bbbPhotoApprovals = [];
     let _bbbPhotoApprovalFilter = '';
     let _pilgrimQrRows = [];
 
@@ -3738,16 +3760,11 @@
       listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">불러오는 중...</p>';
       if (refreshBtn) refreshBtn.disabled = true;
       try {
-        const res = await get({ action: 'adminGetBBBPhotoApprovals', adminPw });
-        if (!res.ok) {
-          listEl.innerHTML = adminErrorBlock({ response: res }, '불러오기 실패');
-          return;
-        }
-        document.getElementById('bbbPhotoPendingCount').textContent = res.pendingCount || 0;
-        document.getElementById('bbbPhotoApprovedCount').textContent = res.approvedCount || 0;
-        document.getElementById('bbbPhotoRejectedCount').textContent = res.rejectedCount || 0;
-        _bbbPhotoApprovals = res.photos || [];
-        renderBBBPhotoApprovals(_bbbPhotoApprovals);
+        const res = await callSupabaseAdminRpc('admin_bbb_pilgrim_status');
+        if (!res.ok) throw new Error(res.error || 'load_failed');
+        _bbbOpsRows = res.rows || [];
+        updateMissionApprovalCounts(_bbbOpsRows);
+        renderBBBPhotoApprovals(_bbbOpsRows);
       } catch(e) {
         listEl.innerHTML = adminErrorBlock(e, '연결 오류');
       } finally {
@@ -3757,7 +3774,7 @@
 
     function filterBBBPhotoApprovals(value) {
       _bbbPhotoApprovalFilter = String(value || '').trim().toLowerCase();
-      renderBBBPhotoApprovals(_bbbPhotoApprovals);
+      renderBBBPhotoApprovals(_bbbOpsRows);
     }
 
     /* ── 추첨권 번호 검색 ── */
@@ -3953,52 +3970,147 @@
       }
     }
 
-    function groupBBBPhotoApprovalsByUser(photos) {
-      const groups = {};
-      photos.forEach(item => {
-        const key = item.userId || '';
-        if (!key) return;
-        if (!groups[key]) {
-          groups[key] = { userId: item.userId, name: bbbMatchingCleanText(item.name), displayName: bbbMatchingCleanText(item.displayName), m1: null, m2: null, latest: '' };
-        }
-        if (item.missionType === 'm1') groups[key].m1 = item;
-        if (item.missionType === 'm2') groups[key].m2 = item;
-        if (String(item.uploadedAt || '') > String(groups[key].latest || '')) groups[key].latest = item.uploadedAt || '';
-      });
-      return Object.values(groups).sort((a, b) => {
-        const pendingA = [a.m1, a.m2].some(item => item && item.approvalStatus === 'pending');
-        const pendingB = [b.m1, b.m2].some(item => item && item.approvalStatus === 'pending');
-        if (pendingA !== pendingB) return pendingA ? -1 : 1;
-        return String(b.latest || '').localeCompare(String(a.latest || ''));
-      });
+    function normalizeMissionPhoto(photo) {
+      if (!photo || typeof photo !== 'object') return null;
+      const status = String(photo.status || photo.approvalStatus || '').toLowerCase();
+      if (!status) return null;
+      return {
+        ...photo,
+        status,
+        updatedAt: photo.updatedAt || photo.uploadedAt || '',
+        uploadedAt: photo.uploadedAt || photo.updatedAt || '',
+      };
     }
 
-    function renderBBBPhotoApprovals(photos) {
+    function collectMissionApprovalPhotos(row) {
+      const items = [];
+      const m1 = normalizeMissionPhoto(row.m1);
+      const m2 = normalizeMissionPhoto(row.m2);
+      if (m1) items.push(m1);
+      if (m2) items.push(m2);
+      (Array.isArray(row.pilgrimSpotPhotos) ? row.pilgrimSpotPhotos : []).forEach(photo => {
+        const normalized = normalizeMissionPhoto(photo);
+        if (normalized) items.push(normalized);
+      });
+      return items;
+    }
+
+    function updateMissionApprovalCounts(rows) {
+      const counts = { pending: 0, approved: 0, rejected: 0 };
+      (Array.isArray(rows) ? rows : []).forEach(row => {
+        collectMissionApprovalPhotos(row).forEach(photo => {
+          if (Object.prototype.hasOwnProperty.call(counts, photo.status)) counts[photo.status] += 1;
+        });
+      });
+      document.getElementById('bbbPhotoPendingCount').textContent = counts.pending;
+      document.getElementById('bbbPhotoApprovedCount').textContent = counts.approved;
+      document.getElementById('bbbPhotoRejectedCount').textContent = counts.rejected;
+    }
+
+    function missionApprovalSortValue(row) {
+      return collectMissionApprovalPhotos(row).reduce((latest, photo) => {
+        const value = String(photo.updatedAt || photo.uploadedAt || '');
+        return value > latest ? value : latest;
+      }, '');
+    }
+
+    function rowHasPendingMission(row) {
+      return collectMissionApprovalPhotos(row).some(photo => photo.status === 'pending');
+    }
+
+    function rowHasAnyMissionSubmission(row) {
+      return collectMissionApprovalPhotos(row).length > 0;
+    }
+
+    function renderMissionBadge(label, photo) {
+      const text = bbbStatusText(photo);
+      return `<span style="font-size:11px;font-weight:800;color:${bbbStatusColor(photo)};background:var(--primary-soft);border-radius:999px;padding:3px 8px;white-space:nowrap;">${esc(label)} ${esc(text)}</span>`;
+    }
+
+    function renderMissionThreeSection(row, assigned, completed, spotPhotos) {
+      const spots = assigned.length ? assigned : [];
+      return `
+        <div class="mission-review-section">
+          <div class="mission-review-section-title">
+            <span>MISSION 3 · 천로역정</span>
+            <span style="font-size:11px;font-weight:900;color:${row.pilgrimCompleted ? 'var(--success)' : 'var(--sub)'};">${completed.length}/${assigned.length || 2} 완료</span>
+          </div>
+          ${spots.length ? `
+            <div class="mission-review-grid">
+              ${spots.map(v => {
+                const n = Number(v);
+                const photo = spotPhotos.find(p => Number(p.spotIndex) === n);
+                return renderOpsPhotoMini(photo, `스팟 ${n + 1}`, row.userId, `m3_${n}`);
+              }).join('')}
+            </div>`
+          : '<div style="border:1px dashed var(--line);border-radius:10px;padding:14px;text-align:center;color:var(--sub);font-size:13px;">천로역정 스팟 미배정</div>'}
+        </div>`;
+    }
+
+    function renderBBBPhotoApprovals(rows) {
       const listEl = document.getElementById('bbbPhotoApprovalList');
       const query = _bbbPhotoApprovalFilter;
       const filtered = query
-        ? photos.filter(item => [item.userId, item.name, item.displayName].some(v => String(v || '').toLowerCase().includes(query)))
-        : photos;
-      const groups = groupBBBPhotoApprovalsByUser(filtered);
-      if (!groups.length) {
-        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">제출된 MISSION 1, 2 사진이 없어요.</p>';
+        ? rows.filter(row => [row.userId, row.name, row.displayName, row.parish, row.groupName, row.careBuddy?.name, row.secretBuddy?.name]
+            .some(v => String(v || '').toLowerCase().includes(query)))
+        : rows;
+      const sorted = [...filtered].sort((a, b) => {
+        const pendingA = rowHasPendingMission(a);
+        const pendingB = rowHasPendingMission(b);
+        if (pendingA !== pendingB) return pendingA ? -1 : 1;
+        const hasA = rowHasAnyMissionSubmission(a);
+        const hasB = rowHasAnyMissionSubmission(b);
+        if (hasA !== hasB) return hasA ? -1 : 1;
+        const latest = String(missionApprovalSortValue(b)).localeCompare(String(missionApprovalSortValue(a)));
+        if (latest) return latest;
+        return String(bbbMatchingDisplayName(a)).localeCompare(String(bbbMatchingDisplayName(b)), 'ko');
+      });
+      if (!sorted.length) {
+        listEl.innerHTML = '<p style="color:var(--sub);font-size:14px;text-align:center;padding:16px;">표시할 유저가 없어요.</p>';
         return;
       }
-      listEl.innerHTML = groups.map(group => {
-        const personName = bbbMatchingDisplayName(group);
+      listEl.innerHTML = sorted.map(row => {
+        const personName = bbbMatchingDisplayName(row);
+        const assigned = Array.isArray(row.pilgrimAssignedSpots) ? row.pilgrimAssignedSpots : [];
+        const completed = Array.isArray(row.pilgrimCompletedSpots) ? row.pilgrimCompletedSpots : [];
+        const spotPhotos = Array.isArray(row.pilgrimSpotPhotos) ? row.pilgrimSpotPhotos : [];
+        const parishText = bbbMatchingCleanText(row.parish) || '-';
+        const groupNameText = bbbMatchingCleanText(row.groupName);
+        const tierText = bbbMatchingCleanText(row.tier);
+        const careBuddyName = row.careBuddy ? bbbMatchingDisplayName(row.careBuddy, '-') : '-';
+        const secretBuddyName = row.secretBuddy ? bbbMatchingDisplayName(row.secretBuddy, '-') : '-';
+        const pending = rowHasPendingMission(row);
+        const openAttr = pending ? ' open' : '';
         return `
-          <div style="padding:14px 0;border-bottom:1px solid var(--line);">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
-              <div>
-                <div style="font-size:15px;font-weight:800;">${esc(personName)}</div>
-                <div style="font-size:12px;color:var(--sub);margin-top:2px;">최근 제출 ${formatDateTime(group.latest)}</div>
+          <details class="mission-review-card"${openAttr}>
+            <summary>
+              <div style="min-width:0;">
+                <div style="font-size:15px;font-weight:900;">${esc(personName)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">
+                  ${esc(parishText)}${groupNameText ? ` · ${esc(groupNameText)}` : ''}${tierText ? ` · ${esc(tierText)}` : ''}
+                </div>
               </div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+                ${renderMissionBadge('M1', row.m1)}
+                ${renderMissionBadge('M2', row.m2)}
+                <span style="font-size:11px;font-weight:800;color:${row.pilgrimCompleted ? 'var(--success)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">M3 ${completed.length}/${assigned.length || 2}</span>
+              </div>
+            </summary>
+            <div class="mission-review-body">
+              <div style="background:var(--primary-soft);border-radius:10px;padding:10px;margin-bottom:10px;font-size:12px;line-height:1.6;color:var(--sub);">
+                케어버디 <strong style="color:var(--text);">${esc(careBuddyName)}</strong>
+                · 시크릿버디 <strong style="color:var(--text);">${esc(secretBuddyName)}</strong>${row.secretRevealed ? ' · 공개' : ''}
+              </div>
+              <div class="mission-review-section">
+                <div class="mission-review-section-title"><span>BBB Mission</span><span>사진 승인</span></div>
+                <div class="mission-review-grid">
+                  ${renderOpsPhotoMini(row.m1, 'MISSION 1', row.userId, 'm1')}
+                  ${renderOpsPhotoMini(row.m2, 'MISSION 2', row.userId, 'm2')}
+                </div>
+              </div>
+              ${renderMissionThreeSection(row, assigned, completed, spotPhotos)}
             </div>
-            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
-              ${renderBBBPhotoApprovalSlot(group.m1, 'MISSION 1')}
-              ${renderBBBPhotoApprovalSlot(group.m2, 'MISSION 2')}
-            </div>
-          </div>`;
+          </details>`;
       }).join('');
     }
 
@@ -4017,6 +4129,8 @@
         const res = await callSupabaseAdminRpc('admin_bbb_pilgrim_status');
         if (!res.ok) throw new Error(res.error || 'load_failed');
         _bbbOpsRows = res.rows || [];
+        updateMissionApprovalCounts(_bbbOpsRows);
+        renderBBBPhotoApprovals(_bbbOpsRows);
         renderBBBPilgrimStatus(_bbbOpsRows);
       } catch(e) {
         listEl.innerHTML = adminErrorBlock(e);
@@ -4129,67 +4243,28 @@
                   <div style="font-size:13px;line-height:1.7;">MISSION 3: <strong>${row.pilgrimCompleted ? '완료' : '진행 중'}</strong></div>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:10px;">
-                ${renderOpsPhotoMini(row.m1, 'MISSION 1', row.userId, 'm1')}
-                ${renderOpsPhotoMini(row.m2, 'MISSION 2', row.userId, 'm2')}
-                ${assigned.map(v => {
-                  const n = Number(v);
-                  const photo = spotPhotos.find(p => Number(p.spotIndex) === n);
-                  return renderOpsPhotoMini(photo, `천로역정 스팟 ${n + 1}`, row.userId, `m3_${n}`);
-                }).join('')}
-              </div>
-              <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                ${assigned.length
-                  ? assigned.map(v => {
-                      const n = Number(v);
-                      const done = completed.map(Number).includes(n);
-                      const photo = spotPhotos.find(p => Number(p.spotIndex) === n);
-                      return `<span title="${esc(photo?.storagePath || '')}" style="font-size:12px;font-weight:800;color:${done ? '#166534' : '#991b1b'};background:${done ? '#dcfce7' : '#fee2e2'};border-radius:999px;padding:5px 9px;">스팟 ${n + 1} ${done ? '성공' : '미완료'}</span>`;
-                    }).join('')
-                  : '<span style="font-size:12px;color:var(--sub);">천로역정 스팟 미배정</span>'
-                }
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;">
+                <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);font-size:13px;line-height:1.7;">
+                  <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:4px;">BBB 승인</div>
+                  <div>MISSION 1: <strong style="color:${bbbStatusColor(row.m1)};">${esc(m1Text)}</strong></div>
+                  <div>MISSION 2: <strong style="color:${bbbStatusColor(row.m2)};">${esc(m2Text)}</strong></div>
+                </div>
+                <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);font-size:13px;line-height:1.7;">
+                  <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:4px;">천로역정 스팟</div>
+                  ${assigned.length
+                    ? assigned.map(v => {
+                        const n = Number(v);
+                        const done = completed.map(Number).includes(n);
+                        const photo = spotPhotos.find(p => Number(p.spotIndex) === n);
+                        return `<div title="${esc(photo?.storagePath || '')}">스팟 ${n + 1}: <strong style="color:${done ? 'var(--success)' : 'var(--sub)'};">${done ? '성공' : bbbStatusText(photo)}</strong></div>`;
+                      }).join('')
+                    : '<div style="color:var(--sub);">천로역정 스팟 미배정</div>'
+                  }
+                </div>
               </div>
             </div>
           </details>`;
       }).join('');
-    }
-
-    function renderBBBPhotoApprovalSlot(item, label) {
-      if (!item) {
-        return `<div style="border:1px dashed var(--line);border-radius:8px;padding:10px;min-height:138px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:13px;">${label}<br>미제출</div>`;
-      }
-      const statusMeta = {
-        pending:  { text: '승인 대기', color: 'var(--danger)' },
-        rejected: { text: '거절됨', color: '#f59e0b' },
-        approved: { text: '승인 완료', color: 'var(--success)' },
-      }[item.approvalStatus] || { text: '승인 대기', color: 'var(--danger)' };
-      const approved = item.approvalStatus === 'approved';
-      const rejected = item.approvalStatus === 'rejected';
-      return `
-        <div style="border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;">
-            <div style="font-size:13px;font-weight:800;">${label}</div>
-            <span style="font-size:11px;font-weight:800;color:${statusMeta.color};background:var(--primary-soft);border-radius:999px;padding:3px 8px;white-space:nowrap;">${statusMeta.text}</span>
-          </div>
-          <button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;text-align:left;width:100%;margin-bottom:8px;">
-            <img src="${item.photoBase64}" alt="${esc(label)} 사진" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--card);" />
-          </button>
-          <div style="font-size:11px;color:var(--sub);margin-bottom:6px;">${formatDateTime(item.uploadedAt)}${approved ? ` · ${esc(item.rewardEventId || '').slice(0,8)}` : ''}</div>
-          ${rejected ? '<div style="font-size:11px;color:#f59e0b;margin-bottom:6px;">사용자가 다시 올리면 대기로 돌아갑니다.</div>' : ''}
-          <div class="status" data-approval-status="${esc(item.userId)}_${esc(item.missionType)}" style="min-height:17px;margin-bottom:6px;font-size:12px;"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <button class="btn ${approved ? 'btn-ghost' : 'btn-primary'} btn-sm"
-              data-user-id="${esc(item.userId)}"
-              data-mission-type="${esc(item.missionType)}"
-              onclick="reviewBBBPhotoFromButton(this, 'approve')"
-              ${approved ? 'disabled' : ''}>${approved ? '승인됨' : '승인'}</button>
-            <button class="btn btn-danger btn-sm"
-              data-user-id="${esc(item.userId)}"
-              data-mission-type="${esc(item.missionType)}"
-              onclick="reviewBBBPhotoFromButton(this, 'reject')"
-              ${approved || rejected ? 'disabled' : ''}>${rejected ? '거절됨' : '거절'}</button>
-          </div>
-        </div>`;
     }
 
     async function reviewBBBPhotoFromButton(btn, mode) {
