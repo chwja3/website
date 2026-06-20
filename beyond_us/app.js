@@ -57,7 +57,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620f';
+    const APP_VERSION = '20260620g';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -1867,13 +1867,17 @@
       return Math.max(0, Number(status?.pendingSpecialPacks) || 0);
     }
 
+    function shouldUseSpecialPacks(status) {
+      return specialPackOpen || getSpecialPackCount(status) > 0;
+    }
+
     function isCurrentDeveloperAccount() {
       return IS_DEV_ENV && localStorage.getItem('beyondus_is_dev') === 'true';
     }
 
     function getNextDrawPackType(status) {
       const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
-      const specialPending = specialPackOpen && status && !status.error ? getSpecialPackCount(status) : 0;
+      const specialPending = shouldUseSpecialPacks(status) && status && !status.error ? getSpecialPackCount(status) : 0;
       if (pending > 0) return 'normal';
       if (specialPending > 0) return 'special';
       if (isCurrentDeveloperAccount()) return 'normal';
@@ -1885,7 +1889,7 @@
       const specialBadge = document.getElementById('specialPackBadge');
       if (!ticketBadge) return;
       const pending = status && !status.error ? Math.max(0, Number(status.pendingDraws) || 0) : 0;
-      const specialPending = specialPackOpen && status && !status.error ? getSpecialPackCount(status) : 0;
+      const specialPending = shouldUseSpecialPacks(status) && status && !status.error ? getSpecialPackCount(status) : 0;
       ticketBadge.textContent = `🎫 ${pending + specialPending}`;
       if (specialBadge) {
         specialBadge.textContent = `💜 ${specialPending}`;
@@ -1924,7 +1928,7 @@
       const pending = userStatus.pendingDraws || 0;
       const specialPending = getSpecialPackCount(userStatus);
 
-      if (specialPackOpen) {
+      if (shouldUseSpecialPacks(userStatus)) {
         const nextPackType = getNextDrawPackType(userStatus);
         const devOnlyNormal = nextPackType === 'normal' && pending <= 0 && specialPending <= 0 && canDevDrawUnlimited;
         const emptyMsg = !nextPackType
