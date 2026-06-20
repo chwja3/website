@@ -4904,15 +4904,18 @@
 
     function bbbMatchingCandidatesFor(row) {
       if (!bbbMatchingCanEdit(row)) return [];
-      const ownBucketKey = bbbMatchingBucketKey(row);
       let candidates = _bbbMatchingRows.filter(candidate =>
-        bbbMatchingCanEdit(candidate) && candidate.rosterId !== row.rosterId && bbbMatchingBucketKey(candidate) === ownBucketKey
+        bbbMatchingCanEdit(candidate) && candidate.rosterId !== row.rosterId
       );
       if (row.careBuddyRosterId && !candidates.some(candidate => candidate.rosterId === row.careBuddyRosterId)) {
         const selected = _bbbMatchingRows.find(candidate => candidate.rosterId === row.careBuddyRosterId);
         if (selected && bbbMatchingCanEdit(selected)) candidates = [selected].concat(candidates);
       }
-      return candidates;
+      return candidates.sort((a, b) =>
+        bbbMatchingGroupKey(a).localeCompare(bbbMatchingGroupKey(b), 'ko', { numeric: true }) ||
+        bbbMatchingTierOrder(bbbMatchingTier(a)) - bbbMatchingTierOrder(bbbMatchingTier(b)) ||
+        bbbMatchingOptionLabel(a).localeCompare(bbbMatchingOptionLabel(b), 'ko')
+      );
     }
 
     function bbbMatchingCareBuddyLabel(row) {
@@ -5209,7 +5212,7 @@
         });
         const value = result?.value || result || {};
         if (statusEl) {
-          statusEl.textContent = `${targetLabel} 자동 매칭 완료 · 배정 ${value.assignedRows ?? '-'}명 · 1명뿐인 묶음 ${value.skippedSingletonBuckets ?? 0}개 제외`;
+          statusEl.textContent = `${targetLabel} 자동 매칭 완료 · 배정 ${value.assignedRows ?? '-'}명 · 단독 부분참여 ${value.singletonFallbackRows ?? 0}명 · TF 추가케어 ${value.tfExtraCareRows ?? 0}명 · 미해결 ${value.unresolvedSingletonBuckets ?? 0}명`;
         }
         await loadAdminBBB();
         if (typeof loadBBBPilgrimStatus === 'function') loadBBBPilgrimStatus();

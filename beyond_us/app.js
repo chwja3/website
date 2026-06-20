@@ -57,7 +57,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620g';
+    const APP_VERSION = '20260620h';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5522,6 +5522,7 @@
       if (caught) caught.style.display = 'none';
       const careName = document.getElementById('bbbCareBuddyName');
       if (careName) careName.textContent = '—';
+      _renderBBBExtraCareBuddies([]);
       const secretName = document.getElementById('bbbSecretName');
       if (secretName) secretName.textContent = '—';
       const guessInput = document.getElementById('bbbGuessInput');
@@ -5571,6 +5572,22 @@
         || _bbbCleanDisplayText(row.displayName)
         || _bbbCleanDisplayText(row.nickname)
         || fallback;
+    }
+    function _renderBBBExtraCareBuddies(items) {
+      const el = document.getElementById('bbbExtraCareBuddies');
+      if (!el) return;
+      const list = Array.isArray(items) ? items.filter(Boolean) : [];
+      if (!list.length) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      el.style.display = '';
+      el.innerHTML = `
+        <div style="font-size:11px;font-weight:800;color:var(--primary);margin-bottom:5px;">추가 케어버디</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">
+          ${list.map(item => `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12px;font-weight:700;color:var(--text);">${esc(_bbbPersonName(item))}</span>`).join('')}
+        </div>`;
     }
     function _bbbApprovalStatusText(status, rewarded) {
       if (rewarded || status === 'approved') return '✓ 카드팩 획득 완료';
@@ -5746,6 +5763,7 @@
 
         // 케어버디
         document.getElementById('bbbCareBuddyName').textContent = _bbbPersonName(bbbRes.careBuddy) + ' 🗣️👂';
+        _renderBBBExtraCareBuddies(bbbRes.extraCareBuddies);
         document.getElementById('bbbCaughtBadge').style.display = bbbRes.caughtByBuddy ? '' : 'none';
 
         // 사진
