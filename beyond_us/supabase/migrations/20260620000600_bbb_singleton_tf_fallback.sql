@@ -51,7 +51,7 @@ begin
     tier,
     updated_at
   )
-  select
+  select distinct on (r.matched_profile_id)
     r.matched_profile_id,
     care.matched_profile_id,
     secret.matched_profile_id,
@@ -65,6 +65,16 @@ begin
     on secret.id = r.secret_buddy_roster_id
   where r.source_batch = p_source_batch
     and r.matched_profile_id is not null
+  order by
+    r.matched_profile_id,
+    case r.group_role
+      when 'leader' then 0
+      when 'coleader' then 1
+      else 2
+    end,
+    r.group_no nulls last,
+    r.roster_order nulls last,
+    r.id
   on conflict (profile_id) do update
   set care_buddy_id = excluded.care_buddy_id,
       secret_buddy_id = excluded.secret_buddy_id,
@@ -183,7 +193,7 @@ begin
     group_role,
     assigned_at
   )
-  select
+  select distinct on (r.matched_profile_id)
     r.group_id,
     r.matched_profile_id,
     r.group_role,
@@ -192,6 +202,16 @@ begin
   where r.source_batch = p_source_batch
     and r.group_id is not null
     and r.matched_profile_id is not null
+  order by
+    r.matched_profile_id,
+    case r.group_role
+      when 'leader' then 0
+      when 'coleader' then 1
+      else 2
+    end,
+    r.group_no nulls last,
+    r.roster_order nulls last,
+    r.id
   on conflict (profile_id) do update
   set group_id = excluded.group_id,
       group_role = excluded.group_role,

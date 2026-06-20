@@ -9,3 +9,5 @@ New rule.
 - Because one TF/staff user may need to care for multiple singleton participants, extra TF care links live in `bbb_extra_care_roster_links` instead of being forced into the single `care_buddy_roster_id` field.
 - Admin manual care buddy search is no longer limited to the same group or same participation tier. The save RPC also allows cross-group assignments.
 - User app BBB status now exposes `extraCareBuddies`, and the care buddy box renders those names for TF/staff users who receive singleton partial participants as extra care targets.
+- Manual SQL order matters. Run `20260620000600_bbb_singleton_tf_fallback.sql` before the latest roster patch SQL so roster sync uses the conflict-safe function.
+- Roster sync now deduplicates `group_members` and `bbb_assignments` by `matched_profile_id` before upsert, which prevents duplicate matched roster rows from causing PostgreSQL `ON CONFLICT ... cannot affect row a second time`.
