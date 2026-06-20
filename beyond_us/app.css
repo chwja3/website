@@ -2323,6 +2323,17 @@
       border-color: transparent; border-top-color: #2c2c2e;
     }
     .help-tooltip.show { display: block; }
+    .help-tooltip-floating {
+      position: fixed;
+      z-index: 10000;
+      display: block;
+      transform: none;
+      width: min(250px, calc(100vw - 24px));
+      max-height: min(55vh, 360px);
+      overflow-y: auto;
+      pointer-events: none;
+    }
+    .help-tooltip-floating::before { display: none; }
 
     /* QnA FAQ 아코디언 */
     .faq-item { border-bottom: 1px solid var(--line); }

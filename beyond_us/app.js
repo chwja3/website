@@ -55,7 +55,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260619e';
+    const APP_VERSION = '20260620a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -4512,23 +4512,44 @@
     document.getElementById('qtSubmitBtn')?.addEventListener('click', submitQtReflection);
 
     /* ════ 도움말 툴팁 ════ */
+    function closeHelpTips() {
+      document.querySelectorAll('.help-tooltip.show').forEach(t => {
+        t.classList.remove('show');
+        t.style.marginLeft = '';
+      });
+      document.querySelectorAll('.help-tooltip-floating').forEach(t => t.remove());
+    }
     function toggleHelpTip(btn) {
       const tip = btn.nextElementSibling;
-      const isOpen = tip.classList.contains('show');
-      document.querySelectorAll('.help-tooltip.show').forEach(t => { t.classList.remove('show'); t.style.marginLeft = ''; });
-      if (!isOpen) {
-        tip.style.marginLeft = '';
-        tip.classList.add('show');
-        const r = tip.getBoundingClientRect();
-        if (r.left < 8) tip.style.marginLeft = (8 - r.left) + 'px';
-        else if (r.right > window.innerWidth - 8) tip.style.marginLeft = -(r.right - window.innerWidth + 8) + 'px';
+      const existing = document.querySelector('.help-tooltip-floating');
+      const isOpen = existing && existing.dataset.source === (btn.dataset.helpId || '');
+      closeHelpTips();
+      if (isOpen || !tip) return;
+      if (!btn.dataset.helpId) btn.dataset.helpId = 'help-' + Math.random().toString(36).slice(2);
+      const floatingTip = tip.cloneNode(true);
+      floatingTip.classList.add('show', 'help-tooltip-floating');
+      floatingTip.classList.remove('tip-right', 'tip-left');
+      floatingTip.dataset.source = btn.dataset.helpId;
+      document.body.appendChild(floatingTip);
+
+      const btnRect = btn.getBoundingClientRect();
+      const tipRect = floatingTip.getBoundingClientRect();
+      const gap = 8;
+      const margin = 12;
+      let left = btnRect.left + (btnRect.width / 2) - (tipRect.width / 2);
+      left = Math.max(margin, Math.min(left, window.innerWidth - tipRect.width - margin));
+      let top = btnRect.bottom + gap;
+      if (top + tipRect.height > window.innerHeight - margin) {
+        top = Math.max(margin, btnRect.top - tipRect.height - gap);
       }
+      floatingTip.style.left = left + 'px';
+      floatingTip.style.top = top + 'px';
     }
     document.addEventListener('click', e => {
-      if (!e.target.closest('.help-wrap')) {
-        document.querySelectorAll('.help-tooltip.show').forEach(t => t.classList.remove('show'));
-      }
+      if (!e.target.closest('.help-wrap') && !e.target.closest('.help-tooltip-floating')) closeHelpTips();
     });
+    window.addEventListener('resize', closeHelpTips);
+    window.addEventListener('scroll', closeHelpTips, true);
 
     /* ════ QnA FAQ ════ */
     function toggleFaq(btn) {
