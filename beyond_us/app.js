@@ -62,7 +62,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260621a';
+    const APP_VERSION = '20260621b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -1338,6 +1338,10 @@
       },
       async getBBB(nickname) {
         const data = await callSupabaseRpc('get_bbb_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
+        return normalizeMissionPhotoUrls(data);
+      },
+      async getPilgrim(nickname) {
+        const data = await callSupabaseRpc('get_pilgrim_status', { p_login_id: nickname || currentNickname }, { allowOkFalse: true });
         return normalizeMissionPhotoUrls(data);
       },
       async uploadMissionPhoto(dataUrl, missionType) {
@@ -4291,7 +4295,8 @@
         loadAll({ silent: true }).catch(() => {}),
         loadNotices().catch(() => {}),
         loadUserStatus({ silent: true }).then(() => loadTrades()).catch(() => {}),
-        (_currentSection === 'secret' || _currentSection === 'pilgrim') ? loadBBB(true).catch(() => {}) : Promise.resolve(),
+        _currentSection === 'secret' ? loadBBB(true).catch(() => {}) : Promise.resolve(),
+        _currentSection === 'pilgrim' ? loadPilgrim(true).catch(() => {}) : Promise.resolve(),
         _currentSection === 'prayer' ? loadHoldPray(true).then(markHoldPraySeen).catch(() => {}) : Promise.resolve()
       ]).finally(() => { _serverSyncPromise = null; });
       return _serverSyncPromise;
@@ -4540,7 +4545,7 @@
       if (name === 'qt') renderTodayQt();
       if (name === 'investigation') initInvestigationMaps();
       if (name === 'secret') { loadBBB(); }
-      if (name === 'pilgrim') { loadBBB(); }
+      if (name === 'pilgrim') { loadPilgrim(); }
       if (name === 'chat') initChat();
       else if (prev === 'chat') teardownChat();
       _currentSection = name;
@@ -5522,6 +5527,11 @@
     let _bbbData = null;
     let _bbbLoadedFor = '';
     let _bbbLoadingFor = '';
+    let _pilgrimLoadPromise = null;
+    let _pilgrimLoadedFor = '';
+    let _pilgrimLoadingFor = '';
+    let _pilgrimLoadedOnce = false;
+    let _pilgrimLastLoadedAt = 0;
     let _bbbMessagesPromise = null;
     let _bbbMessagesLoadedFor = '';
     let _bbbMessagesLastLoadedAt = 0;
@@ -5552,6 +5562,11 @@
       _bbbLoadedOnce = false;
       _bbbLastLoadedAt = 0;
       _bbbLoadPromise = null;
+      _pilgrimLoadPromise = null;
+      _pilgrimLoadedFor = '';
+      _pilgrimLoadingFor = '';
+      _pilgrimLoadedOnce = false;
+      _pilgrimLastLoadedAt = 0;
       if (!(options && options.clearDom)) return;
       const loading = document.getElementById('bbbLoading');
       if (loading) {
@@ -5884,6 +5899,60 @@
         }
       });
       return _bbbLoadPromise;
+    }
+
+    async function loadPilgrim(silent = false, forceRefresh = false) {
+      const nickname = localStorage.getItem('beyondus_nickname') || '';
+      const statusEl = document.getElementById('bbbM3Status');
+      if (!nickname) {
+        _bbbRenderM3Spots(_bbbEmptyM3Photos(), false, [], []);
+        if (statusEl) statusEl.textContent = '';
+        return;
+      }
+      const now = Date.now();
+      if (!forceRefresh && _pilgrimLoadedFor === nickname && _pilgrimLoadedOnce && now - _pilgrimLastLoadedAt < BBB_REFRESH_TTL_MS) return;
+      if (_pilgrimLoadPromise && _pilgrimLoadingFor === nickname) return _pilgrimLoadPromise;
+      _pilgrimLoadingFor = nickname;
+      if (!silent && statusEl) {
+        statusEl.textContent = '천로역정 미션 배정을 불러오는 중이에요.';
+        statusEl.style.color = 'var(--sub)';
+      }
+      _pilgrimLoadPromise = (async () => {
+        try {
+          const comingSoon = document.getElementById('bbbM3ComingSoon');
+          const live = document.getElementById('bbbM3Live');
+          if (comingSoon) comingSoon.style.display = 'none';
+          if (live) live.style.display = '';
+          const res = await apiClient.getPilgrim(nickname);
+          if (!isActiveAccount(nickname)) return;
+          if (!res.ok) throw new Error(res.error || 'pilgrim_status_failed');
+          _bbbData = Object.assign({}, _bbbData || {}, res);
+          _bbbData.myPhotoM3 = Array.isArray(res.myPhotoM3) ? res.myPhotoM3 : _bbbEmptyM3Photos();
+          _bbbData.myPhotoM3Statuses = Array.isArray(res.myPhotoM3Statuses) ? res.myPhotoM3Statuses : [];
+          _bbbData.m3AssignedSpots = Array.isArray(res.m3AssignedSpots) ? res.m3AssignedSpots : [];
+          _bbbData.m3Rewarded = !!res.m3Rewarded;
+          _bbbRenderM3Spots(_bbbData.myPhotoM3, _bbbData.m3Rewarded, _bbbData.m3AssignedSpots, _bbbData.myPhotoM3Statuses);
+          if (statusEl && _bbbData.m3AssignedSpots.length < 2) {
+            statusEl.textContent = '미션 장소 배정이 아직 비어 있어요. 운영진에게 알려주세요.';
+            statusEl.style.color = 'var(--danger)';
+          }
+          _pilgrimLoadedFor = nickname;
+          _pilgrimLoadedOnce = true;
+          _pilgrimLastLoadedAt = Date.now();
+        } catch(e) {
+          if (statusEl) {
+            statusEl.textContent = '천로역정 배정을 불러오지 못했어요. ' + (e.message || '');
+            statusEl.style.color = 'var(--danger)';
+            statusEl.style.fontWeight = '700';
+          }
+        }
+      })().finally(() => {
+        if (_pilgrimLoadingFor === nickname) {
+          _pilgrimLoadPromise = null;
+          _pilgrimLoadingFor = '';
+        }
+      });
+      return _pilgrimLoadPromise;
     }
 
     /* ── MISSION 2 ── */
