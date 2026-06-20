@@ -481,6 +481,83 @@ left join latest_bbb_roster_match m on m.stable_key = d.stable_key
 left join public.groups g on g.group_no = d.group_no
 where m.roster_id is null;
 
+create temp table latest_bbb_roster_final_cleanup as
+select
+  r.id as old_roster_id,
+  rep.replacement_roster_id
+from public.retreat_group_roster r
+left join latest_bbb_roster_patch exact
+  on exact.desired_order = r.roster_order
+ and exact.group_no is not distinct from r.group_no
+ and exact.name_norm = r.name_norm
+ and coalesce(exact.birth_year, '') = coalesce(r.birth_year, '')
+left join latest_bbb_roster_replacement rep
+  on rep.old_roster_id = r.id
+where r.source_batch = '20260614'
+  and exact.stable_key is null;
+
+insert into public.retreat_group_roster_removed (
+  id,
+  source_batch,
+  participant_name,
+  birth_year,
+  removed_reason,
+  replacement_roster_id,
+  roster_snapshot,
+  removed_at
+)
+select
+  r.id,
+  r.source_batch,
+  r.participant_name,
+  r.birth_year,
+  case
+    when f.replacement_roster_id is not null then 'latest_xlsx_final_cleanup_duplicate_or_moved_replaced'
+    else 'latest_xlsx_final_cleanup_not_in_desired'
+  end,
+  f.replacement_roster_id,
+  to_jsonb(r),
+  now()
+from public.retreat_group_roster r
+join latest_bbb_roster_final_cleanup f on f.old_roster_id = r.id
+on conflict (id) do update
+set removed_reason = excluded.removed_reason,
+    replacement_roster_id = excluded.replacement_roster_id,
+    roster_snapshot = excluded.roster_snapshot,
+    removed_at = now();
+
+update public.retreat_group_roster r
+set care_buddy_roster_id = f.replacement_roster_id,
+    updated_at = now()
+from latest_bbb_roster_final_cleanup f
+where r.source_batch = '20260614'
+  and r.care_buddy_roster_id = f.old_roster_id;
+
+update public.retreat_group_roster r
+set secret_buddy_roster_id = f.replacement_roster_id,
+    updated_at = now()
+from latest_bbb_roster_final_cleanup f
+where r.source_batch = '20260614'
+  and r.secret_buddy_roster_id = f.old_roster_id;
+
+do $$
+begin
+  if to_regclass('public.bbb_extra_care_roster_links') is not null then
+    execute $dyn$
+      delete from public.bbb_extra_care_roster_links l
+      using latest_bbb_roster_final_cleanup f
+      where l.care_giver_roster_id = f.old_roster_id
+         or l.care_receiver_roster_id = f.old_roster_id
+    $dyn$;
+  end if;
+end;
+$$;
+
+delete from public.retreat_group_roster r
+using latest_bbb_roster_final_cleanup f
+where r.id = f.old_roster_id
+  and r.source_batch = '20260614';
+
 select public.bu_sync_group_roster_profile_matches('20260614') as sync_result;
 
 delete from public.group_members gm
@@ -501,19 +578,29 @@ with validation as (
     (select count(*) from public.retreat_group_roster where source_batch = '20260614') as actual_rows,
     (select count(*) from public.retreat_group_roster where source_batch = '20260614' and group_no is null) as null_group_rows,
     (select count(*) from public.retreat_group_roster where source_batch = '20260614' and regexp_replace(coalesce(note, ''), '\s+', '', 'g') like '%' || '조에서제외' || '%') as excluded_note_rows,
+    (select count(*) from (
+      select name_norm, coalesce(birth_year, '') as birth_year, count(*) as row_count
+      from public.retreat_group_roster
+      where source_batch = '20260614'
+      group by name_norm, coalesce(birth_year, '')
+      having count(*) > 1
+    ) duplicated_identity) as duplicate_identity_rows,
     (select count(*) from public.retreat_group_roster_removed where source_batch = '20260614') as removed_snapshot_rows,
     (select count(*) from latest_bbb_roster_match) as reused_rows,
-    (select count(*) from latest_bbb_roster_patch d left join latest_bbb_roster_match m on m.stable_key = d.stable_key where m.roster_id is null) as inserted_rows
+    (select count(*) from latest_bbb_roster_patch d left join latest_bbb_roster_match m on m.stable_key = d.stable_key where m.roster_id is null) as inserted_rows,
+    (select count(*) from latest_bbb_roster_final_cleanup) as final_cleanup_rows
 )
 select
-  case when desired_rows = actual_rows and null_group_rows = 0 and excluded_note_rows = 0 then true else false end as ok,
+  case when desired_rows = actual_rows and null_group_rows = 0 and excluded_note_rows = 0 and duplicate_identity_rows = 0 then true else false end as ok,
   desired_rows,
   actual_rows,
   reused_rows,
   inserted_rows,
+  final_cleanup_rows,
   removed_snapshot_rows,
   null_group_rows,
-  excluded_note_rows
+  excluded_note_rows,
+  duplicate_identity_rows
 from validation;
 
 commit;

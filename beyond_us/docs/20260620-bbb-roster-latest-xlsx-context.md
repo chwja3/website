@@ -13,3 +13,4 @@
 - 보정 SQL은 기존 row를 이름+생년으로 찾아 재사용하고, 제거되는 row가 기존 care/secret link에 들어가 있으면 같은 이름+생년의 최신 row로 연결을 옮긴다.
 - 제거되는 row는 `retreat_group_roster_removed`에 JSON snapshot으로 백업한다.
 - `source_batch, roster_order` unique 충돌을 피하려고 기존 roster order를 임시 음수 영역으로 옮긴 뒤 최신 순서를 다시 부여한다.
+- 2026-06-20 hotfix: update/insert 뒤에 최종 cleanup을 추가했다. 최신 명단의 `roster_order`, `group_no`, `name_norm`, `birth_year`와 정확히 일치하지 않는 잔여 row는 `retreat_group_roster_removed`에 백업 후 삭제한다. 김규리 12조, 권혁준 과거 조처럼 옛 row가 남는 문제를 막기 위한 방어다.
