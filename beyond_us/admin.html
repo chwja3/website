@@ -5350,7 +5350,7 @@
 
     async function saveBBBSections() {
       const pilgrimOn = document.getElementById('bbbSecToggle_pilgrim')?.checked === true;
-      const sections = {};
+      const sections = { ...(_bbbSectionsData || {}) };
       PILGRIM_KEYS.forEach(k => {
         const prev = _bbbSectionsData[k] || {};
         sections[k] = { ...prev, open: pilgrimOn };
