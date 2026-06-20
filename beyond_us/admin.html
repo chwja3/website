@@ -3905,7 +3905,7 @@
         const key = item.userId || '';
         if (!key) return;
         if (!groups[key]) {
-          groups[key] = { userId: item.userId, name: item.name || '', m1: null, m2: null, latest: '' };
+          groups[key] = { userId: item.userId, name: bbbMatchingCleanText(item.name), displayName: bbbMatchingCleanText(item.displayName), m1: null, m2: null, latest: '' };
         }
         if (item.missionType === 'm1') groups[key].m1 = item;
         if (item.missionType === 'm2') groups[key].m2 = item;
@@ -3923,7 +3923,7 @@
       const listEl = document.getElementById('bbbPhotoApprovalList');
       const query = _bbbPhotoApprovalFilter;
       const filtered = query
-        ? photos.filter(item => String(item.userId || '').toLowerCase().includes(query) || String(item.name || '').toLowerCase().includes(query))
+        ? photos.filter(item => [item.userId, item.name, item.displayName].some(v => String(v || '').toLowerCase().includes(query)))
         : photos;
       const groups = groupBBBPhotoApprovalsByUser(filtered);
       if (!groups.length) {
@@ -3931,11 +3931,12 @@
         return;
       }
       listEl.innerHTML = groups.map(group => {
+        const personName = bbbMatchingDisplayName(group);
         return `
           <div style="padding:14px 0;border-bottom:1px solid var(--line);">
             <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;">
               <div>
-                <div style="font-size:15px;font-weight:800;">${esc(group.userId)}${group.name ? ` · ${esc(group.name)}` : ''}</div>
+                <div style="font-size:15px;font-weight:800;">${esc(personName)}</div>
                 <div style="font-size:12px;color:var(--sub);margin-top:2px;">최근 제출 ${formatDateTime(group.latest)}</div>
               </div>
             </div>
@@ -4023,12 +4024,18 @@
         const spotPhotos = Array.isArray(row.pilgrimSpotPhotos) ? row.pilgrimSpotPhotos : [];
         const m1Text = bbbStatusText(row.m1);
         const m2Text = bbbStatusText(row.m2);
+        const personName = bbbMatchingDisplayName(row);
+        const careBuddyName = row.careBuddy ? bbbMatchingDisplayName(row.careBuddy, '-') : '-';
+        const secretBuddyName = row.secretBuddy ? bbbMatchingDisplayName(row.secretBuddy, '-') : '-';
+        const parishText = bbbMatchingCleanText(row.parish) || '-';
+        const groupNameText = bbbMatchingCleanText(row.groupName);
+        const tierText = bbbMatchingCleanText(row.tier);
         return `
           <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
             <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
               <div style="min-width:0;">
-                <div style="font-weight:900;font-size:14px;">${esc(row.userId)}${row.name ? ` · ${esc(row.name)}` : ''}</div>
-                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(row.parish || '-')} · ${row.groupName ? `${esc(row.groupName)} ` : ''}${row.tier ? `· ${esc(row.tier)}` : ''}</div>
+                <div style="font-weight:900;font-size:14px;">${esc(personName)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(parishText)} · ${groupNameText ? `${esc(groupNameText)} ` : ''}${tierText ? `· ${esc(tierText)}` : ''}</div>
               </div>
               <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
                 <span style="font-size:11px;font-weight:800;color:${bbbStatusColor(row.m1)};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">M1 ${esc(m1Text)}</span>
@@ -4040,8 +4047,8 @@
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:10px;">
                 <div style="background:var(--primary-soft);border-radius:10px;padding:10px;">
                   <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px;">매칭</div>
-                  <div style="font-size:13px;line-height:1.7;">케어버디: <strong>${esc(row.careBuddy?.name || row.careBuddy?.userId || '-')}</strong></div>
-                  <div style="font-size:13px;line-height:1.7;">시크릿버디: <strong>${esc(row.secretBuddy?.name || row.secretBuddy?.userId || '-')}</strong>${row.secretRevealed ? ' · 공개' : ''}</div>
+                  <div style="font-size:13px;line-height:1.7;">케어버디: <strong>${esc(careBuddyName)}</strong></div>
+                  <div style="font-size:13px;line-height:1.7;">시크릿버디: <strong>${esc(secretBuddyName)}</strong>${row.secretRevealed ? ' · 공개' : ''}</div>
                 </div>
                 <div style="background:var(--primary-soft);border-radius:10px;padding:10px;">
                   <div style="font-size:11px;font-weight:900;color:var(--sub);margin-bottom:6px;">천로역정</div>
@@ -4204,6 +4211,8 @@
         const cards = Array.isArray(row.cards) ? row.cards : [];
         const answered = Number(row.answeredCount || 0);
         const correct = Number(row.correctCount || 0);
+        const personName = bbbMatchingDisplayName(row);
+        const parishText = bbbMatchingCleanText(row.parish) || '-';
         const missingPrayerEditor = row.ownPrayer ? '' : `
           <div class="hp-admin-prayer-editor" data-user-id="${esc(row.userId)}" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
             <textarea class="input hp-admin-prayer-input" rows="3" placeholder="운영자가 대신 입력할 H&P 기도제목" style="resize:vertical;margin-bottom:0;line-height:1.5;"></textarea>
@@ -4213,8 +4222,8 @@
           <details style="border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden;">
             <summary style="cursor:pointer;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;">
               <div style="min-width:0;">
-                <div style="font-weight:900;font-size:14px;">${esc(row.userId)}${row.name ? ` · ${esc(row.name)}` : ''}</div>
-                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(row.parish || '-')}${row.nameInitials ? ` · 초성 ${esc(row.nameInitials)}` : ''}</div>
+                <div style="font-weight:900;font-size:14px;">${esc(personName)}</div>
+                <div style="font-size:12px;color:var(--sub);margin-top:3px;">${esc(parishText)}${row.nameInitials ? ` · 초성 ${esc(row.nameInitials)}` : ''}</div>
               </div>
               <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
                 <span style="font-size:11px;font-weight:800;color:${row.ownPrayer ? 'var(--success)' : 'var(--sub)'};background:var(--primary-soft);border-radius:999px;padding:3px 8px;">기도 ${row.ownPrayer ? '작성' : '미작성'}</span>
@@ -4617,26 +4626,35 @@
     let _bbbMatchingRows = [];
     let _bbbMatchingQuery = '';
 
-    function bbbMatchingDisplayName(row) {
-      if (!row) return '-';
-      return row.name || row.displayName || row.loginId || row.userId || '이름 없음';
+    function bbbMatchingCleanText(value) {
+      const text = String(value ?? '').trim();
+      if (!text) return '';
+      const lowered = text.toLowerCase();
+      if (lowered === 'null' || lowered === 'undefined') return '';
+      return text;
+    }
+
+    function bbbMatchingDisplayName(row, fallback = '이름 없음') {
+      if (!row) return fallback;
+      return bbbMatchingCleanText(row.name)
+        || bbbMatchingCleanText(row.participantName)
+        || fallback;
     }
 
     function bbbMatchingNickname(row) {
       if (!row) return '';
-      return row.loginId || row.userId || '';
+      return bbbMatchingCleanText(row.loginId) || bbbMatchingCleanText(row.userId);
     }
 
     function bbbMatchingOptionLabel(row) {
       if (!row) return '-';
-      const login = bbbMatchingNickname(row);
-      const primary = login ? `${bbbMatchingDisplayName(row)} (${login})` : `${bbbMatchingDisplayName(row)} (닉네임 없음)`;
+      const primary = bbbMatchingDisplayName(row);
       const meta = [];
       if (row.groupNo) meta.push(`${row.groupNo}조`);
       meta.push(bbbMatchingTier(row));
-      if (row.parish) meta.push(row.parish);
-      if (row.participantCode) meta.push(`#${row.participantCode}`);
-      if (row.rawRole) meta.push(row.rawRole);
+      if (bbbMatchingCleanText(row.parish)) meta.push(bbbMatchingCleanText(row.parish));
+      if (bbbMatchingCleanText(row.participantCode)) meta.push(`#${bbbMatchingCleanText(row.participantCode)}`);
+      if (bbbMatchingCleanText(row.rawRole)) meta.push(bbbMatchingCleanText(row.rawRole));
       else if (row.groupRole === 'leader') meta.push('조장');
       else if (row.groupRole === 'assistant') meta.push('부조장');
       if (row.sortOrder) meta.push(`명단 ${row.sortOrder}`);
@@ -4654,8 +4672,8 @@
     function bbbMatchingGroupLabel(row) {
       if (!row) return '조 미배정';
       if (row.rowType === 'non_attendee' || row.matchStatus === 'non_attendee') return '미참';
-      if (row.groupNo) return `${row.groupNo}조${row.groupName ? ` · ${row.groupName}` : ''}`;
-      return row.groupLabel || row.groupName || '조 미배정';
+      if (row.groupNo) return `${row.groupNo}조${bbbMatchingCleanText(row.groupName) ? ` · ${bbbMatchingCleanText(row.groupName)}` : ''}`;
+      return bbbMatchingCleanText(row.groupLabel) || bbbMatchingCleanText(row.groupName) || '조 미배정';
     }
 
     function bbbMatchingTier(row) {
@@ -4677,11 +4695,9 @@
 
     function bbbMatchingMeta(row) {
       const parts = [];
-      const login = bbbMatchingNickname(row);
-      if (login) parts.push(`닉네임 ${login}`);
-      if (row.participantCode) parts.push(`#${row.participantCode}`);
-      if (row.parish) parts.push(row.parish);
-      if (row.rosterParish && row.rosterParish !== row.parish) parts.push(`원본 ${row.rosterParish}`);
+      if (bbbMatchingCleanText(row.participantCode)) parts.push(`#${bbbMatchingCleanText(row.participantCode)}`);
+      if (bbbMatchingCleanText(row.parish)) parts.push(bbbMatchingCleanText(row.parish));
+      if (bbbMatchingCleanText(row.rosterParish) && bbbMatchingCleanText(row.rosterParish) !== bbbMatchingCleanText(row.parish)) parts.push(`원본 ${bbbMatchingCleanText(row.rosterParish)}`);
       if (row.groupRole === 'leader') parts.push('조장');
       if (row.groupRole === 'assistant') parts.push('부조장');
       parts.push(bbbMatchingTier(row));
@@ -4737,10 +4753,12 @@
       const candidates = bbbMatchingCandidateProfiles(row);
       if (!candidates.length) return '';
       return candidates.map(candidate => {
-        const name = candidate.name || candidate.displayName || '이름 없음';
-        const login = candidate.loginId || candidate.userId || '닉네임 없음';
-        const parish = candidate.parish ? ` · ${candidate.parish}` : '';
-        return `${name} (${login})${parish}`;
+        const name = bbbMatchingDisplayName(candidate);
+        const meta = [
+          bbbMatchingCleanText(candidate.parish),
+          bbbMatchingCleanText(candidate.participantCode) ? `#${bbbMatchingCleanText(candidate.participantCode)}` : '',
+        ].filter(Boolean);
+        return meta.length ? `${name} · ${meta.join(' · ')}` : name;
       }).join(' / ');
     }
 
@@ -4870,7 +4888,7 @@
         candidate.userId,
         candidate.parish,
         candidate.participantCode,
-      ].map(value => String(value || '').trim()).filter(Boolean);
+      ].map(value => bbbMatchingCleanText(value)).filter(Boolean);
     }
 
     function bbbMatchingResolveCareBuddyInput(row, inputValue) {
@@ -4901,7 +4919,7 @@
       }).join('');
       const currentValue = bbbMatchingCareBuddyLabel(row);
       return `
-        <input class="input" data-bbb-care-for="${esc(row.rosterId)}" list="${esc(listId)}" value="${esc(currentValue)}" placeholder="이름 또는 닉네임 검색" oninput="markBBBMatchingDirty(${jsArg(row.rosterId)})" style="font-size:12px;padding:7px 9px;" />
+        <input class="input" data-bbb-care-for="${esc(row.rosterId)}" list="${esc(listId)}" value="${esc(currentValue)}" placeholder="이름 검색" oninput="markBBBMatchingDirty(${jsArg(row.rosterId)})" style="font-size:12px;padding:7px 9px;" />
         <datalist id="${esc(listId)}">${options}</datalist>`;
     }
 
