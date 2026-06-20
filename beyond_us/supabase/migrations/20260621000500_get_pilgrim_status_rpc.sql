@@ -1,20 +1,21 @@
 -- 천로역정 탭 전용 상태 조회 RPC를 제공한다.
 begin;
 
-insert into public.pilgrim_spots (spot_index, label, top_percent, left_percent, enabled)
+insert into public.pilgrim_spots (spot_index, label, top_percent, left_percent, enabled, qr_token)
 values
-  (0, '종착문', 48, 45, true),
-  (1, '십자가', 33, 65, true),
-  (2, '뷰티풀하우스', 62, 48.5, true),
-  (3, '마지막 나팔 골짜기', 81, 81, true),
-  (4, '기쁨의 산', 16, 86, true),
-  (5, '육라문', 16, 44, true),
-  (6, '천성', 44, 12, true)
+  (0, '종착문', 48, 45, true, 'pilgrim_spot_0_default_qr_token'),
+  (1, '십자가', 33, 65, true, 'pilgrim_spot_1_default_qr_token'),
+  (2, '뷰티풀하우스', 62, 48.5, true, 'pilgrim_spot_2_default_qr_token'),
+  (3, '마지막 나팔 골짜기', 81, 81, true, 'pilgrim_spot_3_default_qr_token'),
+  (4, '기쁨의 산', 16, 86, true, 'pilgrim_spot_4_default_qr_token'),
+  (5, '육라문', 16, 44, true, 'pilgrim_spot_5_default_qr_token'),
+  (6, '천성', 44, 12, true, 'pilgrim_spot_6_default_qr_token')
 on conflict (spot_index) do update
 set label = excluded.label,
     top_percent = excluded.top_percent,
     left_percent = excluded.left_percent,
-    enabled = true;
+    enabled = true,
+    qr_token = coalesce(nullif(public.pilgrim_spots.qr_token, ''), excluded.qr_token);
 
 create or replace function public.bu_ensure_pilgrim_assignment(p_profile_id uuid)
 returns smallint[]

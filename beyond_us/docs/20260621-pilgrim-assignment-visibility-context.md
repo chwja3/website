@@ -15,3 +15,5 @@
 여전히 앱에서 보이지 않는 경우를 줄이기 위해 `20260621000500_get_pilgrim_status_rpc.sql`을 추가했다. 천로역정 탭은 B.B.B. 매칭 여부와 무관하게 `get_pilgrim_status`만 호출해서 `m3AssignedSpots`, `myPhotoM3`, `myPhotoM3Statuses`, `m3Rewarded`를 받는다.
 
 프론트는 `loadPilgrim()`을 새로 두어 `switchSection('pilgrim')`에서 직접 호출한다. 이제 천로역정 화면은 `get_bbb_status`의 `ok:false/no_match` 분기나 B.B.B. 상세 박스 표시 상태에 덜 의존한다.
+
+`pilgrim_spots.qr_token`은 이전 QR 인증 구현에서 `not null`로 추가되어 있다. QR 인증을 현재 쓰지 않더라도 seed INSERT에는 기본 `qr_token` 값을 넣어야 한다. 기존 토큰이 있으면 보존하고, 신규 row에만 기본 토큰을 사용한다.
