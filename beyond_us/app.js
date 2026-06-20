@@ -27,6 +27,11 @@
     const SUPABASE_QT_PUBLIC_BASE = `${SUPABASE_PHOTO_PUBLIC_BASE}QT/`;
     const LOGISTICS_PUBLIC_PDF_PATH = 'logistics/lodging_assignment.pdf';
     const LOGISTICS_PUBLIC_PDF_URL = `${SUPABASE_PHOTO_PUBLIC_BASE}${LOGISTICS_PUBLIC_PDF_PATH}`;
+    const LOGISTICS_PUBLIC_IMAGE_PATHS = [
+      { src: 'images/logistics/lodging_assignment_01.jpg', alt: '숙소 배정 안내 1쪽' },
+      { src: 'images/logistics/lodging_assignment_02.jpg', alt: '숙소 배정 안내 2쪽' },
+      { src: 'images/logistics/lodging_assignment_03.jpg', alt: '숙소 배정 안내 3쪽' },
+    ];
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
       'password_migration_required',
@@ -57,7 +62,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260620i';
+    const APP_VERSION = '20260620j';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5353,6 +5358,41 @@
       `;
     }
 
+    function renderGlobalLogisticsImages() {
+      const statusEl = document.getElementById('logisticsStatus');
+      const contentEl = document.getElementById('logisticsContent');
+      if (!contentEl) return;
+      if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.style.color = 'var(--sub)';
+      }
+      const imageHtml = LOGISTICS_PUBLIC_IMAGE_PATHS.map((image, index) => {
+        const imageUrl = `${image.src}?v=${APP_VERSION}`;
+        return `
+          <a href="${escHtml(imageUrl)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;">
+            <img
+              src="${escHtml(imageUrl)}"
+              alt="${escHtml(image.alt)}"
+              loading="${index === 0 ? 'eager' : 'lazy'}"
+              decoding="async"
+              style="display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.04);"
+            />
+          </a>
+        `;
+      }).join('');
+      contentEl.innerHTML = `
+        <div style="display:grid;gap:12px;">
+          <div style="border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--primary-soft);">
+            <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">전체 숙소 배정 안내</div>
+            <p style="font-size:13px;color:var(--sub);line-height:1.6;margin:0;">
+              2026년 6월 20일 기준 숙소 배정표입니다.
+            </p>
+          </div>
+          ${imageHtml}
+        </div>
+      `;
+    }
+
     function renderLogisticsAssignment(data) {
       const statusEl = document.getElementById('logisticsStatus');
       const contentEl = document.getElementById('logisticsContent');
@@ -5455,6 +5495,10 @@
       }
       contentEl.innerHTML = '<p style="color:var(--sub);text-align:center;padding:16px;">불러오는 중...</p>';
       try {
+        if (LOGISTICS_PUBLIC_IMAGE_PATHS.length) {
+          renderGlobalLogisticsImages();
+          return;
+        }
         if (await hasPublicLogisticsPdf()) {
           renderGlobalLogisticsPdf();
           return;
