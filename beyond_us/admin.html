@@ -420,13 +420,13 @@
       <!-- ③ 카드 현황 -->
       <div id="tab-cards" class="tab-panel">
         <div class="stats-grid" id="cardSummary">
-          <div class="stat-card"><div class="stat-label">총 뽑기 횟수</div><div class="stat-value" id="cardTotalDraws">-</div></div>
-          <div class="stat-card"><div class="stat-label">뽑기 참여자</div><div class="stat-value" id="cardTotalUsers">-</div></div>
+          <div class="stat-card"><div class="stat-label">총 보유 수량</div><div class="stat-value" id="cardTotalDraws">-</div></div>
+          <div class="stat-card"><div class="stat-label">보유 유저</div><div class="stat-value" id="cardTotalUsers">-</div></div>
         </div>
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h2 class="card-title" style="margin:0;">카드별 뽑힌 횟수</h2>
+            <h2 class="card-title" style="margin:0;">카드별 보유 수량</h2>
             <button class="btn btn-ghost btn-sm" id="refreshCardsBtn">새로고침</button>
           </div>
           <div id="cardStatsGrid">
@@ -436,13 +436,13 @@
 
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h2 class="card-title" style="margin:0;">유저별 뽑기 · 실물 수령</h2>
+            <h2 class="card-title" style="margin:0;">유저별 보유 · 실물 수령</h2>
             <button id="unreceivedFilterBtn" class="btn btn-ghost btn-sm" onclick="toggleUnreceivedFilter()" style="font-size:12px;">미수령자만</button>
           </div>
           <input type="search" id="cardUserSearch" placeholder="🔍 닉네임 또는 이름 검색" style="width:100%; padding:9px 14px; font-size:14px; border:1.5px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text); outline:none; margin-bottom:10px; box-sizing:border-box;" oninput="filterCardUsers(this.value)" />
           <div class="table-wrap">
             <table>
-              <thead><tr><th>카드</th><th style="text-align:center;">뽑기</th><th style="text-align:center;">수령</th><th style="text-align:center;">미수령</th><th style="text-align:center;">수령 처리</th></tr></thead>
+              <thead><tr><th>카드</th><th style="text-align:center;">보유</th><th style="text-align:center;">수령</th><th style="text-align:center;">미수령</th><th style="text-align:center;">수령 처리</th></tr></thead>
               <tbody id="cardUserTableBody">
                 <tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px;">불러오는 중...</td></tr>
               </tbody>
@@ -2495,7 +2495,7 @@
           <td colspan="5" style="padding:8px 12px;">
             <strong>${esc(u.nickname)}</strong>
             ${u.name ? `<span style="color:var(--sub);font-size:12px;margin-left:4px;">(${esc(u.name)})</span>` : ''}
-            <span style="color:var(--sub);font-size:12px;margin-left:6px;">뽑기 ${totalDrew}장</span>
+            <span style="color:var(--sub);font-size:12px;margin-left:6px;">보유 ${totalDrew}장</span>
             ${totalNeeded > 0
               ? `<span style="color:#ef4444;font-size:12px;font-weight:700;margin-left:4px;">미수령 ${totalNeeded}장</span>`
               : `<span style="color:#22c55e;font-size:12px;font-weight:700;margin-left:4px;">✓ 완료</span>`}
@@ -2605,6 +2605,7 @@
       {id:7,name:'고',virtue:'충성',emoji:'⭐',g1:'#b5451b',g2:'#e8a87c',img:'images/앤카드충성최최종.webp'},
       {id:8,name:'엔',virtue:'온유',emoji:'🌸',g1:'#7b4fa6',g2:'#c084fc',img:'images/앤카드온유최최종.webp'},
       {id:9,name:'버터',virtue:'절제',emoji:'🛡️',g1:'#1a3a5c',g2:'#2e86c1',img:'images/앤카드절제최최종.webp'},
+      {id:10,name:'BetWeEn',virtue:'레어',emoji:'✨',g1:'#1a1a2e',g2:'#3a3060',img:'images/히든.webp'},
     ];
     const ADMIN_CARD_META_BY_ID = Object.fromEntries(SPIRIT_CARDS_ADMIN.map(c => [c.id, c]));
 
