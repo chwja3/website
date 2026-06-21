@@ -30,7 +30,6 @@
     const LOGISTICS_PUBLIC_IMAGE_PATHS = [
       { src: 'images/logistics/lodging_assignment_01.jpg', alt: '숙소 배정 안내 1쪽' },
       { src: 'images/logistics/lodging_assignment_02.jpg', alt: '숙소 배정 안내 2쪽' },
-      { src: 'images/logistics/lodging_assignment_03.jpg', alt: '숙소 배정 안내 3쪽' },
     ];
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
@@ -62,7 +61,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260621d';
+    const APP_VERSION = '20260621e';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -4744,18 +4743,44 @@
     });
     function _compressImage(file, maxPx, quality) {
       return new Promise((resolve, reject) => {
+        if (!file || !String(file.type || '').startsWith('image/')) {
+          reject(new Error('이미지 파일만 업로드할 수 있어요.'));
+          return;
+        }
         const img = new Image();
         const url = URL.createObjectURL(file);
-        img.onload = () => {
+        let settled = false;
+        let timeoutId = null;
+        const finish = (fn, value) => {
+          if (settled) return;
+          settled = true;
+          if (timeoutId) clearTimeout(timeoutId);
           URL.revokeObjectURL(url);
-          const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-          const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+          fn(value);
         };
-        img.onerror = reject;
+        timeoutId = setTimeout(() => {
+          finish(reject, new Error('사진을 처리하는 데 시간이 오래 걸려요. 다른 사진이나 스크린샷으로 다시 시도해주세요.'));
+        }, 15000);
+        img.onload = () => {
+          try {
+            const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+            const w = Math.max(1, Math.round(img.width * scale));
+            const h = Math.max(1, Math.round(img.height * scale));
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('사진을 처리할 수 없어요.');
+            ctx.drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            if (!dataUrl || dataUrl === 'data:,') throw new Error('사진을 변환하지 못했어요.');
+            finish(resolve, dataUrl);
+          } catch (err) {
+            finish(reject, err);
+          }
+        };
+        img.onerror = () => {
+          finish(reject, new Error('이 사진을 읽지 못했어요. 다른 사진이나 스크린샷으로 다시 시도해주세요.'));
+        };
         img.src = url;
       });
     }
@@ -5390,7 +5415,7 @@
           <div style="border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--primary-soft);">
             <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">전체 숙소 배정 안내</div>
             <p style="font-size:13px;color:var(--sub);line-height:1.6;margin:0;">
-              2026년 6월 20일 기준 숙소 배정표입니다.
+              2026년 6월 21일 기준 숙소 배정표입니다.
             </p>
           </div>
           ${imageHtml}
