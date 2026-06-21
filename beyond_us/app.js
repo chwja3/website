@@ -60,7 +60,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260622a';
+    const APP_VERSION = '20260622b';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5401,13 +5401,13 @@
       const imageHtml = LOGISTICS_PUBLIC_IMAGE_PATHS.map((image, index) => {
         const imageUrl = `${image.src}?v=${APP_VERSION}`;
         return `
-          <a href="${escHtml(imageUrl)}" target="_blank" rel="noopener" style="display:block;text-decoration:none;">
+          <a href="${escHtml(imageUrl)}" target="_blank" rel="noopener" style="display:flex;justify-content:center;text-decoration:none;width:100%;">
             <img
               src="${escHtml(imageUrl)}"
               alt="${escHtml(image.alt)}"
               loading="${index === 0 ? 'eager' : 'lazy'}"
               decoding="async"
-              style="display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.04);"
+              style="display:block;width:100%;max-width:980px;height:auto;margin:0 auto;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 2px 10px rgba(0,0,0,.04);"
             />
           </a>
         `;
