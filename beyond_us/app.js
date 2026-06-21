@@ -28,8 +28,7 @@
     const LOGISTICS_PUBLIC_PDF_PATH = 'logistics/lodging_assignment.pdf';
     const LOGISTICS_PUBLIC_PDF_URL = `${SUPABASE_PHOTO_PUBLIC_BASE}${LOGISTICS_PUBLIC_PDF_PATH}`;
     const LOGISTICS_PUBLIC_IMAGE_PATHS = [
-      { src: 'images/logistics/lodging_assignment_01.jpg', alt: '숙소 배정 안내 1쪽' },
-      { src: 'images/logistics/lodging_assignment_02.jpg', alt: '숙소 배정 안내 2쪽' },
+      { src: 'images/logistics/bus_assignment_20260622_01.jpg', alt: '6월 22일 차량 배정표' },
     ];
     const LEGACY_PASSWORD_RESET_ERRORS = new Set([
       'weak_password_needs_reset',
@@ -61,7 +60,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260621p';
+    const APP_VERSION = '20260622a';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5391,34 +5390,6 @@
       `;
     }
 
-    function logisticsNoticeHtml() {
-      return `
-        <div style="border:1px solid rgba(245,158,11,.28);border-radius:16px;padding:16px;background:linear-gradient(180deg,rgba(255,251,235,.96),rgba(255,247,237,.92));box-shadow:0 2px 12px rgba(120,53,15,.08);">
-          <div style="font-size:15px;font-weight:900;color:#7c2d12;margin-bottom:12px;">숙소 배정 및 체크인 안내</div>
-          <div style="display:grid;gap:14px;font-size:13px;line-height:1.7;color:#431407;">
-            <div>
-              <div style="font-weight:900;margin-bottom:6px;">🚐 저녁집회 후 퇴실 예정자</div>
-              <ul style="margin:0;padding-left:18px;display:grid;gap:4px;">
-                <li>'저녁식사 시간' 또는 '빛충전 시간'을 활용하여 방키를 반납하고 개인 짐을 행정부스에 맡겨주시기 바랍니다.</li>
-              </ul>
-            </div>
-            <div>
-              <div style="font-weight:900;margin-bottom:6px;">🚐 월요일 새벽 3:30 셔틀 이용자</div>
-              <ul style="margin:0;padding-left:18px;display:grid;gap:4px;">
-                <li>저녁집회 후에는 짐을 미리 빼지 마시고 숙소에서 쉬시다가 이동해 주세요.</li>
-                <li>오전 3:00까지 모든 짐을 챙겨 카리타스채플 로비로 집결해 주시기 바랍니다.</li>
-                <li>퇴실 처리 후 버스에 탑승할 예정이며, 출발 이후에는 탑승이 불가합니다.</li>
-              </ul>
-            </div>
-            <div style="border-top:1px solid rgba(124,45,18,.16);padding-top:12px;display:grid;gap:6px;font-weight:800;">
-              <div>⚠️ 주일 집회 후 차량 및 월요일 새벽 3:30 차량은 좌석이 모두 마감되어 추가 탑승이 어렵습니다.</div>
-              <div>⚠️ 주일 체크인 예정이신 분들은 '저녁집회 이후' 행정부스에서 체크인을 도와드릴 예정입니다.</div>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
     function renderGlobalLogisticsImages() {
       const statusEl = document.getElementById('logisticsStatus');
       const contentEl = document.getElementById('logisticsContent');
@@ -5443,11 +5414,10 @@
       }).join('');
       contentEl.innerHTML = `
         <div style="display:grid;gap:12px;">
-          ${logisticsNoticeHtml()}
           <div style="border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--primary-soft);">
-            <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">전체 숙소 배정 안내</div>
+            <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">6월 22일 차량 배정표</div>
             <p style="font-size:13px;color:var(--sub);line-height:1.6;margin:0;">
-              2026년 6월 21일 기준 숙소 배정표입니다.
+              월요일 오전 11:00 출발 차량 명단입니다.
             </p>
           </div>
           ${imageHtml}
