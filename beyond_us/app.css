@@ -261,6 +261,38 @@
       object-fit: contain;
       cursor: zoom-in;
     }
+    .investigation-map-marker {
+      position: absolute;
+      z-index: 2;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 7px 4px 5px;
+      border-radius: 999px;
+      background: rgba(255, 248, 220, .96);
+      border: 1.5px solid rgba(146, 64, 14, .5);
+      box-shadow: 0 2px 8px rgba(67, 20, 7, .18);
+      color: #7c2d12;
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+    .investigation-map-marker::before {
+      content: "★";
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #facc15;
+      color: #7c2d12;
+      font-size: 13px;
+      box-shadow: 0 0 0 2px rgba(255,255,255,.75);
+    }
     .investigation-map-empty {
       width: 100%;
       min-height: 260px;
