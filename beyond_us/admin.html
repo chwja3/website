@@ -4169,7 +4169,7 @@
       const status = String(photo && photo.status || '').toLowerCase();
       const approved = status === 'approved';
       const rejected = status === 'rejected';
-      const canReview = !!(userId && missionType && (src || (!isPilgrim && !approved)));
+      const canReview = !!(userId && missionType && (src || !approved));
       const showReject = !!(src && !approved && !rejected);
       return `
         <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);min-width:0;">
