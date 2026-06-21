@@ -264,7 +264,7 @@
     .investigation-map-marker {
       position: absolute;
       z-index: 2;
-      transform: translate(-50%, -50%);
+      transform: translate(var(--marker-x, -50%), var(--marker-y, -50%));
       pointer-events: none;
       display: inline-flex;
       align-items: center;
