@@ -4156,14 +4156,21 @@
       return 'var(--sub)';
     }
 
+    function isManualMissionApprovalPath(value) {
+      return String(value || '').startsWith('admin_manual://');
+    }
+
     function renderOpsPhotoMini(photo, label, userId, missionType) {
       const rawPath = photo && photo.storagePath ? String(photo.storagePath) : '';
       const isQrVerified = isPilgrimQrVerifiedPath(rawPath);
-      const src = rawPath && !isQrVerified ? supabasePhotoUrl(rawPath) : '';
+      const isManualApproval = isManualMissionApprovalPath(rawPath);
+      const isPilgrim = /^m3_\d+$/.test(String(missionType || '')) || missionType === 'pilgrim';
+      const src = rawPath && !isQrVerified && !isManualApproval ? supabasePhotoUrl(rawPath) : '';
       const status = String(photo && photo.status || '').toLowerCase();
       const approved = status === 'approved';
       const rejected = status === 'rejected';
-      const canReview = !!(userId && missionType && src);
+      const canReview = !!(userId && missionType && (src || (!isPilgrim && !approved)));
+      const showReject = !!(src && !approved && !rejected);
       return `
         <div style="border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);min-width:0;">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
@@ -4172,6 +4179,8 @@
           </div>
           ${isQrVerified
             ? '<div style="height:82px;border:1px solid #bbf7d0;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#166534;background:#dcfce7;font-size:12px;font-weight:900;">QR 인증 완료</div>'
+            : isManualApproval || (approved && !src)
+            ? '<div style="height:82px;border:1px solid #bbf7d0;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#166534;background:#dcfce7;font-size:12px;font-weight:900;text-align:center;padding:0 10px;">운영진 수동 승인</div>'
             : src
             ? `<button type="button" onclick="openBBBPhotoPreview(this)" style="border:0;background:transparent;padding:0;cursor:pointer;width:100%;"><img src="${esc(src)}" alt="${esc(label)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);" /></button>`
             : '<div style="height:82px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--sub);font-size:12px;">사진 없음</div>'
@@ -4188,7 +4197,7 @@
                 data-user-id="${esc(userId)}"
                 data-mission-type="${esc(missionType)}"
                 onclick="reviewBBBPhotoFromButton(this, 'reject')"
-                ${approved || rejected ? 'disabled' : ''}>${rejected ? '거절됨' : '거절'}</button>
+                ${showReject ? '' : 'disabled'}>${rejected ? '거절됨' : '거절'}</button>
             </div>` : ''}
         </div>`;
     }
@@ -4276,7 +4285,7 @@
       const isPilgrim = /^m3_\d+$/.test(missionType) || missionType === 'pilgrim';
       const missionLabel = isPilgrim ? missionType.replace('m3_', '천로역정 스팟 ') : missionType.toUpperCase();
       const message = approving
-        ? `${userId}의 ${missionLabel} 사진을 승인할까요?${isPilgrim ? '\n배정된 두 스팟이 모두 승인되면 레어 카드가 지급됩니다.' : '\n승인하면 카드팩 1장이 발급됩니다.'}`
+        ? `${userId}의 ${missionLabel}을 성공 처리할까요?${isPilgrim ? '\n배정된 두 스팟이 모두 승인되면 레어 카드가 지급됩니다.' : '\n사진이 없어도 성공 처리할 수 있고, 카드팩 1장이 발급됩니다.'}`
         : `${userId}의 ${missionLabel} 사진을 거절할까요?\n거절되면 사용자가 사진을 삭제하거나 다시 올릴 수 있어요.`;
       if (!confirm(message)) return;
       const slot = btn.closest('div[style*="border:1px solid var(--line)"]') || btn.parentElement;
