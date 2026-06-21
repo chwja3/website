@@ -61,7 +61,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260621h';
+    const APP_VERSION = '20260621i';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5412,7 +5412,6 @@
               <div>⚠️ 주일 집회 후 차량 및 월요일 새벽 3:30 차량은 좌석이 모두 마감되어 추가 탑승이 어렵습니다.</div>
               <div>⚠️ 주일 체크인 예정이신 분들은 '저녁집회 이후' 행정부스에서 체크인을 도와드릴 예정입니다.</div>
             </div>
-            <div style="font-weight:900;color:#7c2d12;">숙소 배정 및 체크인 관련 안내는 아래 내용을 참고해 주세요.</div>
           </div>
         </div>
       `;
@@ -5442,13 +5441,13 @@
       }).join('');
       contentEl.innerHTML = `
         <div style="display:grid;gap:12px;">
+          ${logisticsNoticeHtml()}
           <div style="border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--primary-soft);">
             <div style="font-size:15px;font-weight:900;color:var(--text);margin-bottom:6px;">전체 숙소 배정 안내</div>
             <p style="font-size:13px;color:var(--sub);line-height:1.6;margin:0;">
               2026년 6월 21일 기준 숙소 배정표입니다.
             </p>
           </div>
-          ${logisticsNoticeHtml()}
           ${imageHtml}
         </div>
       `;
