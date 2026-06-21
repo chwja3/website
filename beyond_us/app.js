@@ -61,7 +61,7 @@
     /* ── 버전 체크 (PWA 캐시 강제 갱신) ──
        자동 reload 대신 배너로 알림. 사용자가 직접 새로고침 → SW/캐시 전부 클리어 후 reload.
        자동 reload는 SW가 옛 app.js를 cache-first로 서빙할 때 무한 reload 루프를 만들 수 있어서 제거. */
-    const APP_VERSION = '20260621f';
+    const APP_VERSION = '20260621g';
     const MAINTENANCE_MODE = false;
     const MAINTENANCE_ALLOWED_NICKNAMES = new Set(['SingSangSong', '카니보어시즌2']);
     const VISIBLE_RADIO_CATEGORIES = [
@@ -5397,7 +5397,6 @@
               <div style="font-weight:900;margin-bottom:6px;">🚐 저녁집회 후 퇴실 예정자</div>
               <ul style="margin:0;padding-left:18px;display:grid;gap:4px;">
                 <li>'저녁식사 시간' 또는 '빛충전 시간'을 활용하여 방키를 반납하고 개인 짐을 행정부스에 맡겨주시기 바랍니다.</li>
-                <li>저녁집회 후 퇴실 예정이신 분들은 개인 짐을 가지고 집회 장소로 와주시기 바랍니다.</li>
               </ul>
             </div>
             <div>
